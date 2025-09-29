@@ -8,13 +8,15 @@ import {
   FunnelIcon,
   Squares2X2Icon,
   ListBulletIcon,
-  EyeIcon
+  EyeIcon,
+  Cog6ToothIcon
 } from '@heroicons/react/24/outline';
 import useStore from '../store/useStore';
 import { collectionsApi, imagesApi } from '../services/api';
 import LoadingSpinner from '../components/LoadingSpinner';
 import ImageGrid from '../components/ImageGrid';
 import ImageList from '../components/ImageList';
+import PreloadSettings from '../components/PreloadSettings';
 import toast from 'react-hot-toast';
 
 const CollectionViewerPage: React.FC = () => {
@@ -27,7 +29,8 @@ const CollectionViewerPage: React.FC = () => {
     setCurrentImage,
     viewer,
     setSortBy,
-    setSortOrder
+    setSortOrder,
+    preloadThumbnails
   } = useStore();
   
   const [isLoading, setIsLoading] = useState(true);
@@ -35,6 +38,7 @@ const CollectionViewerPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [showPreloadSettings, setShowPreloadSettings] = useState(false);
 
   const collection = collections.find(col => col.id === parseInt(id || '0'));
 
@@ -60,6 +64,12 @@ const CollectionViewerPage: React.FC = () => {
       setImages(response.data.images);
       setCurrentPage(page);
       setTotalPages(response.data.pagination.pages);
+      
+      // Trigger preloading for the current page
+      if (viewer.preloadEnabled && response.data.images.length > 0) {
+        const imageIds = response.data.images.map((img: any) => img.id);
+        preloadThumbnails(collection.id, imageIds);
+      }
     } catch (error) {
       toast.error('Failed to load images');
     } finally {
@@ -224,14 +234,26 @@ const CollectionViewerPage: React.FC = () => {
           <button
             onClick={() => setViewMode('grid')}
             className={`p-2 rounded ${viewMode === 'grid' ? 'bg-primary-600 text-white' : 'text-dark-400 hover:text-white'}`}
+            title="Grid View"
           >
             <Squares2X2Icon className="h-5 w-5" />
           </button>
           <button
             onClick={() => setViewMode('list')}
             className={`p-2 rounded ${viewMode === 'list' ? 'bg-primary-600 text-white' : 'text-dark-400 hover:text-white'}`}
+            title="List View"
           >
             <ListBulletIcon className="h-5 w-5" />
+          </button>
+          
+          <div className="w-px h-6 bg-dark-600 mx-2"></div>
+          
+          <button
+            onClick={() => setShowPreloadSettings(true)}
+            className="p-2 rounded text-dark-400 hover:text-white"
+            title="Preload Settings"
+          >
+            <Cog6ToothIcon className="h-5 w-5" />
           </button>
         </div>
       </div>
@@ -290,6 +312,12 @@ const CollectionViewerPage: React.FC = () => {
           )}
         </>
       )}
+      
+      {/* Preload Settings Modal */}
+      <PreloadSettings
+        isOpen={showPreloadSettings}
+        onClose={() => setShowPreloadSettings(false)}
+      />
     </div>
   );
 };

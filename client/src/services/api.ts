@@ -34,6 +34,13 @@ export const imagesApi = {
     api.get(`/images/${collectionId}/${imageId}/thumbnail`, { 
       responseType: 'blob'
     }),
+  getBatchThumbnails: (collectionId: number, imageIds: number[], params?: { width?: number; height?: number; quality?: number }) => 
+    api.get(`/images/${collectionId}/batch-thumbnails`, { 
+      params: { 
+        ids: imageIds.join(','), 
+        ...params 
+      } 
+    }),
   navigate: (collectionId: number, imageId: number, direction: 'next' | 'previous') => 
     api.get(`/images/${collectionId}/${imageId}/navigate`, { params: { direction } }),
   getRandom: (collectionId: number) => 

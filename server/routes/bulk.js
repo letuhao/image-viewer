@@ -527,4 +527,204 @@ async function getDirectoryStats(dirPath, maxDepth = 5, currentDepth = 0) {
   return stats;
 }
 
+// Find all potential collections in a parent directory
+async function findAllCollections(parentPath, includeSubfolders = false, collectionPrefix = '') {
+  const collections = [];
+  const supportedFormats = ['.zip', '.cbz', '.7z', '.rar', '.cbr', '.tar', '.tar.gz', '.tar.bz2'];
+  const imageFormats = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'];
+  
+  const dangerousPaths = [
+    'C:\\Windows', 'C:\\Program Files', 'C:\\Program Files (x86)', 
+    'C:\\ProgramData', 'C:\\System Volume Information', 'C:\\$Recycle.Bin',
+    'C:\\Users\\All Users', 'C:\\Users\\Default'
+  ];
+  
+  const isDangerousPath = (path) => {
+    return dangerousPaths.some(dangerous => 
+      path.toLowerCase().startsWith(dangerous.toLowerCase())
+    );
+  };
+  
+  const isHiddenOrSystem = (name) => {
+    return name.startsWith('.') || name.startsWith('$') || name.startsWith('~');
+  };
+  
+  async function scanDirectory(dirPath, depth = 0) {
+    if (depth > 10) return; // Prevent infinite recursion
+    
+    try {
+      const items = await fs.readdir(dirPath, { withFileTypes: true });
+      
+      for (const item of items) {
+        const fullPath = path.join(dirPath, item.name);
+        
+        // Skip dangerous, hidden, or system paths
+        if (isDangerousPath(fullPath) || isHiddenOrSystem(item.name)) {
+          continue;
+        }
+        
+        if (item.isDirectory()) {
+          // Check if directory contains images (potential collection)
+          const hasImages = await checkDirectoryForImages(fullPath);
+          if (hasImages) {
+            const collectionName = collectionPrefix + item.name;
+            collections.push({
+              name: collectionName,
+              path: fullPath,
+              type: 'folder'
+            });
+          }
+          
+          // Recursively scan subdirectories if requested
+          if (includeSubfolders) {
+            await scanDirectory(fullPath, depth + 1);
+          }
+        } else if (item.isFile()) {
+          // Check if file is a supported compressed format
+          const ext = path.extname(item.name).toLowerCase();
+          if (supportedFormats.includes(ext)) {
+            const collectionName = collectionPrefix + path.basename(item.name, ext);
+            const collectionType = getCollectionType(ext);
+            collections.push({
+              name: collectionName,
+              path: fullPath,
+              type: collectionType
+            });
+          }
+        }
+      }
+    } catch (error) {
+      // Skip directories that can't be read (permission issues, etc.)
+      console.error(`Error scanning directory ${dirPath}:`, error.message);
+    }
+  }
+  
+  // Check if directory contains images
+  async function checkDirectoryForImages(dirPath) {
+    try {
+      const items = await fs.readdir(dirPath, { withFileTypes: true });
+      return items.some(item => {
+        if (item.isFile()) {
+          const ext = path.extname(item.name).toLowerCase();
+          return imageFormats.includes(ext);
+        }
+        return false;
+      });
+    } catch (error) {
+      return false;
+    }
+  }
+  
+  // Get collection type from file extension
+  function getCollectionType(ext) {
+    const typeMap = {
+      '.zip': 'zip',
+      '.cbz': 'zip',
+      '.7z': '7z',
+      '.rar': 'rar',
+      '.cbr': 'rar',
+      '.tar': 'tar',
+      '.tar.gz': 'tar',
+      '.tar.bz2': 'tar'
+    };
+    return typeMap[ext] || 'zip';
+  }
+  
+  await scanDirectory(parentPath);
+  return collections;
+}
+
+// Generate collection metadata
+async function generateCollectionMetadata(collectionPath, collectionType) {
+  console.log(`[METADATA] Generating metadata for: ${collectionPath} (type: ${collectionType})`);
+  
+  const metadata = {
+    created_at: new Date().toISOString(),
+    last_scanned: new Date().toISOString(),
+    total_images: 0,
+    total_size: 0,
+    image_formats: [],
+    has_subfolders: false,
+    average_image_size: 0
+  };
+  
+  const supportedFormats = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'];
+  
+  if (collectionType === 'folder') {
+    console.log(`[METADATA] Getting directory stats for: ${collectionPath}`);
+    
+    let totalImages = 0;
+    let totalSize = 0;
+    const formats = new Set();
+    let hasSubfolders = false;
+    
+    async function scanDirectory(dirPath, depth = 0) {
+      if (depth > 5) return; // Prevent deep recursion
+      
+      try {
+        const items = await fs.readdir(dirPath, { withFileTypes: true });
+        
+        for (const item of items) {
+          const fullPath = path.join(dirPath, item.name);
+          
+          if (item.isFile()) {
+            const ext = path.extname(item.name).toLowerCase();
+            if (supportedFormats.includes(ext)) {
+              totalImages++;
+              formats.add(ext);
+              
+              try {
+                const stats = await fs.stat(fullPath);
+                totalSize += stats.size;
+              } catch (error) {
+                // Ignore files that can't be stat'd
+              }
+            }
+          } else if (item.isDirectory()) {
+            hasSubfolders = true;
+            await scanDirectory(fullPath, depth + 1);
+          }
+        }
+      } catch (error) {
+        // Ignore directories that can't be read
+      }
+    }
+    
+    await scanDirectory(collectionPath);
+    
+    metadata.total_images = totalImages;
+    metadata.total_size = totalSize;
+    metadata.image_formats = Array.from(formats);
+    metadata.has_subfolders = hasSubfolders;
+    metadata.average_image_size = totalImages > 0 ? Math.round(totalSize / totalImages) : 0;
+    metadata.collection_stats = {
+      directories_scanned: 1,
+      max_depth: 0
+    };
+  } else {
+    // For compressed files, get file stats
+    try {
+      const stats = await fs.stat(collectionPath);
+      metadata.total_size = stats.size;
+      metadata.collection_stats = {
+        zip_size: stats.size,
+        zip_modified: stats.mtime.toISOString()
+      };
+    } catch (error) {
+      console.error(`Error getting stats for ${collectionPath}:`, error);
+    }
+  }
+  
+  // Auto-tagging based on collection name
+  const collectionName = path.basename(collectionPath, path.extname(collectionPath));
+  console.log(`[METADATA] Auto-tagging collection: ${collectionName}`);
+  const autoTags = tagService.autoTagFromName(collectionName);
+  console.log(`[METADATA] Generated auto-tags:`, autoTags);
+  metadata.auto_tags = autoTags;
+  
+  return metadata;
+}
+
 module.exports = router;
+module.exports.findAllCollections = findAllCollections;
+module.exports.generateCollectionMetadata = generateCollectionMetadata;

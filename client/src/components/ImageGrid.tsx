@@ -1,6 +1,7 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { FixedSizeGrid as Grid } from 'react-window';
 import AutoSizer from 'react-virtualized-auto-sizer';
+import useStore from '../store/useStore';
 
 interface Image {
   id: number;
@@ -39,6 +40,21 @@ const ImageItem: React.FC<ImageItemProps> = ({ columnIndex, rowIndex, style, dat
 
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
+  const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null);
+
+  // Get preloaded thumbnail from store
+  const { getPreloadedThumbnail } = useStore();
+  const preloadedThumbnail = getPreloadedThumbnail(image.id);
+
+  useEffect(() => {
+    if (preloadedThumbnail) {
+      setThumbnailUrl(preloadedThumbnail);
+      setIsLoading(false);
+    } else {
+      // Fallback to individual thumbnail loading
+      setThumbnailUrl(`/api/images/${collectionId}/${image.id}/thumbnail`);
+    }
+  }, [preloadedThumbnail, collectionId, image.id]);
 
   const handleImageLoad = () => {
     setIsLoading(false);
@@ -72,14 +88,16 @@ const ImageItem: React.FC<ImageItemProps> = ({ columnIndex, rowIndex, style, dat
             </svg>
           </div>
         ) : (
-          <img
-            src={`/api/images/${collectionId}/${image.id}/thumbnail`}
-            alt={image.filename}
-            onLoad={handleImageLoad}
-            onError={handleImageError}
-            className="w-full h-full object-cover"
-            style={{ display: isLoading ? 'none' : 'block' }}
-          />
+          thumbnailUrl && (
+            <img
+              src={thumbnailUrl}
+              alt={image.filename}
+              onLoad={handleImageLoad}
+              onError={handleImageError}
+              className="w-full h-full object-cover"
+              style={{ display: isLoading ? 'none' : 'block' }}
+            />
+          )
         )}
         
         {/* Image info overlay */}

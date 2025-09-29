@@ -33,6 +33,9 @@ export interface ViewerState {
   sortBy: 'filename' | 'date' | 'size';
   sortOrder: 'asc' | 'desc';
   filter: string;
+  preloadEnabled: boolean;
+  preloadBatchSize: number;
+  preloadedThumbnails: Record<number, string>; // imageId -> base64 thumbnail
 }
 
 export interface AppState {
@@ -67,6 +70,12 @@ export interface AppState {
   goToNextImage: () => void;
   goToPreviousImage: () => void;
   goToRandomImage: () => void;
+  
+  // Preload actions
+  setPreloadEnabled: (enabled: boolean) => void;
+  setPreloadBatchSize: (size: number) => void;
+  preloadThumbnails: (collectionId: number, imageIds: number[]) => Promise<void>;
+  getPreloadedThumbnail: (imageId: number) => string | null;
 }
 
 const useStore = create<AppState>()(
@@ -84,6 +93,9 @@ const useStore = create<AppState>()(
         sortBy: 'filename',
         sortOrder: 'asc',
         filter: '',
+        preloadEnabled: true,
+        preloadBatchSize: 50,
+        preloadedThumbnails: {},
       },
       isLoading: false,
       error: null,
@@ -184,6 +196,47 @@ const useStore = create<AppState>()(
         set((state) => ({
           viewer: { ...state.viewer, currentImage: viewer.images[randomIndex] }
         }));
+      },
+      
+      setPreloadEnabled: (enabled) => set((state) => ({
+        viewer: { ...state.viewer, preloadEnabled: enabled }
+      })),
+      
+      setPreloadBatchSize: (size) => set((state) => ({
+        viewer: { ...state.viewer, preloadBatchSize: size }
+      })),
+      
+      preloadThumbnails: async (collectionId, imageIds) => {
+        const { viewer } = get();
+        if (!viewer.preloadEnabled || imageIds.length === 0) return;
+        
+        try {
+          // Import the API function dynamically to avoid circular dependencies
+          const { imagesApi } = await import('../services/api');
+          const response = await imagesApi.getBatchThumbnails(collectionId, imageIds);
+          
+          const newThumbnails: Record<number, string> = {};
+          response.data.thumbnails.forEach((thumb: any) => {
+            newThumbnails[thumb.id] = `data:image/jpeg;base64,${thumb.thumbnail}`;
+          });
+          
+          set((state) => ({
+            viewer: {
+              ...state.viewer,
+              preloadedThumbnails: {
+                ...state.viewer.preloadedThumbnails,
+                ...newThumbnails
+              }
+            }
+          }));
+        } catch (error) {
+          console.error('Failed to preload thumbnails:', error);
+        }
+      },
+      
+      getPreloadedThumbnail: (imageId) => {
+        const { viewer } = get();
+        return viewer.preloadedThumbnails[imageId] || null;
       },
     }),
     {

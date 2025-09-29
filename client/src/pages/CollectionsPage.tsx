@@ -11,7 +11,8 @@ import {
   ChartBarIcon,
   EyeIcon,
   TagIcon,
-  ClockIcon
+  ClockIcon,
+  SparklesIcon
 } from '@heroicons/react/24/outline';
 import useStore from '../store/useStore';
 import { collectionsApi, statsApi } from '../services/api';
@@ -117,6 +118,23 @@ const CollectionsPage: React.FC = () => {
     return type === 'zip' ? ArchiveBoxIcon : FolderIcon;
   };
 
+  const handleRandomCollection = () => {
+    const availableCollections = filteredCollections.filter(col => 
+      col.settings && col.settings.total_images > 0
+    );
+    
+    if (availableCollections.length === 0) {
+      toast.error('No collections with images available');
+      return;
+    }
+    
+    const randomIndex = Math.floor(Math.random() * availableCollections.length);
+    const randomCollection = availableCollections[randomIndex];
+    
+    toast.success(`Opening random collection: ${randomCollection.name}`);
+    navigate(`/collection/${randomCollection.id}`);
+  };
+
   return (
     <div className="p-6">
       <div className="flex items-center justify-between mb-6">
@@ -128,6 +146,14 @@ const CollectionsPage: React.FC = () => {
         </div>
         
         <div className="flex items-center space-x-2">
+          <button
+            onClick={handleRandomCollection}
+            className="btn btn-secondary"
+            title="Open a random collection"
+          >
+            <SparklesIcon className="h-5 w-5 mr-2" />
+            Random
+          </button>
           <button
             onClick={() => setShowBulkAddModal(true)}
             className="btn btn-secondary"
@@ -241,6 +267,14 @@ const CollectionsPage: React.FC = () => {
           </p>
           {!searchQuery && filterType === 'all' && tagFilters.length === 0 && (
             <div className="flex items-center space-x-2">
+              <button
+                onClick={handleRandomCollection}
+                className="btn btn-secondary"
+                title="Open a random collection"
+              >
+                <SparklesIcon className="h-5 w-5 mr-2" />
+                Random
+              </button>
               <button
                 onClick={() => setShowBulkAddModal(true)}
                 className="btn btn-secondary"

@@ -35,6 +35,58 @@ router.get('/:id', async (req, res) => {
   }
 });
 
+// Get batch thumbnails for preloading
+router.get('/:collectionId/batch-thumbnails', async (req, res) => {
+  try {
+    const { collectionId } = req.params;
+    const { ids, width = 300, height = 300, quality = 80 } = req.query;
+    
+    if (!ids) {
+      return res.status(400).json({ error: 'Image IDs are required' });
+    }
+    
+    const imageIds = ids.split(',').map(id => parseInt(id.trim()));
+    
+    const collection = await db.getCollection(collectionId);
+    if (!collection) {
+      return res.status(404).json({ error: 'Collection not found' });
+    }
+    
+    const images = await db.getImages(collectionId);
+    const requestedImages = images.filter(img => imageIds.includes(img.id));
+    
+    const thumbnailPromises = requestedImages.map(async (image) => {
+      try {
+        const thumbnailPath = path.join(__dirname, '../cache/thumbnails', collectionId, `${path.basename(image.relative_path, path.extname(image.relative_path))}_thumb.jpg`);
+        
+        if (await fs.pathExists(thumbnailPath)) {
+          const thumbnailBuffer = await fs.readFile(thumbnailPath);
+          return {
+            id: image.id,
+            thumbnail: thumbnailBuffer.toString('base64'),
+            filename: image.filename
+          };
+        }
+        return null;
+      } catch (error) {
+        console.error(`Error loading thumbnail for image ${image.id}:`, error);
+        return null;
+      }
+    });
+    
+    const thumbnails = (await Promise.all(thumbnailPromises)).filter(Boolean);
+    
+    res.json({
+      thumbnails,
+      requested: imageIds.length,
+      found: thumbnails.length
+    });
+  } catch (error) {
+    console.error('Error fetching batch thumbnails:', error);
+    res.status(500).json({ error: 'Failed to fetch batch thumbnails' });
+  }
+});
+
 // Serve image file
 router.get('/:collectionId/:imageId/file', async (req, res) => {
   try {
