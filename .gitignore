@@ -137,3 +137,18 @@ dist
 # Vite logs files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+tags/
+
+package-lock.json
+
+server/public/
+server/cache/
+server/data/
+server/database.sqlite
+
+server/database.sqlite-journal
+
+extracted_tags.json
+
+organized_tags.json

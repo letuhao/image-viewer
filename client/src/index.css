@@ -1,0 +1,130 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply border-dark-700;
+  }
+  
+  body {
+    @apply bg-dark-900 text-dark-50 font-sans;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+  
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none;
+  }
+  
+  .btn-primary {
+    @apply bg-primary-600 text-white hover:bg-primary-700 focus:ring-primary-500;
+  }
+  
+  .btn-secondary {
+    @apply bg-dark-700 text-dark-100 hover:bg-dark-600 focus:ring-dark-500;
+  }
+  
+  .btn-ghost {
+    @apply text-dark-300 hover:text-dark-100 hover:bg-dark-800 focus:ring-dark-500;
+  }
+  
+  .card {
+    @apply bg-dark-800 rounded-lg border border-dark-700 shadow-lg;
+  }
+  
+  .input {
+    @apply w-full rounded-lg border border-dark-600 bg-dark-800 px-3 py-2 text-sm text-dark-100 placeholder-dark-400 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-dark-800;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-dark-600 rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-dark-500;
+}
+
+/* Image loading animation */
+.image-loading {
+  @apply animate-pulse bg-dark-700;
+}
+
+/* Manga reader styles */
+.manga-reader {
+  @apply bg-dark-900 min-h-screen;
+}
+
+.manga-page {
+  @apply max-w-full mx-auto;
+}
+
+.manga-navigation {
+  @apply fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-dark-800 bg-opacity-90 backdrop-blur-sm rounded-lg px-4 py-2 shadow-lg;
+}
+
+/* Collection grid */
+.collection-grid {
+  @apply grid gap-4;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+}
+
+.collection-item {
+  @apply card p-4 cursor-pointer transition-all hover:scale-105 hover:shadow-xl;
+}
+
+/* Image grid */
+.image-grid {
+  @apply grid gap-2;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+}
+
+.image-item {
+  @apply relative aspect-square overflow-hidden rounded-lg cursor-pointer transition-transform hover:scale-105;
+}
+
+.image-item img {
+  @apply w-full h-full object-cover;
+}
+
+/* Loading states */
+.loading-spinner {
+  @apply animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500;
+}
+
+.loading-dots::after {
+  content: '';
+  animation: loading-dots 1.5s infinite;
+}
+
+@keyframes loading-dots {
+  0%, 20% { content: ''; }
+  40% { content: '.'; }
+  60% { content: '..'; }
+  80%, 100% { content: '...'; }
+}
