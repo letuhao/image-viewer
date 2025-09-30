@@ -590,13 +590,17 @@ const CollectionsPage: React.FC = () => {
             
             if (viewMode === 'grid') {
               return (
-                <div key={collection.id} className={getViewClasses().item}>
-                {/* Collection Thumbnail - Clickable */}
                 <div 
-                  className={`${compactMode ? 'mb-2' : 'mb-4'} cursor-pointer relative`}
-                  onClick={() => navigate(`/collection/${collection.id}`)}
+                  key={collection.id} 
+                  className={`${getViewClasses().item} cursor-pointer`}
+                  onClick={() => {
+                    console.log('[DEBUG] CollectionsPage - navigating with collection:', collection);
+                    navigate(`/collection/${collection.id}`, { state: { collection } });
+                  }}
                   title={`Open ${collection.name}`}
                 >
+                {/* Collection Thumbnail */}
+                <div className={`${compactMode ? 'mb-2' : 'mb-4'} relative`}>
                   {collection.thumbnail_url ? (
                     <div className={`relative ${compactMode ? 'aspect-square' : 'aspect-video'} w-full overflow-hidden rounded-lg bg-dark-700`}>
                       <img 
@@ -771,19 +775,19 @@ const CollectionsPage: React.FC = () => {
                 {/* Action Buttons - Only show in normal mode */}
                 {!compactMode && (
                   <div className="flex items-center justify-between">
-                    <button
-                      onClick={() => navigate(`/collection/${collection.id}`)}
-                      className="btn btn-primary flex-1"
-                    >
+                    <div className="btn btn-primary flex-1">
                       View Images
-                    </button>
+                    </div>
                   </div>
                 )}
               </div>
               );
             } else if (viewMode === 'list') {
               return (
-                <div key={collection.id} className={getViewClasses().item} onClick={() => navigate(`/collection/${collection.id}`)}>
+                <div key={collection.id} className={getViewClasses().item} onClick={() => {
+  console.log('[DEBUG] CollectionsPage - navigating with collection:', collection);
+  navigate(`/collection/${collection.id}`, { state: { collection } });
+}}>
                   <div className="flex items-center space-x-3 w-full">
                     {/* Icon */}
                     <Icon className="h-6 w-6 text-primary-500 flex-shrink-0" />
@@ -864,7 +868,10 @@ const CollectionsPage: React.FC = () => {
               );
             } else { // detail view
               return (
-                <div key={collection.id} className={getViewClasses().item} onClick={() => navigate(`/collection/${collection.id}`)}>
+                <div key={collection.id} className={getViewClasses().item} onClick={() => {
+  console.log('[DEBUG] CollectionsPage - navigating with collection:', collection);
+  navigate(`/collection/${collection.id}`, { state: { collection } });
+}}>
                   <div className="flex items-start space-x-3 w-full">
                     {/* Thumbnail */}
                     <div className="flex-shrink-0">

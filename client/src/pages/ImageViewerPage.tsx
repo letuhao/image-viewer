@@ -4,18 +4,15 @@ import { useHotkeys } from 'react-hotkeys-hook';
 import {
   ArrowLeftIcon,
   ArrowRightIcon,
-  PlayIcon,
-  PauseIcon,
-  ArrowsPointingOutIcon,
-  ArrowsPointingInIcon,
   ArrowPathIcon,
   Cog6ToothIcon,
   HomeIcon
 } from '@heroicons/react/24/outline';
 import useStore from '../store/useStore';
-import { imagesApi } from '../services/api';
+import { imagesApi, collectionsApi } from '../services/api';
 import LoadingSpinner from '../components/LoadingSpinner';
 import ViewerSettings from '../components/ViewerSettings';
+import DockableControlBar from '../components/DockableControlBar';
 import toast from 'react-hot-toast';
 
 const ImageViewerPage: React.FC = () => {
@@ -24,12 +21,20 @@ const ImageViewerPage: React.FC = () => {
   const {
     viewer,
     setCurrentImage,
+    setImages,
     setFullscreen,
     setPlaying,
     setPlayInterval,
     goToNextImage,
     goToPreviousImage,
-    goToRandomImage
+    goToRandomImage,
+    setSlideshowSpeed,
+    setEnableCollectionNavigation,
+    setAutoHideControls,
+    setAllCollections,
+    setCurrentCollectionIndex,
+    goToPreviousCollection,
+    goToNextCollection
   } = useStore();
 
   const [currentImage, setCurrentImageState] = useState<any>(null);
@@ -48,6 +53,54 @@ const ImageViewerPage: React.FC = () => {
       loadImage(viewer.currentImage);
     }
   }, [viewer.currentImage]);
+
+  // Load all collections and set current collection index
+  useEffect(() => {
+    const loadCollectionsAndSetIndex = async () => {
+      try {
+        const response = await collectionsApi.getAll({ limit: 10000 });
+        const allCollections = response.data.collections;
+        setAllCollections(allCollections);
+        
+        // Find current collection index
+        const currentIndex = allCollections.findIndex((col: any) => col.id === id);
+        if (currentIndex !== -1) {
+          setCurrentCollectionIndex(currentIndex);
+        }
+      } catch (error) {
+        console.error('Failed to load collections:', error);
+      }
+    };
+
+    if (id) {
+      loadCollectionsAndSetIndex();
+    }
+  }, [id, setAllCollections, setCurrentCollectionIndex]);
+
+  // Load images when collection changes
+  useEffect(() => {
+    if (id && viewer.currentCollection?.id !== id) {
+      // Collection changed, load images for new collection
+      const loadImagesForCollection = async () => {
+        try {
+          setIsLoading(true);
+          const response = await imagesApi.getAll(id, { limit: 1000 });
+          setImages(response.data.images);
+          
+          if (response.data.images.length > 0) {
+            setCurrentImage(response.data.images[0]);
+          }
+        } catch (error) {
+          console.error('Failed to load images for collection:', error);
+          setHasError(true);
+        } finally {
+          setIsLoading(false);
+        }
+      };
+
+      loadImagesForCollection();
+    }
+  }, [id, viewer.currentCollection?.id]);
 
   useEffect(() => {
     if (viewer.images.length > 0 && viewer.currentImage) {
@@ -99,9 +152,17 @@ const ImageViewerPage: React.FC = () => {
       const response = await imagesApi.navigate(collectionId, viewer.currentImage!.id, 'next');
       setCurrentImage(response.data);
     } catch (error) {
-      goToNextImage();
+      // If at the end of current collection and collection navigation is enabled
+      if (viewer.enableCollectionNavigation && viewer.currentCollectionIndex < viewer.allCollections.length - 1) {
+        const nextCollectionId = goToNextCollection();
+        if (nextCollectionId) {
+          navigate(`/collection/${nextCollectionId}`);
+        }
+      } else {
+        goToNextImage();
+      }
     }
-  }, [collectionId, viewer.currentImage, viewer.images.length, goToNextImage]);
+  }, [collectionId, viewer.currentImage, viewer.images.length, viewer.enableCollectionNavigation, viewer.currentCollectionIndex, viewer.allCollections.length, goToNextImage, goToNextCollection]);
 
   const handlePrevious = useCallback(async () => {
     if (!collectionId || viewer.images.length === 0) return;
@@ -110,9 +171,17 @@ const ImageViewerPage: React.FC = () => {
       const response = await imagesApi.navigate(collectionId, viewer.currentImage!.id, 'previous');
       setCurrentImage(response.data);
     } catch (error) {
-      goToPreviousImage();
+      // If at the beginning of current collection and collection navigation is enabled
+      if (viewer.enableCollectionNavigation && viewer.currentCollectionIndex > 0) {
+        const prevCollectionId = goToPreviousCollection();
+        if (prevCollectionId) {
+          navigate(`/collection/${prevCollectionId}`);
+        }
+      } else {
+        goToPreviousImage();
+      }
     }
-  }, [collectionId, viewer.currentImage, viewer.images.length, goToPreviousImage]);
+  }, [collectionId, viewer.currentImage, viewer.images.length, viewer.enableCollectionNavigation, viewer.currentCollectionIndex, goToPreviousImage, goToPreviousCollection]);
 
   const handleRandom = useCallback(async () => {
     if (!collectionId) return;
@@ -139,7 +208,7 @@ const ImageViewerPage: React.FC = () => {
     } else {
       const timer = setInterval(() => {
         handleNext();
-      }, viewer.playInterval);
+      }, viewer.slideshowSpeed);
       setPlayTimer(timer);
       setPlaying(true);
     }
@@ -317,60 +386,38 @@ const ImageViewerPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Bottom Controls */}
-      <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-dark-800 bg-opacity-90 backdrop-blur-sm rounded-lg px-4 py-2 shadow-lg">
-        <div className="flex items-center space-x-4">
-          <button
-            onClick={handlePrevious}
-            className="btn btn-ghost"
-            title="Previous (←)"
-          >
-            <ArrowLeftIcon className="h-5 w-5" />
-          </button>
-          
-          <button
-            onClick={togglePlay}
-            className="btn btn-ghost"
-            title={`${viewer.isPlaying ? 'Pause' : 'Play'} (Space)`}
-          >
-            {viewer.isPlaying ? (
-              <PauseIcon className="h-5 w-5" />
-            ) : (
-              <PlayIcon className="h-5 w-5" />
-            )}
-          </button>
-          
-          <button
-            onClick={handleNext}
-            className="btn btn-ghost"
-            title="Next (→)"
-          >
-            <ArrowRightIcon className="h-5 w-5" />
-          </button>
-          
-          <div className="h-6 w-px bg-dark-600"></div>
-          
-          <button
-            onClick={handleRandom}
-            className="btn btn-ghost"
-            title="Random (R)"
-          >
-            <ArrowPathIcon className="h-5 w-5" />
-          </button>
-          
-          <button
-            onClick={toggleFullscreen}
-            className="btn btn-ghost"
-            title={`${viewer.isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'} (F)`}
-          >
-            {viewer.isFullscreen ? (
-              <ArrowsPointingInIcon className="h-5 w-5" />
-            ) : (
-              <ArrowsPointingOutIcon className="h-5 w-5" />
-            )}
-          </button>
-        </div>
-      </div>
+      {/* Dockable Control Bar */}
+      <DockableControlBar
+        onPrevious={handlePrevious}
+        onNext={handleNext}
+        onPlay={togglePlay}
+        onRandom={handleRandom}
+        onFullscreen={toggleFullscreen}
+        onSettings={() => setShowSettings(true)}
+        onHome={() => navigate(`/collection/${collectionId}`)}
+        onPreviousCollection={() => {
+          const prevCollectionId = goToPreviousCollection();
+          if (prevCollectionId) {
+            navigate(`/collection/${prevCollectionId}`);
+          }
+        }}
+        onNextCollection={() => {
+          const nextCollectionId = goToNextCollection();
+          if (nextCollectionId) {
+            navigate(`/collection/${nextCollectionId}`);
+          }
+        }}
+        hasPreviousCollection={viewer.currentCollectionIndex > 0}
+        hasNextCollection={viewer.currentCollectionIndex < viewer.allCollections.length - 1}
+        isPlaying={viewer.isPlaying}
+        isFullscreen={viewer.isFullscreen}
+        slideshowSpeed={viewer.slideshowSpeed}
+        onSlideshowSpeedChange={setSlideshowSpeed}
+        enableCollectionNavigation={viewer.enableCollectionNavigation}
+        onCollectionNavigationToggle={setEnableCollectionNavigation}
+        autoHideControls={viewer.autoHideControls}
+        onAutoHideToggle={setAutoHideControls}
+      />
 
       {/* Image Info Overlay */}
       {!viewer.isFullscreen && (

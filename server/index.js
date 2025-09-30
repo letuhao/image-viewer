@@ -68,14 +68,29 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// Disable cache for static files in development
+const noCacheMiddleware = (req, res, next) => {
+  res.set({
+    'Cache-Control': 'no-cache, no-store, must-revalidate',
+    'Pragma': 'no-cache',
+    'Expires': '0',
+  });
+  next();
+};
+
 // Serve static files
-app.use('/static', express.static(path.join(__dirname, 'public')));
+app.use('/static', noCacheMiddleware, express.static(path.join(__dirname, 'public')));
 
 // Serve the built React app
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(noCacheMiddleware, express.static(path.join(__dirname, 'public')));
 
 // Handle React routing, return all requests to React app
 app.get('*', (req, res) => {
+  res.set({
+    'Cache-Control': 'no-cache, no-store, must-revalidate',
+    'Pragma': 'no-cache',
+    'Expires': '0',
+  });
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 

@@ -36,6 +36,13 @@ export interface ViewerState {
   preloadEnabled: boolean;
   preloadBatchSize: number;
   preloadedThumbnails: Record<string, string>; // imageId -> base64 thumbnail
+  
+  // New viewer settings
+  slideshowSpeed: number;
+  enableCollectionNavigation: boolean;
+  autoHideControls: boolean;
+  currentCollectionIndex: number;
+  allCollections: Collection[];
 }
 
 export interface AppState {
@@ -76,6 +83,15 @@ export interface AppState {
   setPreloadBatchSize: (size: number) => void;
   preloadThumbnails: (collectionId: string, imageIds: string[]) => Promise<void>;
   getPreloadedThumbnail: (imageId: string) => string | null;
+  
+  // New viewer settings actions
+  setSlideshowSpeed: (speed: number) => void;
+  setEnableCollectionNavigation: (enabled: boolean) => void;
+  setAutoHideControls: (enabled: boolean) => void;
+  setAllCollections: (collections: Collection[]) => void;
+  setCurrentCollectionIndex: (index: number) => void;
+  goToPreviousCollection: () => string | null;
+  goToNextCollection: () => string | null;
 }
 
 const useStore = create<AppState>()(
@@ -96,6 +112,13 @@ const useStore = create<AppState>()(
         preloadEnabled: true,
         preloadBatchSize: 50,
         preloadedThumbnails: {},
+        
+        // New viewer settings
+        slideshowSpeed: 3000,
+        enableCollectionNavigation: false,
+        autoHideControls: true,
+        currentCollectionIndex: -1,
+        allCollections: [],
       },
       isLoading: false,
       error: null,
@@ -237,6 +260,65 @@ const useStore = create<AppState>()(
       getPreloadedThumbnail: (imageId) => {
         const { viewer } = get();
         return viewer.preloadedThumbnails[imageId] || null;
+      },
+
+      // New viewer settings actions
+      setSlideshowSpeed: (speed) => set((state) => ({
+        viewer: { ...state.viewer, slideshowSpeed: speed }
+      })),
+
+      setEnableCollectionNavigation: (enabled) => set((state) => ({
+        viewer: { ...state.viewer, enableCollectionNavigation: enabled }
+      })),
+
+      setAutoHideControls: (enabled) => set((state) => ({
+        viewer: { ...state.viewer, autoHideControls: enabled }
+      })),
+
+      setAllCollections: (collections) => set((state) => ({
+        viewer: { ...state.viewer, allCollections: collections }
+      })),
+
+      setCurrentCollectionIndex: (index) => set((state) => ({
+        viewer: { ...state.viewer, currentCollectionIndex: index }
+      })),
+
+      goToPreviousCollection: () => {
+        const { viewer } = get();
+        if (viewer.currentCollectionIndex > 0) {
+          const prevCollection = viewer.allCollections[viewer.currentCollectionIndex - 1];
+          if (prevCollection) {
+            set((state) => ({
+              viewer: { 
+                ...state.viewer, 
+                currentCollectionIndex: viewer.currentCollectionIndex - 1,
+                currentCollection: prevCollection
+              }
+            }));
+            // Return the collection ID for navigation
+            return prevCollection.id;
+          }
+        }
+        return null;
+      },
+
+      goToNextCollection: () => {
+        const { viewer } = get();
+        if (viewer.currentCollectionIndex < viewer.allCollections.length - 1) {
+          const nextCollection = viewer.allCollections[viewer.currentCollectionIndex + 1];
+          if (nextCollection) {
+            set((state) => ({
+              viewer: { 
+                ...state.viewer, 
+                currentCollectionIndex: viewer.currentCollectionIndex + 1,
+                currentCollection: nextCollection
+              }
+            }));
+            // Return the collection ID for navigation
+            return nextCollection.id;
+          }
+        }
+        return null;
       },
     }),
     {

@@ -52,6 +52,12 @@ class Database {
   async getAllCollections() {
     const db = await this._ensureConnection();
     const collections = await db.collections.find({}).toArray();
+    
+    // Convert _id to id for frontend compatibility
+    collections.forEach(collection => {
+      collection.id = collection._id.toString();
+    });
+    
     return collections;
   }
 
@@ -60,7 +66,13 @@ class Database {
     const { skip = 0, limit = 1000 } = options;
     const db = await this._ensureConnection();
     const collections = await db.collections.find({}).skip(skip).limit(limit).toArray();
-    return db.toApiResponse(collections);
+    
+    // Convert _id to id for frontend compatibility
+    collections.forEach(collection => {
+      collection.id = collection._id.toString();
+    });
+    
+    return collections;
   }
 
   // Get total count of collections

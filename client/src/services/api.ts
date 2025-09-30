@@ -25,6 +25,8 @@ export const collectionsApi = {
 
 // Images API
 export const imagesApi = {
+  getAll: (collectionId: string, params?: { page?: number; limit?: number; sort?: string; order?: string }) => 
+    api.get(`/images/${collectionId}`, { params }),
   getById: (id: string, collectionId: string) => 
     api.get(`/images/${id}`, { params: { collectionId } }),
   getFile: (collectionId: string, imageId: string, params?: { width?: number; height?: number; quality?: number }) => 

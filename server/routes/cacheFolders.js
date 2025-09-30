@@ -148,7 +148,18 @@ router.post('/:id/bind/:collectionId', async (req, res) => {
   }
 });
 
-// Get cache folder usage statistics
+// Get all cache folder usage statistics
+router.get('/stats', async (req, res) => {
+  try {
+    const stats = await db.getCacheFolderStats();
+    res.json(stats);
+  } catch (error) {
+    console.error('Error fetching cache folder stats:', error);
+    res.status(500).json({ error: 'Failed to fetch cache folder statistics' });
+  }
+});
+
+// Get specific cache folder usage statistics
 router.get('/:id/stats', async (req, res) => {
   try {
     const { id } = req.params;

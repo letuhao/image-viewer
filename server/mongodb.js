@@ -138,14 +138,24 @@ class MongoDBDatabase {
   async getCollection(id) {
     try {
       const objectId = typeof id === 'string' ? new ObjectId(id) : id;
-      return await this.collections.findOne({ _id: objectId });
+      const collection = await this.collections.findOne({ _id: objectId });
+      if (collection) {
+        // Convert _id to id for frontend compatibility
+        collection.id = collection._id.toString();
+      }
+      return collection;
     } catch (error) {
       return null;
     }
   }
 
   async getCollectionByPath(path) {
-    return await this.collections.findOne({ path });
+    const collection = await this.collections.findOne({ path });
+    if (collection) {
+      // Convert _id to id for frontend compatibility
+      collection.id = collection._id.toString();
+    }
+    return collection;
   }
 
   async getAllCollections() {
@@ -155,6 +165,8 @@ class MongoDBDatabase {
     for (const collection of collections) {
       collection.statistics = await this.getCollectionStats(collection._id);
       collection.tags = await this.getCollectionTags(collection._id);
+      // Convert _id to id for frontend compatibility
+      collection.id = collection._id.toString();
     }
     
     return collections;
@@ -599,6 +611,11 @@ class MongoDBDatabase {
         _id: { $in: objectIds }
       }).limit(limit).toArray();
 
+      // Convert _id to id for frontend compatibility
+      collections.forEach(collection => {
+        collection.id = collection._id.toString();
+      });
+
       return collections;
     } catch (error) {
       return [];
@@ -619,10 +636,18 @@ class MongoDBDatabase {
 
       // Combine with stats
       const collectionMap = new Map(collections.map(c => [c._id.toString(), c]));
-      return stats.map(stat => ({
-        ...collectionMap.get(stat.collection_id.toString()),
-        statistics: stat
-      }));
+      return stats.map(stat => {
+        const collection = collectionMap.get(stat.collection_id.toString());
+        if (collection) {
+          // Convert _id to id for frontend compatibility
+          collection.id = collection._id.toString();
+          return {
+            ...collection,
+            statistics: stat
+          };
+        }
+        return null;
+      }).filter(Boolean);
     } catch (error) {
       return [];
     }
@@ -866,32 +891,31 @@ class MongoDBDatabase {
       }
       
       // Find the best cache folder using distribution logic
+      // Prioritize empty folders first, then by priority and size
       const cacheFolders = await this.cacheFolders.find({ 
         is_active: true 
-      }).sort({ priority: -1, current_size: 1 }).toArray();
+      }).sort({ current_size: 1, priority: -1 }).toArray();
       
       if (cacheFolders.length === 0) {
         throw new Error('No active cache folders available');
       }
       
-      // Use round-robin with priority weighting
+      // Find folder with least usage (considering max_size if set)
       let selectedFolder = cacheFolders[0];
+      let bestRatio = 1;
       
-      // If we have multiple folders, use size-based distribution
-      if (cacheFolders.length > 1) {
-        // Find folder with least usage (considering max_size if set)
-        let bestRatio = 1;
-        for (const folder of cacheFolders) {
-          const ratio = folder.max_size ? 
-            folder.current_size / folder.max_size : 
-            folder.current_size / (1024 * 1024 * 1024); // Default 1GB reference
-          
-          if (ratio < bestRatio) {
-            bestRatio = ratio;
-            selectedFolder = folder;
-          }
+      for (const folder of cacheFolders) {
+        const ratio = folder.max_size ? 
+          folder.current_size / folder.max_size : 
+          folder.current_size / (1024 * 1024 * 1024); // Default 1GB reference
+        
+        if (ratio < bestRatio) {
+          bestRatio = ratio;
+          selectedFolder = folder;
         }
       }
+      
+      console.log(`[CACHE] Selected folder: ${selectedFolder.name}, ratio: ${bestRatio.toFixed(3)}, size: ${selectedFolder.current_size}`);
       
       // Bind collection to selected cache folder
       await this.bindCollectionToCacheFolder(collectionObjectId, selectedFolder._id);

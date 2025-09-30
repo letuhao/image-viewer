@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import {
   ArrowLeftIcon,
   PlayIcon,
@@ -22,6 +22,13 @@ import toast from 'react-hot-toast';
 const CollectionViewerPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
+  const passedCollection = location.state?.collection;
+  
+  // Debug logs
+  console.log('[DEBUG] CollectionViewerPage - id:', id);
+  console.log('[DEBUG] CollectionViewerPage - location.state:', location.state);
+  console.log('[DEBUG] CollectionViewerPage - passedCollection:', passedCollection);
   const { 
     collections, 
     selectCollection, 
@@ -40,26 +47,40 @@ const CollectionViewerPage: React.FC = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [showPreloadSettings, setShowPreloadSettings] = useState(false);
   const [collection, setCollection] = useState<any>(null);
+  const [hasAutoScanned, setHasAutoScanned] = useState(false);
 
   // Try to find collection in store first, if not found, load from API
   const storeCollection = collections.find(col => col.id === id);
 
   useEffect(() => {
     if (id) {
-      // Auto-scan collection immediately when page loads
-      handleRescan();
-      
-      if (storeCollection) {
+      // Priority: 1. Passed collection, 2. Store collection, 3. API
+      if (passedCollection) {
+        // Collection passed from navigation
+        setCollection(passedCollection);
+        selectCollection(id);
+        loadImages();
+        // Auto-scan if needed (only once)
+        if (passedCollection.settings?.total_images === 0 && !hasAutoScanned) {
+          setHasAutoScanned(true);
+          handleRescan();
+        }
+      } else if (storeCollection) {
         // Collection found in store
         setCollection(storeCollection);
         selectCollection(id);
         loadImages();
+        // Auto-scan if needed (only once)
+        if (storeCollection.settings?.total_images === 0 && !hasAutoScanned) {
+          setHasAutoScanned(true);
+          handleRescan();
+        }
       } else {
-        // Collection not in store, load from API
+        // Collection not in store, load from API first
         loadCollectionFromAPI();
       }
     }
-  }, [id]);
+  }, [id, passedCollection]);
 
   const loadCollectionFromAPI = async () => {
     if (!id) return;
@@ -70,6 +91,12 @@ const CollectionViewerPage: React.FC = () => {
       setCollection(response.data);
       selectCollection(id);
       loadImages();
+      
+      // Auto-scan if collection has no images (only once)
+      if (response.data.settings?.total_images === 0 && !hasAutoScanned) {
+        setHasAutoScanned(true);
+        handleRescan();
+      }
     } catch (error) {
       toast.error('Collection not found');
       navigate('/collections');
@@ -79,11 +106,11 @@ const CollectionViewerPage: React.FC = () => {
   };
 
   const loadImages = async (page = 1) => {
-    if (!collection) return;
+    if (!id) return;
     
     try {
       setIsLoading(true);
-      const response = await collectionsApi.getImages(collection.id, {
+      const response = await collectionsApi.getImages(id, {
         page,
         limit: 50,
         sort: viewer.sortBy,
@@ -97,7 +124,7 @@ const CollectionViewerPage: React.FC = () => {
       // Trigger preloading for the current page
       if (viewer.preloadEnabled && response.data.images.length > 0) {
         const imageIds = response.data.images.map((img: any) => img.id);
-        preloadThumbnails(collection.id, imageIds);
+        preloadThumbnails(id, imageIds);
       }
     } catch (error) {
       toast.error('Failed to load images');
@@ -107,11 +134,11 @@ const CollectionViewerPage: React.FC = () => {
   };
 
   const handleSearch = async (query: string) => {
-    if (!collection) return;
+    if (!id) return;
     
     try {
       if (query.trim()) {
-        const response = await imagesApi.search(collection.id, query.trim());
+        const response = await imagesApi.search(id, query.trim());
         setImages(response.data.images);
         setCurrentPage(1);
         setTotalPages(response.data.pagination.pages);
@@ -129,10 +156,10 @@ const CollectionViewerPage: React.FC = () => {
   };
 
   const handleRandomImage = async () => {
-    if (!collection) return;
+    if (!id) return;
     
     try {
-      const response = await imagesApi.getRandom(collection.id);
+      const response = await imagesApi.getRandom(id);
       setCurrentImage(response.data);
       navigate(`/collection/${id}/viewer`);
     } catch (error) {
@@ -141,10 +168,10 @@ const CollectionViewerPage: React.FC = () => {
   };
 
   const handleRescan = async () => {
-    if (!collection) return;
+    if (!id) return;
     
     try {
-      await collectionsApi.scan(collection.id);
+      await collectionsApi.scan(id);
       toast.success('Collection scan started');
       setTimeout(() => loadImages(), 2000);
     } catch (error) {
@@ -311,9 +338,9 @@ const CollectionViewerPage: React.FC = () => {
         <>
           <div className="flex-1">
             {viewMode === 'grid' ? (
-              <ImageGrid images={viewer.images} onImageClick={handleImageClick} collectionId={collection.id} />
+              <ImageGrid images={viewer.images} onImageClick={handleImageClick} collectionId={id!} />
             ) : (
-              <ImageList images={viewer.images} onImageClick={handleImageClick} collectionId={collection.id} />
+              <ImageList images={viewer.images} onImageClick={handleImageClick} collectionId={id!} />
             )}
           </div>
             

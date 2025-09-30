@@ -191,15 +191,21 @@ router.post('/:id/scan', async (req, res) => {
 // Get collection images with pagination
 router.get('/:id/images', async (req, res) => {
   try {
+    const { id } = req.params;
+    if (!id || id === 'undefined') {
+      return res.status(400).json({ error: 'Collection ID is required' });
+    }
+    
     const { page = 1, limit = 50, sort = 'filename', order = 'asc' } = req.query;
     const offset = (page - 1) * limit;
     
-    const images = await db.getImages(req.params.id, { limit: parseInt(limit), offset });
-    const total = await db.getImageCount(req.params.id);
+    console.log(`[DEBUG] Getting images for collection: ${id}`);
+    const images = await db.getImages(id, { limit: parseInt(limit), offset });
+    const total = await db.getImageCount(id);
     
     // Track collection view (only for first page to avoid spam)
     if (parseInt(page) === 1) {
-      await db.incrementViewCount(req.params.id);
+      await db.incrementViewCount(id);
     }
     
     res.json({
