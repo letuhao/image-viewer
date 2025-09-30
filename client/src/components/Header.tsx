@@ -1,14 +1,17 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   HomeIcon, 
   FolderIcon, 
-  CogIcon,
   PlusIcon,
-  MagnifyingGlassIcon
+  MagnifyingGlassIcon,
+  CogIcon
 } from '@heroicons/react/24/outline';
+import SettingsScreen from './SettingsScreen';
 
 const Header: React.FC = () => {
+  const [showSettings, setShowSettings] = useState(false);
+
   return (
     <header className="bg-dark-800 border-b border-dark-700 px-6 py-4">
       <div className="flex items-center justify-between">
@@ -39,7 +42,10 @@ const Header: React.FC = () => {
             <span>Tag Search</span>
           </Link>
           
-          <button className="flex items-center space-x-2 text-dark-300 hover:text-white transition-colors">
+          <button 
+            onClick={() => setShowSettings(true)}
+            className="flex items-center space-x-2 text-dark-300 hover:text-white transition-colors"
+          >
             <CogIcon className="h-5 w-5" />
             <span>Settings</span>
           </button>
@@ -50,6 +56,12 @@ const Header: React.FC = () => {
           </button>
         </nav>
       </div>
+
+      {/* Settings Screen Modal */}
+      <SettingsScreen 
+        isOpen={showSettings} 
+        onClose={() => setShowSettings(false)} 
+      />
     </header>
   );
 };

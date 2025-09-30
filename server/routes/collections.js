@@ -6,6 +6,7 @@ const StreamZip = require('node-stream-zip');
 const sharp = require('sharp');
 const mime = require('mime-types');
 const db = require('../database');
+const cacheManager = require('../services/cacheManager');
 
 // Supported image formats
 const SUPPORTED_FORMATS = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.tiff', '.svg'];
@@ -16,7 +17,7 @@ const COMPRESSED_FORMATS = ['.zip', '.cbz', '.cbr', '.7z', '.rar', '.tar', '.tar
 // Get all collections
 router.get('/', async (req, res) => {
   try {
-    const collections = await db.getCollections();
+    const collections = await db.getAllCollections();
     
     // Get statistics and tags for each collection
     const collectionsWithStats = await Promise.all(
@@ -420,16 +421,6 @@ async function extractFrom7z(imageInfo, zipFilePath) {
 
 // Generate thumbnail for image
 async function generateThumbnail(collectionId, imageInfo, collectionType, collectionPath) {
-  const thumbnailDir = path.join(__dirname, '../cache/thumbnails', collectionId.toString());
-  await fs.ensureDir(thumbnailDir);
-  
-  const thumbnailPath = path.join(thumbnailDir, `${path.basename(imageInfo.path, path.extname(imageInfo.path))}_thumb.jpg`);
-  
-  // Check if thumbnail already exists
-  if (await fs.pathExists(thumbnailPath)) {
-    return thumbnailPath;
-  }
-  
   try {
     let imageBuffer;
     
@@ -439,18 +430,18 @@ async function generateThumbnail(collectionId, imageInfo, collectionType, collec
       imageBuffer = await extractImageFromCompressed(imageInfo, collectionType, collectionPath);
     }
     
-    // Generate thumbnail
-    const thumbnailBuffer = await sharp(imageBuffer)
-      .resize(300, 300, { fit: 'inside', withoutEnlargement: true })
-      .jpeg({ quality: 80 })
-      .toBuffer();
-    
-    await fs.writeFile(thumbnailPath, thumbnailBuffer);
-    
-    // Get image dimensions
+    // Get image dimensions first
     const metadata = await sharp(imageBuffer).metadata();
     imageInfo.width = metadata.width;
     imageInfo.height = metadata.height;
+    
+    // Use cache manager to generate thumbnail with distributed caching
+    const thumbnailPath = await cacheManager.generateThumbnail(
+      imageBuffer, // Pass buffer directly since we already have it
+      collectionId,
+      path.basename(imageInfo.path, path.extname(imageInfo.path)),
+      { width: 300, height: 300, quality: 80 }
+    );
     
     return thumbnailPath;
   } catch (error) {

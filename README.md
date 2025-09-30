@@ -42,7 +42,7 @@ A powerful, web-based image viewer application designed for managing large colle
 
 ### Backend
 - **Node.js + Express**: RESTful API server
-- **SQLite**: Lightweight database for metadata and caching
+- **MongoDB**: High-performance NoSQL database for metadata and caching
 - **Sharp**: High-performance image processing and thumbnail generation
 - **node-stream-zip**: Efficient ZIP file reading
 - **Compression**: Gzip compression for faster transfers
@@ -74,12 +74,23 @@ A powerful, web-based image viewer application designed for managing large colle
    npm run install:all
    ```
 
-3. **Start the development server**
+3. **Setup MongoDB**
+   ```bash
+   npm run setup:mongodb
+   ```
+   
+   This will:
+   - Check if MongoDB is installed
+   - Create necessary directories
+   - Test the connection
+   - Create environment configuration
+
+4. **Start the development server**
    ```bash
    npm run dev
    ```
 
-4. **Open your browser**
+5. **Open your browser**
    Navigate to `http://localhost:4000`
 
 ### Production Build

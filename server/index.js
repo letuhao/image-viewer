@@ -3,6 +3,7 @@ const cors = require('cors');
 const path = require('path');
 const compression = require('compression');
 const fs = require('fs-extra');
+const MongoDBDatabase = require('./mongodb');
 
 const collectionRoutes = require('./routes/collections');
 const imageRoutes = require('./routes/images');
@@ -10,9 +11,27 @@ const cacheRoutes = require('./routes/cache');
 const bulkRoutes = require('./routes/bulk');
 const backgroundBulkRoutes = require('./routes/backgroundBulk');
 const statsRoutes = require('./routes/stats');
+const cacheFolderRoutes = require('./routes/cacheFolders');
 
 const app = express();
 const PORT = process.env.PORT || 8081;
+
+// Initialize MongoDB
+let db;
+const initDatabase = async () => {
+  try {
+    db = new MongoDBDatabase();
+    await db.connect();
+    
+    // Make database available to routes
+    app.locals.db = db;
+    
+    console.log('📊 MongoDB connected successfully');
+  } catch (error) {
+    console.error('❌ MongoDB connection failed:', error);
+    process.exit(1);
+  }
+};
 
 // Middleware
 app.use(compression());
@@ -38,6 +57,7 @@ app.use('/api/cache', cacheRoutes);
 app.use('/api/bulk', bulkRoutes);
 app.use('/api/background', backgroundBulkRoutes);
 app.use('/api/stats', statsRoutes);
+app.use('/api/cache-folders', cacheFolderRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -65,6 +85,8 @@ app.use((err, req, res, next) => {
 const startServer = async () => {
   try {
     await ensureDirectories();
+    await initDatabase();
+    
     app.listen(PORT, () => {
       console.log(`🚀 Server running on http://localhost:${PORT}`);
       console.log(`📁 Cache directory: ${path.join(__dirname, 'cache')}`);

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Dialog } from '@headlessui/react';
 import { XMarkIcon, FolderIcon, ArchiveBoxIcon } from '@heroicons/react/24/outline';
 import { collectionsApi } from '../services/api';
+import PathSelector from './PathSelector';
 import toast from 'react-hot-toast';
 
 interface AddCollectionModalProps {
@@ -92,16 +93,15 @@ const AddCollectionModal: React.FC<AddCollectionModalProps> = ({ onClose, onSucc
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-dark-300 mb-2">
-                Path
-              </label>
-              <input
-                type="text"
+              <PathSelector
                 value={path}
-                onChange={(e) => handlePathChange(e.target.value)}
-                className="input"
+                onChange={handlePathChange}
+                type={type === 'folder' ? 'folder' : 'file'}
+                label="Path"
                 placeholder="Enter folder path or ZIP file path"
+                accept={type === 'zip' ? '.zip,.cbz,.cbr,.7z,.rar' : undefined}
                 required
+                className="text-white"
               />
               <p className="text-xs text-dark-500 mt-1">
                 Enter the full path to a folder or ZIP file containing images
