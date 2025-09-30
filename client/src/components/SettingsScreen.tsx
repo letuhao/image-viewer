@@ -11,9 +11,11 @@ import {
   ShieldCheckIcon,
   XMarkIcon,
   ChevronRightIcon,
+  RocketLaunchIcon,
 } from '@heroicons/react/24/outline';
 import CacheSettingsSection from './CacheSettingsSection';
 import ThumbnailRegenerateSection from './ThumbnailRegenerateSection';
+import CacheGenerationSection from './CacheGenerationSection';
 
 interface SettingsSection {
   id: string;
@@ -38,6 +40,13 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ isOpen, onClose }) => {
       description: 'Manage cache folders and storage distribution',
       icon: ComputerDesktopIcon,
       component: CacheSettingsSection,
+    },
+    {
+      id: 'cache-generation',
+      name: 'Cache Generation',
+      description: 'Generate and regenerate image cache for fast navigation',
+      icon: RocketLaunchIcon,
+      component: CacheGenerationSection,
     },
     {
       id: 'thumbnails',

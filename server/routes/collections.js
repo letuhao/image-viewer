@@ -226,17 +226,39 @@ router.get('/:id/images', async (req, res) => {
 // Scan collection images function
 async function scanCollectionImages(collectionId, collectionPath, type) {
   try {
-    console.log(`Starting scan for collection ${collectionId}: ${collectionPath}`);
+    console.log(`[SCAN] Starting scan for collection ${collectionId}: ${collectionPath} (type: ${type})`);
+    
+    // Check if path exists
+    const pathExists = await fs.pathExists(collectionPath);
+    if (!pathExists) {
+      console.error(`[SCAN] Path does not exist: ${collectionPath}`);
+      return;
+    }
     
     let imageFiles = [];
     
     if (type === 'folder') {
+      console.log(`[SCAN] Scanning folder: ${collectionPath}`);
       imageFiles = await scanFolder(collectionPath);
     } else if (['zip', '7z', 'rar', 'tar'].includes(type)) {
+      console.log(`[SCAN] Scanning compressed file: ${collectionPath} (type: ${type})`);
       imageFiles = await scanCompressedFile(collectionPath, type);
+    } else {
+      console.error(`[SCAN] Unsupported collection type: ${type}`);
+      return;
     }
     
-    console.log(`Found ${imageFiles.length} images in collection ${collectionId}`);
+    console.log(`[SCAN] Found ${imageFiles.length} images in collection ${collectionId}`);
+    
+    if (imageFiles.length === 0) {
+      console.warn(`[SCAN] No images found in collection ${collectionId} at path: ${collectionPath}`);
+      // Update collection metadata to reflect 0 images
+      await db.updateCollection(collectionId, {
+        'settings.total_images': 0,
+        'settings.last_scanned': new Date().toISOString()
+      });
+      return;
+    }
     
     // Process images in batches
     const batchSize = 10;
@@ -268,9 +290,16 @@ async function scanCollectionImages(collectionId, collectionPath, type) {
       }
     }
     
-    console.log(`Completed scan for collection ${collectionId}`);
+    // Update collection metadata with final count
+    await db.updateCollection(collectionId, {
+      'settings.total_images': imageFiles.length,
+      'settings.last_scanned': new Date().toISOString()
+    });
+    
+    console.log(`[SCAN] ✅ Completed scan for collection ${collectionId}: ${imageFiles.length} images processed`);
   } catch (error) {
-    console.error(`Error scanning collection ${collectionId}:`, error);
+    console.error(`[SCAN] ❌ Error scanning collection ${collectionId}:`, error);
+    console.error(`[SCAN] Error stack:`, error.stack);
   }
 }
 
@@ -606,3 +635,4 @@ router.get('/random', async (req, res) => {
 });
 
 module.exports = router;
+module.exports.scanCollectionImages = scanCollectionImages;

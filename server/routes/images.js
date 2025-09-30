@@ -6,6 +6,128 @@ const StreamZip = require('node-stream-zip');
 const sharp = require('sharp');
 const db = require('../database');
 
+// Helper function to check if image has cache
+async function checkImageCache(image, requestParams) {
+  const { width, height, quality } = requestParams;
+  
+  // Check if image has cache record
+  if (!image.cache_path || !image.cache_filename) {
+    return { hasCache: false };
+  }
+  
+  // Check if cache file exists
+  const cacheExists = await fs.pathExists(image.cache_path);
+  if (!cacheExists) {
+    console.log(`[CACHE-MISS] Cache file not found: ${image.cache_path}`);
+    return { hasCache: false };
+  }
+  
+  // Check if cache matches request parameters
+  const cacheMatches = cacheMatchesRequest(image, requestParams);
+  if (!cacheMatches) {
+    console.log(`[CACHE-MISS] Cache parameters don't match request`);
+    return { hasCache: false };
+  }
+  
+  return {
+    hasCache: true,
+    cachePath: image.cache_path,
+    cacheFilename: image.cache_filename,
+    cacheFormat: image.cache_format || 'jpeg',
+    cacheSize: image.cache_size
+  };
+}
+
+// Helper function to check if cache matches request
+function cacheMatchesRequest(image, requestParams) {
+  const { width, height, quality } = requestParams;
+  
+  // If no specific request parameters, use any cache
+  if (!width && !height && !quality) {
+    return true;
+  }
+  
+  // For cached images, we only cache with specific quality
+  // If quality is specified, it must match cache quality
+  if (quality && image.cache_quality && image.cache_quality !== parseInt(quality)) {
+    return false;
+  }
+  
+  // For cached images, we preserve original dimensions
+  // So width/height requests are handled by Sharp on-the-fly
+  return true;
+}
+
+// Helper function to serve cached image
+async function serveCachedImage(res, cacheInfo) {
+  try {
+    const imageBuffer = await fs.readFile(cacheInfo.cachePath);
+    
+    res.set({
+      'Content-Type': `image/${cacheInfo.cacheFormat}`,
+      'Cache-Control': 'public, max-age=31536000', // 1 year cache
+      'Content-Length': imageBuffer.length,
+      'X-Cache': 'HIT',
+      'X-Cache-Format': cacheInfo.cacheFormat,
+      'X-Cache-Size': cacheInfo.cacheSize || 'unknown'
+    });
+    
+    return res.send(imageBuffer);
+  } catch (error) {
+    console.error('[CACHE-ERROR] Failed to serve cached image:', error);
+    throw error;
+  }
+}
+
+// Helper function to serve cached image with resize
+async function serveCachedImageWithResize(res, cacheInfo, requestParams) {
+  try {
+    const { width, height, quality } = requestParams;
+    const cachedImageBuffer = await fs.readFile(cacheInfo.cachePath);
+    
+    let sharpInstance = sharp(cachedImageBuffer);
+    
+    // Apply resize if requested
+    if (width || height) {
+      if (width && height) {
+        sharpInstance = sharpInstance.resize(parseInt(width), parseInt(height), { 
+          fit: 'inside',
+          withoutEnlargement: true 
+        });
+      } else if (width) {
+        sharpInstance = sharpInstance.resize(parseInt(width), null, { 
+          withoutEnlargement: true 
+        });
+      } else if (height) {
+        sharpInstance = sharpInstance.resize(null, parseInt(height), { 
+          withoutEnlargement: true 
+        });
+      }
+    }
+    
+    // Apply quality if requested and different from cache
+    if (quality && quality !== cacheInfo.cacheQuality) {
+      sharpInstance = sharpInstance.jpeg({ quality: parseInt(quality) });
+    }
+    
+    const processedBuffer = await sharpInstance.toBuffer();
+    
+    res.set({
+      'Content-Type': 'image/jpeg',
+      'Cache-Control': 'public, max-age=3600', // 1 hour cache for processed images
+      'Content-Length': processedBuffer.length,
+      'X-Cache': 'HIT-PROCESSED',
+      'X-Cache-Source': cacheInfo.cacheFormat,
+      'X-Processing': 'resized-from-cache'
+    });
+    
+    return res.send(processedBuffer);
+  } catch (error) {
+    console.error('[CACHE-RESIZE-ERROR] Failed to process cached image:', error);
+    throw error;
+  }
+}
+
 // Get image by ID
 router.get('/:id', async (req, res) => {
   try {
@@ -57,8 +179,11 @@ router.get('/:collectionId/batch-thumbnails', async (req, res) => {
     
     const thumbnailPromises = requestedImages.map(async (image) => {
       try {
-        const thumbnailPath = path.join(__dirname, '../cache/thumbnails', collectionId, `${path.basename(image.relative_path, path.extname(image.relative_path))}_thumb.jpg`);
-        
+        // Use distributed cache path resolution
+        const cacheManager = require('../services/cacheManager');
+        const thumbName = `${path.basename(image.relative_path, path.extname(image.relative_path))}_thumb.jpeg`;
+        const thumbnailPath = await cacheManager.getCachePath(collectionId, thumbName, 'thumbnail');
+
         if (await fs.pathExists(thumbnailPath)) {
           const thumbnailBuffer = await fs.readFile(thumbnailPath);
           return {
@@ -93,6 +218,8 @@ router.get('/:collectionId/:imageId/file', async (req, res) => {
     const { collectionId, imageId } = req.params;
     const { width, height, quality = 90 } = req.query;
     
+    console.log(`[IMAGE-REQUEST] ${collectionId}/${imageId} - width:${width}, height:${height}, quality:${quality}`);
+    
     const collection = await db.getCollection(collectionId);
     if (!collection) {
       return res.status(404).json({ error: 'Collection not found' });
@@ -105,6 +232,24 @@ router.get('/:collectionId/:imageId/file', async (req, res) => {
       return res.status(404).json({ error: 'Image not found' });
     }
     
+    // Check if we have cached version that matches the request
+    const cacheInfo = await checkImageCache(image, { width, height, quality });
+    
+    if (cacheInfo.hasCache) {
+      console.log(`[CACHE-HIT] Serving cached image: ${cacheInfo.cachePath}`);
+      
+      // If resize is requested, serve cached image with resize
+      if (width || height) {
+        return serveCachedImageWithResize(res, cacheInfo, { width, height, quality });
+      }
+      
+      // Otherwise serve cached image as-is
+      return serveCachedImage(res, cacheInfo);
+    }
+    
+    console.log(`[CACHE-MISS] Processing original image: ${image.filename}`);
+    
+    // Fallback to original image processing
     let imageBuffer;
     
     if (collection.type === 'folder') {
@@ -154,8 +299,10 @@ router.get('/:collectionId/:imageId/file', async (req, res) => {
     
     res.set({
       'Content-Type': mimeTypes[ext] || 'application/octet-stream',
-      'Cache-Control': 'public, max-age=31536000', // 1 year cache
-      'Content-Length': imageBuffer.length
+      'Cache-Control': 'public, max-age=3600', // 1 hour cache for fallback processing
+      'Content-Length': imageBuffer.length,
+      'X-Cache': 'MISS',
+      'X-Processing': 'fallback-from-original'
     });
     
     res.send(imageBuffer);
@@ -339,5 +486,62 @@ async function extractFrom7z(filePath, imagePath) {
     });
   });
 }
+
+// Trigger cache generation for specific image
+router.post('/:collectionId/:imageId/generate-cache', async (req, res) => {
+  try {
+    const { collectionId, imageId } = req.params;
+    const { quality = 85, format = 'jpeg', overwrite = false } = req.body;
+    
+    console.log(`[CACHE-TRIGGER] Generating cache for ${collectionId}/${imageId}`);
+    
+    const collection = await db.getCollection(collectionId);
+    if (!collection) {
+      return res.status(404).json({ error: 'Collection not found' });
+    }
+    
+    const images = await db.getImages(collectionId);
+    const image = images.find(img => img.id === imageId);
+    
+    if (!image) {
+      return res.status(404).json({ error: 'Image not found' });
+    }
+    
+    // Check if cache already exists
+    if (!overwrite && image.cache_path && image.cache_filename) {
+      const cacheExists = await fs.pathExists(image.cache_path);
+      if (cacheExists) {
+        return res.json({ 
+          message: 'Cache already exists',
+          cachePath: image.cache_path,
+          cacheFilename: image.cache_filename
+        });
+      }
+    }
+    
+    // Start background cache generation for this specific image
+    const BackgroundJobManager = require('../services/BackgroundJobManager');
+    const CacheGenerationJob = require('../services/CacheGenerationJob');
+    
+    const jobId = BackgroundJobManager.createJob('single-image-cache', {
+      collectionId,
+      imageId,
+      image,
+      collection,
+      quality,
+      format,
+      overwrite
+    });
+    
+    res.json({ 
+      jobId,
+      message: 'Cache generation started for image'
+    });
+    
+  } catch (error) {
+    console.error('Error triggering cache generation:', error);
+    res.status(500).json({ error: 'Failed to start cache generation' });
+  }
+});
 
 module.exports = router;

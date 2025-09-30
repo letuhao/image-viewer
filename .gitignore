@@ -152,3 +152,5 @@ server/database.sqlite-journal
 extracted_tags.json
 
 organized_tags.json
+
+cache/

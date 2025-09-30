@@ -289,13 +289,27 @@ class Database {
 
   async getCacheFolderForCollection(collectionId) {
     const db = await this._ensureConnection();
-    const folder = await db.getCacheFolderForCollection(collectionId);
-    return folder ? db.toApiResponse(folder) : null;
+    return await db.getCacheFolderForCollection(collectionId);
   }
 
   async updateCacheFolderUsage(cacheFolderId, sizeDelta, fileCountDelta) {
     const db = await this._ensureConnection();
     return await db.updateCacheFolderUsage(cacheFolderId, sizeDelta, fileCountDelta);
+  }
+
+  async getCollectionCacheStatus(collectionId) {
+    const db = await this._ensureConnection();
+    return await db.getCollectionCacheStatus(collectionId);
+  }
+
+  async updateImage(imageId, updateData) {
+    const db = await this._ensureConnection();
+    return await db.updateImage(imageId, updateData);
+  }
+
+  async getCacheFolderByPath(cachePath) {
+    const db = await this._ensureConnection();
+    return await db.getCacheFolderByPath(cachePath);
   }
 }
 

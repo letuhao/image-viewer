@@ -54,25 +54,9 @@ class CacheManager {
       const cacheFolder = await this.getCacheFolderForCollection(collectionId);
       
       if (!cacheFolder) {
-        // Try to get any available cache folder as fallback
-        console.log(`[CACHE] No cache folder found for collection ${collectionId}, trying to get any available cache folder`);
-        const availableFolders = await db.getCacheFolders();
-        
-        if (availableFolders && availableFolders.length > 0) {
-          // Use the highest priority available folder
-          const fallbackFolder = availableFolders.sort((a, b) => b.priority - a.priority)[0];
-          console.log(`[CACHE] Using fallback cache folder: ${fallbackFolder.name} (${fallbackFolder.path})`);
-          
-          const collectionCacheDir = path.join(fallbackFolder.path, collectionId);
-          await fs.ensureDir(collectionCacheDir);
-          return path.join(collectionCacheDir, filename);
-        } else {
-          // Last resort: default cache directory
-          console.log(`[CACHE] No cache folders available, using default cache directory`);
-          const defaultCacheDir = path.join(__dirname, '../cache');
-          await fs.ensureDir(defaultCacheDir);
-          return path.join(defaultCacheDir, collectionId, filename);
-        }
+        // No assigned folder and none available → do not fallback to local cache
+        console.error(`[CACHE] No cache folders available for collection ${collectionId}. Aborting path resolution.`);
+        throw new Error('No cache folders available');
       }
 
       // Create collection-specific cache directory
@@ -82,10 +66,8 @@ class CacheManager {
       return path.join(collectionCacheDir, filename);
     } catch (error) {
       console.error('Error getting cache path:', error);
-      // Fallback to default cache
-      const defaultCacheDir = path.join(__dirname, '../cache');
-      await fs.ensureDir(defaultCacheDir);
-      return path.join(defaultCacheDir, collectionId, filename);
+      // Do not fallback to default cache; propagate to caller
+      throw error;
     }
   }
 

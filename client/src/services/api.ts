@@ -21,6 +21,13 @@ export const collectionsApi = {
   getImages: (id: string, params?: { page?: number; limit?: number; sort?: string; order?: string }) => 
     api.get(`/collections/${id}/images`, { params }),
   getRandom: () => api.get('/random'),
+    generateCache: (data: {
+      collectionIds: string[];
+      quality: number;
+      format: string;
+      overwrite: boolean;
+    }) => api.post('/collections/generate-cache', data),
+    getCacheStatus: (id: string) => api.get(`/collections/${id}/cache-status`),
 };
 
 // Images API

@@ -14,6 +14,8 @@ const statsRoutes = require('./routes/stats');
 const cacheFolderRoutes = require('./routes/cacheFolders');
 const thumbnailRegenerateRoutes = require('./routes/thumbnailRegenerate');
 const randomRoutes = require('./routes/random');
+const cacheGenerationRoutes = require('./routes/cacheGeneration');
+const backgroundJobRoutes = require('./routes/backgroundJobs');
 
 const app = express();
 const PORT = process.env.PORT || 8081;
@@ -57,11 +59,13 @@ app.use('/api/collections', collectionRoutes);
 app.use('/api/images', imageRoutes);
 app.use('/api/cache', cacheRoutes);
 app.use('/api/bulk', bulkRoutes);
-app.use('/api/background', backgroundBulkRoutes);
+app.use('/api/background/bulk', backgroundBulkRoutes);
+app.use('/api/jobs', backgroundJobRoutes);
 app.use('/api/stats', statsRoutes);
 app.use('/api/cache-folders', cacheFolderRoutes);
 app.use('/api/collections', thumbnailRegenerateRoutes);
 app.use('/api/random', randomRoutes);
+app.use('/api', cacheGenerationRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

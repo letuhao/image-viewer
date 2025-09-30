@@ -980,6 +980,138 @@ class MongoDBDatabase {
     }
     return id;
   }
+
+  // Cache generation methods
+  async getCollectionCacheStatus(collectionId) {
+    try {
+      const collection = await this.collections.findOne({ _id: new ObjectId(collectionId) });
+      if (!collection) {
+        return { hasCache: false, error: 'Collection not found' };
+      }
+
+      // Check if images have cache records
+      const imagesWithCache = await this.images.countDocuments({
+        collection_id: new ObjectId(collectionId),
+        cache_path: { $exists: true, $ne: null }
+      });
+
+      const totalImages = collection.settings?.total_images || 0;
+      const cachePercentage = totalImages > 0 ? (imagesWithCache / totalImages) * 100 : 0;
+
+      return {
+        hasCache: imagesWithCache > 0,
+        cachedImages: imagesWithCache,
+        totalImages: totalImages,
+        cachePercentage: Math.round(cachePercentage),
+        lastGenerated: collection.cache_generated_at || null
+      };
+    } catch (error) {
+      console.error('Error getting collection cache status:', error);
+      return { hasCache: false, error: error.message };
+    }
+  }
+
+  async clearCollectionCache(collectionId) {
+    try {
+      // Clear cache records from images
+      await this.images.updateMany(
+        { collection_id: new ObjectId(collectionId) },
+        { 
+          $unset: {
+            cache_path: '',
+            cache_filename: '',
+            cache_size: '',
+            cache_quality: '',
+            cache_format: '',
+            cache_dimensions: '',
+            cache_aspect_ratio: '',
+            cache_orientation: '',
+            original_dimensions: '',
+            original_aspect_ratio: '',
+            cached_at: ''
+          }
+        }
+      );
+
+      // Update collection cache timestamp
+      await this.collections.updateOne(
+        { _id: new ObjectId(collectionId) },
+        { 
+          $unset: { cache_generated_at: '' }
+        }
+      );
+
+      return true;
+    } catch (error) {
+      console.error('Error clearing collection cache:', error);
+      throw error;
+    }
+  }
+
+  async getCacheStatistics() {
+    try {
+      const totalCollections = await this.collections.countDocuments({});
+      const collectionsWithCache = await this.collections.countDocuments({
+        cache_generated_at: { $exists: true }
+      });
+
+      const totalImages = await this.images.countDocuments({});
+      const cachedImages = await this.images.countDocuments({
+        cache_path: { $exists: true, $ne: null }
+      });
+
+      const cacheSizeResult = await this.images.aggregate([
+        { $match: { cache_size: { $exists: true, $ne: null } } },
+        { $group: { _id: null, totalSize: { $sum: '$cache_size' } } }
+      ]);
+
+      const totalCacheSize = cacheSizeResult.length > 0 ? cacheSizeResult[0].totalSize : 0;
+
+      return {
+        totalCollections,
+        collectionsWithCache,
+        totalImages,
+        cachedImages,
+        totalCacheSize,
+        cachePercentage: totalImages > 0 ? Math.round((cachedImages / totalImages) * 100) : 0
+      };
+    } catch (error) {
+      console.error('Error getting cache statistics:', error);
+      throw error;
+    }
+  }
+
+  async updateImage(imageId, updateData) {
+    try {
+      const objectId = typeof imageId === 'string' ? new ObjectId(imageId) : imageId;
+      const result = await this.images.updateOne(
+        { _id: objectId },
+        { $set: updateData }
+      );
+      return result;
+    } catch (error) {
+      console.error('Error updating image:', error);
+      throw error;
+    }
+  }
+
+  async getCacheFolderByPath(cachePath) {
+    try {
+      // Find cache folder by matching the beginning of the cache path
+      const cacheFolders = await this.cacheFolders.find({ is_active: true }).toArray();
+      
+      for (const folder of cacheFolders) {
+        if (cachePath.startsWith(folder.path)) {
+          return folder;
+        }
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Error getting cache folder by path:', error);
+      return null;
+    }
+  }
 }
 
 module.exports = MongoDBDatabase;
