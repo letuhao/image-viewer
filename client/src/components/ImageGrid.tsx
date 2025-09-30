@@ -4,7 +4,7 @@ import AutoSizer from 'react-virtualized-auto-sizer';
 import useStore from '../store/useStore';
 
 interface Image {
-  id: number;
+  id: string;
   filename: string;
   thumbnail_path: string;
   width: number;
@@ -14,7 +14,7 @@ interface Image {
 interface ImageGridProps {
   images: Image[];
   onImageClick: (image: Image) => void;
-  collectionId: number;
+  collectionId: string;
 }
 
 interface ImageItemProps {
@@ -25,7 +25,7 @@ interface ImageItemProps {
     images: Image[];
     onImageClick: (image: Image) => void;
     columnCount: number;
-    collectionId: number;
+    collectionId: string;
   };
 }
 
@@ -131,7 +131,7 @@ const ImageGrid: React.FC<ImageGridProps> = ({ images, onImageClick, collectionI
   }
 
   return (
-    <div className="h-[calc(100vh-16rem)]">
+    <div className="h-[calc(100vh-22rem)]">
       <AutoSizer onResize={({ width }) => handleResize(width)}>
         {({ width, height }) => (
           <Grid

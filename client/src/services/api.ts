@@ -9,43 +9,45 @@ const api = axios.create({
 
 // Collections API
 export const collectionsApi = {
-  getAll: () => api.get('/collections'),
-  getById: (id: number) => api.get(`/collections/${id}`),
+  getAll: (params?: { page?: number; limit?: number; filter?: string }) => 
+    api.get('/collections', { params }),
+  getById: (id: string) => api.get(`/collections/${id}`),
   create: (data: { name: string; path: string; type: 'folder' | 'zip' }) => 
     api.post('/collections', data),
-  update: (id: number, data: Partial<{ name: string; path: string; settings: Record<string, any> }>) => 
+  update: (id: string, data: Partial<{ name: string; path: string; settings: Record<string, any> }>) => 
     api.put(`/collections/${id}`, data),
-  delete: (id: number) => api.delete(`/collections/${id}`),
-  scan: (id: number) => api.post(`/collections/${id}/scan`),
-  getImages: (id: number, params?: { page?: number; limit?: number; sort?: string; order?: string }) => 
+  delete: (id: string) => api.delete(`/collections/${id}`),
+  scan: (id: string) => api.post(`/collections/${id}/scan`),
+  getImages: (id: string, params?: { page?: number; limit?: number; sort?: string; order?: string }) => 
     api.get(`/collections/${id}/images`, { params }),
+  getRandom: () => api.get('/random'),
 };
 
 // Images API
 export const imagesApi = {
-  getById: (id: number, collectionId: number) => 
+  getById: (id: string, collectionId: string) => 
     api.get(`/images/${id}`, { params: { collectionId } }),
-  getFile: (collectionId: number, imageId: number, params?: { width?: number; height?: number; quality?: number }) => 
+  getFile: (collectionId: string, imageId: string, params?: { width?: number; height?: number; quality?: number }) => 
     api.get(`/images/${collectionId}/${imageId}/file`, { 
       params,
       responseType: 'blob'
     }),
-  getThumbnail: (collectionId: number, imageId: number) => 
+  getThumbnail: (collectionId: string, imageId: string) => 
     api.get(`/images/${collectionId}/${imageId}/thumbnail`, { 
       responseType: 'blob'
     }),
-  getBatchThumbnails: (collectionId: number, imageIds: number[], params?: { width?: number; height?: number; quality?: number }) => 
+  getBatchThumbnails: (collectionId: string, imageIds: string[], params?: { width?: number; height?: number; quality?: number }) => 
     api.get(`/images/${collectionId}/batch-thumbnails`, { 
       params: { 
         ids: imageIds.join(','), 
         ...params 
       } 
     }),
-  navigate: (collectionId: number, imageId: number, direction: 'next' | 'previous') => 
+  navigate: (collectionId: string, imageId: string, direction: 'next' | 'previous') => 
     api.get(`/images/${collectionId}/${imageId}/navigate`, { params: { direction } }),
-  getRandom: (collectionId: number) => 
+  getRandom: (collectionId: string) => 
     api.get(`/images/${collectionId}/random`),
-  search: (collectionId: number, query: string, params?: { page?: number; limit?: number }) => 
+  search: (collectionId: string, query: string, params?: { page?: number; limit?: number }) => 
     api.get(`/images/${collectionId}/search`, { params: { query, ...params } }),
 };
 
@@ -108,16 +110,16 @@ export const backgroundApi = {
 
 // Statistics and Tags API
 export const statsApi = {
-  getCollectionStats: (collectionId: number) => api.get(`/stats/collection/${collectionId}`),
-  trackView: (collectionId: number, sessionId?: string) => 
+  getCollectionStats: (collectionId: string) => api.get(`/stats/collection/${collectionId}`),
+  trackView: (collectionId: string, sessionId?: string) => 
     api.post(`/stats/collection/${collectionId}/view`, { session_id: sessionId }),
-  endViewSession: (collectionId: number, sessionId: string, viewTimeSeconds?: number) => 
+  endViewSession: (collectionId: string, sessionId: string, viewTimeSeconds?: number) => 
     api.post(`/stats/collection/${collectionId}/view/end`, { session_id: sessionId, view_time_seconds: viewTimeSeconds }),
-  trackSearch: (collectionId: number, query: string) => 
+  trackSearch: (collectionId: string, query: string) => 
     api.post(`/stats/collection/${collectionId}/search`, { query }),
-  addTag: (collectionId: number, tag: string, addedBy?: string) => 
+  addTag: (collectionId: string, tag: string, addedBy?: string) => 
     api.post(`/stats/collection/${collectionId}/tags`, { tag, added_by: addedBy }),
-  removeTag: (collectionId: number, tag: string, addedBy?: string) => 
+  removeTag: (collectionId: string, tag: string, addedBy?: string) => 
     api.delete(`/stats/collection/${collectionId}/tags/${encodeURIComponent(tag)}${addedBy ? `?added_by=${addedBy}` : ''}`),
   getPopularCollections: (limit?: number) => api.get('/stats/popular', { params: { limit } }),
   getPopularTags: (limit?: number) => api.get('/stats/tags/popular', { params: { limit } }),

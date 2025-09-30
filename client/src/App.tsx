@@ -19,8 +19,9 @@ function App() {
   const loadCollections = async () => {
     try {
       setLoading(true);
-      const response = await collectionsApi.getAll();
-      setCollections(response.data);
+      const response = await collectionsApi.getAll({ page: 1, limit: 20 });
+      // Handle both old and new API format
+      setCollections(response.data.collections || response.data);
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Failed to load collections');
     } finally {

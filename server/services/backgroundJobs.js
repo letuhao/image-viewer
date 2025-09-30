@@ -43,8 +43,19 @@ class BackgroundJobManager extends EventEmitter {
     job.startedAt = new Date();
     this.emit('jobStarted', job);
 
+    // Create updateProgress callback
+    const updateProgress = (current, total, message = null) => {
+      job.progress = total > 0 ? Math.round((current / total) * 100) : 0;
+      job.current = current;
+      job.total = total;
+      if (message) {
+        job.message = message;
+      }
+      this.emit('jobProgress', job);
+    };
+
     // Run the job in the background
-    workerFunction(job, this)
+    workerFunction(updateProgress)
       .then((results) => {
         job.status = 'completed';
         job.progress = 100;
@@ -86,6 +97,19 @@ class BackgroundJobManager extends EventEmitter {
 
   getJobsByStatus(status) {
     return Array.from(this.jobs.values()).filter(job => job.status === status);
+  }
+
+  hasRunningJob(type = null) {
+    const runningJobs = Array.from(this.jobs.values()).filter(job => job.status === 'running');
+    if (type) {
+      return runningJobs.some(job => job.type === type);
+    }
+    return runningJobs.length > 0;
+  }
+
+  isJobCancelled(jobId) {
+    const job = this.jobs.get(jobId);
+    return job ? job.status === 'cancelled' : true;
   }
 
   cancelJob(jobId) {

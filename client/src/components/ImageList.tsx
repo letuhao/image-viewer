@@ -3,7 +3,7 @@ import useStore from '../store/useStore';
 import { formatBytes } from '../utils/formatUtils';
 
 interface Image {
-  id: number;
+  id: string;
   filename: string;
   thumbnail_path: string;
   file_size: number;
@@ -15,10 +15,10 @@ interface Image {
 interface ImageListProps {
   images: Image[];
   onImageClick: (image: Image) => void;
-  collectionId: number;
+  collectionId: string;
 }
 
-const ImageListItem: React.FC<{ image: Image; onImageClick: (image: Image) => void; collectionId: number }> = ({ 
+const ImageListItem: React.FC<{ image: Image; onImageClick: (image: Image) => void; collectionId: string }> = ({ 
   image, 
   onImageClick,
   collectionId

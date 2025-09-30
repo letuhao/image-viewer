@@ -13,6 +13,7 @@ import {
   ChevronRightIcon,
 } from '@heroicons/react/24/outline';
 import CacheSettingsSection from './CacheSettingsSection';
+import ThumbnailRegenerateSection from './ThumbnailRegenerateSection';
 
 interface SettingsSection {
   id: string;
@@ -37,6 +38,13 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ isOpen, onClose }) => {
       description: 'Manage cache folders and storage distribution',
       icon: ComputerDesktopIcon,
       component: CacheSettingsSection,
+    },
+    {
+      id: 'thumbnails',
+      name: 'Thumbnail Management',
+      description: 'Regenerate collection thumbnails and manage image previews',
+      icon: PhotoIcon,
+      component: ThumbnailRegenerateSection,
     },
     // Future settings sections can be added here
     // {
@@ -251,7 +259,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = ({ isOpen, onClose }) => {
                     </div>
 
                     {/* Section Content */}
-                    <div className="max-h-96 overflow-y-auto">
+                    <div className="max-h-[600px] overflow-y-auto">
                       {renderActiveSection()}
                     </div>
                   </div>

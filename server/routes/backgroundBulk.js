@@ -42,19 +42,26 @@ router.post('/bulk-add/start', async (req, res) => {
 router.get('/jobs/:jobId', (req, res) => {
   try {
     const { jobId } = req.params;
+    console.log(`[DEBUG] Getting job status for jobId: ${jobId}`);
+    console.log(`[DEBUG] jobManager type:`, typeof jobManager);
+    console.log(`[DEBUG] jobManager.getJob type:`, typeof jobManager.getJob);
+    
     const job = jobManager.getJob(jobId);
+    console.log(`[DEBUG] Job found:`, job ? 'Yes' : 'No');
     
     if (!job) {
+      console.log(`[DEBUG] Job ${jobId} not found, returning 404`);
       return res.status(404).json({ error: 'Job not found' });
     }
 
+    console.log(`[DEBUG] Job ${jobId} found, returning job data`);
     res.json({
       success: true,
       job
     });
 
   } catch (error) {
-    console.error('Error getting job status:', error);
+    console.error('[DEBUG] Error getting job status:', error);
     res.status(500).json({ error: 'Failed to get job status' });
   }
 });

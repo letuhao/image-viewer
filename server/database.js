@@ -55,9 +55,18 @@ class Database {
     return db.toApiResponse(collections);
   }
 
-  // Alias for compatibility
-  async getCollections() {
-    return await this.getAllCollections();
+  // Get collections with pagination support
+  async getCollections(options = {}) {
+    const { skip = 0, limit = 1000 } = options;
+    const db = await this._ensureConnection();
+    const collections = await db.collections.find({}).skip(skip).limit(limit).toArray();
+    return db.toApiResponse(collections);
+  }
+
+  // Get total count of collections
+  async getCollectionCount() {
+    const db = await this._ensureConnection();
+    return await db.collections.countDocuments({});
   }
 
   async getImageCount(collectionId) {

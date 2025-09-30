@@ -40,7 +40,7 @@ const ImageViewerPage: React.FC = () => {
   const [imageIndex, setImageIndex] = useState(0);
   const [playTimer, setPlayTimer] = useState<ReturnType<typeof setInterval> | null>(null);
 
-  const collectionId = parseInt(id || '0');
+  const collectionId = id || '';
 
   useEffect(() => {
     if (viewer.currentImage) {

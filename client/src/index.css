@@ -91,11 +91,12 @@
 /* Collection grid */
 .collection-grid {
   @apply grid gap-4;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); /* Reduced from 500px to 350px */
 }
 
 .collection-item {
   @apply card p-4 cursor-pointer transition-all hover:scale-105 hover:shadow-xl;
+  min-height: 200px; /* Reduced from 300px to 200px */
 }
 
 /* Image grid */
@@ -127,4 +128,16 @@
   40% { content: '.'; }
   60% { content: '..'; }
   80%, 100% { content: '...'; }
+}
+
+/* Custom grid columns for ultra-compact modes */
+@layer utilities {
+  .grid-cols-13 { grid-template-columns: repeat(13, minmax(0, 1fr)); }
+  .grid-cols-14 { grid-template-columns: repeat(14, minmax(0, 1fr)); }
+  .grid-cols-15 { grid-template-columns: repeat(15, minmax(0, 1fr)); }
+  .grid-cols-16 { grid-template-columns: repeat(16, minmax(0, 1fr)); }
+  .grid-cols-17 { grid-template-columns: repeat(17, minmax(0, 1fr)); }
+  .grid-cols-18 { grid-template-columns: repeat(18, minmax(0, 1fr)); }
+  .grid-cols-19 { grid-template-columns: repeat(19, minmax(0, 1fr)); }
+  .grid-cols-20 { grid-template-columns: repeat(20, minmax(0, 1fr)); }
 }

@@ -15,7 +15,7 @@ const Layout: React.FC = () => {
       <div className="flex">
         <Sidebar />
         
-        <main className="flex-1 ml-64 min-h-screen">
+        <main className="flex-1 ml-64">
           {isLoading && <LoadingSpinner />}
           {error && (
             <div className="bg-red-900/20 border border-red-500/50 text-red-300 px-4 py-3 m-4 rounded-lg">

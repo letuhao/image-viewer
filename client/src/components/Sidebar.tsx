@@ -16,7 +16,7 @@ const Sidebar: React.FC = () => {
     return type === 'zip' ? ArchiveBoxIcon : FolderIcon;
   };
 
-  const getCollectionStats = (_collectionId: number) => {
+  const getCollectionStats = (_collectionId: string) => {
     // This would typically come from the store or API
     // For now, we'll return placeholder data
     return { imageCount: 0, lastViewed: null };

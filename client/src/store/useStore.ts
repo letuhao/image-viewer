@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 
 export interface Collection {
-  id: number;
+  id: string;
   name: string;
   path: string;
   type: 'folder' | 'zip';
@@ -12,8 +12,8 @@ export interface Collection {
 }
 
 export interface Image {
-  id: number;
-  collection_id: number;
+  id: string;
+  collection_id: string;
   filename: string;
   relative_path: string;
   file_size: number;
@@ -35,12 +35,12 @@ export interface ViewerState {
   filter: string;
   preloadEnabled: boolean;
   preloadBatchSize: number;
-  preloadedThumbnails: Record<number, string>; // imageId -> base64 thumbnail
+  preloadedThumbnails: Record<string, string>; // imageId -> base64 thumbnail
 }
 
 export interface AppState {
   collections: Collection[];
-  selectedCollectionId: number | null;
+  selectedCollectionId: string | null;
   viewer: ViewerState;
   isLoading: boolean;
   error: string | null;
@@ -48,9 +48,9 @@ export interface AppState {
   // Actions
   setCollections: (collections: Collection[]) => void;
   addCollection: (collection: Collection) => void;
-  updateCollection: (id: number, updates: Partial<Collection>) => void;
-  removeCollection: (id: number) => void;
-  selectCollection: (id: number | null) => void;
+  updateCollection: (id: string, updates: Partial<Collection>) => void;
+  removeCollection: (id: string) => void;
+  selectCollection: (id: string | null) => void;
   
   // Viewer actions
   setCurrentImage: (image: Image | null) => void;
@@ -74,8 +74,8 @@ export interface AppState {
   // Preload actions
   setPreloadEnabled: (enabled: boolean) => void;
   setPreloadBatchSize: (size: number) => void;
-  preloadThumbnails: (collectionId: number, imageIds: number[]) => Promise<void>;
-  getPreloadedThumbnail: (imageId: number) => string | null;
+  preloadThumbnails: (collectionId: string, imageIds: string[]) => Promise<void>;
+  getPreloadedThumbnail: (imageId: string) => string | null;
 }
 
 const useStore = create<AppState>()(
@@ -215,7 +215,7 @@ const useStore = create<AppState>()(
           const { imagesApi } = await import('../services/api');
           const response = await imagesApi.getBatchThumbnails(collectionId, imageIds);
           
-          const newThumbnails: Record<number, string> = {};
+          const newThumbnails: Record<string, string> = {};
           response.data.thumbnails.forEach((thumb: any) => {
             newThumbnails[thumb.id] = `data:image/jpeg;base64,${thumb.thumbnail}`;
           });

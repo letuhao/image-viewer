@@ -39,15 +39,41 @@ const CollectionViewerPage: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [showPreloadSettings, setShowPreloadSettings] = useState(false);
+  const [collection, setCollection] = useState<any>(null);
 
-  const collection = collections.find(col => col.id === parseInt(id || '0'));
+  // Try to find collection in store first, if not found, load from API
+  const storeCollection = collections.find(col => col.id === id);
 
   useEffect(() => {
-    if (id && collection) {
-      selectCollection(parseInt(id));
-      loadImages();
+    if (id) {
+      if (storeCollection) {
+        // Collection found in store
+        setCollection(storeCollection);
+        selectCollection(id);
+        loadImages();
+      } else {
+        // Collection not in store, load from API
+        loadCollectionFromAPI();
+      }
     }
-  }, [id, collection]);
+  }, [id, storeCollection]);
+
+  const loadCollectionFromAPI = async () => {
+    if (!id) return;
+    
+    try {
+      setIsLoading(true);
+      const response = await collectionsApi.getById(id);
+      setCollection(response.data);
+      selectCollection(id);
+      loadImages();
+    } catch (error) {
+      toast.error('Collection not found');
+      navigate('/collections');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const loadImages = async (page = 1) => {
     if (!collection) return;
@@ -140,7 +166,7 @@ const CollectionViewerPage: React.FC = () => {
   }
 
   return (
-    <div className="p-6">
+    <div className="p-6 h-full flex flex-col">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center space-x-4">
@@ -280,12 +306,14 @@ const CollectionViewerPage: React.FC = () => {
         </div>
       ) : (
         <>
-          {viewMode === 'grid' ? (
-            <ImageGrid images={viewer.images} onImageClick={handleImageClick} collectionId={collection.id} />
-          ) : (
-            <ImageList images={viewer.images} onImageClick={handleImageClick} collectionId={collection.id} />
-          )}
-          
+          <div className="flex-1">
+            {viewMode === 'grid' ? (
+              <ImageGrid images={viewer.images} onImageClick={handleImageClick} collectionId={collection.id} />
+            ) : (
+              <ImageList images={viewer.images} onImageClick={handleImageClick} collectionId={collection.id} />
+            )}
+          </div>
+            
           {/* Pagination */}
           {totalPages > 1 && (
             <div className="flex items-center justify-center mt-8 space-x-2">

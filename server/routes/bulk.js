@@ -4,6 +4,7 @@ const fs = require('fs-extra');
 const path = require('path');
 const db = require('../database');
 const tagService = require('../services/tagService');
+const collectionThumbnailService = require('../services/collectionThumbnailService');
 
 // Bulk add collections from a parent directory
 router.post('/collections', async (req, res) => {
@@ -78,6 +79,17 @@ router.post('/collections', async (req, res) => {
           });
           
           console.log(`[BULK ADD] Successfully added collection: ${collectionInfo.name} (ID: ${collectionId})`);
+          
+          // Generate collection thumbnail in background
+          collectionThumbnailService.generateCollectionThumbnail(collectionId, collectionInfo.path, collectionInfo.type)
+            .then(thumbnailPath => {
+              if (thumbnailPath) {
+                console.log(`[BULK ADD] Generated thumbnail for collection ${collectionId}: ${thumbnailPath}`);
+              }
+            })
+            .catch(error => {
+              console.error(`[BULK ADD] Failed to generate thumbnail for collection ${collectionId}:`, error);
+            });
         } else {
           console.log(`[BULK ADD] Collection already exists, skipping: ${collectionInfo.name}`);
         }

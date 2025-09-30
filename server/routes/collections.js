@@ -7,6 +7,7 @@ const sharp = require('sharp');
 const mime = require('mime-types');
 const db = require('../database');
 const cacheManager = require('../services/cacheManager');
+const collectionThumbnailService = require('../services/collectionThumbnailService');
 
 // Supported image formats
 const SUPPORTED_FORMATS = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.tiff', '.svg'];
@@ -14,14 +15,32 @@ const SUPPORTED_FORMATS = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.t
 // Supported compressed file formats
 const COMPRESSED_FORMATS = ['.zip', '.cbz', '.cbr', '.7z', '.rar', '.tar', '.tar.gz', '.tar.bz2'];
 
-// Get all collections
+// Get all collections with pagination support
 router.get('/', async (req, res) => {
   try {
-    const collections = await db.getAllCollections();
+    const { page = 1, limit = 50, filter } = req.query;
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+    const skip = (pageNum - 1) * limitNum;
+    
+    let collections = await db.getAllCollections();
+    
+    // Apply filter if provided
+    if (filter === 'with-thumbnails') {
+      collections = collections.filter(col => col.thumbnail_url);
+    } else if (filter === 'without-thumbnails') {
+      collections = collections.filter(col => !col.thumbnail_url);
+    }
+    
+    const total = collections.length;
+    const totalPages = Math.ceil(total / limitNum);
+    
+    // Apply pagination
+    const paginatedCollections = collections.slice(skip, skip + limitNum);
     
     // Get statistics and tags for each collection
     const collectionsWithStats = await Promise.all(
-      collections.map(async (collection) => {
+      paginatedCollections.map(async (collection) => {
         const [stats, tags] = await Promise.all([
           db.getCollectionStats(collection.id),
           db.getCollectionTags(collection.id)
@@ -41,7 +60,17 @@ router.get('/', async (req, res) => {
       })
     );
     
-    res.json(collectionsWithStats);
+    res.json({
+      collections: collectionsWithStats,
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total,
+        totalPages,
+        hasNext: pageNum < totalPages,
+        hasPrev: pageNum > 1
+      }
+    });
   } catch (error) {
     console.error('Error fetching collections:', error);
     res.status(500).json({ error: 'Failed to fetch collections' });
@@ -86,6 +115,17 @@ router.post('/', async (req, res) => {
     
     // Start scanning images in background
     scanCollectionImages(collectionId, collectionPath, type).catch(console.error);
+    
+    // Generate collection thumbnail in background
+    collectionThumbnailService.generateCollectionThumbnail(collectionId, collectionPath, type)
+      .then(thumbnailPath => {
+        if (thumbnailPath) {
+          console.log(`[COLLECTION] Generated thumbnail for collection ${collectionId}: ${thumbnailPath}`);
+        }
+      })
+      .catch(error => {
+        console.error(`[COLLECTION] Failed to generate thumbnail for collection ${collectionId}:`, error);
+      });
     
     res.json({ id: collectionId, message: 'Collection added successfully' });
   } catch (error) {
@@ -449,5 +489,114 @@ async function generateThumbnail(collectionId, imageInfo, collectionType, collec
     return null;
   }
 }
+
+// Serve collection thumbnail
+router.get('/:id/thumbnail', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const collection = await db.getCollection(id);
+    
+    if (!collection) {
+      return res.status(404).json({ error: 'Collection not found' });
+    }
+
+    // Check if thumbnail exists
+    if (!collection.thumbnail_path || !await fs.pathExists(collection.thumbnail_path)) {
+      return res.status(404).json({ error: 'Thumbnail not found' });
+    }
+
+    // Serve thumbnail file
+    const thumbnailBuffer = await fs.readFile(collection.thumbnail_path);
+    
+    res.set({
+      'Content-Type': 'image/jpeg',
+      'Cache-Control': 'public, max-age=31536000', // 1 year cache
+      'Content-Length': thumbnailBuffer.length
+    });
+    
+    res.send(thumbnailBuffer);
+  } catch (error) {
+    console.error('Error serving collection thumbnail:', error);
+    res.status(500).json({ error: 'Failed to serve thumbnail' });
+  }
+});
+
+// Regenerate collection thumbnail
+router.post('/:id/regenerate-thumbnail', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const collection = await db.getCollection(id);
+    
+    if (!collection) {
+      return res.status(404).json({ error: 'Collection not found' });
+    }
+
+    // Generate new thumbnail
+    const thumbnailPath = await collectionThumbnailService.regenerateCollectionThumbnail(id);
+    
+    if (thumbnailPath) {
+      res.json({ 
+        message: 'Thumbnail regenerated successfully',
+        thumbnail_url: `/api/collections/${id}/thumbnail`
+      });
+    } else {
+      res.status(400).json({ error: 'Failed to generate thumbnail' });
+    }
+  } catch (error) {
+    console.error('Error regenerating collection thumbnail:', error);
+    res.status(500).json({ error: 'Failed to regenerate thumbnail' });
+  }
+});
+
+// Get random collection
+router.get('/random', async (req, res) => {
+  try {
+    // Get total count of collections
+    const totalCollections = await db.getCollectionCount();
+    console.log('[RANDOM] Total collections:', totalCollections);
+    
+    if (totalCollections === 0) {
+      return res.status(404).json({ error: 'No collections found' });
+    }
+    
+    // Pick random index
+    const randomIndex = Math.floor(Math.random() * totalCollections);
+    console.log('[RANDOM] Random index:', randomIndex);
+    
+    // Get collection by index (skip randomIndex, limit 1)
+    const collections = await db.getCollections({ skip: randomIndex, limit: 1 });
+    console.log('[RANDOM] Collections found:', collections.length);
+    
+    if (collections.length === 0) {
+      return res.status(404).json({ error: 'Collection not found' });
+    }
+    
+    const randomCollection = collections[0];
+    console.log('[RANDOM] Selected collection:', randomCollection.name);
+    
+    // Get statistics and tags for the random collection
+    const [stats, tags] = await Promise.all([
+      db.getCollectionStats(randomCollection.id),
+      db.getCollectionTags(randomCollection.id)
+    ]);
+    
+    const collectionWithStats = {
+      ...randomCollection,
+      statistics: stats || {
+        view_count: 0,
+        total_view_time: 0,
+        search_count: 0,
+        last_viewed: null,
+        last_searched: null
+      },
+      tags: tags || []
+    };
+    
+    res.json(collectionWithStats);
+  } catch (error) {
+    console.error('Error getting random collection:', error);
+    res.status(500).json({ error: 'Failed to get random collection' });
+  }
+});
 
 module.exports = router;

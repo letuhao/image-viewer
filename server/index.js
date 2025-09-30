@@ -12,6 +12,8 @@ const bulkRoutes = require('./routes/bulk');
 const backgroundBulkRoutes = require('./routes/backgroundBulk');
 const statsRoutes = require('./routes/stats');
 const cacheFolderRoutes = require('./routes/cacheFolders');
+const thumbnailRegenerateRoutes = require('./routes/thumbnailRegenerate');
+const randomRoutes = require('./routes/random');
 
 const app = express();
 const PORT = process.env.PORT || 8081;
@@ -58,6 +60,8 @@ app.use('/api/bulk', bulkRoutes);
 app.use('/api/background', backgroundBulkRoutes);
 app.use('/api/stats', statsRoutes);
 app.use('/api/cache-folders', cacheFolderRoutes);
+app.use('/api/collections', thumbnailRegenerateRoutes);
+app.use('/api/random', randomRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

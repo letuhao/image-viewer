@@ -11,7 +11,7 @@ import { statsApi } from '../services/api';
 import toast from 'react-hot-toast';
 
 interface CollectionStatsProps {
-  collectionId: number;
+  collectionId: string;
   statistics?: {
     view_count: number;
     total_view_time: number;

@@ -22,7 +22,7 @@ router.get('/:id', async (req, res) => {
     }
     
     const images = await db.getImages(collectionId);
-    const image = images.find(img => img.id === parseInt(id));
+    const image = images.find(img => img.id === id);
     
     if (!image) {
       return res.status(404).json({ error: 'Image not found' });
@@ -45,7 +45,7 @@ router.get('/:collectionId/batch-thumbnails', async (req, res) => {
       return res.status(400).json({ error: 'Image IDs are required' });
     }
     
-    const imageIds = ids.split(',').map(id => parseInt(id.trim()));
+    const imageIds = ids.split(',').map(id => id.trim());
     
     const collection = await db.getCollection(collectionId);
     if (!collection) {
@@ -99,7 +99,7 @@ router.get('/:collectionId/:imageId/file', async (req, res) => {
     }
     
     const images = await db.getImages(collectionId);
-    const image = images.find(img => img.id === parseInt(imageId));
+    const image = images.find(img => img.id === imageId);
     
     if (!image) {
       return res.status(404).json({ error: 'Image not found' });
@@ -176,7 +176,7 @@ router.get('/:collectionId/:imageId/thumbnail', async (req, res) => {
     }
     
     const images = await db.getImages(collectionId);
-    const image = images.find(img => img.id === parseInt(imageId));
+    const image = images.find(img => img.id === imageId);
     
     if (!image) {
       return res.status(404).json({ error: 'Image not found' });
