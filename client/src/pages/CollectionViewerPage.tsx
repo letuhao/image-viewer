@@ -46,6 +46,9 @@ const CollectionViewerPage: React.FC = () => {
 
   useEffect(() => {
     if (id) {
+      // Auto-scan collection immediately when page loads
+      handleRescan();
+      
       if (storeCollection) {
         // Collection found in store
         setCollection(storeCollection);
@@ -56,7 +59,7 @@ const CollectionViewerPage: React.FC = () => {
         loadCollectionFromAPI();
       }
     }
-  }, [id, storeCollection]);
+  }, [id]);
 
   const loadCollectionFromAPI = async () => {
     if (!id) return;

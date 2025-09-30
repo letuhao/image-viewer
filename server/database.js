@@ -51,8 +51,8 @@ class Database {
 
   async getAllCollections() {
     const db = await this._ensureConnection();
-    const collections = await db.getAllCollections();
-    return db.toApiResponse(collections);
+    const collections = await db.collections.find({}).toArray();
+    return collections;
   }
 
   // Get collections with pagination support
