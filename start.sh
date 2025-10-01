@@ -1,5 +1,13 @@
 #!/bin/bash
 
+# Load environment variables
+if [ -f .env ]; then
+    export $(cat .env | grep -v '^#' | xargs)
+fi
+
+# Set default PORT if not defined
+export PORT=${PORT:-10001}
+
 echo "Starting Image Viewer Application..."
 
 # Check if PM2 is installed globally
@@ -14,7 +22,7 @@ fi
 echo ""
 echo "Application started successfully!"
 echo ""
-echo "Backend API: http://localhost:8081"
+echo "Backend API: http://localhost:${PORT:-10001}"
 echo "Frontend: http://localhost:4000 (in development mode)"
 echo ""
 echo "To view logs: npx pm2 logs image-viewer"

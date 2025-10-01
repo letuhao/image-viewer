@@ -72,7 +72,7 @@ async function createEnvironmentFile() {
     console.log('✅ Created .env file from env.example');
   } else {
     const envContent = `# Server Configuration
-PORT=8081
+PORT=10001
 NODE_ENV=development
 
 # Cache Configuration
@@ -157,7 +157,7 @@ async function main() {
       console.log('\nNext steps:');
       console.log('1. Start the application: npm start');
       console.log('2. Or start with PM2: npm run pm2:start');
-      console.log('3. Access the application at: http://localhost:8081');
+      console.log('3. Access the application at: http://localhost:10001');
     } else {
       console.log('\n❌ Setup failed. Please check your MongoDB configuration.');
       process.exit(1);

@@ -1,4 +1,15 @@
 @echo off
+REM Load environment variables
+if exist .env (
+    for /f "usebackq tokens=1,2 delims==" %%a in (.env) do (
+        if not "%%a"=="" if not "%%a:~0,1%"=="#" (
+            set "%%a=%%b"
+        )
+    )
+)
+REM Set default PORT if not defined
+if not defined PORT set PORT=10001
+
 echo ==========================================
 echo    Image Viewer - Deployment Script
 echo ==========================================
@@ -45,7 +56,7 @@ call npx pm2 status
 echo.
 echo [6/6] Testing server health...
 timeout /t 2 /nobreak >nul
-curl -s http://localhost:8081/api/health >nul
+curl -s http://localhost:%PORT%/api/health >nul
 if %errorlevel% neq 0 (
     echo Warning: Server health check failed
 ) else (
@@ -57,7 +68,7 @@ echo ==========================================
 echo    Deployment completed successfully!
 echo ==========================================
 echo.
-echo Server is running on: http://localhost:8081
+echo Server is running on: http://localhost:%PORT%
 echo.
 echo Useful commands:
 echo   PM2 Status:    npx pm2 status

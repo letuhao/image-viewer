@@ -1,4 +1,15 @@
 @echo off
+REM Load environment variables
+if exist .env (
+    for /f "usebackq tokens=1,2 delims==" %%a in (.env) do (
+        if not "%%a"=="" if not "%%a:~0,1%"=="#" (
+            set "%%a=%%b"
+        )
+    )
+)
+REM Set default PORT if not defined
+if not defined PORT set PORT=10001
+
 echo ==========================================
 echo    Image Viewer - Quick Deployment
 echo ==========================================
@@ -38,6 +49,6 @@ echo ==========================================
 echo    Quick deployment completed!
 echo ==========================================
 echo.
-echo Server is running on: http://localhost:8081
+echo Server is running on: http://localhost:%PORT%
 echo.
 pause

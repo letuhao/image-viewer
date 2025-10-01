@@ -42,7 +42,7 @@ interface Collection {
 const CacheGenerationSection: React.FC<CacheGenerationSectionProps> = ({ isOpen, onClose }) => {
   const [collections, setCollections] = useState<Collection[]>([]);
   const [selectedCollections, setSelectedCollections] = useState<string[]>([]);
-  const [selectedQuality, setSelectedQuality] = useState<string>('perfect');
+  const [selectedQuality, setSelectedQuality] = useState<string>('optimize');
   const [overwriteExisting, setOverwriteExisting] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [currentJobId, setCurrentJobId] = useState<string | null>(null);
@@ -94,6 +94,13 @@ const CacheGenerationSection: React.FC<CacheGenerationSectionProps> = ({ isOpen,
       name: 'WebP (85%)',
       description: 'Modern format, excellent compression',
       quality: 85,
+      format: 'webp',
+    },
+    {
+      id: 'webp-high',
+      name: 'WebP High (95%)',
+      description: 'Modern format with high quality',
+      quality: 95,
       format: 'webp',
     },
     {

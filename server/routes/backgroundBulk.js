@@ -4,6 +4,7 @@ const jobManager = require('../services/backgroundJobs');
 const { findAllCollections, generateCollectionMetadata } = require('./bulk');
 const db = require('../database');
 const path = require('path');
+const Logger = require('../utils/logger');
 
 // Start background bulk add job
 router.post('/bulk-add/start', async (req, res) => {
@@ -15,15 +16,21 @@ router.post('/bulk-add/start', async (req, res) => {
     }
 
     // Create background job
-    const jobId = jobManager.createJob('bulk_add_collections', {
+    const jobData = {
       parentPath,
       collectionPrefix,
       includeSubfolders
-    });
+    };
+    
+    const logger = new Logger('BulkAddJob');
+    logger.info('Creating job with data', jobData);
+    const jobId = jobManager.createJob('bulk_add_collections', jobData);
+    logger.info('Job created successfully', { jobId });
 
     // Start the job
-    jobManager.startJob(jobId, async (job, manager) => {
-      return await performBulkAdd(job, manager);
+    jobManager.startJob(jobId, async (updateProgress) => {
+      logger.info('Starting job execution', { jobId });
+      return await performBulkAdd(jobId, updateProgress, logger);
     });
 
     res.json({
@@ -33,7 +40,11 @@ router.post('/bulk-add/start', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error starting bulk add job:', error);
+    const logger = new Logger('BulkAddJob');
+    logger.error('Error starting bulk add job', { 
+      error: error.message, 
+      stack: error.stack 
+    });
     res.status(500).json({ error: 'Failed to start bulk add job' });
   }
 });
@@ -42,26 +53,34 @@ router.post('/bulk-add/start', async (req, res) => {
 router.get('/jobs/:jobId', (req, res) => {
   try {
     const { jobId } = req.params;
-    console.log(`[DEBUG] Getting job status for jobId: ${jobId}`);
-    console.log(`[DEBUG] jobManager type:`, typeof jobManager);
-    console.log(`[DEBUG] jobManager.getJob type:`, typeof jobManager.getJob);
+    const logger = new Logger('BulkAddJob');
+    logger.debug('Getting job status', { jobId });
+    logger.debug('Job manager info', { 
+      jobManagerType: typeof jobManager,
+      getJobType: typeof jobManager.getJob 
+    });
     
     const job = jobManager.getJob(jobId);
-    console.log(`[DEBUG] Job found:`, job ? 'Yes' : 'No');
+    logger.debug('Job lookup result', { jobId, found: !!job });
     
     if (!job) {
-      console.log(`[DEBUG] Job ${jobId} not found, returning 404`);
+      logger.warn('Job not found', { jobId });
       return res.status(404).json({ error: 'Job not found' });
     }
 
-    console.log(`[DEBUG] Job ${jobId} found, returning job data`);
+    logger.info('Job found, returning data', { jobId });
     res.json({
       success: true,
       job
     });
 
   } catch (error) {
-    console.error('[DEBUG] Error getting job status:', error);
+    const logger = new Logger('BulkAddJob');
+    logger.error('Error getting job status', { 
+      jobId: req.params.jobId,
+      error: error.message, 
+      stack: error.stack 
+    });
     res.status(500).json({ error: 'Failed to get job status' });
   }
 });
@@ -111,20 +130,38 @@ router.post('/jobs/:jobId/cancel', (req, res) => {
 });
 
 // Background bulk add worker function
-async function performBulkAdd(job, manager) {
+async function performBulkAdd(jobId, updateProgress, logger) {
+  logger.flow('PERFORM_BULK_ADD_START', { jobId });
+  
+  // Get job data from jobManager
+  const job = jobManager.getJob(jobId);
+  if (!job || !job.data) {
+    logger.error('Job or job data not found', { jobId, jobExists: !!job });
+    throw new Error('Job or job data not found');
+  }
+  
   const { parentPath, collectionPrefix, includeSubfolders } = job.data;
   
   try {
-    console.log(`[BACKGROUND BULK ADD] Starting job ${job.id} for path: ${parentPath}`);
+    logger.info('Starting bulk add job', { 
+      jobId, 
+      parentPath, 
+      collectionPrefix, 
+      includeSubfolders 
+    });
     
     // Update progress: Finding collections
-    manager.updateJobProgress(job.id, 5, 0, 0, 'Scanning directory for collections...');
+    updateProgress(0, 0, 'Scanning directory for collections...');
     
     // Get all potential collections
     const allCollections = await findAllCollections(parentPath, includeSubfolders, collectionPrefix);
-    console.log(`[BACKGROUND BULK ADD] Found ${allCollections.length} potential collections`);
+    logger.info('Found potential collections', { 
+      jobId, 
+      collectionCount: allCollections.length 
+    });
     
     if (allCollections.length === 0) {
+      logger.warn('No collections found to add', { jobId, parentPath });
       return {
         collections: [],
         errors: [],
@@ -136,7 +173,7 @@ async function performBulkAdd(job, manager) {
     }
 
     // Update progress: Processing collections
-    manager.updateJobProgress(job.id, 10, 0, allCollections.length, `Processing ${allCollections.length} collections...`);
+    updateProgress(0, allCollections.length, `Processing ${allCollections.length} collections...`);
     
     const collections = [];
     const errors = [];
@@ -146,16 +183,14 @@ async function performBulkAdd(job, manager) {
       
       try {
         // Update progress
-        const progress = 10 + (i / allCollections.length) * 80; // 10% to 90%
-        manager.updateJobProgress(
-          job.id, 
-          progress, 
-          i + 1, 
-          allCollections.length, 
-          `Processing: ${collectionInfo.name}`
-        );
+        updateProgress(i + 1, allCollections.length, `Processing: ${collectionInfo.name}`);
         
-        console.log(`[BACKGROUND BULK ADD] Processing ${i + 1}/${allCollections.length}: ${collectionInfo.name}`);
+        logger.debug('Processing collection', { 
+          jobId,
+          current: i + 1, 
+          total: allCollections.length, 
+          collectionName: collectionInfo.name 
+        });
         
         // Check if collection already exists
         const existingCollections = await db.getCollections();
@@ -165,10 +200,16 @@ async function performBulkAdd(job, manager) {
         
         if (!alreadyExists) {
           // Generate metadata for the collection
-          console.log(`[BACKGROUND BULK ADD] Generating metadata for: ${collectionInfo.name}`);
+          logger.debug('Generating metadata for collection', { 
+            jobId, 
+            collectionName: collectionInfo.name 
+          });
           const metadata = await generateCollectionMetadata(collectionInfo.path, collectionInfo.type);
           
-          console.log(`[BACKGROUND BULK ADD] Adding collection to database: ${collectionInfo.name}`);
+          logger.info('Adding collection to database', { 
+            jobId, 
+            collectionName: collectionInfo.name 
+          });
           const collectionId = await db.addCollection(
             collectionInfo.name, 
             collectionInfo.path, 
@@ -184,12 +225,24 @@ async function performBulkAdd(job, manager) {
             metadata
           });
           
-          console.log(`[BACKGROUND BULK ADD] Successfully added collection: ${collectionInfo.name} (ID: ${collectionId})`);
+          logger.info('Successfully added collection', { 
+            jobId, 
+            collectionName: collectionInfo.name, 
+            collectionId 
+          });
         } else {
-          console.log(`[BACKGROUND BULK ADD] Collection already exists, skipping: ${collectionInfo.name}`);
+          logger.debug('Collection already exists, skipping', { 
+            jobId, 
+            collectionName: collectionInfo.name 
+          });
         }
       } catch (error) {
-        console.error(`[BACKGROUND BULK ADD] Error processing collection ${collectionInfo.name}:`, error);
+        logger.error('Error processing collection', { 
+          jobId, 
+          collectionName: collectionInfo.name, 
+          error: error.message, 
+          stack: error.stack 
+        });
         errors.push({
           item: collectionInfo.name,
           error: error.message
@@ -198,7 +251,7 @@ async function performBulkAdd(job, manager) {
     }
 
     // Update progress: Completed
-    manager.updateJobProgress(job.id, 100, allCollections.length, allCollections.length, 'Bulk add completed');
+    updateProgress(allCollections.length, allCollections.length, 'Bulk add completed');
     
     const result = {
       collections,
@@ -209,11 +262,20 @@ async function performBulkAdd(job, manager) {
       message: `Successfully added ${collections.length} collections`
     };
 
-    console.log(`[BACKGROUND BULK ADD] Job ${job.id} completed:`, result);
+    logger.info('Job completed successfully', { 
+      jobId, 
+      result 
+    });
+    logger.flow('PERFORM_BULK_ADD_END', { jobId, result });
     return result;
 
   } catch (error) {
-    console.error(`[BACKGROUND BULK ADD] Job ${job.id} failed:`, error);
+    logger.error('Job failed', { 
+      jobId, 
+      error: error.message, 
+      stack: error.stack 
+    });
+    logger.flow('PERFORM_BULK_ADD_ERROR', { jobId, error: error.message });
     throw error;
   }
 }

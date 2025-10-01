@@ -218,7 +218,7 @@ For easy deployment and updates:
 Create a `.env` file in the root directory:
 
 ```env
-PORT=8081
+PORT=10001
 NODE_ENV=production
 CACHE_DIR=./server/cache
 TEMP_DIR=./server/temp

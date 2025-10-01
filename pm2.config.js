@@ -10,11 +10,11 @@ module.exports = {
       max_memory_restart: '512M',
       env: {
         NODE_ENV: 'production',
-        PORT: 8081
+        PORT: 10001
       },
       env_development: {
         NODE_ENV: 'development',
-        PORT: 8081
+        PORT: 10001
       },
       error_file: './logs/api-err.log',
       out_file: './logs/api-out.log',

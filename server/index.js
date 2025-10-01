@@ -18,7 +18,7 @@ const cacheGenerationRoutes = require('./routes/cacheGeneration');
 const backgroundJobRoutes = require('./routes/backgroundJobs');
 
 const app = express();
-const PORT = process.env.PORT || 8081;
+const PORT = process.env.PORT || 10001;
 
 // Initialize MongoDB
 let db;
@@ -59,7 +59,7 @@ app.use('/api/collections', collectionRoutes);
 app.use('/api/images', imageRoutes);
 app.use('/api/cache', cacheRoutes);
 app.use('/api/bulk', bulkRoutes);
-app.use('/api/background/bulk', backgroundBulkRoutes);
+app.use('/api/background', backgroundBulkRoutes);
 app.use('/api/jobs', backgroundJobRoutes);
 app.use('/api/stats', statsRoutes);
 app.use('/api/cache-folders', cacheFolderRoutes);

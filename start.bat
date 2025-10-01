@@ -1,4 +1,15 @@
 @echo off
+REM Load environment variables
+if exist .env (
+    for /f "usebackq tokens=1,2 delims==" %%a in (.env) do (
+        if not "%%a"=="" if not "%%a:~0,1%"=="#" (
+            set "%%a=%%b"
+        )
+    )
+)
+REM Set default PORT if not defined
+if not defined PORT set PORT=10001
+
 echo Starting Image Viewer Application...
 
 REM Check if PM2 is installed globally
@@ -14,7 +25,7 @@ if %errorlevel% neq 0 (
 echo.
 echo Application started successfully!
 echo.
-echo Backend API: http://localhost:8081
+echo Backend API: http://localhost:%PORT%
 echo Frontend: http://localhost:4000 (in development mode)
 echo.
 echo To view logs: npx pm2 logs image-viewer

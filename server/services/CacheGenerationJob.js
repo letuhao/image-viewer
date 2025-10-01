@@ -230,13 +230,27 @@ class CacheGenerationJob {
       // Get image metadata
       const metadata = await sharpInstance.metadata();
       
+      // Check if we should skip processing (only for 'original' format)
+      if (this.shouldSkipProcessing(metadata, quality, format)) {
+        this.logger.info('Skipping processing - target format is original', {
+          filename: image.filename,
+          originalQuality: metadata.quality,
+          targetQuality: quality,
+          format: format
+        });
+        
+        // Copy original file to cache with original quality info
+        await this.copyOriginalToCache(image, collection, cachePath, metadata, quality, format);
+        return;
+      }
+      
       // Generate cache filename with metadata
       const cacheFilename = this.generateCacheFilename(image, options, metadata);
       const cacheFilePath = path.join(cachePath, cacheFilename);
 
       // Check if cache already exists
       if (!overwrite && await fs.pathExists(cacheFilePath)) {
-        console.log(`[CACHE-GEN] Cache exists for ${image.filename}, skipping`);
+        this.logger.info('Cache exists, skipping', { imageId: image.id, cacheFilePath });
         return;
       }
       
@@ -400,27 +414,141 @@ class CacheGenerationJob {
     }
   }
 
-  async updateCacheFolderUsage(cachePath, fileSize, fileCount) {
-    this.logger.debug('Updating cache folder usage statistics', { cachePath, fileSize, fileCount });
-    const db = require('../database');
-    try {
-      // Find the cache folder that contains this cache path
-      const cacheFolder = await db.getCacheFolderByPath(cachePath);
-      if (cacheFolder) {
-        await db.updateCacheFolderUsage(cacheFolder.id, fileSize, fileCount);
-        this.logger.info('Updated cache folder usage', { 
-          cacheFolderId: cacheFolder.id, 
-          cacheFolderName: cacheFolder.name, 
-          sizeDelta: fileSize, 
-          fileCountDelta: fileCount 
-        });
-      } else {
-        this.logger.warn('No cache folder found for path to update usage', { cachePath });
+    shouldSkipProcessing(metadata, targetQuality, targetFormat) {
+      this.logger.debug('Checking if should skip processing', {
+        originalQuality: metadata.quality,
+        targetQuality: targetQuality,
+        originalFormat: metadata.format,
+        targetFormat: targetFormat
+      });
+      
+      // Skip if target format is 'original' - this is the only case we truly skip
+      if (targetFormat === 'original') {
+        this.logger.debug('Target format is original, skipping processing');
+        return true;
       }
-    } catch (error) {
-      this.logger.error('Failed to update cache folder usage', { cachePath, error: error.message, stack: error.stack });
+      
+      // ALWAYS process to reduce file size - cache purpose is optimization, not quality preservation
+      // Even high quality originals (4K, etc.) should be processed to reduce file size for faster loading
+      this.logger.debug('Processing needed - cache purpose is file size reduction', {
+        originalQuality: metadata.quality,
+        targetQuality: targetQuality,
+        originalFormat: metadata.format,
+        targetFormat: targetFormat,
+        reason: 'Cache purpose is to reduce file size for faster loading'
+      });
+      
+      return false;
     }
-  }
+
+    async copyOriginalToCache(image, collection, cachePath, metadata, quality, format) {
+      this.logger.flow('COPY_ORIGINAL_TO_CACHE_START', { 
+        imageId: image.id, 
+        filename: image.filename,
+        originalQuality: metadata.quality 
+      });
+      
+      try {
+        // Generate cache filename
+        const cacheFilename = this.generateCacheFilename(image, { quality, format }, metadata);
+        const cacheFilePath = path.join(cachePath, cacheFilename);
+        
+        // Get original file path
+        let originalFilePath;
+        if (collection.type === 'folder') {
+          originalFilePath = path.join(collection.path, image.relative_path);
+        } else if (['zip', '7z', 'rar', 'tar'].includes(collection.type)) {
+          // For compressed files, we need to extract to a temp location first
+          const tempDir = path.join(cachePath, 'temp');
+          await fs.ensureDir(tempDir);
+          const tempFilePath = path.join(tempDir, image.filename);
+          
+          // Extract to temp file
+          const StreamZip = require('node-stream-zip').async;
+          const zip = new StreamZip.async({ file: collection.path });
+          try {
+            const entry = await zip.entry(image.relative_path);
+            if (entry) {
+              const data = await zip.entryData(entry);
+              await fs.writeFile(tempFilePath, data);
+              originalFilePath = tempFilePath;
+            } else {
+              throw new Error(`Image ${image.filename} not found in compressed file`);
+            }
+          } finally {
+            await zip.close();
+          }
+        } else {
+          throw new Error(`Unsupported collection type: ${collection.type}`);
+        }
+        
+        // Copy original file to cache
+        await fs.copy(originalFilePath, cacheFilePath);
+        
+        // Get file size
+        const cacheFileSize = (await fs.stat(cacheFilePath)).size;
+        
+        // Clean up temp file if it exists
+        if (collection.type !== 'folder') {
+          const tempDir = path.join(cachePath, 'temp');
+          await fs.remove(tempDir);
+        }
+        
+        // Update image cache record in database
+        await this.updateImageCacheRecord(image.id, {
+          cache_path: cacheFilePath,
+          cache_filename: cacheFilename,
+          cache_size: cacheFileSize,
+          cache_quality: metadata.quality || quality, // Use original quality
+          cache_format: metadata.format || format,
+          cache_dimensions: `${metadata.width}x${metadata.height}`,
+          cached_at: new Date()
+        });
+        
+        // Update cache folder usage statistics
+        await this.updateCacheFolderUsage(cachePath, cacheFileSize, 1);
+        
+        this.logger.info('Original file copied to cache', {
+          imageId: image.id,
+          filename: image.filename,
+          originalQuality: metadata.quality,
+          cacheFileSize: cacheFileSize
+        });
+        
+      } catch (error) {
+        this.logger.error('Error copying original to cache', {
+          imageId: image.id,
+          filename: image.filename,
+          error: error.message,
+          stack: error.stack
+        });
+        throw error;
+      } finally {
+        this.logger.flow('COPY_ORIGINAL_TO_CACHE_END', { imageId: image.id });
+      }
+    }
+
+    async updateCacheFolderUsage(cachePath, fileSize, fileCount) {
+      this.logger.debug('Updating cache folder usage statistics', { cachePath, fileSize, fileCount });
+      const db = require('../database');
+      try {
+        // Find the cache folder that contains this cache path
+        const cacheFolder = await db.getCacheFolderByPath(cachePath);
+        if (cacheFolder) {
+          await db.updateCacheFolderUsage(cacheFolder.id, fileSize, fileCount);
+          this.logger.info('Updated cache folder usage', { 
+            cacheFolderId: cacheFolder.id, 
+            cacheFolderName: cacheFolder.name, 
+            sizeDelta: fileSize, 
+            fileCountDelta: fileCount 
+          });
+        } else {
+          this.logger.warn('No cache folder found for path to update usage', { cachePath });
+        }
+      } catch (error) {
+        this.logger.error('Failed to update cache folder usage', { cachePath, error: error.message, stack: error.stack });
+      }
+    }
 
     async checkIfCollectionNeedsScan(collection) {
       this.logger.debug('Checking if collection needs scan', { 
