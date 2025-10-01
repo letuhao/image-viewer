@@ -154,3 +154,26 @@ extracted_tags.json
 organized_tags.json
 
 cache/
+_outdated/
+
+src/.vs/
+
+src/ImageViewer.Api/bin/
+
+src/ImageViewer.Api/obj/
+
+src/ImageViewer.Application/bin/
+
+src/ImageViewer.Application/obj/
+
+src/ImageViewer.Domain/bin/
+
+src/ImageViewer.Domain/obj/
+
+src/ImageViewer.Infrastructure/bin/
+
+src/ImageViewer.Infrastructure/obj/
+
+src/tests/ImageViewer.Tests/bin/
+
+src/tests/ImageViewer.Tests/obj/
