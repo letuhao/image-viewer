@@ -98,6 +98,8 @@ builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 // Add Infrastructure Services
 builder.Services.AddScoped<IFileScannerService, FileScannerService>();
 builder.Services.AddScoped<IImageProcessingService, SkiaSharpImageProcessingService>();
+builder.Services.AddScoped<IAdvancedThumbnailService, AdvancedThumbnailService>();
+builder.Services.AddScoped<ICompressedFileService, CompressedFileService>();
 builder.Services.AddScoped<IUserContextService, ImageViewer.Infrastructure.Services.UserContextService>();
 builder.Services.AddScoped<IJwtService, ImageViewer.Infrastructure.Services.JwtService>();
 

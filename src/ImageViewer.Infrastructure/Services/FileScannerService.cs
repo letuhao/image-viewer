@@ -27,7 +27,7 @@ public class FileScannerService : IFileScannerService
         {
             _logger.LogInformation("Scanning folder {FolderPath}", folderPath);
 
-            if (!Directory.Exists(folderPath))
+            if (!LongPathHandler.PathExistsSafe(folderPath))
             {
                 throw new DirectoryNotFoundException($"Folder not found: {folderPath}");
             }
@@ -73,7 +73,7 @@ public class FileScannerService : IFileScannerService
         {
             _logger.LogInformation("Scanning archive {ArchivePath} of type {ArchiveType}", archivePath, archiveType);
 
-            if (!File.Exists(archivePath))
+            if (!LongPathHandler.PathExistsSafe(archivePath))
             {
                 throw new FileNotFoundException($"Archive not found: {archivePath}");
             }
@@ -117,13 +117,13 @@ public class FileScannerService : IFileScannerService
             }
 
             // Check if it's a directory
-            if (Directory.Exists(path))
+            if (LongPathHandler.PathExistsSafe(path))
             {
                 return true;
             }
 
             // Check if it's a supported archive file
-            if (File.Exists(path))
+            if (LongPathHandler.PathExistsSafe(path))
             {
                 var extension = Path.GetExtension(path).ToLowerInvariant();
                 var supportedArchives = new[] { ".zip", ".7z", ".rar", ".tar" };
@@ -145,12 +145,12 @@ public class FileScannerService : IFileScannerService
         {
             _logger.LogDebug("Detecting collection type for path {Path}", path);
 
-            if (Directory.Exists(path))
+            if (LongPathHandler.PathExistsSafe(path))
             {
                 return CollectionType.Folder;
             }
 
-            if (File.Exists(path))
+            if (LongPathHandler.PathExistsSafe(path))
             {
                 var extension = Path.GetExtension(path).ToLowerInvariant();
                 return extension switch
@@ -183,7 +183,7 @@ public class FileScannerService : IFileScannerService
                 return GetDirectorySize(path);
             }
 
-            if (File.Exists(path))
+            if (LongPathHandler.PathExistsSafe(path))
             {
                 var fileInfo = new FileInfo(path);
                 return fileInfo.Length;
