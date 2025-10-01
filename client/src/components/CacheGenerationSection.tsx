@@ -45,7 +45,10 @@ const CacheGenerationSection: React.FC<CacheGenerationSectionProps> = ({ isOpen,
   const [selectedQuality, setSelectedQuality] = useState<string>('optimize');
   const [overwriteExisting, setOverwriteExisting] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [currentJobId, setCurrentJobId] = useState<string | null>(null);
+  const [currentJobId, setCurrentJobId] = useState<string | null>(() => {
+    // Load job ID from localStorage on component mount
+    return localStorage.getItem('cacheGenerationJobId');
+  });
   const [isLoadingCollections, setIsLoadingCollections] = useState(true);
   
   // Pagination state
@@ -117,6 +120,15 @@ const CacheGenerationSection: React.FC<CacheGenerationSectionProps> = ({ isOpen,
       loadCollections();
     }
   }, [isOpen]);
+
+  // Save job ID to localStorage when it changes
+  useEffect(() => {
+    if (currentJobId) {
+      localStorage.setItem('cacheGenerationJobId', currentJobId);
+    } else {
+      localStorage.removeItem('cacheGenerationJobId');
+    }
+  }, [currentJobId]);
 
   const loadCollections = async (page = 1, limit = 50) => {
     try {
@@ -572,7 +584,17 @@ const CacheGenerationSection: React.FC<CacheGenerationSectionProps> = ({ isOpen,
 
       {/* Background Job Monitor */}
       {currentJobId && (
-        <JobProgressMonitor jobId={currentJobId} />
+        <JobProgressMonitor 
+          jobId={currentJobId} 
+          onJobCompleted={() => {
+            setCurrentJobId(null);
+            // Refresh collections to show updated cache status
+            loadCollections(currentPage, itemsPerPage);
+          }}
+          onJobFailed={() => {
+            setCurrentJobId(null);
+          }}
+        />
       )}
     </div>
   );

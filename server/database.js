@@ -1,5 +1,6 @@
 // MongoDB Database Adapter - Compatibility layer for existing routes
 const MongoDBDatabase = require('./mongodb');
+const Logger = require('./utils/logger');
 
 let dbInstance;
 
@@ -19,7 +20,11 @@ class Database {
     initDatabase().then(db => {
       this.db = db;
     }).catch(error => {
-      console.error('Database initialization failed:', error);
+      const logger = new Logger('Database');
+      logger.error('Database initialization failed', { 
+        error: error.message, 
+        stack: error.stack 
+      });
     });
   }
 

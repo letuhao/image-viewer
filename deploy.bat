@@ -1,8 +1,21 @@
 @echo off
-REM Load environment variables
-if exist .env (
-    for /f "usebackq tokens=1,2 delims==" %%a in (.env) do (
-        if not "%%a"=="" if not "%%a:~0,1%"=="#" (
+setlocal EnableExtensions EnableDelayedExpansion
+
+REM Ensure .env exists (create from env.example if available)
+if not exist ".env" (
+    if exist "env.example" (
+        copy /Y "env.example" ".env" >nul
+        echo Created .env from env.example
+    ) else (
+        echo Warning: .env not found and env.example missing. Using defaults.
+    )
+)
+
+REM Load environment variables from .env (skip comments and blank lines)
+if exist ".env" (
+    for /f "usebackq tokens=1,* delims==" %%a in (".env") do (
+        set "_key=%%a"
+        if not "!_key!"=="" if not "!_key:~0,1!"=="#" (
             set "%%a=%%b"
         )
     )
@@ -20,8 +33,7 @@ call npx pm2 stop image-viewer
 if %errorlevel% neq 0 (
     echo Warning: PM2 process might not be running
 )
-
-echo.
+8e8ho.
 echo [2/6] Installing dependencies...
 call npm run install:all
 if %errorlevel% neq 0 (
@@ -40,7 +52,7 @@ if %errorlevel% neq 0 (
 )
 
 echo.
-echo [4/6] Starting server with PM2...
+echo [4/6] 8a8ting server with PM2...
 call npx pm2 start ecosystem.config.js
 if %errorlevel% neq 0 (
     echo Error: Failed to start server with PM2

@@ -29,7 +29,7 @@ const TagFilter: React.FC<TagFilterProps> = ({ onFilterChange, className = "" })
 
   useEffect(() => {
     onFilterChange(selectedTags, operator);
-  }, [selectedTags, operator, onFilterChange]);
+  }, [selectedTags, operator]); // Remove onFilterChange from dependencies
 
   const fetchPopularTags = async () => {
     try {

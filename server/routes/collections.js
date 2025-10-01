@@ -8,6 +8,8 @@ const mime = require('mime-types');
 const db = require('../database');
 const cacheManager = require('../services/cacheManager');
 const collectionThumbnailService = require('../services/collectionThumbnailService');
+const longPathHandler = require('../utils/longPathHandler');
+const Logger = require('../utils/logger');
 
 // Supported image formats
 const SUPPORTED_FORMATS = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp', '.tiff', '.svg'];
@@ -72,7 +74,11 @@ router.get('/', async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Error fetching collections:', error);
+    const logger = new Logger('CollectionsController');
+    logger.error('Error fetching collections', { 
+      error: error.message, 
+      stack: error.stack 
+    });
     res.status(500).json({ error: 'Failed to fetch collections' });
   }
 });
@@ -86,7 +92,11 @@ router.get('/:id', async (req, res) => {
     }
     res.json(collection);
   } catch (error) {
-    console.error('Error fetching collection:', error);
+    const logger = new Logger('CollectionsController');
+    logger.error('Error fetching collection', { 
+      error: error.message, 
+      stack: error.stack 
+    });
     res.status(500).json({ error: 'Failed to fetch collection' });
   }
 });
@@ -114,22 +124,39 @@ router.post('/', async (req, res) => {
     const collectionId = await db.addCollection(name, collectionPath, type);
     
     // Start scanning images in background
-    scanCollectionImages(collectionId, collectionPath, type).catch(console.error);
+    const logger = new Logger('CollectionsController');
+    scanCollectionImages(collectionId, collectionPath, type).catch(error => {
+      logger.error('Error in background scan', { 
+        collectionId, 
+        error: error.message, 
+        stack: error.stack 
+      });
+    });
     
     // Generate collection thumbnail in background
     collectionThumbnailService.generateCollectionThumbnail(collectionId, collectionPath, type)
       .then(thumbnailPath => {
         if (thumbnailPath) {
-          console.log(`[COLLECTION] Generated thumbnail for collection ${collectionId}: ${thumbnailPath}`);
+          logger.info('Generated thumbnail for collection', { 
+            collectionId, 
+            thumbnailPath 
+          });
         }
       })
       .catch(error => {
-        console.error(`[COLLECTION] Failed to generate thumbnail for collection ${collectionId}:`, error);
+        logger.error('Failed to generate thumbnail for collection', { 
+          collectionId, 
+          error: error.message, 
+          stack: error.stack 
+        });
       });
     
     res.json({ id: collectionId, message: 'Collection added successfully' });
   } catch (error) {
-    console.error('Error adding collection:', error);
+    logger.error('Error adding collection', { 
+      error: error.message, 
+      stack: error.stack 
+    });
     res.status(500).json({ error: 'Failed to add collection' });
   }
 });
@@ -146,7 +173,11 @@ router.put('/:id', async (req, res) => {
     
     res.json({ message: 'Collection updated successfully' });
   } catch (error) {
-    console.error('Error updating collection:', error);
+    const logger = new Logger('CollectionsController');
+    logger.error('Error updating collection', { 
+      error: error.message, 
+      stack: error.stack 
+    });
     res.status(500).json({ error: 'Failed to update collection' });
   }
 });
@@ -162,7 +193,11 @@ router.delete('/:id', async (req, res) => {
     
     res.json({ message: 'Collection deleted successfully' });
   } catch (error) {
-    console.error('Error deleting collection:', error);
+    const logger = new Logger('CollectionsController');
+    logger.error('Error deleting collection', { 
+      error: error.message, 
+      stack: error.stack 
+    });
     res.status(500).json({ error: 'Failed to delete collection' });
   }
 });
@@ -179,11 +214,21 @@ router.post('/:id/scan', async (req, res) => {
     await db.deleteImages(req.params.id);
     
     // Start scanning
-    scanCollectionImages(collection.id, collection.path, collection.type).catch(console.error);
+    const logger = new Logger('CollectionsController');
+    scanCollectionImages(collection.id, collection.path, collection.type).catch(error => {
+      logger.error('Error in collection scan', { 
+        collectionId: collection.id, 
+        error: error.message, 
+        stack: error.stack 
+      });
+    });
     
     res.json({ message: 'Collection scan started' });
   } catch (error) {
-    console.error('Error scanning collection:', error);
+    logger.error('Error scanning collection', { 
+      error: error.message, 
+      stack: error.stack 
+    });
     res.status(500).json({ error: 'Failed to scan collection' });
   }
 });
@@ -199,7 +244,8 @@ router.get('/:id/images', async (req, res) => {
     const { page = 1, limit = 50, sort = 'filename', order = 'asc' } = req.query;
     const offset = (page - 1) * limit;
     
-    console.log(`[DEBUG] Getting images for collection: ${id}`);
+    const logger = new Logger('CollectionsController');
+    logger.debug('Getting images for collection', { collectionId: id, limit, offset });
     const images = await db.getImages(id, { limit: parseInt(limit), offset });
     const total = await db.getImageCount(id);
     
@@ -218,40 +264,51 @@ router.get('/:id/images', async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Error fetching collection images:', error);
+    const logger = new Logger('CollectionsController');
+    logger.error('Error fetching collection images', { 
+      error: error.message, 
+      stack: error.stack 
+    });
     res.status(500).json({ error: 'Failed to fetch images' });
   }
 });
 
 // Scan collection images function
 async function scanCollectionImages(collectionId, collectionPath, type) {
+  const logger = new Logger('CollectionScanner');
   try {
-    console.log(`[SCAN] Starting scan for collection ${collectionId}: ${collectionPath} (type: ${type})`);
+    logger.info('Starting scan for collection', { collectionId, collectionPath, type });
     
     // Check if path exists
-    const pathExists = await fs.pathExists(collectionPath);
+    const pathExists = await longPathHandler.pathExistsSafe(collectionPath);
     if (!pathExists) {
-      console.error(`[SCAN] Path does not exist: ${collectionPath}`);
+      logger.error('Path does not exist', { collectionPath });
       return;
     }
     
     let imageFiles = [];
     
     if (type === 'folder') {
-      console.log(`[SCAN] Scanning folder: ${collectionPath}`);
+      logger.debug('Scanning folder', { collectionPath });
       imageFiles = await scanFolder(collectionPath);
     } else if (['zip', '7z', 'rar', 'tar'].includes(type)) {
-      console.log(`[SCAN] Scanning compressed file: ${collectionPath} (type: ${type})`);
+      logger.debug('Scanning compressed file', { collectionPath, type });
       imageFiles = await scanCompressedFile(collectionPath, type);
     } else {
-      console.error(`[SCAN] Unsupported collection type: ${type}`);
+      logger.error('Unsupported collection type', { type });
       return;
     }
     
-    console.log(`[SCAN] Found ${imageFiles.length} images in collection ${collectionId}`);
+    logger.info('Found images in collection', { 
+      collectionId, 
+      imageCount: imageFiles.length 
+    });
     
     if (imageFiles.length === 0) {
-      console.warn(`[SCAN] No images found in collection ${collectionId} at path: ${collectionPath}`);
+      logger.warn('No images found in collection', { 
+        collectionId, 
+        collectionPath 
+      });
       // Update collection metadata to reflect 0 images
       await db.updateCollection(collectionId, {
         'settings.total_images': 0,
@@ -278,7 +335,11 @@ async function scanCollectionImages(collectionId, collectionPath, type) {
               thumbnail_path: thumbnailPath
             };
           } catch (error) {
-            console.error(`Error processing image ${imageInfo.path}:`, error);
+            logger.error('Error processing image', { 
+              imagePath: imageInfo.path, 
+              error: error.message, 
+              stack: error.stack 
+            });
             return null;
           }
         })
@@ -296,10 +357,16 @@ async function scanCollectionImages(collectionId, collectionPath, type) {
       'settings.last_scanned': new Date().toISOString()
     });
     
-    console.log(`[SCAN] ✅ Completed scan for collection ${collectionId}: ${imageFiles.length} images processed`);
+    logger.info('Completed scan for collection', { 
+      collectionId, 
+      imagesProcessed: imageFiles.length 
+    });
   } catch (error) {
-    console.error(`[SCAN] ❌ Error scanning collection ${collectionId}:`, error);
-    console.error(`[SCAN] Error stack:`, error.stack);
+    logger.error('Error scanning collection', { 
+      collectionId, 
+      error: error.message, 
+      stack: error.stack 
+    });
   }
 }
 
@@ -358,7 +425,13 @@ async function scanCompressedFile(filePath, type) {
         throw new Error(`Unsupported compressed file type: ${type}`);
     }
   } catch (error) {
-    console.error(`Error scanning ${type} file ${filePath}:`, error);
+    const logger = new Logger('FileScanner');
+    logger.error('Error scanning compressed file', { 
+      filePath, 
+      type, 
+      error: error.message, 
+      stack: error.stack 
+    });
     return [];
   }
 }
@@ -423,7 +496,12 @@ async function scan7z(filePath) {
       });
     });
   } catch (error) {
-    console.error('Error scanning 7z file:', error);
+    const logger = new Logger('FileScanner');
+    logger.error('Error scanning 7z file', { 
+      filePath: zipPath, 
+      error: error.message, 
+      stack: error.stack 
+    });
     return [];
   }
 }
@@ -431,14 +509,22 @@ async function scan7z(filePath) {
 async function scanRar(filePath) {
   // For RAR files, we'll use a simple approach
   // Note: RAR support requires additional tools or libraries
-  console.warn('RAR file scanning not fully implemented. Consider extracting to folder first.');
+  const logger = new Logger('FileScanner');
+  logger.warn('RAR file scanning not fully implemented', { 
+    filePath, 
+    message: 'Consider extracting to folder first' 
+  });
   return [];
 }
 
 async function scanTar(filePath) {
   // For TAR files, we'll use a simple approach
   // Note: TAR support requires additional tools or libraries
-  console.warn('TAR file scanning not fully implemented. Consider extracting to folder first.');
+  const logger = new Logger('FileScanner');
+  logger.warn('TAR file scanning not fully implemented', { 
+    filePath, 
+    message: 'Consider extracting to folder first' 
+  });
   return [];
 }
 
@@ -455,18 +541,30 @@ async function extractImageFromCompressed(imageInfo, collectionType, collectionP
       
       case 'rar':
       case 'cbr':
-        console.warn('RAR extraction not fully implemented');
+        const logger1 = new Logger('ImageExtractor');
+        logger1.warn('RAR extraction not fully implemented', { 
+          imagePath: imageInfo.path 
+        });
         return null;
       
       case 'tar':
-        console.warn('TAR extraction not fully implemented');
+        const logger2 = new Logger('ImageExtractor');
+        logger2.warn('TAR extraction not fully implemented', { 
+          imagePath: imageInfo.path 
+        });
         return null;
       
       default:
         throw new Error(`Unsupported compressed file type: ${collectionType}`);
     }
   } catch (error) {
-    console.error(`Error extracting image from ${collectionType}:`, error);
+    const logger = new Logger('ImageExtractor');
+    logger.error('Error extracting image from compressed file', { 
+      collectionType, 
+      imagePath: imageInfo.path, 
+      error: error.message, 
+      stack: error.stack 
+    });
     return null;
   }
 }
@@ -520,7 +618,12 @@ async function generateThumbnail(collectionId, imageInfo, collectionType, collec
     
     return thumbnailPath;
   } catch (error) {
-    console.error(`Error generating thumbnail for ${imageInfo.path}:`, error);
+    const logger = new Logger('ThumbnailGenerator');
+    logger.error('Error generating thumbnail', { 
+      imagePath: imageInfo.path, 
+      error: error.message, 
+      stack: error.stack 
+    });
     return null;
   }
 }
@@ -551,7 +654,11 @@ router.get('/:id/thumbnail', async (req, res) => {
     
     res.send(thumbnailBuffer);
   } catch (error) {
-    console.error('Error serving collection thumbnail:', error);
+    const logger = new Logger('CollectionsController');
+    logger.error('Error serving collection thumbnail', { 
+      error: error.message, 
+      stack: error.stack 
+    });
     res.status(500).json({ error: 'Failed to serve thumbnail' });
   }
 });
@@ -578,7 +685,11 @@ router.post('/:id/regenerate-thumbnail', async (req, res) => {
       res.status(400).json({ error: 'Failed to generate thumbnail' });
     }
   } catch (error) {
-    console.error('Error regenerating collection thumbnail:', error);
+    const logger = new Logger('CollectionsController');
+    logger.error('Error regenerating collection thumbnail', { 
+      error: error.message, 
+      stack: error.stack 
+    });
     res.status(500).json({ error: 'Failed to regenerate thumbnail' });
   }
 });
@@ -588,7 +699,8 @@ router.get('/random', async (req, res) => {
   try {
     // Get total count of collections
     const totalCollections = await db.getCollectionCount();
-    console.log('[RANDOM] Total collections:', totalCollections);
+    const logger = new Logger('RandomCollectionController');
+    logger.debug('Getting random collection', { totalCollections });
     
     if (totalCollections === 0) {
       return res.status(404).json({ error: 'No collections found' });
@@ -596,18 +708,21 @@ router.get('/random', async (req, res) => {
     
     // Pick random index
     const randomIndex = Math.floor(Math.random() * totalCollections);
-    console.log('[RANDOM] Random index:', randomIndex);
+    logger.debug('Generated random index', { randomIndex });
     
     // Get collection by index (skip randomIndex, limit 1)
     const collections = await db.getCollections({ skip: randomIndex, limit: 1 });
-    console.log('[RANDOM] Collections found:', collections.length);
+    logger.debug('Found collections', { count: collections.length });
     
     if (collections.length === 0) {
       return res.status(404).json({ error: 'Collection not found' });
     }
     
     const randomCollection = collections[0];
-    console.log('[RANDOM] Selected collection:', randomCollection.name);
+    logger.info('Selected random collection', { 
+      collectionId: randomCollection.id, 
+      name: randomCollection.name 
+    });
     
     // Get statistics and tags for the random collection
     const [stats, tags] = await Promise.all([
@@ -629,7 +744,11 @@ router.get('/random', async (req, res) => {
     
     res.json(collectionWithStats);
   } catch (error) {
-    console.error('Error getting random collection:', error);
+    const logger = new Logger('RandomCollectionController');
+    logger.error('Error getting random collection', { 
+      error: error.message, 
+      stack: error.stack 
+    });
     res.status(500).json({ error: 'Failed to get random collection' });
   }
 });

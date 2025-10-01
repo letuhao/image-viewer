@@ -4,6 +4,7 @@ const path = require('path');
 const compression = require('compression');
 const fs = require('fs-extra');
 const MongoDBDatabase = require('./mongodb');
+const Logger = require('./utils/logger');
 
 const collectionRoutes = require('./routes/collections');
 const imageRoutes = require('./routes/images');
@@ -30,9 +31,11 @@ const initDatabase = async () => {
     // Make database available to routes
     app.locals.db = db;
     
-    console.log('📊 MongoDB connected successfully');
+    const logger = new Logger('Server');
+    logger.info('MongoDB connected successfully');
   } catch (error) {
-    console.error('❌ MongoDB connection failed:', error);
+    const logger = new Logger('Server');
+    logger.error('MongoDB connection failed', { error: error.message, stack: error.stack });
     process.exit(1);
   }
 };
@@ -100,7 +103,8 @@ app.get('*', (req, res) => {
 
 // Error handling middleware
 app.use((err, req, res, next) => {
-  console.error('Error:', err);
+  const logger = new Logger('ErrorHandler');
+  logger.error('Unhandled error', { error: err.message, stack: err.stack });
   res.status(500).json({ error: 'Internal server error' });
 });
 
@@ -111,11 +115,16 @@ const startServer = async () => {
     await initDatabase();
     
     app.listen(PORT, () => {
-      console.log(`🚀 Server running on http://localhost:${PORT}`);
-      console.log(`📁 Cache directory: ${path.join(__dirname, 'cache')}`);
+      const logger = new Logger('Server');
+      logger.info('Server started successfully', { 
+        port: PORT, 
+        url: `http://localhost:${PORT}`,
+        cacheDirectory: path.join(__dirname, 'cache')
+      });
     });
   } catch (error) {
-    console.error('Failed to start server:', error);
+    const logger = new Logger('Server');
+    logger.error('Failed to start server', { error: error.message, stack: error.stack });
     process.exit(1);
   }
 };

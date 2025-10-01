@@ -9,6 +9,8 @@ import {
 
 interface JobProgressMonitorProps {
   jobId: string;
+  onJobCompleted?: () => void;
+  onJobFailed?: () => void;
 }
 
 interface JobProgress {
@@ -28,7 +30,7 @@ interface JobProgress {
   }>;
 }
 
-const JobProgressMonitor: React.FC<JobProgressMonitorProps> = ({ jobId }) => {
+const JobProgressMonitor: React.FC<JobProgressMonitorProps> = ({ jobId, onJobCompleted, onJobFailed }) => {
   const [progress, setProgress] = useState<JobProgress | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -43,6 +45,13 @@ const JobProgressMonitor: React.FC<JobProgressMonitorProps> = ({ jobId }) => {
         const data = await response.json();
         setProgress(data);
         setError(null);
+        
+        // Call callbacks when job status changes
+        if (data.status === 'completed' && onJobCompleted) {
+          onJobCompleted();
+        } else if (data.status === 'failed' && onJobFailed) {
+          onJobFailed();
+        }
       } catch (err: any) {
         setError(err.message);
         console.error('Error fetching job progress:', err);

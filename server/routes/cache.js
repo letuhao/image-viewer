@@ -3,6 +3,8 @@ const router = express.Router();
 const fs = require('fs-extra');
 const path = require('path');
 const db = require('../database');
+const longPathHandler = require('../utils/longPathHandler');
+const Logger = require('../utils/logger');
 
 // Clear cache
 router.delete('/', async (req, res) => {
@@ -10,13 +12,17 @@ router.delete('/', async (req, res) => {
     await db.clearExpiredCache();
     
     // Clear thumbnail cache
-    const thumbnailDir = path.join(__dirname, '../cache/thumbnails');
-    await fs.remove(thumbnailDir);
-    await fs.ensureDir(thumbnailDir);
+    const thumbnailDir = longPathHandler.joinSafe(__dirname, '../cache/thumbnails');
+    await longPathHandler.removeSafe(thumbnailDir);
+    await longPathHandler.ensureDirSafe(thumbnailDir);
     
     res.json({ message: 'Cache cleared successfully' });
   } catch (error) {
-    console.error('Error clearing cache:', error);
+    const logger = new Logger('CacheController');
+    logger.error('Error clearing cache', { 
+      error: error.message, 
+      stack: error.stack 
+    });
     res.status(500).json({ error: 'Failed to clear cache' });
   }
 });

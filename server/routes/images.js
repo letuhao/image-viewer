@@ -5,6 +5,7 @@ const path = require('path');
 const StreamZip = require('node-stream-zip');
 const sharp = require('sharp');
 const db = require('../database');
+const Logger = require('../utils/logger');
 
 // Helper function to check if image has cache
 async function checkImageCache(image, requestParams) {
@@ -18,14 +19,16 @@ async function checkImageCache(image, requestParams) {
   // Check if cache file exists
   const cacheExists = await fs.pathExists(image.cache_path);
   if (!cacheExists) {
-    console.log(`[CACHE-MISS] Cache file not found: ${image.cache_path}`);
+    const logger = new Logger('ImageCache');
+    logger.debug('Cache file not found', { cachePath: image.cache_path });
     return { hasCache: false };
   }
   
   // Check if cache matches request parameters
   const cacheMatches = cacheMatchesRequest(image, requestParams);
   if (!cacheMatches) {
-    console.log(`[CACHE-MISS] Cache parameters don't match request`);
+    const logger = new Logger('ImageCache');
+    logger.debug('Cache parameters don\'t match request', { requestParams });
     return { hasCache: false };
   }
   
@@ -74,7 +77,12 @@ async function serveCachedImage(res, cacheInfo) {
     
     return res.send(imageBuffer);
   } catch (error) {
-    console.error('[CACHE-ERROR] Failed to serve cached image:', error);
+    const logger = new Logger('ImageCache');
+    logger.error('Failed to serve cached image', { 
+      cachePath, 
+      error: error.message, 
+      stack: error.stack 
+    });
     throw error;
   }
 }
@@ -123,7 +131,13 @@ async function serveCachedImageWithResize(res, cacheInfo, requestParams) {
     
     return res.send(processedBuffer);
   } catch (error) {
-    console.error('[CACHE-RESIZE-ERROR] Failed to process cached image:', error);
+    const logger = new Logger('ImageCache');
+    logger.error('Failed to process cached image with resize', { 
+      cachePath: cacheInfo.cachePath, 
+      requestParams, 
+      error: error.message, 
+      stack: error.stack 
+    });
     throw error;
   }
 }
@@ -152,7 +166,12 @@ router.get('/:id', async (req, res) => {
     
     res.json(image);
   } catch (error) {
-    console.error('Error fetching image:', error);
+    const logger = new Logger('ImagesController');
+    logger.error('Error fetching image', { 
+      imageId: req.params.id, 
+      error: error.message, 
+      stack: error.stack 
+    });
     res.status(500).json({ error: 'Failed to fetch image' });
   }
 });
@@ -194,7 +213,12 @@ router.get('/:collectionId/batch-thumbnails', async (req, res) => {
         }
         return null;
       } catch (error) {
-        console.error(`Error loading thumbnail for image ${image.id}:`, error);
+        const logger = new Logger('BatchThumbnails');
+        logger.error('Error loading thumbnail for image', { 
+          imageId: image.id, 
+          error: error.message, 
+          stack: error.stack 
+        });
         return null;
       }
     });
@@ -207,7 +231,12 @@ router.get('/:collectionId/batch-thumbnails', async (req, res) => {
       found: thumbnails.length
     });
   } catch (error) {
-    console.error('Error fetching batch thumbnails:', error);
+    const logger = new Logger('BatchThumbnails');
+    logger.error('Error fetching batch thumbnails', { 
+      collectionId: req.params.collectionId, 
+      error: error.message, 
+      stack: error.stack 
+    });
     res.status(500).json({ error: 'Failed to fetch batch thumbnails' });
   }
 });
@@ -218,7 +247,14 @@ router.get('/:collectionId/:imageId/file', async (req, res) => {
     const { collectionId, imageId } = req.params;
     const { width, height, quality = 90 } = req.query;
     
-    console.log(`[IMAGE-REQUEST] ${collectionId}/${imageId} - width:${width}, height:${height}, quality:${quality}`);
+    const logger = new Logger('ImageController');
+    logger.debug('Image request received', { 
+      collectionId, 
+      imageId, 
+      width, 
+      height, 
+      quality 
+    });
     
     const collection = await db.getCollection(collectionId);
     if (!collection) {
@@ -236,7 +272,7 @@ router.get('/:collectionId/:imageId/file', async (req, res) => {
     const cacheInfo = await checkImageCache(image, { width, height, quality });
     
     if (cacheInfo.hasCache) {
-      console.log(`[CACHE-HIT] Serving cached image: ${cacheInfo.cachePath}`);
+      logger.debug('Serving cached image', { cachePath: cacheInfo.cachePath });
       
       // If resize is requested, serve cached image with resize
       if (width || height) {
@@ -247,7 +283,7 @@ router.get('/:collectionId/:imageId/file', async (req, res) => {
       return serveCachedImage(res, cacheInfo);
     }
     
-    console.log(`[CACHE-MISS] Processing original image: ${image.filename}`);
+    logger.debug('Processing original image', { filename: image.filename });
     
     // Fallback to original image processing
     let imageBuffer;
@@ -307,7 +343,13 @@ router.get('/:collectionId/:imageId/file', async (req, res) => {
     
     res.send(imageBuffer);
   } catch (error) {
-    console.error('Error serving image:', error);
+    const logger = new Logger('ImageController');
+    logger.error('Error serving image', { 
+      collectionId, 
+      imageId, 
+      error: error.message, 
+      stack: error.stack 
+    });
     res.status(500).json({ error: 'Failed to serve image' });
   }
 });
@@ -343,7 +385,13 @@ router.get('/:collectionId/:imageId/thumbnail', async (req, res) => {
     
     res.send(thumbnailBuffer);
   } catch (error) {
-    console.error('Error serving thumbnail:', error);
+    const logger = new Logger('ThumbnailController');
+    logger.error('Error serving thumbnail', { 
+      collectionId, 
+      imageId, 
+      error: error.message, 
+      stack: error.stack 
+    });
     res.status(500).json({ error: 'Failed to serve thumbnail' });
   }
 });
@@ -374,7 +422,14 @@ router.get('/:collectionId/:imageId/navigate', async (req, res) => {
     
     res.json(images[targetIndex]);
   } catch (error) {
-    console.error('Error navigating images:', error);
+    const logger = new Logger('ImageNavigation');
+    logger.error('Error navigating images', { 
+      collectionId, 
+      imageId, 
+      direction: req.query.direction, 
+      error: error.message, 
+      stack: error.stack 
+    });
     res.status(500).json({ error: 'Failed to navigate images' });
   }
 });
@@ -392,7 +447,12 @@ router.get('/:collectionId/random', async (req, res) => {
     const randomIndex = Math.floor(Math.random() * images.length);
     res.json(images[randomIndex]);
   } catch (error) {
-    console.error('Error getting random image:', error);
+    const logger = new Logger('RandomImageController');
+    logger.error('Error getting random image', { 
+      collectionId, 
+      error: error.message, 
+      stack: error.stack 
+    });
     res.status(500).json({ error: 'Failed to get random image' });
   }
 });
@@ -430,7 +490,13 @@ router.get('/:collectionId/search', async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Error searching images:', error);
+    const logger = new Logger('ImageSearch');
+    logger.error('Error searching images', { 
+      collectionId, 
+      query: req.query.q, 
+      error: error.message, 
+      stack: error.stack 
+    });
     res.status(500).json({ error: 'Failed to search images' });
   }
 });
@@ -448,18 +514,27 @@ async function extractImageFromCompressed(filePath, imagePath, collectionType) {
       
       case 'rar':
       case 'cbr':
-        console.warn('RAR extraction not fully implemented');
+        const logger1 = new Logger('ImageExtractor');
+        logger1.warn('RAR extraction not fully implemented', { filePath, imagePath });
         throw new Error('RAR extraction not supported yet');
       
       case 'tar':
-        console.warn('TAR extraction not fully implemented');
+        const logger2 = new Logger('ImageExtractor');
+        logger2.warn('TAR extraction not fully implemented', { filePath, imagePath });
         throw new Error('TAR extraction not supported yet');
       
       default:
         throw new Error(`Unsupported compressed file type: ${collectionType}`);
     }
   } catch (error) {
-    console.error(`Error extracting image from ${collectionType}:`, error);
+    const logger = new Logger('ImageExtractor');
+    logger.error('Error extracting image from compressed file', { 
+      collectionType, 
+      filePath, 
+      imagePath, 
+      error: error.message, 
+      stack: error.stack 
+    });
     throw error;
   }
 }
@@ -493,7 +568,8 @@ router.post('/:collectionId/:imageId/generate-cache', async (req, res) => {
     const { collectionId, imageId } = req.params;
     const { quality = 85, format = 'jpeg', overwrite = false } = req.body;
     
-    console.log(`[CACHE-TRIGGER] Generating cache for ${collectionId}/${imageId}`);
+    const logger = new Logger('CacheTrigger');
+    logger.info('Generating cache for image', { collectionId, imageId });
     
     const collection = await db.getCollection(collectionId);
     if (!collection) {
@@ -539,7 +615,13 @@ router.post('/:collectionId/:imageId/generate-cache', async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Error triggering cache generation:', error);
+    const logger = new Logger('CacheTrigger');
+    logger.error('Error triggering cache generation', { 
+      collectionId, 
+      imageId, 
+      error: error.message, 
+      stack: error.stack 
+    });
     res.status(500).json({ error: 'Failed to start cache generation' });
   }
 });

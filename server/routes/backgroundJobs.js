@@ -7,7 +7,7 @@ router.get('/', async (req, res) => {
   try {
     const jobs = BackgroundJobManager.getAllJobs();
     console.log(`[DEBUG] All jobs:`, jobs);
-    res.json(jobs);
+    res.json({ jobs });
     
   } catch (error) {
     console.error('Error getting all jobs:', error);
@@ -76,19 +76,5 @@ router.post('/:jobId/cancel', async (req, res) => {
     res.status(500).json({ error: 'Failed to cancel job' });
   }
 });
-
-// Get all jobs
-router.get('/', async (req, res) => {
-  try {
-    const jobs = BackgroundJobManager.getAllJobs();
-    console.log(`[DEBUG] All jobs:`, jobs);
-    res.json(jobs);
-    
-  } catch (error) {
-    console.error('Error getting all jobs:', error);
-    res.status(500).json({ error: 'Failed to get jobs' });
-  }
-});
-
 
 module.exports = router;

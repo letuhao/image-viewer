@@ -1,19 +1,22 @@
 const fs = require('fs');
 const path = require('path');
+const longPathHandler = require('../utils/longPathHandler');
+const Logger = require('../utils/logger');
 
 class TagService {
   constructor() {
     this.tagsData = null;
+    this.logger = new Logger('TagService');
     this.loadTagsData();
   }
 
   loadTagsData() {
     try {
-      const tagsPath = path.join(__dirname, '../data/tags.json');
+      const tagsPath = longPathHandler.joinSafe(__dirname, '../data/tags.json');
       const data = fs.readFileSync(tagsPath, 'utf8');
       this.tagsData = JSON.parse(data);
     } catch (error) {
-      console.error('Error loading tags data:', error);
+      this.logger.error('Error loading tags data', { error: error.message, stack: error.stack });
       this.tagsData = { categories: {}, auto_tag_patterns: {} };
     }
   }

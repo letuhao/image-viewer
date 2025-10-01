@@ -3,6 +3,7 @@ const fs = require('fs-extra');
 const path = require('path');
 const crypto = require('crypto');
 const Logger = require('../utils/logger');
+const longPathHandler = require('../utils/longPathHandler');
 
 class CacheGenerationJob {
   constructor(jobId, options) {
@@ -19,6 +20,16 @@ class CacheGenerationJob {
     };
     this.logger = new Logger('CacheGenerationJob');
     this.startTime = Date.now();
+    
+    // Process concurrency control to prevent file handle conflicts
+    this.maxConcurrentProcesses = parseInt(process.env.MAX_CONCURRENT_CACHE_PROCESSES || '1');
+    this.activeProcesses = 0;
+    this.processQueue = [];
+    
+    // Network drive error tracking
+    this.networkDriveErrors = 0;
+    this.maxNetworkDriveErrors = 5;
+    this.networkDriveChecked = false;
   }
 
   async start() {
@@ -60,22 +71,17 @@ class CacheGenerationJob {
         collectionCount: collections.length 
       });
 
-      for (const collection of collections) {
-        if (this.isCancelled) {
-          this.logger.warn('Job cancelled by user');
-          break;
-        }
-
-        this.progress.currentCollection = collection.name;
-        this.logger.flow('PROCESSING_COLLECTION', { 
-          collectionName: collection.name,
-          collectionId: collection.id 
-        });
-
-        const processOptions = { quality, format, overwrite, maxWidth: null, maxHeight: null };
-        this.logger.debug('Process options for collection', processOptions);
-        
-        await this.processCollection(collection, processOptions);
+      // Check if we should use parallel processing
+      const useParallelProcessing = process.env.ENABLE_PARALLEL_CACHE_PROCESSING === 'true';
+      
+      const processOptions = { quality, format, overwrite, maxWidth: null, maxHeight: null };
+      
+      if (useParallelProcessing) {
+        this.logger.info('Using parallel processing for cache generation');
+        await this.processCollectionsParallel(collections, processOptions);
+      } else {
+        this.logger.info('Using sequential processing for cache generation');
+        await this.processCollectionsSequential(collections, processOptions);
       }
 
       if (!this.isCancelled) {
@@ -108,6 +114,127 @@ class CacheGenerationJob {
     }
   }
 
+  async processCollectionsSequential(collections, options) {
+    const { quality, format, overwrite } = options;
+    
+    for (const collection of collections) {
+      if (this.isCancelled) {
+        this.logger.warn('Job cancelled by user');
+        break;
+      }
+
+      this.progress.currentCollection = collection.name;
+      this.logger.flow('PROCESSING_COLLECTION', { 
+        collectionName: collection.name,
+        collectionId: collection.id 
+      });
+
+      const processOptions = { quality, format, overwrite, maxWidth: null, maxHeight: null };
+      this.logger.debug('Process options for collection', processOptions);
+      
+      await this.processCollection(collection, processOptions);
+    }
+  }
+
+  async processCollectionsParallel(collections, options) {
+    const { quality, format, overwrite } = options;
+    
+    // Group collections by drive
+    const collectionsByDrive = await this.groupCollectionsByDrive(collections);
+    
+    this.logger.info('Collections grouped by drive', {
+      driveCount: Object.keys(collectionsByDrive).length,
+      drives: Object.keys(collectionsByDrive).map(drive => ({
+        drive,
+        collectionCount: collectionsByDrive[drive].length
+      }))
+    });
+
+    // Process each drive in parallel (1 process per drive)
+    const drivePromises = Object.entries(collectionsByDrive).map(async ([drive, driveCollections]) => {
+      this.logger.info(`Starting parallel processing for drive ${drive}`, {
+        drive,
+        collectionCount: driveCollections.length
+      });
+
+      const processOptions = { quality, format, overwrite, maxWidth: null, maxHeight: null };
+      
+      // Process collections sequentially within each drive (1 process per drive)
+      for (const collection of driveCollections) {
+        if (this.isCancelled) {
+          this.logger.warn(`Job cancelled, stopping drive ${drive}`);
+          break;
+        }
+
+        this.progress.currentCollection = collection.name;
+        this.logger.flow('PROCESSING_COLLECTION_PARALLEL', { 
+          collectionName: collection.name,
+          collectionId: collection.id,
+          drive
+        });
+
+        await this.processCollection(collection, processOptions);
+      }
+
+      this.logger.info(`Completed parallel processing for drive ${drive}`, {
+        drive,
+        collectionCount: driveCollections.length
+      });
+    });
+
+    // Wait for all drives to complete
+    await Promise.all(drivePromises);
+    
+    this.logger.info('All drives completed parallel processing');
+  }
+
+  async groupCollectionsByDrive(collections) {
+    const collectionsByDrive = {};
+    
+    for (const collection of collections) {
+      try {
+        // Get cache folder for this collection
+        const cacheFolder = await this.getCollectionCacheFolder(collection.id);
+        const drive = this.extractDriveFromPath(cacheFolder);
+        
+        if (!collectionsByDrive[drive]) {
+          collectionsByDrive[drive] = [];
+        }
+        
+        collectionsByDrive[drive].push(collection);
+        
+        this.logger.debug('Collection assigned to drive', {
+          collectionId: collection.id,
+          collectionName: collection.name,
+          drive,
+          cacheFolder
+        });
+      } catch (error) {
+        this.logger.error('Failed to get cache folder for collection', {
+          collectionId: collection.id,
+          collectionName: collection.name,
+          error: error.message
+        });
+        // Fallback to default drive
+        const defaultDrive = 'D';
+        if (!collectionsByDrive[defaultDrive]) {
+          collectionsByDrive[defaultDrive] = [];
+        }
+        collectionsByDrive[defaultDrive].push(collection);
+      }
+    }
+    
+    return collectionsByDrive;
+  }
+
+  extractDriveFromPath(cacheFolderPath) {
+    if (!cacheFolderPath) return 'D'; // Default drive
+    
+    // Extract drive letter from path (e.g., "I:\Image_Cache" -> "I")
+    const driveMatch = cacheFolderPath.match(/^([A-Z]):/i);
+    return driveMatch ? driveMatch[1].toUpperCase() : 'D';
+  }
+
   async processCollection(collection, options) {
     const collectionStartTime = Date.now();
     const { quality, maxWidth, maxHeight, format, overwrite } = options;
@@ -124,38 +251,120 @@ class CacheGenerationJob {
       const collectionCacheDir = await this.getCollectionCacheFolder(collection.id);
       this.logger.info('Cache folder obtained', { collectionCacheDir });
       
+      // Check network drive connectivity once per collection (not per image)
+      if (!this.networkDriveChecked && collectionCacheDir && collectionCacheDir.includes(':') && collectionCacheDir[1] === ':') {
+        try {
+          await this.ensureNetworkDriveReady(collectionCacheDir);
+          this.networkDriveChecked = true;
+        } catch (error) {
+          this.logger.warn('Network drive check failed, continuing with processing', {
+            cacheDir: collectionCacheDir,
+            error: error.message
+          });
+        }
+      }
+      
       // Ensure cache directory exists
       this.logger.debug('Ensuring cache directory exists', { collectionCacheDir });
       await fs.ensureDir(collectionCacheDir);
       this.logger.debug('Cache directory ensured');
 
-      // Check if collection needs to be scanned first
-      this.logger.debug('Checking collection scan status', { collectionId: collection.id });
-      const needsScan = await this.checkIfCollectionNeedsScan(collection);
-      
-      if (needsScan) {
-        this.logger.info('Collection needs scanning, starting scan process', { 
+      // Handle scan logic based on overwrite setting
+      if (overwrite) {
+        // Overwrite = true: Rebuild from scratch, force rescan
+        this.logger.info('Overwrite enabled, forcing rescan to rebuild from scratch', { 
           collectionId: collection.id,
           collectionName: collection.name 
         });
         
-        // Update progress to show scanning
-        this.progress.currentImage = 'Scanning collection...';
-        
-        // Scan the collection
+        this.progress.currentImage = 'Rebuilding collection...';
         await this.scanCollection(collection);
-        this.logger.info('Collection scan completed', { collectionId: collection.id });
+        this.logger.info('Collection rebuild completed', { collectionId: collection.id });
+      } else {
+        // Overwrite = false: Check if collection needs scanning
+        this.logger.debug('Checking collection scan status', { collectionId: collection.id });
+        const needsScan = await this.checkIfCollectionNeedsScan(collection);
+        
+        if (needsScan) {
+          this.logger.info('Collection needs scanning, starting scan process', { 
+            collectionId: collection.id,
+            collectionName: collection.name 
+          });
+          
+          this.progress.currentImage = 'Scanning collection...';
+          await this.scanCollection(collection);
+          this.logger.info('Collection scan completed', { collectionId: collection.id });
+        }
       }
 
       // Get all images for this collection
       this.logger.debug('Fetching collection images', { collectionId: collection.id });
-      const images = await this.getCollectionImages(collection.id);
+      let images = await this.getCollectionImages(collection.id);
       this.logger.info('Images fetched', { 
         collectionId: collection.id,
-        imageCount: images.length 
+        imageCount: images.length,
+        images: images.length > 0 ? images.slice(0, 3).map(img => ({ id: img.id, filename: img.filename })) : 'No images found'
       });
       
-      for (const image of images) {
+      // If no images found but collection has total_images > 0, force rescan
+      if (images.length === 0 && collection.settings?.total_images > 0) {
+        this.logger.warn('Collection has metadata but no images in database, forcing rescan', {
+          collectionId: collection.id,
+          totalImagesInSettings: collection.settings.total_images,
+          lastScanned: collection.settings.last_scanned
+        });
+        
+        this.progress.currentImage = 'Rescanning collection...';
+        await this.scanCollection(collection);
+        
+        // Fetch images again after rescan
+        images = await this.getCollectionImages(collection.id);
+        this.logger.info('Images fetched after rescan', { 
+          collectionId: collection.id,
+          imageCount: images.length,
+          images: images.length > 0 ? images.slice(0, 3).map(img => ({ id: img.id, filename: img.filename })) : 'Still no images found'
+        });
+      }
+      
+      // If still no images, skip processing
+      if (images.length === 0) {
+        this.logger.warn('No images found after rescan, skipping collection', {
+          collectionId: collection.id,
+          collectionName: collection.name
+        });
+        return;
+      }
+      
+      // Filter images based on overwrite setting
+      let imagesToProcess = images;
+      if (!overwrite) {
+        // Overwrite = false: Filter out already cached images
+        imagesToProcess = images.filter(image => {
+          const isCached = image.cache_path && image.cache_filename && image.cached_at;
+          if (isCached) {
+            this.logger.debug('Skipping already cached image', { 
+              filename: image.filename,
+              cachedAt: image.cached_at
+            });
+          }
+          return !isCached;
+        });
+        
+        this.logger.info('Filtered images for processing', {
+          totalImages: images.length,
+          cachedImages: images.length - imagesToProcess.length,
+          imagesToProcess: imagesToProcess.length
+        });
+      } else {
+        this.logger.info('Processing all images (overwrite enabled)', {
+          totalImages: images.length
+        });
+        
+        // Overwrite = true: Clean up old cache files first
+        await this.cleanupOldCacheFiles(collection, collectionCacheDir, options);
+      }
+
+      for (const image of imagesToProcess) {
         if (this.isCancelled) {
           this.logger.warn('Collection processing cancelled');
           break;
@@ -168,10 +377,10 @@ class CacheGenerationJob {
         });
         
         try {
-          await this.processImage(image, collection, collectionCacheDir, options);
+          await this.processWithConcurrencyLimit(image, collection, collectionCacheDir, options);
           this.logger.debug('Image processed successfully', { filename: image.filename });
         } catch (error) {
-          this.logger.error('Error processing image', {
+          this.logger.error('Error processing image after retries', {
             filename: image.filename,
             error: error.message,
             stack: error.stack
@@ -199,7 +408,9 @@ class CacheGenerationJob {
 
       this.logger.perf('Collection processing', collectionStartTime, {
         collectionId: collection.id,
-        imagesProcessed: images.length
+        totalImages: images.length,
+        imagesProcessed: imagesToProcess.length,
+        cachedImagesSkipped: images.length - imagesToProcess.length
       });
 
     } catch (error) {
@@ -210,6 +421,284 @@ class CacheGenerationJob {
         stack: error.stack
       });
       throw error;
+    }
+  }
+
+  async cleanupOldCacheFiles(collection, cacheDir, options) {
+    const { format, quality } = options;
+    
+    try {
+      this.logger.info('Starting cleanup of old cache files', {
+        collectionId: collection.id,
+        cacheDir
+      });
+      
+      // Get all files in cache directory
+      const cacheFiles = await longPathHandler.readDirSafe(cacheDir);
+      
+      // Filter cache files (exclude thumbnails and collection_thumbnail)
+      // Remove ALL cache files regardless of quality/format to avoid duplicates
+      const imageCacheFiles = cacheFiles.filter(file => 
+        (file.includes('_q') && file.includes('_jpeg')) ||
+        (file.includes('_q') && file.includes('_webp')) ||
+        (file.includes('_q') && file.includes('_png'))
+      ).filter(file => 
+        !file.includes('_thumb') && 
+        !file.includes('collection_thumbnail')
+      );
+      
+      this.logger.debug('Found old cache files to clean up', {
+        totalFiles: cacheFiles.length,
+        cacheFiles: imageCacheFiles.length,
+        files: imageCacheFiles.slice(0, 5) // Show first 5 files
+      });
+      
+      // Remove old cache files
+      let removedCount = 0;
+      for (const file of imageCacheFiles) {
+        try {
+          const filePath = longPathHandler.joinSafe(cacheDir, file);
+          await longPathHandler.removeSafe(filePath);
+          removedCount++;
+          
+          if (removedCount % 50 === 0) {
+            this.logger.debug(`Cleaned up ${removedCount} old cache files`);
+          }
+        } catch (error) {
+          this.logger.warn('Failed to remove old cache file', {
+            file,
+            error: error.message
+          });
+        }
+      }
+      
+      this.logger.info('Old cache files cleanup completed', {
+        removedCount,
+        totalFiles: imageCacheFiles.length
+      });
+      
+      // Update database - clear cache records for all images in collection
+      const images = await this.getCollectionImages(collection.id);
+      for (const image of images) {
+        try {
+          await this.updateImageCacheRecord(image.id, {
+            cache_path: null,
+            cache_filename: null,
+            cached_at: null,
+            cache_size: null,
+            cache_width: null,
+            cache_height: null
+          });
+        } catch (error) {
+          this.logger.warn('Failed to clear cache record in database', {
+            imageId: image.id,
+            filename: image.filename,
+            error: error.message
+          });
+        }
+      }
+      
+      this.logger.info('Database cache records cleared', {
+        collectionId: collection.id,
+        imagesUpdated: images.length
+      });
+      
+    } catch (error) {
+      this.logger.error('Error during cache cleanup', {
+        collectionId: collection.id,
+        cacheDir,
+        error: error.message,
+        stack: error.stack
+      });
+      // Don't throw - continue with processing even if cleanup fails
+    }
+  }
+
+  async processWithConcurrencyLimit(image, collection, cachePath, options) {
+    return new Promise((resolve, reject) => {
+      const processTask = async () => {
+        try {
+          await this.processImageWithRetry(image, collection, cachePath, options);
+          resolve();
+        } catch (error) {
+          reject(error);
+        } finally {
+          this.activeProcesses--;
+          this.processNextInQueue();
+        }
+      };
+
+      if (this.activeProcesses < this.maxConcurrentProcesses) {
+        this.activeProcesses++;
+        processTask();
+      } else {
+        this.processQueue.push(processTask);
+      }
+    });
+  }
+
+  processNextInQueue() {
+    if (this.processQueue.length > 0 && this.activeProcesses < this.maxConcurrentProcesses) {
+      const nextTask = this.processQueue.shift();
+      this.activeProcesses++;
+      nextTask();
+    }
+  }
+
+  async processImageWithRetry(image, collection, cachePath, options, maxRetries = 5) {
+    let lastError;
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        this.logger.debug(`Processing image attempt ${attempt}/${maxRetries}`, { 
+          filename: image.filename,
+          cachePath
+        });
+        
+        await this.processImage(image, collection, cachePath, options);
+        return; // Success, exit retry loop
+        
+      } catch (error) {
+        lastError = error;
+        
+        // Check if it's a Windows network drive error
+        const isNetworkDriveError = error.message.includes('The device does not recognize the command') ||
+                                   error.message.includes('unable to open for write') ||
+                                   error.message.includes('network') ||
+                                   error.message.includes('drive') ||
+                                   error.message.includes('device') ||
+                                   error.message.includes('not recognize');
+        
+        if (isNetworkDriveError && attempt < maxRetries) {
+          // Track network drive errors
+          this.networkDriveErrors++;
+          
+          // Reduced delay: 1s, 2s, 4s for network drive issues (faster retry)
+          const delay = Math.min(1000 * Math.pow(2, attempt - 1), 4000); // Max 4s instead of 16s
+          
+          this.logger.warn(`Windows network drive error on attempt ${attempt}, retrying in ${delay}ms`, {
+            filename: image.filename,
+            cachePath,
+            error: error.message,
+            attempt,
+            maxRetries,
+            errorType: 'NETWORK_DRIVE_ERROR',
+            totalNetworkErrors: this.networkDriveErrors
+          });
+          
+          // If too many network drive errors, reduce concurrency
+          if (this.networkDriveErrors >= this.maxNetworkDriveErrors && this.maxConcurrentProcesses > 1) {
+            this.maxConcurrentProcesses = 1;
+            this.logger.warn('Reducing concurrency to 1 due to network drive issues', {
+              totalNetworkErrors: this.networkDriveErrors,
+              maxConcurrentProcesses: this.maxConcurrentProcesses
+            });
+          }
+          
+          // For network drive errors, also try to verify drive connectivity
+          if (attempt === 2) {
+            await this.checkDriveConnectivity(cachePath);
+          }
+          
+          await new Promise(resolve => setTimeout(resolve, delay));
+          continue;
+        }
+        
+        // If not a network error or max retries reached, throw immediately
+        throw error;
+      }
+    }
+    
+    // If we get here, all retries failed
+    this.logger.error(`All retry attempts failed for image`, {
+      filename: image.filename,
+      cachePath,
+      finalError: lastError.message,
+      maxRetries
+    });
+    throw lastError;
+  }
+
+  async checkDriveConnectivity(cachePath) {
+    try {
+      const path = require('path');
+      const fs = require('fs-extra');
+      
+      // Extract drive letter from cache path
+      const driveLetter = path.parse(cachePath).root;
+      const testPath = path.join(driveLetter, 'test_connectivity.tmp');
+      
+      this.logger.debug('Checking drive connectivity', { driveLetter, testPath });
+      
+      // Try to write and immediately delete a test file
+      await fs.writeFile(testPath, 'connectivity test');
+      await fs.remove(testPath);
+      
+      this.logger.debug('Drive connectivity check passed', { driveLetter });
+      return true;
+      
+    } catch (error) {
+      this.logger.warn('Drive connectivity check failed', {
+        cachePath,
+        error: error.message,
+        errorType: 'DRIVE_CONNECTIVITY_FAILED'
+      });
+      return false;
+    }
+  }
+
+  async ensureNetworkDriveReady(cachePath, maxAttempts = 3) {
+    const path = require('path');
+    const fs = require('fs-extra');
+    
+    // Extract drive letter from cache path
+    const driveLetter = path.parse(cachePath).root;
+    
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        // Check if drive is accessible
+        await fs.access(driveLetter, fs.constants.F_OK);
+        
+        // Try to create the cache directory if it doesn't exist
+        await fs.ensureDir(cachePath);
+        
+        // Test write capability with a small file
+        const testFile = path.join(cachePath, '.cache_test.tmp');
+        await fs.writeFile(testFile, 'test');
+        await fs.remove(testFile);
+        
+        this.logger.debug('Network drive ready', { driveLetter, cachePath });
+        return true;
+        
+      } catch (error) {
+        const isNetworkError = error.message.includes('The device does not recognize the command') ||
+                              error.message.includes('network') ||
+                              error.message.includes('drive') ||
+                              error.message.includes('device');
+        
+        if (isNetworkError && attempt < maxAttempts) {
+          const delay = 1000 * attempt; // 1s, 2s, 3s
+          this.logger.warn(`Network drive not ready, retrying in ${delay}ms`, {
+            driveLetter,
+            cachePath,
+            attempt,
+            maxAttempts,
+            error: error.message
+          });
+          
+          await new Promise(resolve => setTimeout(resolve, delay));
+          continue;
+        }
+        
+        this.logger.error('Network drive not accessible', {
+          driveLetter,
+          cachePath,
+          error: error.message,
+          attempt,
+          maxAttempts
+        });
+        throw error;
+      }
     }
   }
 
@@ -224,11 +713,21 @@ class CacheGenerationJob {
         throw new Error('Could not retrieve image data');
       }
 
-      // Process image with Sharp
-      let sharpInstance = sharp(imageData);
+      // Process image with Sharp - with memory and concurrency limits
+      let sharpInstance = sharp(imageData, {
+        // Limit memory usage to prevent buffer overflow
+        limitInputPixels: 268402689, // ~268MP (default is 268402689)
+        sequentialRead: true, // Read sequentially to reduce memory usage
+        density: 72 // Set default density to avoid issues
+      });
 
-      // Get image metadata
-      const metadata = await sharpInstance.metadata();
+      // Get image metadata with timeout
+      const metadata = await Promise.race([
+        sharpInstance.metadata(),
+        new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Metadata timeout')), 10000)
+        )
+      ]);
       
       // Check if we should skip processing (only for 'original' format)
       if (this.shouldSkipProcessing(metadata, quality, format)) {
@@ -247,9 +746,27 @@ class CacheGenerationJob {
       // Generate cache filename with metadata
       const cacheFilename = this.generateCacheFilename(image, options, metadata);
       const cacheFilePath = path.join(cachePath, cacheFilename);
+      
+      // Validate and handle long paths for Windows compatibility
+      if (longPathHandler.isPathTooLong(cacheFilePath)) {
+        this.logger.warn('Cache file path too long, using safe path', {
+          originalPath: cacheFilePath,
+          originalLength: cacheFilePath.length,
+          safePath: longPathHandler.getSafePath(cacheFilePath)
+        });
+        cacheFilePath = longPathHandler.getSafePath(cacheFilePath);
+      }
+      
+      // Check available disk space (basic check)
+      try {
+        await longPathHandler.statSafe(cachePath);
+        this.logger.debug('Cache directory accessible', { cachePath });
+      } catch (error) {
+        throw new Error(`Cache directory not accessible: ${error.message}`);
+      }
 
       // Check if cache already exists
-      if (!overwrite && await fs.pathExists(cacheFilePath)) {
+      if (!overwrite && await longPathHandler.pathExistsSafe(cacheFilePath)) {
         this.logger.info('Cache exists, skipping', { imageId: image.id, cacheFilePath });
         return;
       }
@@ -261,27 +778,62 @@ class CacheGenerationJob {
           case 'webp':
             sharpInstance = sharpInstance.webp({ 
               quality,
-              effort: 6 // Higher effort for better compression
+              effort: 4, // Balanced effort (1-6, 6 is slowest but best compression)
+              smartSubsample: true, // Better quality for small files
+              reductionEffort: 6 // Better compression
             });
             break;
           case 'jpeg':
           default:
             sharpInstance = sharpInstance.jpeg({ 
               quality,
-              progressive: true // Progressive JPEG for better web loading
+              progressive: true, // Progressive JPEG for better web loading
+              mozjpeg: true, // Use mozjpeg encoder if available (better compression)
+              optimiseScans: true, // Optimize scan order
+              trellisQuantisation: true, // Better quality
+              overshootDeringing: true, // Reduce ringing artifacts
+              optimizeScans: true // Optimize scan order for progressive
             });
             break;
         }
       }
 
-      // Write processed image to cache
-      await sharpInstance.toFile(cacheFilePath);
+      // Write processed image to cache with error handling
+      try {
+        await sharpInstance.toFile(cacheFilePath);
+        this.logger.debug('Cache file written successfully', { 
+          filename: image.filename,
+          cacheFilePath 
+        });
+      } catch (writeError) {
+        this.logger.error('Failed to write cache file', {
+          filename: image.filename,
+          cacheFilePath,
+          error: writeError.message
+        });
+        
+        // Check if file was created but is empty (0 bytes)
+        try {
+          const stats = await longPathHandler.statSafe(cacheFilePath);
+          if (stats.size === 0) {
+            this.logger.warn('Cache file created but is empty, removing it', { 
+              filename: image.filename,
+              cacheFilePath 
+            });
+            await longPathHandler.removeSafe(cacheFilePath);
+          }
+        } catch (statError) {
+          // File doesn't exist or can't be accessed, ignore
+        }
+        
+        throw writeError;
+      }
       
       // Get final image dimensions after processing
       const finalMetadata = await sharp(cacheFilePath).metadata();
       
       // Get cache file size
-      const cacheFileSize = (await fs.stat(cacheFilePath)).size;
+      const cacheFileSize = (await longPathHandler.statSafe(cacheFilePath)).size;
 
       // Update image cache record in database
       await this.updateImageCacheRecord(image.id, {
@@ -298,10 +850,18 @@ class CacheGenerationJob {
       // Update cache folder usage statistics
       await this.updateCacheFolderUsage(cachePath, cacheFileSize, 1);
 
-      console.log(`[CACHE-GEN] ✅ Cached ${image.filename} -> ${cacheFilename} (${finalMetadata.width}x${finalMetadata.height})`);
+      this.logger.info('Image cached successfully', {
+        originalFilename: image.filename,
+        cacheFilename: cacheFilename,
+        dimensions: `${finalMetadata.width}x${finalMetadata.height}`
+      });
 
     } catch (error) {
-      console.error(`[CACHE-GEN] Error processing image ${image.filename}:`, error);
+      this.logger.error('Error processing image', {
+        filename: image.filename,
+        error: error.message,
+        stack: error.stack
+      });
       throw error;
     }
   }

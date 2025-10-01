@@ -2,6 +2,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const longPathHandler = require('./server/utils/longPathHandler');
 const { execSync } = require('child_process');
 
 console.log('🚀 Setting up Image Viewer...\n');
@@ -48,7 +49,7 @@ const directories = [
 ];
 
 directories.forEach(dir => {
-  const dirPath = path.join(__dirname, dir);
+  const dirPath = longPathHandler.joinSafe(__dirname, dir);
   if (!fs.existsSync(dirPath)) {
     fs.mkdirSync(dirPath, { recursive: true });
     console.log(`✅ Created directory: ${dir}`);

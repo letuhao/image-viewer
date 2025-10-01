@@ -1,4 +1,5 @@
 const { MongoClient, ObjectId } = require('mongodb');
+const Logger = require('./utils/logger');
 
 class MongoDBDatabase {
   constructor() {
@@ -8,6 +9,7 @@ class MongoDBDatabase {
     this.images = null;
     this.cache = null;
     this.collectionStats = null;
+    this.logger = new Logger('MongoDB');
     this.collectionTags = null;
     this.collectionSessions = null;
   }
@@ -18,7 +20,7 @@ class MongoDBDatabase {
       const mongoUrl = process.env.MONGODB_URL || 'mongodb://localhost:27017';
       const dbName = process.env.MONGODB_DB_NAME || 'image_viewer';
       
-      console.log(`[MONGODB] Connecting to ${mongoUrl}/${dbName}`);
+      this.logger.info('Connecting to MongoDB', { url: mongoUrl, database: dbName });
       
       this.client = new MongoClient(mongoUrl);
       await this.client.connect();
@@ -36,9 +38,9 @@ class MongoDBDatabase {
       this.collectionCacheBindings = this.db.collection('collection_cache_bindings');
       
       await this.createIndexes();
-      console.log('[MONGODB] Connected successfully');
+      this.logger.info('Connected successfully to MongoDB');
     } catch (error) {
-      console.error('[MONGODB] Connection failed:', error);
+      this.logger.error('Connection failed', { error: error.message, stack: error.stack });
       throw error;
     }
   }
@@ -86,9 +88,9 @@ class MongoDBDatabase {
       await this.collectionCacheBindings.createIndex({ cache_folder_id: 1 });
       await this.collectionCacheBindings.createIndex({ created_at: -1 });
 
-      console.log('[MONGODB] Indexes created successfully');
+      this.logger.info('Indexes created successfully');
     } catch (error) {
-      console.error('[MONGODB] Error creating indexes:', error);
+      this.logger.error('Error creating indexes', { error: error.message, stack: error.stack });
       throw error;
     }
   }
@@ -121,9 +123,13 @@ class MongoDBDatabase {
       // Assign cache folder to collection
       try {
         await this.getCacheFolderForCollection(collectionId);
-        console.log(`[CACHE] Assigned cache folder to collection ${collectionId}`);
+        this.logger.debug('Assigned cache folder to collection', { collectionId });
       } catch (error) {
-        console.error(`[CACHE] Failed to assign cache folder to collection ${collectionId}:`, error);
+        this.logger.error('Failed to assign cache folder to collection', { 
+          collectionId, 
+          error: error.message, 
+          stack: error.stack 
+        });
       }
 
       return collectionId;
@@ -740,7 +746,7 @@ class MongoDBDatabase {
         .toArray();
       return folders || [];
     } catch (error) {
-      console.error('Error getting cache folders:', error);
+      this.logger.error('Error getting cache folders', { error: error.message, stack: error.stack });
       return [];
     }
   }
@@ -762,7 +768,12 @@ class MongoDBDatabase {
       
       return result.modifiedCount > 0;
     } catch (error) {
-      console.error('Error updating cache folder:', error);
+      this.logger.error('Error updating cache folder', { 
+        folderId: id, 
+        updates, 
+        error: error.message, 
+        stack: error.stack 
+      });
       throw error;
     }
   }
@@ -783,7 +794,11 @@ class MongoDBDatabase {
       const result = await this.cacheFolders.deleteOne({ _id: objectId });
       return result.deletedCount > 0;
     } catch (error) {
-      console.error('Error deleting cache folder:', error);
+      this.logger.error('Error deleting cache folder', { 
+        folderId: id, 
+        error: error.message, 
+        stack: error.stack 
+      });
       throw error;
     }
   }
@@ -819,7 +834,7 @@ class MongoDBDatabase {
         folders: folderDetails || []
       };
     } catch (error) {
-      console.error('Error getting cache folder stats:', error);
+      this.logger.error('Error getting cache folder stats', { error: error.message, stack: error.stack });
       return {
         summary: { total_folders: 0, total_size: 0, total_files: 0, avg_priority: 0 },
         folders: []
@@ -915,7 +930,11 @@ class MongoDBDatabase {
         }
       }
       
-      console.log(`[CACHE] Selected folder: ${selectedFolder.name}, ratio: ${bestRatio.toFixed(3)}, size: ${selectedFolder.current_size}`);
+      this.logger.debug('Selected cache folder', { 
+        folderName: selectedFolder.name, 
+        ratio: bestRatio.toFixed(3), 
+        size: selectedFolder.current_size 
+      });
       
       // Bind collection to selected cache folder
       await this.bindCollectionToCacheFolder(collectionObjectId, selectedFolder._id);
@@ -953,7 +972,7 @@ class MongoDBDatabase {
   async close() {
     if (this.client) {
       await this.client.close();
-      console.log('[MONGODB] Connection closed');
+      this.logger.info('Connection closed');
     }
   }
 
@@ -1006,7 +1025,11 @@ class MongoDBDatabase {
         lastGenerated: collection.cache_generated_at || null
       };
     } catch (error) {
-      console.error('Error getting collection cache status:', error);
+      this.logger.error('Error getting collection cache status', { 
+        collectionId, 
+        error: error.message, 
+        stack: error.stack 
+      });
       return { hasCache: false, error: error.message };
     }
   }
@@ -1043,7 +1066,11 @@ class MongoDBDatabase {
 
       return true;
     } catch (error) {
-      console.error('Error clearing collection cache:', error);
+      this.logger.error('Error clearing collection cache', { 
+        collectionId, 
+        error: error.message, 
+        stack: error.stack 
+      });
       throw error;
     }
   }
@@ -1076,7 +1103,7 @@ class MongoDBDatabase {
         cachePercentage: totalImages > 0 ? Math.round((cachedImages / totalImages) * 100) : 0
       };
     } catch (error) {
-      console.error('Error getting cache statistics:', error);
+      this.logger.error('Error getting cache statistics', { error: error.message, stack: error.stack });
       throw error;
     }
   }
@@ -1090,7 +1117,12 @@ class MongoDBDatabase {
       );
       return result;
     } catch (error) {
-      console.error('Error updating image:', error);
+      this.logger.error('Error updating image', { 
+        imageId, 
+        updateData, 
+        error: error.message, 
+        stack: error.stack 
+      });
       throw error;
     }
   }
@@ -1108,7 +1140,11 @@ class MongoDBDatabase {
       
       return null;
     } catch (error) {
-      console.error('Error getting cache folder by path:', error);
+      this.logger.error('Error getting cache folder by path', { 
+        cachePath, 
+        error: error.message, 
+        stack: error.stack 
+      });
       return null;
     }
   }

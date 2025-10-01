@@ -1,15 +1,20 @@
 const CacheGenerationJob = require('./CacheGenerationJob');
+const Logger = require('../utils/logger');
 
 class BackgroundJobManager {
   constructor() {
     this.jobs = new Map();
+    this.logger = new Logger('BackgroundJobManager');
   }
 
   createJob(type, options) {
     const jobId = this.generateJobId();
     
-    console.log(`[JOB-MANAGER] Creating job ${jobId} of type ${type}`);
-    console.log(`[JOB-MANAGER] Options:`, JSON.stringify(options, null, 2));
+    this.logger.info('Creating job', {
+      jobId,
+      type,
+      options: JSON.stringify(options, null, 2)
+    });
     
     let job;
     switch (type) {
@@ -21,14 +26,24 @@ class BackgroundJobManager {
     }
 
     this.jobs.set(jobId, job);
-    console.log(`[JOB-MANAGER] Job ${jobId} stored. Total jobs: ${this.jobs.size}`);
+    this.logger.debug('Job stored', {
+      jobId,
+      totalJobs: this.jobs.size
+    });
     
     // Start job asynchronously
     job.start().catch(error => {
-      console.error(`[JOB-MANAGER] Job ${jobId} failed:`, error);
+      this.logger.error('Job failed', {
+        jobId,
+        error: error.message,
+        stack: error.stack
+      });
     });
 
-    console.log(`[JOB-MANAGER] ✅ Created and started job ${jobId} of type ${type}`);
+    this.logger.flow('JOB_CREATED_AND_STARTED', {
+      jobId,
+      type
+    });
     return jobId;
   }
 
@@ -40,7 +55,7 @@ class BackgroundJobManager {
     const job = this.jobs.get(jobId);
     if (job) {
       job.cancel();
-      console.log(`[JOB-MANAGER] Cancelled job ${jobId}`);
+      this.logger.info('Job cancelled', { jobId });
       return true;
     }
     return false;
@@ -68,10 +83,14 @@ class BackgroundJobManager {
   }
 
   cleanupCompletedJobs() {
-    console.log(`[JOB-MANAGER] Cleanup check - Total jobs: ${this.jobs.size}`);
+    this.logger.debug('Cleanup check', { totalJobs: this.jobs.size });
     
     for (const [jobId, job] of this.jobs) {
-      console.log(`[JOB-MANAGER] Job ${jobId}: running=${job.isRunning}, status=${job.progress.status}`);
+      this.logger.debug('Job status check', {
+        jobId,
+        running: job.isRunning,
+        status: job.progress.status
+      });
       
       if (!job.isRunning && 
           (job.progress.status === 'completed' || 
@@ -84,14 +103,20 @@ class BackgroundJobManager {
         
         if (completedTime < twoHoursAgo) {
           this.jobs.delete(jobId);
-          console.log(`[JOB-MANAGER] Cleaned up completed job ${jobId}`);
+          this.logger.info('Cleaned up completed job', {
+            jobId,
+            completedAt: completedTime
+          });
         } else {
-          console.log(`[JOB-MANAGER] Keeping completed job ${jobId} (completed at ${completedTime})`);
+          this.logger.debug('Keeping completed job', {
+            jobId,
+            completedAt: completedTime
+          });
         }
       }
     }
     
-    console.log(`[JOB-MANAGER] After cleanup - Total jobs: ${this.jobs.size}`);
+    this.logger.debug('After cleanup', { totalJobs: this.jobs.size });
   }
 
   generateJobId() {

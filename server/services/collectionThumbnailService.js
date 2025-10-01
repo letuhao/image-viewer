@@ -2,6 +2,8 @@ const fs = require('fs-extra');
 const path = require('path');
 const sharp = require('sharp');
 const db = require('../database');
+const longPathHandler = require('../utils/longPathHandler');
+const Logger = require('../utils/logger');
 
 class CollectionThumbnailService {
   constructor() {
@@ -12,6 +14,7 @@ class CollectionThumbnailService {
       quality: 85,
       format: 'jpeg'
     };
+    this.logger = new Logger('CollectionThumbnailService');
   }
 
   /**
@@ -24,7 +27,7 @@ class CollectionThumbnailService {
    */
   async generateCollectionThumbnail(collectionId, collectionPath, collectionType, options = {}) {
     try {
-      console.log(`[COLLECTION_THUMBNAIL] Generating thumbnail for collection ${collectionId}`);
+      this.logger.info('Generating thumbnail for collection', { collectionId });
       
       const thumbnailOptions = { ...this.thumbnailOptions, ...options };
       
@@ -32,13 +35,17 @@ class CollectionThumbnailService {
       const images = await this.getCollectionImages(collectionId, collectionPath, collectionType);
       
       if (images.length === 0) {
-        console.log(`[COLLECTION_THUMBNAIL] No images found in collection ${collectionId}`);
+        this.logger.warn('No images found in collection', { collectionId });
         return null;
       }
 
       // Smart selection algorithm
       const selectedImage = this.selectBestImage(images, collectionType);
-      console.log(`[COLLECTION_THUMBNAIL] Selected image: ${selectedImage.filename} (${selectedImage.width}x${selectedImage.height})`);
+      this.logger.info('Selected image for thumbnail', { 
+        filename: selectedImage.filename, 
+        width: selectedImage.width, 
+        height: selectedImage.height 
+      });
 
       // Generate thumbnail
       const thumbnailPath = await this.createThumbnail(selectedImage, collectionId, thumbnailOptions);
@@ -46,11 +53,15 @@ class CollectionThumbnailService {
       // Update collection with thumbnail URL
       await this.updateCollectionThumbnail(collectionId, thumbnailPath);
       
-      console.log(`[COLLECTION_THUMBNAIL] Generated thumbnail: ${thumbnailPath}`);
+      this.logger.info('Generated thumbnail successfully', { thumbnailPath });
       return thumbnailPath;
       
     } catch (error) {
-      console.error(`[COLLECTION_THUMBNAIL] Error generating thumbnail for collection ${collectionId}:`, error);
+      this.logger.error('Error generating thumbnail for collection', { 
+        collectionId, 
+        error: error.message, 
+        stack: error.stack 
+      });
       return null;
     }
   }
@@ -64,7 +75,7 @@ class CollectionThumbnailService {
       const dbImages = await db.getImages(collectionId, { limit: 100 });
       
       if (dbImages && dbImages.length > 0) {
-        console.log(`[COLLECTION_THUMBNAIL] Found ${dbImages.length} images in database`);
+        this.logger.debug('Found images in database', { count: dbImages.length });
         return dbImages.map(img => ({
           filename: img.filename,
           path: img.relative_path,
@@ -76,11 +87,14 @@ class CollectionThumbnailService {
       }
 
       // Fallback: scan collection for images
-      console.log(`[COLLECTION_THUMBNAIL] No images in database, scanning collection`);
+      this.logger.debug('No images in database, scanning collection');
       return await this.scanCollectionForImages(collectionPath, collectionType);
       
     } catch (error) {
-      console.error(`[COLLECTION_THUMBNAIL] Error getting collection images:`, error);
+      this.logger.error('Error getting collection images', { 
+        error: error.message, 
+        stack: error.stack 
+      });
       return [];
     }
   }
@@ -96,11 +110,14 @@ class CollectionThumbnailService {
         await this.scanFolder(collectionPath, images);
       } else {
         // For compressed files, scan ZIP contents
-        console.log(`[COLLECTION_THUMBNAIL] Scanning compressed file: ${collectionPath}`);
+        this.logger.debug('Scanning compressed file', { collectionPath });
         await this.scanCompressedFile(collectionPath, images);
       }
     } catch (error) {
-      console.error(`[COLLECTION_THUMBNAIL] Error scanning collection:`, error);
+      this.logger.error('Error scanning collection', { 
+        error: error.message, 
+        stack: error.stack 
+      });
     }
     
     return images;
@@ -137,17 +154,24 @@ class CollectionThumbnailService {
                 file_size: stats.size
               });
             } catch (error) {
-              console.warn(`[COLLECTION_THUMBNAIL] Skipping image ${entryPath}:`, error.message);
+              this.logger.warn('Skipping image in compressed file', { 
+                entryPath, 
+                error: error.message 
+              });
             }
           }
         }
       }
       
       await zip.close();
-      console.log(`[COLLECTION_THUMBNAIL] Found ${images.length} images in compressed file`);
+      this.logger.debug('Found images in compressed file', { count: images.length });
       
     } catch (error) {
-      console.error(`[COLLECTION_THUMBNAIL] Error scanning compressed file ${filePath}:`, error);
+      this.logger.error('Error scanning compressed file', { 
+        filePath, 
+        error: error.message, 
+        stack: error.stack 
+      });
     }
   }
 
@@ -158,10 +182,10 @@ class CollectionThumbnailService {
     if (currentDepth >= maxDepth) return;
     
     try {
-      const items = await fs.readdir(folderPath, { withFileTypes: true });
+      const items = await longPathHandler.readDirSafe(folderPath, { withFileTypes: true });
       
       for (const item of items) {
-        const fullPath = path.join(folderPath, item.name);
+        const fullPath = longPathHandler.joinSafe(folderPath, item.name);
         
         if (item.isDirectory()) {
           await this.scanFolder(fullPath, images, maxDepth, currentDepth + 1);
@@ -169,7 +193,7 @@ class CollectionThumbnailService {
           const ext = path.extname(item.name).toLowerCase();
           if (this.supportedFormats.includes(ext)) {
             try {
-              const stats = await fs.stat(fullPath);
+              const stats = await longPathHandler.statSafe(fullPath);
               const metadata = await sharp(fullPath).metadata();
               
               images.push({
@@ -182,13 +206,20 @@ class CollectionThumbnailService {
               });
             } catch (error) {
               // Skip images that can't be processed
-              console.warn(`[COLLECTION_THUMBNAIL] Skipping image ${item.name}:`, error.message);
+              this.logger.warn('Skipping image in folder scan', { 
+                filename: item.name, 
+                error: error.message 
+              });
             }
           }
         }
       }
     } catch (error) {
-      console.error(`[COLLECTION_THUMBNAIL] Error scanning folder ${folderPath}:`, error);
+      this.logger.error('Error scanning folder', { 
+        folderPath, 
+        error: error.message, 
+        stack: error.stack 
+      });
     }
   }
 
@@ -270,7 +301,7 @@ class CollectionThumbnailService {
       const thumbnailPath = await cacheManager.getCachePath(collectionId, filename, 'thumbnail');
 
       // Ensure directory exists
-      await fs.ensureDir(path.dirname(thumbnailPath));
+      await longPathHandler.ensureDirSafe(path.dirname(thumbnailPath));
 
       // Get image buffer based on collection type
       let imageBuffer;
@@ -278,7 +309,7 @@ class CollectionThumbnailService {
       
       if (collection.type === 'folder') {
         // For folders, read directly from file system
-        imageBuffer = await fs.readFile(imageInfo.fullPath);
+        imageBuffer = await longPathHandler.readFileSafe(imageInfo.fullPath);
       } else {
         // For compressed files, extract from ZIP
         const StreamZip = require('node-stream-zip');
@@ -302,7 +333,10 @@ class CollectionThumbnailService {
 
       return thumbnailPath;
     } catch (error) {
-      console.error(`[COLLECTION_THUMBNAIL] Error creating thumbnail:`, error);
+      this.logger.error('Error creating thumbnail', { 
+        error: error.message, 
+        stack: error.stack 
+      });
       throw error;
     }
   }
@@ -321,9 +355,16 @@ class CollectionThumbnailService {
         thumbnail_generated_at: new Date()
       });
 
-      console.log(`[COLLECTION_THUMBNAIL] Updated collection ${collectionId} with thumbnail URL: ${thumbnailUrl}`);
+      this.logger.info('Updated collection with thumbnail URL', { 
+        collectionId, 
+        thumbnailUrl 
+      });
     } catch (error) {
-      console.error(`[COLLECTION_THUMBNAIL] Error updating collection thumbnail:`, error);
+      this.logger.error('Error updating collection thumbnail', { 
+        collectionId, 
+        error: error.message, 
+        stack: error.stack 
+      });
       throw error;
     }
   }
@@ -344,7 +385,11 @@ class CollectionThumbnailService {
         collection.type
       );
     } catch (error) {
-      console.error(`[COLLECTION_THUMBNAIL] Error regenerating thumbnail:`, error);
+      this.logger.error('Error regenerating thumbnail', { 
+        collectionId, 
+        error: error.message, 
+        stack: error.stack 
+      });
       throw error;
     }
   }

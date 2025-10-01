@@ -75,7 +75,7 @@ const ImageViewerPage: React.FC = () => {
     if (id) {
       loadCollectionsAndSetIndex();
     }
-  }, [id, setAllCollections, setCurrentCollectionIndex]);
+  }, [id]); // Only depend on id, not on store functions
 
   // Load images when collection changes
   useEffect(() => {
@@ -115,7 +115,7 @@ const ImageViewerPage: React.FC = () => {
         clearInterval(playTimer);
       }
     };
-  }, [playTimer]);
+  }, []); // Only run cleanup on unmount
 
   const loadImage = async (image: any) => {
     if (!collectionId || !image) return;

@@ -48,18 +48,22 @@ export default function BackgroundJobMonitor({ onJobCompleted }: BackgroundJobMo
     try {
       const response = await backgroundApi.getJobStatus(jobId);
       if (response.job) {
-        setJobs(prev => prev.map(job => 
-          job.id === jobId ? response.job : job
-        ));
-        
-        // Check if job just completed
-        const updatedJob = response.job;
-        if (updatedJob.status === 'completed' && onJobCompleted) {
-          const oldJob = jobs.find(j => j.id === jobId);
-          if (oldJob && oldJob.status !== 'completed') {
-            onJobCompleted(updatedJob);
+        setJobs(prev => {
+          const updatedJobs = prev.map(job => 
+            job.id === jobId ? response.job : job
+          );
+          
+          // Check if job just completed
+          const updatedJob = response.job;
+          if (updatedJob.status === 'completed' && onJobCompleted) {
+            const oldJob = prev.find(j => j.id === jobId);
+            if (oldJob && oldJob.status !== 'completed') {
+              onJobCompleted(updatedJob);
+            }
           }
-        }
+          
+          return updatedJobs;
+        });
       }
     } catch (error) {
       console.error('Failed to refresh job:', error);
@@ -140,14 +144,17 @@ export default function BackgroundJobMonitor({ onJobCompleted }: BackgroundJobMo
     
     // Refresh running jobs every 2 seconds
     const interval = setInterval(() => {
-      const runningJobs = jobs.filter(job => job.status === 'running');
-      if (runningJobs.length > 0) {
-        runningJobs.forEach(job => refreshJob(job.id));
-      }
+      setJobs(currentJobs => {
+        const runningJobs = currentJobs.filter(job => job.status === 'running');
+        if (runningJobs.length > 0) {
+          runningJobs.forEach(job => refreshJob(job.id));
+        }
+        return currentJobs;
+      });
     }, 2000);
 
     return () => clearInterval(interval);
-  }, [jobs.length]); // Only re-run when jobs count changes
+  }, []); // Empty dependency array - only run once on mount
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -188,10 +195,13 @@ export default function BackgroundJobMonitor({ onJobCompleted }: BackgroundJobMo
                 {getStatusIcon(job.status)}
                 <div>
                   <h4 className="text-sm font-medium text-gray-900">
-                    {job.type === 'bulk_add_collections' ? 'Bulk Add Collections' : job.type}
+                    {job.type === 'bulk_add_collections' ? 'Bulk Add Collections' : 
+                     job.type === 'cache-generation' ? 'Cache Generation' : 
+                     job.type}
                   </h4>
                   <p className="text-xs text-gray-500">
                     {job.data?.parentPath && `Path: ${job.data.parentPath}`}
+                    {job.data?.collectionIds && `Collections: ${job.data.collectionIds.length}`}
                   </p>
                 </div>
               </div>

@@ -5,9 +5,12 @@ const path = require('path');
 const db = require('../database');
 const tagService = require('../services/tagService');
 const collectionThumbnailService = require('../services/collectionThumbnailService');
+const longPathHandler = require('../utils/longPathHandler');
+const Logger = require('../utils/logger');
 
 // Bulk add collections from a parent directory
 router.post('/collections', async (req, res) => {
+  const logger = new Logger('BulkCollections');
   try {
     const { parentPath, collectionPrefix = '', includeSubfolders = false, autoAdd = false } = req.body;
     
@@ -16,7 +19,7 @@ router.post('/collections', async (req, res) => {
     }
     
     // Check if parent path exists
-    const exists = await fs.pathExists(parentPath);
+    const exists = await longPathHandler.pathExistsSafe(parentPath);
     if (!exists) {
       return res.status(400).json({ error: 'Parent path does not exist' });
     }
@@ -38,9 +41,9 @@ router.post('/collections', async (req, res) => {
     }
     
     // Get all potential collections (including subfolders if requested)
-    console.log(`[BULK ADD] Finding collections in: ${parentPath}`);
+    logger.info('Finding collections in parent path', { parentPath });
     const allCollections = await findAllCollections(parentPath, includeSubfolders, collectionPrefix);
-    console.log(`[BULK ADD] Found ${allCollections.length} potential collections`);
+    logger.info('Found potential collections', { count: allCollections.length });
     
     const collections = [];
     const errors = [];
@@ -48,7 +51,11 @@ router.post('/collections', async (req, res) => {
     for (let i = 0; i < allCollections.length; i++) {
       const collectionInfo = allCollections[i];
       try {
-        console.log(`[BULK ADD] Processing ${i + 1}/${allCollections.length}: ${collectionInfo.name}`);
+        logger.debug('Processing collection', { 
+          index: i + 1, 
+          total: allCollections.length, 
+          name: collectionInfo.name 
+        });
         
         // Check if collection already exists
         const existingCollections = await db.getCollections();
@@ -58,11 +65,11 @@ router.post('/collections', async (req, res) => {
         
         if (!alreadyExists) {
           // Generate metadata for the collection
-          console.log(`[BULK ADD] Generating metadata for: ${collectionInfo.name}`);
+          logger.debug('Generating metadata for collection', { name: collectionInfo.name });
           const metadata = await generateCollectionMetadata(collectionInfo.path, collectionInfo.type);
-          console.log(`[BULK ADD] Generated metadata:`, JSON.stringify(metadata, null, 2));
+          logger.debug('Generated metadata', metadata);
           
-          console.log(`[BULK ADD] Adding collection to database: ${collectionInfo.name}`);
+          logger.debug('Adding collection to database', { name: collectionInfo.name });
           const collectionId = await db.addCollection(
             collectionInfo.name, 
             collectionInfo.path, 
@@ -78,23 +85,37 @@ router.post('/collections', async (req, res) => {
             metadata
           });
           
-          console.log(`[BULK ADD] Successfully added collection: ${collectionInfo.name} (ID: ${collectionId})`);
+          logger.info('Successfully added collection', { 
+            name: collectionInfo.name, 
+            collectionId 
+          });
           
           // Generate collection thumbnail in background
           collectionThumbnailService.generateCollectionThumbnail(collectionId, collectionInfo.path, collectionInfo.type)
             .then(thumbnailPath => {
               if (thumbnailPath) {
-                console.log(`[BULK ADD] Generated thumbnail for collection ${collectionId}: ${thumbnailPath}`);
+                logger.info('Generated thumbnail for collection', { 
+                  collectionId, 
+                  thumbnailPath 
+                });
               }
             })
             .catch(error => {
-              console.error(`[BULK ADD] Failed to generate thumbnail for collection ${collectionId}:`, error);
+              logger.error('Failed to generate thumbnail for collection', { 
+                collectionId, 
+                error: error.message, 
+                stack: error.stack 
+              });
             });
         } else {
-          console.log(`[BULK ADD] Collection already exists, skipping: ${collectionInfo.name}`);
+          logger.debug('Collection already exists, skipping', { name: collectionInfo.name });
         }
       } catch (error) {
-        console.error(`[BULK ADD] Error processing collection ${collectionInfo.name}:`, error);
+        logger.error('Error processing collection', { 
+          name: collectionInfo.name, 
+          error: error.message, 
+          stack: error.stack 
+        });
         errors.push({
           item: collectionInfo.name,
           error: error.message
@@ -113,7 +134,10 @@ router.post('/collections', async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Error in bulk add collections:', error);
+    logger.error('Error in bulk add collections', { 
+      error: error.message, 
+      stack: error.stack 
+    });
     res.status(500).json({ error: 'Failed to bulk add collections' });
   }
 });
@@ -154,6 +178,7 @@ async function checkDirectoryHasImages(dirPath, maxDepth = 3, currentDepth = 0) 
 
 // Get preview of what would be added (without actually adding)
 router.post('/preview', async (req, res) => {
+  const logger = new Logger('BulkPreview');
   try {
     const { parentPath, collectionPrefix = '', includeSubfolders = false } = req.body;
     
@@ -162,7 +187,7 @@ router.post('/preview', async (req, res) => {
     }
     
     // Check if parent path exists
-    const exists = await fs.pathExists(parentPath);
+    const exists = await longPathHandler.pathExistsSafe(parentPath);
     if (!exists) {
       return res.status(400).json({ error: 'Parent path does not exist' });
     }
@@ -184,9 +209,9 @@ router.post('/preview', async (req, res) => {
     }
     
     // Get all potential collections (including subfolders if requested)
-    console.log(`[BULK PREVIEW] Finding collections in: ${parentPath}`);
+    logger.info('Finding collections for preview', { parentPath });
     const allCollections = await findAllCollections(parentPath, includeSubfolders, collectionPrefix);
-    console.log(`[BULK PREVIEW] Found ${allCollections.length} potential collections`);
+    logger.info('Found potential collections for preview', { count: allCollections.length });
     
     const potentialCollections = [];
     const errors = [];
@@ -243,7 +268,10 @@ router.post('/preview', async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Error in bulk preview:', error);
+    logger.error('Error in bulk preview', { 
+      error: error.message, 
+      stack: error.stack 
+    });
     res.status(500).json({ error: 'Failed to preview collections' });
   }
 });
@@ -361,15 +389,15 @@ async function findAllCollections(parentPath, includeSubfolders = false, collect
     
     // Skip dangerous system directories
     if (isDangerousPath(dirPath)) {
-      console.log(`Skipping dangerous system directory: ${dirPath}`);
+      // Skip dangerous system directories silently
       return;
     }
     
     try {
-      const items = await fs.readdir(dirPath, { withFileTypes: true });
+      const items = await longPathHandler.readDirSafe(dirPath, { withFileTypes: true });
       
       for (const item of items) {
-        const fullPath = path.join(dirPath, item.name);
+        const fullPath = longPathHandler.joinSafe(dirPath, item.name);
         const relativePath = path.relative(parentPath, fullPath);
         
         // Skip hidden/system files and directories
@@ -422,7 +450,7 @@ async function findAllCollections(parentPath, includeSubfolders = false, collect
     } catch (error) {
       // Only log errors for non-permission issues to reduce noise
       if (!error.message.includes('EPERM') && !error.message.includes('EACCES')) {
-        console.error(`Error scanning directory ${dirPath}:`, error.message);
+        // Skip permission errors silently
       }
     }
   }
@@ -433,7 +461,8 @@ async function findAllCollections(parentPath, includeSubfolders = false, collect
 
 // Generate metadata for a collection
 async function generateCollectionMetadata(collectionPath, collectionType) {
-  console.log(`[METADATA] Generating metadata for: ${collectionPath} (type: ${collectionType})`);
+  const logger = new Logger('MetadataGenerator');
+  logger.debug('Generating metadata for collection', { collectionPath, collectionType });
   
   const metadata = {
     created_at: new Date().toISOString(),
@@ -449,7 +478,7 @@ async function generateCollectionMetadata(collectionPath, collectionType) {
   
   try {
     if (collectionType === 'folder') {
-      console.log(`[METADATA] Getting directory stats for: ${collectionPath}`);
+      logger.debug('Getting directory stats', { collectionPath });
       const stats = await getDirectoryStats(collectionPath);
       metadata.total_images = stats.totalImages;
       metadata.total_size = stats.totalSize;
@@ -471,13 +500,17 @@ async function generateCollectionMetadata(collectionPath, collectionType) {
     
     // Auto-generate tags based on collection name
     const collectionName = path.basename(collectionPath, path.extname(collectionPath));
-    console.log(`[METADATA] Auto-tagging collection: ${collectionName}`);
+    logger.debug('Auto-tagging collection', { collectionName });
     const autoTags = tagService.autoTagFromName(collectionName);
-    console.log(`[METADATA] Generated auto-tags:`, autoTags);
+    logger.debug('Generated auto-tags', { autoTags });
     metadata.auto_tags = autoTags;
     
   } catch (error) {
-    console.error(`Error generating metadata for ${collectionPath}:`, error);
+    logger.error('Error generating metadata for collection', { 
+      collectionPath, 
+      error: error.message, 
+      stack: error.stack 
+    });
   }
   
   return metadata;
@@ -515,7 +548,7 @@ async function getDirectoryStats(dirPath, maxDepth = 5, currentDepth = 0) {
             stats.formats.add(ext);
             
             try {
-              const fileStats = await fs.stat(fullPath);
+              const fileStats = await longPathHandler.statSafe(fullPath);
               stats.totalSize += fileStats.size;
             } catch (error) {
               // Ignore files that can't be stat'd
@@ -565,10 +598,10 @@ async function findAllCollections(parentPath, includeSubfolders = false, collect
     if (depth > 10) return; // Prevent infinite recursion
     
     try {
-      const items = await fs.readdir(dirPath, { withFileTypes: true });
+      const items = await longPathHandler.readDirSafe(dirPath, { withFileTypes: true });
       
       for (const item of items) {
-        const fullPath = path.join(dirPath, item.name);
+        const fullPath = longPathHandler.joinSafe(dirPath, item.name);
         
         // Skip dangerous, hidden, or system paths
         if (isDangerousPath(fullPath) || isHiddenOrSystem(item.name)) {
@@ -607,14 +640,14 @@ async function findAllCollections(parentPath, includeSubfolders = false, collect
       }
     } catch (error) {
       // Skip directories that can't be read (permission issues, etc.)
-      console.error(`Error scanning directory ${dirPath}:`, error.message);
+      // Skip directory scan errors silently
     }
   }
   
   // Check if directory contains images
   async function checkDirectoryForImages(dirPath) {
     try {
-      const items = await fs.readdir(dirPath, { withFileTypes: true });
+      const items = await longPathHandler.readDirSafe(dirPath, { withFileTypes: true });
       return items.some(item => {
         if (item.isFile()) {
           const ext = path.extname(item.name).toLowerCase();
@@ -646,9 +679,10 @@ async function findAllCollections(parentPath, includeSubfolders = false, collect
   return collections;
 }
 
-// Generate collection metadata
+// Generate collection metadata (duplicate function - this one appears to be unused)
 async function generateCollectionMetadata(collectionPath, collectionType) {
-  console.log(`[METADATA] Generating metadata for: ${collectionPath} (type: ${collectionType})`);
+  const logger = new Logger('MetadataGenerator');
+  logger.debug('Generating metadata for collection', { collectionPath, collectionType });
   
   const metadata = {
     created_at: new Date().toISOString(),
@@ -663,7 +697,7 @@ async function generateCollectionMetadata(collectionPath, collectionType) {
   const supportedFormats = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'];
   
   if (collectionType === 'folder') {
-    console.log(`[METADATA] Getting directory stats for: ${collectionPath}`);
+    logger.debug('Getting directory stats', { collectionPath });
     
     let totalImages = 0;
     let totalSize = 0;
@@ -674,10 +708,10 @@ async function generateCollectionMetadata(collectionPath, collectionType) {
       if (depth > 5) return; // Prevent deep recursion
       
       try {
-        const items = await fs.readdir(dirPath, { withFileTypes: true });
+        const items = await longPathHandler.readDirSafe(dirPath, { withFileTypes: true });
         
         for (const item of items) {
-          const fullPath = path.join(dirPath, item.name);
+          const fullPath = longPathHandler.joinSafe(dirPath, item.name);
           
           if (item.isFile()) {
             const ext = path.extname(item.name).toLowerCase();
@@ -723,15 +757,19 @@ async function generateCollectionMetadata(collectionPath, collectionType) {
         zip_modified: stats.mtime.toISOString()
       };
     } catch (error) {
-      console.error(`Error getting stats for ${collectionPath}:`, error);
+      logger.error('Error getting stats for collection', { 
+        collectionPath, 
+        error: error.message, 
+        stack: error.stack 
+      });
     }
   }
   
   // Auto-tagging based on collection name
   const collectionName = path.basename(collectionPath, path.extname(collectionPath));
-  console.log(`[METADATA] Auto-tagging collection: ${collectionName}`);
+  logger.debug('Auto-tagging collection', { collectionName });
   const autoTags = tagService.autoTagFromName(collectionName);
-  console.log(`[METADATA] Generated auto-tags:`, autoTags);
+  logger.debug('Generated auto-tags', { autoTags });
   metadata.auto_tags = autoTags;
   
   return metadata;
