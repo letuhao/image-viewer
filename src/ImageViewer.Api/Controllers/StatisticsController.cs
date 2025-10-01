@@ -72,7 +72,7 @@ public class StatisticsController : ControllerBase
         try
         {
             _logger.LogInformation("Getting statistics for image: {ImageId}", imageId);
-            var statistics = await _statisticsService.GetImageStatisticsAsync();
+            var statistics = await _statisticsService.GetImageStatisticsAsync(imageId);
             return Ok(statistics);
         }
         catch (KeyNotFoundException ex)

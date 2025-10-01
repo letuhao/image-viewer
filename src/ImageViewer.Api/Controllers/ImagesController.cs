@@ -21,6 +21,52 @@ public class ImagesController : ControllerBase
     }
 
     /// <summary>
+    /// Get random image
+    /// </summary>
+    [HttpGet("random")]
+    public async Task<ActionResult<Image>> GetRandomImage()
+    {
+        try
+        {
+            _logger.LogInformation("Getting random image");
+            var image = await _imageService.GetRandomImageAsync();
+            if (image == null)
+            {
+                return NotFound();
+            }
+            return Ok(image);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting random image");
+            return StatusCode(500, "Internal server error");
+        }
+    }
+
+    /// <summary>
+    /// Get random image within a collection
+    /// </summary>
+    [HttpGet("collection/{collectionId}/random")]
+    public async Task<ActionResult<Image>> GetRandomImageByCollection(Guid collectionId)
+    {
+        try
+        {
+            _logger.LogInformation("Getting random image for collection {CollectionId}", collectionId);
+            var image = await _imageService.GetRandomImageByCollectionAsync(collectionId);
+            if (image == null)
+            {
+                return NotFound();
+            }
+            return Ok(image);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting random image for collection {CollectionId}", collectionId);
+            return StatusCode(500, "Internal server error");
+        }
+    }
+
+    /// <summary>
     /// Get images by collection ID with pagination
     /// </summary>
     [HttpGet("collection/{collectionId}")]

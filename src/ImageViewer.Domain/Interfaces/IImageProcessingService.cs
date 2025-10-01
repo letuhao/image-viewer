@@ -15,6 +15,7 @@ public interface IImageProcessingService
     Task<bool> IsImageFileAsync(string filePath, CancellationToken cancellationToken = default);
     Task<string[]> GetSupportedFormatsAsync(CancellationToken cancellationToken = default);
     Task<ImageDimensions> GetImageDimensionsAsync(string imagePath, CancellationToken cancellationToken = default);
+    Task<ImageDimensions> GetImageDimensionsFromBytesAsync(byte[] imageData, CancellationToken cancellationToken = default);
     Task<long> GetImageFileSizeAsync(string imagePath, CancellationToken cancellationToken = default);
 }
 

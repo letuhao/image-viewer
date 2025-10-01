@@ -171,49 +171,7 @@ public class CollectionsController : ControllerBase
     {
         try
         {
-            var startTime = DateTime.UtcNow;
-            var collections = await _collectionService.GetAllAsync();
-            
-            // Apply search filters
-            var filteredCollections = collections.AsQueryable();
-            
-            if (!string.IsNullOrEmpty(searchRequest.Query))
-            {
-                filteredCollections = filteredCollections.Where(c => 
-                    c.Name.Contains(searchRequest.Query, StringComparison.OrdinalIgnoreCase) ||
-                    c.Path.Contains(searchRequest.Query, StringComparison.OrdinalIgnoreCase));
-            }
-            
-            if (searchRequest.DateFrom.HasValue)
-            {
-                filteredCollections = filteredCollections.Where(c => c.CreatedAt >= searchRequest.DateFrom.Value);
-            }
-            
-            if (searchRequest.DateTo.HasValue)
-            {
-                filteredCollections = filteredCollections.Where(c => c.CreatedAt <= searchRequest.DateTo.Value);
-            }
-            
-            var totalCount = filteredCollections.Count();
-            var paginatedResults = filteredCollections
-                .ApplySorting(pagination.SortBy, pagination.SortDirection)
-                .ApplyPagination(pagination);
-            
-            var searchTime = DateTime.UtcNow - startTime;
-            
-            var response = new SearchResponseDto<Collection>
-            {
-                Results = paginatedResults,
-                TotalResults = totalCount,
-                Query = searchRequest.Query,
-                SearchTime = searchTime,
-                Facets = new Dictionary<string, int>
-                {
-                    ["total"] = totalCount,
-                    ["with_images"] = collections.Count(c => c.Images.Any())
-                }
-            };
-            
+            var response = await _collectionService.SearchCollectionsAsync(searchRequest, pagination);
             return Ok(response);
         }
         catch (Exception ex)

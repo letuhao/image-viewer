@@ -237,11 +237,10 @@ public class CompressedFileService : ICompressedFileService
             using var stream = entry.Open();
             using var memoryStream = new MemoryStream();
             await stream.CopyToAsync(memoryStream, cancellationToken);
-            
             var imageData = memoryStream.ToArray();
-            
-            // Get image dimensions
-            var dimensions = await _imageProcessingService.GetImageDimensionsAsync(entry.FullName, cancellationToken);
+
+            // Get image dimensions from the actual bytes
+            var dimensions = await _imageProcessingService.GetImageDimensionsFromBytesAsync(imageData, cancellationToken);
             
             return new CompressedFileImage
             {

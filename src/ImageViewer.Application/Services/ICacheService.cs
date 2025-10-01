@@ -56,6 +56,7 @@ public interface ICacheService
     /// Regenerate cache for collection
     /// </summary>
     Task RegenerateCollectionCacheAsync(Guid collectionId);
+    Task RegenerateCollectionCacheAsync(Guid collectionId, IEnumerable<(int Width, int Height)> sizes);
 
     /// <summary>
     /// Get cached image

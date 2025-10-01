@@ -228,12 +228,42 @@ public class CacheController : ControllerBase
     /// Regenerate cache for collection
     /// </summary>
     [HttpPost("collections/{collectionId}/regenerate")]
-    public async Task<ActionResult> RegenerateCollectionCache(Guid collectionId)
+    public async Task<ActionResult> RegenerateCollectionCache(Guid collectionId, [FromBody] RegenerateCacheRequest? request = null)
     {
         try
         {
             _logger.LogInformation("Regenerating cache for collection: {CollectionId}", collectionId);
-            await _cacheService.RegenerateCollectionCacheAsync(collectionId);
+            if (request != null)
+            {
+                var sizes = new List<(int Width, int Height)>();
+                if (request.Sizes != null && request.Sizes.Any())
+                {
+                    sizes.AddRange(request.Sizes.Select(s => (s.Width, s.Height)));
+                }
+
+                if (!string.IsNullOrWhiteSpace(request.Preset))
+                {
+                    // Resolve preset from options via a scoped service
+                    var presetsOptions = HttpContext.RequestServices.GetRequiredService<Microsoft.Extensions.Options.IOptions<ImageViewer.Application.Options.ImageCachePresetsOptions>>().Value;
+                    if (presetsOptions.Presets.TryGetValue(request.Preset, out var presetSizes))
+                    {
+                        sizes.AddRange(presetSizes.Select(s => (s.Width, s.Height)));
+                    }
+                }
+
+                if (sizes.Any())
+                {
+                    await _cacheService.RegenerateCollectionCacheAsync(collectionId, sizes);
+                }
+                else
+                {
+                    await _cacheService.RegenerateCollectionCacheAsync(collectionId);
+                }
+            }
+            else
+            {
+                await _cacheService.RegenerateCollectionCacheAsync(collectionId);
+            }
             return Ok(new { message = "Cache regeneration initiated" });
         }
         catch (KeyNotFoundException ex)
@@ -247,4 +277,16 @@ public class CacheController : ControllerBase
             return StatusCode(500, "Internal server error");
         }
     }
+}
+
+public class RegenerateCacheRequest
+{
+    public string? Preset { get; set; }
+    public List<CacheSizeDto>? Sizes { get; set; }
+}
+
+public class CacheSizeDto
+{
+    public int Width { get; set; }
+    public int Height { get; set; }
 }

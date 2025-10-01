@@ -111,38 +111,35 @@ public class StatisticsService : IStatisticsService
         };
     }
 
-    public async Task<ImageStatisticsDto> GetImageStatisticsAsync()
+    public async Task<ImageStatisticsDto> GetImageStatisticsAsync(Guid imageId)
     {
-        _logger.LogInformation("Getting image statistics");
-
-        var images = await _imageRepository.GetAllAsync();
-
-        var totalImages = images.Count();
-        var totalSize = images.Sum(i => i.FileSizeBytes);
-        var averageFileSize = totalImages > 0 ? totalSize / totalImages : 0;
-        var cachedImages = images.Count(i => i.CacheInfo != null);
-        var cachePercentage = totalImages > 0 ? (double)cachedImages / totalImages * 100 : 0;
-
-        var formatStats = images
-            .GroupBy(i => i.Format)
-            .Select(g => new FormatStatisticsDto
-            {
-                Format = g.Key,
-                Count = g.Count(),
-                TotalSize = g.Sum(i => i.FileSizeBytes),
-                AverageSize = g.Average(i => i.FileSizeBytes)
-            })
-            .OrderByDescending(fs => fs.Count);
-
-        return new ImageStatisticsDto
+        _logger.LogInformation("Getting image statistics for {ImageId}", imageId);
+        var image = await _imageRepository.GetByIdAsync(imageId);
+        if (image == null)
         {
-            TotalImages = totalImages,
-            TotalSize = totalSize,
-            AverageFileSize = averageFileSize,
-            CachedImages = cachedImages,
-            CachePercentage = cachePercentage,
-            FormatStatistics = formatStats
+            throw new ArgumentException($"Image with ID {imageId} not found");
+        }
+
+        var imageStats = new ImageStatisticsDto
+        {
+            TotalImages = 1,
+            TotalSize = image.FileSizeBytes,
+            AverageFileSize = image.FileSizeBytes,
+            CachedImages = image.CacheInfo != null ? 1 : 0,
+            CachePercentage = image.CacheInfo != null ? 100 : 0,
+            FormatStatistics = new[]
+            {
+                new FormatStatisticsDto
+                {
+                    Format = image.Format,
+                    Count = 1,
+                    TotalSize = image.FileSizeBytes,
+                    AverageSize = image.FileSizeBytes
+                }
+            }
         };
+
+        return imageStats;
     }
 
     public async Task<CacheStatisticsDto> GetCacheStatisticsAsync()
@@ -313,7 +310,7 @@ public class StatisticsService : IStatisticsService
         _logger.LogInformation("Getting statistics summary");
 
         var systemStats = await GetSystemStatisticsAsync();
-        var imageStats = await GetImageStatisticsAsync();
+        var imageStats = await GetImageStatisticsAsync(Guid.Empty);
         var cacheStats = await GetCacheStatisticsAsync();
         var performanceStats = await GetPerformanceStatisticsAsync();
 

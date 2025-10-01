@@ -6,6 +6,8 @@ using ImageViewer.Application.Services;
 using ImageViewer.Infrastructure.Services;
 using ImageViewer.Domain.Interfaces;
 using Microsoft.AspNetCore.Hosting;
+using ImageViewer.Application.Options;
+using Microsoft.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -38,6 +40,9 @@ builder.Services.AddResponseCompression(options =>
 });
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+// Bind Image size options
+builder.Services.Configure<ImageSizeOptions>(builder.Configuration.GetSection("ImageSizes"));
+builder.Services.Configure<ImageCachePresetsOptions>(builder.Configuration.GetSection("ImageCachePresets"));
 
 // Add Entity Framework
 builder.Services.AddDbContext<ImageViewerDbContext>(options =>

@@ -21,7 +21,7 @@ public interface IStatisticsService
     /// <summary>
     /// Get image statistics
     /// </summary>
-    Task<ImageStatisticsDto> GetImageStatisticsAsync();
+    Task<ImageStatisticsDto> GetImageStatisticsAsync(Guid imageId);
 
     /// <summary>
     /// Get cache statistics

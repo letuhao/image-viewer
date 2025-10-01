@@ -5,6 +5,8 @@ using ImageViewer.Domain.Interfaces;
 using ImageViewer.Domain.ValueObjects;
 using ImageViewer.Application.DTOs.Common;
 using ImageViewer.Application.Extensions;
+using ImageViewer.Application.Options;
+using Microsoft.Extensions.Options;
 
 namespace ImageViewer.Application.Services;
 
@@ -16,15 +18,72 @@ public class CollectionService : ICollectionService
     private readonly IUnitOfWork _unitOfWork;
     private readonly IFileScannerService _fileScannerService;
     private readonly ILogger<CollectionService> _logger;
+    private readonly ImageSizeOptions _sizeOptions;
 
     public CollectionService(
         IUnitOfWork unitOfWork,
         IFileScannerService fileScannerService,
-        ILogger<CollectionService> logger)
+        ILogger<CollectionService> logger,
+        IOptions<ImageSizeOptions> sizeOptions)
     {
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
         _fileScannerService = fileScannerService ?? throw new ArgumentNullException(nameof(fileScannerService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _sizeOptions = sizeOptions?.Value ?? new ImageSizeOptions();
+    }
+
+    public async Task<SearchResponseDto<Collection>> SearchCollectionsAsync(SearchRequestDto searchRequest, PaginationRequestDto pagination, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            _logger.LogInformation("Searching collections with query {Query}", searchRequest.Query);
+
+            var startTime = DateTime.UtcNow;
+            var collections = await _unitOfWork.Collections.GetActiveCollectionsQueryableAsync(cancellationToken);
+            var query = collections.AsQueryable();
+
+            if (!string.IsNullOrEmpty(searchRequest.Query))
+            {
+                query = query.Where(c =>
+                    c.Name.Contains(searchRequest.Query, StringComparison.OrdinalIgnoreCase) ||
+                    c.Path.Contains(searchRequest.Query, StringComparison.OrdinalIgnoreCase));
+            }
+
+            if (searchRequest.DateFrom.HasValue)
+            {
+                query = query.Where(c => c.CreatedAt >= searchRequest.DateFrom.Value);
+            }
+
+            if (searchRequest.DateTo.HasValue)
+            {
+                query = query.Where(c => c.CreatedAt <= searchRequest.DateTo.Value);
+            }
+
+            var totalCount = query.Count();
+            var paginated = query
+                .ApplySorting(pagination.SortBy, pagination.SortDirection)
+                .ApplyPagination(pagination);
+
+            var searchTime = DateTime.UtcNow - startTime;
+
+            return new SearchResponseDto<Collection>
+            {
+                Results = paginated,
+                TotalResults = totalCount,
+                Query = searchRequest.Query,
+                SearchTime = searchTime,
+                Facets = new Dictionary<string, int>
+                {
+                    ["total"] = totalCount,
+                    ["with_images"] = collections.Count(c => c.Images.Any())
+                }
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error searching collections");
+            throw;
+        }
     }
 
     public async Task<Collection?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
@@ -382,8 +441,8 @@ public class CollectionService : ICollectionService
                     collection.Id,
                     collection.GetImageCount(),
                     collection.GetTotalSize(),
-                    300, 300, // thumbnail size
-                    1920, 1080, // cache size
+                    _sizeOptions.ThumbnailWidth, _sizeOptions.ThumbnailHeight,
+                    _sizeOptions.CacheWidth, _sizeOptions.CacheHeight,
                     true, true, // auto generate
                     TimeSpan.FromDays(30),
                     "{}"

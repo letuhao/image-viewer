@@ -3,6 +3,8 @@ using ImageViewer.Application.Services;
 using ImageViewer.Domain.Interfaces;
 using ImageViewer.Domain.Entities;
 using SkiaSharp;
+using ImageViewer.Application.Options;
+using Microsoft.Extensions.Options;
 
 namespace ImageViewer.Infrastructure.Services;
 
@@ -15,15 +17,18 @@ public class AdvancedThumbnailService : IAdvancedThumbnailService
     private readonly IImageProcessingService _imageProcessingService;
     private readonly ILogger<AdvancedThumbnailService> _logger;
     private readonly string _thumbnailBasePath;
+    private readonly ImageSizeOptions _sizeOptions;
 
     public AdvancedThumbnailService(
         IUnitOfWork unitOfWork,
         IImageProcessingService imageProcessingService,
-        ILogger<AdvancedThumbnailService> logger)
+        ILogger<AdvancedThumbnailService> logger,
+        IOptions<ImageSizeOptions> sizeOptions)
     {
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
         _imageProcessingService = imageProcessingService ?? throw new ArgumentNullException(nameof(imageProcessingService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _sizeOptions = sizeOptions?.Value ?? new ImageSizeOptions();
         _thumbnailBasePath = Path.Combine(Directory.GetCurrentDirectory(), "thumbnails");
         
         // Ensure thumbnail directory exists
@@ -64,7 +69,7 @@ public class AdvancedThumbnailService : IAdvancedThumbnailService
             // Generate thumbnail
             var thumbnailPath = GetThumbnailPath(collectionId);
             var thumbnailData = await _imageProcessingService.GenerateThumbnailAsync(
-                bestImage.RelativePath, 300, 300, cancellationToken);
+                bestImage.RelativePath, _sizeOptions.ThumbnailWidth, _sizeOptions.ThumbnailHeight, cancellationToken);
 
             if (thumbnailData == null || thumbnailData.Length == 0)
             {
@@ -151,8 +156,8 @@ public class AdvancedThumbnailService : IAdvancedThumbnailService
             // Resize if requested
             if (width.HasValue || height.HasValue)
             {
-                var targetWidth = width ?? 300;
-                var targetHeight = height ?? 300;
+                var targetWidth = width ?? _sizeOptions.ThumbnailWidth;
+                var targetHeight = height ?? _sizeOptions.ThumbnailHeight;
                 thumbnailData = await _imageProcessingService.ResizeImageAsync(
                     thumbnailPath, targetWidth, targetHeight, 95, cancellationToken);
             }

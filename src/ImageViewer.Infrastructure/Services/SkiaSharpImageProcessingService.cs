@@ -214,6 +214,22 @@ public class SkiaSharpImageProcessingService : IImageProcessingService
         }
     }
 
+    public async Task<ImageDimensions> GetImageDimensionsFromBytesAsync(byte[] imageData, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            using var data = SKData.CreateCopy(imageData);
+            using var codec = SKCodec.Create(data);
+            var info = codec.Info;
+            return new ImageDimensions(info.Width, info.Height);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting dimensions from image bytes");
+            throw;
+        }
+    }
+
     public async Task<long> GetImageFileSizeAsync(string imagePath, CancellationToken cancellationToken = default)
     {
         try

@@ -2,6 +2,9 @@ using ImageViewer.Application.DTOs.Cache;
 using ImageViewer.Domain.Entities;
 using ImageViewer.Domain.Interfaces;
 using Microsoft.Extensions.Logging;
+using ImageViewer.Application.Constants;
+using ImageViewer.Application.Options;
+using Microsoft.Extensions.Options;
 
 namespace ImageViewer.Application.Services;
 
@@ -17,6 +20,7 @@ public class CacheService : ICacheService
     private readonly IImageProcessingService _imageProcessingService;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<CacheService> _logger;
+    private readonly ImageSizeOptions _sizeOptions;
 
     public CacheService(
         ICacheFolderRepository cacheFolderRepository,
@@ -25,7 +29,8 @@ public class CacheService : ICacheService
         ICacheInfoRepository cacheInfoRepository,
         IImageProcessingService imageProcessingService,
         IUnitOfWork unitOfWork,
-        ILogger<CacheService> logger)
+        ILogger<CacheService> logger,
+        IOptions<ImageSizeOptions> sizeOptions)
     {
         _cacheFolderRepository = cacheFolderRepository;
         _collectionRepository = collectionRepository;
@@ -34,6 +39,7 @@ public class CacheService : ICacheService
         _imageProcessingService = imageProcessingService;
         _unitOfWork = unitOfWork;
         _logger = logger;
+        _sizeOptions = sizeOptions?.Value ?? new ImageSizeOptions();
     }
 
     public async Task<CacheStatisticsDto> GetCacheStatisticsAsync()
@@ -311,34 +317,18 @@ public class CacheService : ICacheService
                         // Get full image path
                         var fullImagePath = Path.Combine(image.Collection.Path, image.RelativePath);
                         
-                        // Generate thumbnail
-                        var thumbnailData = await _imageProcessingService.GenerateThumbnailAsync(
-                            fullImagePath, 200, 200, CancellationToken.None);
-                        
-                        if (thumbnailData != null)
-                        {
-                            var thumbnailPath = Path.Combine(cacheFolder.Path, $"{image.Id}_thumb.jpg");
-                            await File.WriteAllBytesAsync(thumbnailPath, thumbnailData);
-                        }
+                        // Optionally pre-generate thumbnail if needed (skip persisting to avoid overriding cache info)
+                        // var thumbnailData = await _imageProcessingService.GenerateThumbnailAsync(
+                        //     fullImagePath, ImageDefaults.ThumbnailWidth, ImageDefaults.ThumbnailHeight, CancellationToken.None);
+                        // (Intentionally not saving thumbnail via cache service to keep a single cache record per image)
 
                         // Generate cache image
                         var cacheData = await _imageProcessingService.ResizeImageAsync(
-                            fullImagePath, 1280, 720, 85, CancellationToken.None);
+                            fullImagePath, _sizeOptions.CacheWidth, _sizeOptions.CacheHeight, _sizeOptions.JpegQuality, CancellationToken.None);
                         
                         if (cacheData != null)
                         {
-                            var cachePath = Path.Combine(cacheFolder.Path, $"{image.Id}_cache.jpg");
-                            await File.WriteAllBytesAsync(cachePath, cacheData);
-
-                            // Create cache info in database
-                            var cacheInfo = new ImageCacheInfo(
-                                image.Id, 
-                                cachePath, 
-                                "1280x720", 
-                                cacheData.Length, 
-                                DateTime.UtcNow.AddDays(30));
-
-                            await _cacheInfoRepository.AddAsync(cacheInfo);
+                            await SaveCachedImageAsync(image.Id, $"{_sizeOptions.CacheWidth}x{_sizeOptions.CacheHeight}", cacheData, CancellationToken.None);
                         }
 
                         processedCount++;
@@ -357,6 +347,84 @@ public class CacheService : ICacheService
             }
 
             // Update cache folder statistics
+            await UpdateCacheFolderStatisticsAsync(cacheFolder.Id);
+
+            _logger.LogInformation("Cache regeneration completed for collection: {CollectionId}. Processed {ProcessedCount}/{TotalImages} images", 
+                collectionId, processedCount, totalImages);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error regenerating cache for collection: {CollectionId}", collectionId);
+            throw;
+        }
+    }
+
+    public async Task RegenerateCollectionCacheAsync(Guid collectionId, IEnumerable<(int Width, int Height)> sizes)
+    {
+        _logger.LogInformation("Regenerating cache for collection: {CollectionId} with multiple sizes", collectionId);
+
+        var collection = await _collectionRepository.GetByIdAsync(collectionId);
+        if (collection == null)
+        {
+            throw new ArgumentException($"Collection with ID {collectionId} not found");
+        }
+
+        await ClearCollectionCacheAsync(collectionId);
+
+        try
+        {
+            var images = await _imageRepository.GetByCollectionIdAsync(collectionId);
+            if (!images.Any())
+            {
+                _logger.LogWarning("No images found for collection: {CollectionId}", collectionId);
+                return;
+            }
+
+            var cacheFolder = await GetCacheFolderForCollectionAsync(collectionId);
+            if (cacheFolder == null)
+            {
+                throw new InvalidOperationException($"No cache folder available for collection: {collectionId}");
+            }
+
+            const int batchSize = 10;
+            var totalImages = images.Count();
+            var processedCount = 0;
+
+            for (int i = 0; i < totalImages; i += batchSize)
+            {
+                var batch = images.Skip(i).Take(batchSize);
+
+                foreach (var image in batch)
+                {
+                    try
+                    {
+                        var fullImagePath = Path.Combine(image.Collection.Path, image.RelativePath);
+
+                        foreach (var (Width, Height) in sizes)
+                        {
+                            var cacheData = await _imageProcessingService.ResizeImageAsync(
+                                fullImagePath, Width, Height, _sizeOptions.JpegQuality, CancellationToken.None);
+
+                            if (cacheData != null)
+                            {
+                                await SaveCachedImageAsync(image.Id, $"{Width}x{Height}", cacheData, CancellationToken.None);
+                            }
+                        }
+
+                        processedCount++;
+                        _logger.LogDebug("Processed image {ProcessedCount}/{TotalImages} for collection {CollectionId}", 
+                            processedCount, totalImages, collectionId);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error processing image {ImageId} for collection {CollectionId}", 
+                            image.Id, collectionId);
+                    }
+                }
+
+                await _unitOfWork.SaveChangesAsync();
+            }
+
             await UpdateCacheFolderStatisticsAsync(cacheFolder.Id);
 
             _logger.LogInformation("Cache regeneration completed for collection: {CollectionId}. Processed {ProcessedCount}/{TotalImages} images", 

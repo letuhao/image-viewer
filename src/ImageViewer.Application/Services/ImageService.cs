@@ -2,6 +2,9 @@ using Microsoft.Extensions.Logging;
 using ImageViewer.Domain.Entities;
 using ImageViewer.Domain.Interfaces;
 using ImageViewer.Domain.ValueObjects;
+using ImageViewer.Application.Constants;
+using ImageViewer.Application.Options;
+using Microsoft.Extensions.Options;
 
 namespace ImageViewer.Application.Services;
 
@@ -14,17 +17,20 @@ public class ImageService : IImageService
     private readonly IImageProcessingService _imageProcessingService;
     private readonly ICacheService _cacheService;
     private readonly ILogger<ImageService> _logger;
+    private readonly ImageSizeOptions _sizeOptions;
 
     public ImageService(
         IUnitOfWork unitOfWork,
         IImageProcessingService imageProcessingService,
         ICacheService cacheService,
-        ILogger<ImageService> logger)
+        ILogger<ImageService> logger,
+        IOptions<ImageSizeOptions> sizeOptions)
     {
         _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
         _imageProcessingService = imageProcessingService ?? throw new ArgumentNullException(nameof(imageProcessingService));
         _cacheService = cacheService ?? throw new ArgumentNullException(nameof(cacheService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _sizeOptions = sizeOptions?.Value ?? new ImageSizeOptions();
     }
 
     public async Task<Image?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
@@ -230,19 +236,10 @@ public class ImageService : IImageService
                 return null;
             }
 
-            var thumbnailWidth = width ?? 300;
-            var thumbnailHeight = height ?? 300;
-            var dimensions = $"{thumbnailWidth}x{thumbnailHeight}";
+            var thumbnailWidth = width ?? _sizeOptions.ThumbnailWidth;
+            var thumbnailHeight = height ?? _sizeOptions.ThumbnailHeight;
 
-            // Check cache first
-            var cachedThumbnail = await _cacheService.GetCachedImageAsync(id, dimensions, cancellationToken);
-            if (cachedThumbnail != null)
-            {
-                _logger.LogDebug("Returning cached thumbnail for {ImageId}", id);
-                return cachedThumbnail;
-            }
-
-            // Generate thumbnail
+            // Generate thumbnail directly (avoid conflicting with collection cache entry)
             var collection = await _unitOfWork.Collections.GetByIdAsync(image.CollectionId, cancellationToken);
             if (collection == null)
             {
@@ -258,11 +255,8 @@ public class ImageService : IImageService
             }
 
             var thumbnailData = await _imageProcessingService.GenerateThumbnailAsync(fullPath, thumbnailWidth, thumbnailHeight, cancellationToken);
-            
-            // Cache the thumbnail
-            await _cacheService.SaveCachedImageAsync(id, dimensions, thumbnailData, cancellationToken);
 
-            _logger.LogDebug("Generated and cached thumbnail for {ImageId}", id);
+            _logger.LogDebug("Generated thumbnail for {ImageId}", id);
             return thumbnailData;
         }
         catch (Exception ex)
@@ -285,8 +279,8 @@ public class ImageService : IImageService
                 return null;
             }
 
-            var cacheWidth = width ?? 1920;
-            var cacheHeight = height ?? 1080;
+            var cacheWidth = width ?? _sizeOptions.CacheWidth;
+            var cacheHeight = height ?? _sizeOptions.CacheHeight;
             var dimensions = $"{cacheWidth}x{cacheHeight}";
 
             // Check cache first
@@ -312,7 +306,7 @@ public class ImageService : IImageService
                 return null;
             }
 
-            var cachedImageData = await _imageProcessingService.ResizeImageAsync(fullPath, cacheWidth, cacheHeight, 95, cancellationToken);
+            var cachedImageData = await _imageProcessingService.ResizeImageAsync(fullPath, cacheWidth, cacheHeight, _sizeOptions.JpegQuality, cancellationToken);
             
             // Cache the image
             await _cacheService.SaveCachedImageAsync(id, dimensions, cachedImageData, cancellationToken);
