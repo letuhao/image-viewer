@@ -179,6 +179,9 @@ public class TagTests
         // Arrange
         var tag = new Tag("Test Tag");
         var originalUsageCount = tag.UsageCount;
+        
+        // Add small delay to ensure UpdatedAt changes
+        Thread.Sleep(1);
         var originalUpdatedAt = tag.UpdatedAt;
 
         // Act
