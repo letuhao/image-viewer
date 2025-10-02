@@ -183,3 +183,7 @@ src/tests/ImageViewer.Tests/obj/
 src/tests/ImageViewer.IntegrationTests/obj/
 
 src/tests/ImageViewer.IntegrationTests/bin/
+
+src/ImageViewer.Worker/bin/
+
+src/ImageViewer.Worker/obj/

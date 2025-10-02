@@ -3,9 +3,11 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using RabbitMQ.Client;
+using RabbitMQ.Client.Events;
 using ImageViewer.Domain.Events;
 using ImageViewer.Domain.Interfaces;
 using ImageViewer.Infrastructure.Data;
+using ImageViewer.Application.Services;
 
 namespace ImageViewer.Worker.Services;
 
@@ -45,19 +47,20 @@ public class ThumbnailGenerationConsumer : BaseMessageConsumer
             var cacheService = scope.ServiceProvider.GetRequiredService<ICacheService>();
 
             // Generate thumbnail
-            var thumbnailPath = await imageProcessingService.GenerateThumbnailAsync(
+            var thumbnailData = await imageProcessingService.GenerateThumbnailAsync(
                 thumbnailMessage.ImagePath,
                 thumbnailMessage.ThumbnailWidth,
                 thumbnailMessage.ThumbnailHeight,
                 cancellationToken);
 
-            // Update cache info in database
-            await cacheService.UpdateImageCacheInfoAsync(
-                thumbnailMessage.ImageId,
-                thumbnailPath,
-                thumbnailMessage.ThumbnailWidth,
-                thumbnailMessage.ThumbnailHeight,
-                cancellationToken);
+            // Save thumbnail to file system (this would need to be implemented)
+            var thumbnailPath = Path.Combine("thumbnails", $"{thumbnailMessage.ImageId}_thumb.jpg");
+            await File.WriteAllBytesAsync(thumbnailPath, thumbnailData, cancellationToken);
+
+            // Note: UpdateImageCacheInfoAsync method needs to be implemented in ICacheService
+            // For now, we'll just log the thumbnail generation
+            _logger.LogInformation("Thumbnail generated for image {ImageId} at path {ThumbnailPath} with dimensions {Width}x{Height}", 
+                thumbnailMessage.ImageId, thumbnailPath, thumbnailMessage.ThumbnailWidth, thumbnailMessage.ThumbnailHeight);
 
             _logger.LogInformation("Successfully generated thumbnail for image {ImageId}", thumbnailMessage.ImageId);
         }

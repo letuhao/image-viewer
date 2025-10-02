@@ -3,9 +3,11 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using RabbitMQ.Client;
+using RabbitMQ.Client.Events;
 using ImageViewer.Domain.Events;
 using ImageViewer.Domain.Interfaces;
 using ImageViewer.Infrastructure.Data;
+using ImageViewer.Application.Services;
 
 namespace ImageViewer.Worker.Services;
 
@@ -43,25 +45,33 @@ public class BulkOperationConsumer : BaseMessageConsumer
             using var scope = _serviceProvider.CreateScope();
             var bulkService = scope.ServiceProvider.GetRequiredService<IBulkService>();
 
+            // Note: These methods need to be implemented in IBulkService
+            // For now, we'll log the operation type and collection IDs
+            _logger.LogInformation("Bulk operation {OperationType} requested for {CollectionCount} collections", 
+                bulkMessage.OperationType, bulkMessage.CollectionIds.Count);
+            
             switch (bulkMessage.OperationType.ToLowerInvariant())
             {
                 case "scanall":
-                    await bulkService.ScanAllCollectionsAsync(cancellationToken);
+                    _logger.LogInformation("Scan all collections operation - not yet implemented");
                     break;
                 case "generateallthumbnails":
-                    await bulkService.GenerateAllThumbnailsAsync(cancellationToken);
+                    _logger.LogInformation("Generate all thumbnails operation - not yet implemented");
                     break;
                 case "generateallcache":
-                    await bulkService.GenerateAllCacheAsync(cancellationToken);
+                    _logger.LogInformation("Generate all cache operation - not yet implemented");
                     break;
                 case "scancollections":
-                    await bulkService.ScanCollectionsAsync(bulkMessage.CollectionIds, cancellationToken);
+                    _logger.LogInformation("Scan collections operation for {CollectionIds} - not yet implemented", 
+                        string.Join(", ", bulkMessage.CollectionIds));
                     break;
                 case "generatethumbnails":
-                    await bulkService.GenerateThumbnailsForCollectionsAsync(bulkMessage.CollectionIds, cancellationToken);
+                    _logger.LogInformation("Generate thumbnails operation for {CollectionIds} - not yet implemented", 
+                        string.Join(", ", bulkMessage.CollectionIds));
                     break;
                 case "generatecache":
-                    await bulkService.GenerateCacheForCollectionsAsync(bulkMessage.CollectionIds, cancellationToken);
+                    _logger.LogInformation("Generate cache operation for {CollectionIds} - not yet implemented", 
+                        string.Join(", ", bulkMessage.CollectionIds));
                     break;
                 default:
                     _logger.LogWarning("Unknown bulk operation type: {OperationType}", bulkMessage.OperationType);

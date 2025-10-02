@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Hosting;
 using ImageViewer.Application.Options;
 using Microsoft.Extensions.Options;
 using ImageViewer.Infrastructure.Extensions;
+using RabbitMQ.Client;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -79,9 +80,38 @@ builder.Services.AddSession(options =>
     options.Cookie.IsEssential = true;
 });
 
+// Configure RabbitMQ
+builder.Services.Configure<RabbitMQOptions>(builder.Configuration.GetSection("RabbitMQ"));
+
+// Register RabbitMQ connection
+builder.Services.AddSingleton<IConnection>(provider =>
+{
+    var options = provider.GetRequiredService<IOptions<RabbitMQOptions>>().Value;
+    var factory = new ConnectionFactory
+    {
+        HostName = options.HostName,
+        Port = options.Port,
+        UserName = options.UserName,
+        Password = options.Password,
+        VirtualHost = options.VirtualHost,
+        RequestedConnectionTimeout = options.ConnectionTimeout,
+        RequestedHeartbeat = TimeSpan.FromSeconds(60)
+    };
+    return factory.CreateConnection();
+});
+
+// Register message queue service
+builder.Services.AddScoped<IMessageQueueService, RabbitMQMessageQueueService>();
+
 // Add Application Services
 builder.Services.AddScoped<CollectionService>();
-builder.Services.AddScoped<ICollectionService, QueuedCollectionService>();
+builder.Services.AddScoped<ICollectionService>(provider =>
+{
+    var collectionService = provider.GetRequiredService<CollectionService>();
+    var messageQueueService = provider.GetRequiredService<IMessageQueueService>();
+    var logger = provider.GetRequiredService<ILogger<QueuedCollectionService>>();
+    return new QueuedCollectionService(collectionService, messageQueueService, logger);
+});
 builder.Services.AddScoped<IImageService, ImageService>();
 builder.Services.AddScoped<ICacheService, CacheService>();
 builder.Services.AddScoped<ITagService, TagService>();
@@ -150,6 +180,38 @@ app.UseAuthorization();
 
 app.MapControllers();
 app.MapHealthChecks("/health");
+
+// Set up RabbitMQ queues and exchanges on startup
+using (var scope = app.Services.CreateScope())
+{
+    try
+    {
+        var connection = scope.ServiceProvider.GetRequiredService<IConnection>();
+        var options = scope.ServiceProvider.GetRequiredService<IOptions<RabbitMQOptions>>();
+        var logger = scope.ServiceProvider.GetRequiredService<ILogger<RabbitMQSetupService>>();
+        
+        var setupService = new RabbitMQSetupService(connection, options, logger);
+        
+        // Check if queues already exist
+        var queuesExist = await setupService.CheckQueuesExistAsync();
+        
+        if (!queuesExist)
+        {
+            logger.LogInformation("Queues do not exist, creating them...");
+            await setupService.SetupQueuesAndExchangesAsync();
+        }
+        else
+        {
+            logger.LogInformation("All required queues already exist");
+        }
+    }
+    catch (Exception ex)
+    {
+        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "Failed to set up RabbitMQ queues and exchanges");
+        // Don't throw - let the API start even if RabbitMQ setup fails
+    }
+}
 
 // MongoDB doesn't require database creation - it creates collections automatically
 
