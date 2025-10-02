@@ -1,6 +1,5 @@
 using Serilog;
 using Serilog.Events;
-using Microsoft.EntityFrameworkCore;
 using ImageViewer.Infrastructure.Data;
 using ImageViewer.Application.Services;
 using ImageViewer.Infrastructure.Services;
@@ -8,6 +7,7 @@ using ImageViewer.Domain.Interfaces;
 using Microsoft.AspNetCore.Hosting;
 using ImageViewer.Application.Options;
 using Microsoft.Extensions.Options;
+using ImageViewer.Infrastructure.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -52,22 +52,8 @@ builder.Services.AddSwaggerGen(c =>
 builder.Services.Configure<ImageSizeOptions>(builder.Configuration.GetSection("ImageSizes"));
 builder.Services.Configure<ImageCachePresetsOptions>(builder.Configuration.GetSection("ImageCachePresets"));
 
-// Add Entity Framework
-builder.Services.AddDbContext<ImageViewerDbContext>(options =>
-{
-    var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") 
-        ?? "Host=localhost;Database=imageviewer;Username=postgres;Password=password;Port=5432";
-    
-    options.UseNpgsql(connectionString, npgsqlOptions =>
-    {
-        npgsqlOptions.EnableRetryOnFailure(
-            maxRetryCount: 3,
-            maxRetryDelay: TimeSpan.FromSeconds(30),
-            errorCodesToAdd: null);
-        
-        npgsqlOptions.CommandTimeout(30);
-    });
-});
+// Add MongoDB
+builder.Services.AddMongoDb(builder.Configuration);
 
 // Add CORS
 builder.Services.AddCors(options =>
@@ -89,16 +75,6 @@ builder.Services.AddSession(options =>
     options.Cookie.IsEssential = true;
 });
 
-// Add Repository Services
-builder.Services.AddScoped<ICollectionRepository, CollectionRepository>();
-builder.Services.AddScoped<IImageRepository, ImageRepository>();
-builder.Services.AddScoped<ICacheFolderRepository, CacheFolderRepository>();
-builder.Services.AddScoped<ITagRepository, TagRepository>();
-builder.Services.AddScoped<IBackgroundJobRepository, BackgroundJobRepository>();
-builder.Services.AddScoped<ICollectionTagRepository, CollectionTagRepository>();
-builder.Services.AddScoped<IViewSessionRepository, ViewSessionRepository>();
-builder.Services.AddScoped<ICacheInfoRepository, CacheInfoRepository>();
-
 // Add Application Services
 builder.Services.AddScoped<ICollectionService, CollectionService>();
 builder.Services.AddScoped<IImageService, ImageService>();
@@ -107,7 +83,6 @@ builder.Services.AddScoped<ITagService, TagService>();
 builder.Services.AddScoped<IBackgroundJobService, ImageViewer.Application.Services.BackgroundJobService>();
 builder.Services.AddScoped<IStatisticsService, StatisticsService>();
 builder.Services.AddScoped<IBulkService, BulkService>();
-builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 
 // Add Infrastructure Services
 builder.Services.AddScoped<IFileScannerService, FileScannerService>();
@@ -171,12 +146,7 @@ app.UseAuthorization();
 app.MapControllers();
 app.MapHealthChecks("/health");
 
-// Ensure database is created
-using (var scope = app.Services.CreateScope())
-{
-    var context = scope.ServiceProvider.GetRequiredService<ImageViewerDbContext>();
-    context.Database.EnsureCreated();
-}
+// MongoDB doesn't require database creation - it creates collections automatically
 
 app.Run();
 

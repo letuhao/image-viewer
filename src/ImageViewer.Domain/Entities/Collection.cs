@@ -1,5 +1,6 @@
 using ImageViewer.Domain.Enums;
 using ImageViewer.Domain.Events;
+using MongoDB.Bson.Serialization.Attributes;
 
 namespace ImageViewer.Domain.Entities;
 
@@ -8,6 +9,7 @@ namespace ImageViewer.Domain.Entities;
 /// </summary>
 public class Collection : BaseEntity
 {
+    [BsonId]
     public Guid Id { get; private set; }
     public string Name { get; private set; }
     public string Path { get; private set; }
@@ -18,13 +20,19 @@ public class Collection : BaseEntity
     public DateTime? DeletedAt { get; private set; }
 
     // Navigation properties
+    [BsonIgnore]
     private readonly List<Image> _images = new();
+    [BsonIgnore]
     public IReadOnlyCollection<Image> Images => _images.AsReadOnly();
 
+    [BsonIgnore]
     private readonly List<CollectionTag> _tags = new();
+    [BsonIgnore]
     public IReadOnlyCollection<CollectionTag> Tags => _tags.AsReadOnly();
 
+    [BsonIgnore]
     private readonly List<CollectionCacheBinding> _cacheBindings = new();
+    [BsonIgnore]
     public IReadOnlyCollection<CollectionCacheBinding> CacheBindings => _cacheBindings.AsReadOnly();
 
     public CollectionStatistics? Statistics { get; private set; }

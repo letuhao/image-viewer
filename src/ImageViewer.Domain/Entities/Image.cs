@@ -1,4 +1,5 @@
 using ImageViewer.Domain.Enums;
+using MongoDB.Bson.Serialization.Attributes;
 
 namespace ImageViewer.Domain.Entities;
 
@@ -7,6 +8,7 @@ namespace ImageViewer.Domain.Entities;
 /// </summary>
 public class Image : BaseEntity
 {
+    [BsonId]
     public Guid Id { get; private set; }
     public Guid CollectionId { get; private set; }
     public string Filename { get; private set; }
@@ -23,11 +25,15 @@ public class Image : BaseEntity
     public DateTime? DeletedAt { get; private set; }
 
     // Navigation properties
+    [BsonIgnore]
     public Collection Collection { get; private set; } = null!;
+    [BsonIgnore]
     public ImageCacheInfo? CacheInfo { get; private set; }
+    [BsonIgnore]
     public ImageMetadataEntity? Metadata { get; private set; }
     
     // Collection of cache info for compatibility
+    [BsonIgnore]
     public IEnumerable<ImageCacheInfo> CacheInfoCollection => CacheInfo != null ? new[] { CacheInfo } : Enumerable.Empty<ImageCacheInfo>();
 
     // Private constructor for EF Core

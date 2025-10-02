@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
-using ImageViewer.Infrastructure.Data;
+using MongoDB.Driver;
 
 namespace ImageViewer.Api.Controllers;
 
@@ -8,12 +8,12 @@ namespace ImageViewer.Api.Controllers;
 [Route("api/[controller]")]
 public class HealthController : ControllerBase
 {
-    private readonly ImageViewerDbContext _context;
+    private readonly IMongoDatabase _database;
     private readonly ILogger<HealthController> _logger;
 
-    public HealthController(ImageViewerDbContext context, ILogger<HealthController> logger)
+    public HealthController(IMongoDatabase database, ILogger<HealthController> logger)
     {
-        _context = context;
+        _database = database;
         _logger = logger;
     }
 
@@ -56,7 +56,8 @@ public class HealthController : ControllerBase
     {
         try
         {
-            await _context.Database.CanConnectAsync();
+            // MongoDB health check - ping the database
+            await _database.RunCommandAsync<MongoDB.Bson.BsonDocument>(new MongoDB.Bson.BsonDocument("ping", 1));
             return true;
         }
         catch (Exception ex)
