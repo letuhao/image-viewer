@@ -172,12 +172,12 @@ public class ImageViewerDbContextTests : IDisposable
 
         // Assert
         savedCollection.Should().NotBeNull();
-        savedCollection!.Settings.ThumbnailWidth.Should().Be(200);
-        savedCollection.Settings.ThumbnailHeight.Should().Be(200);
-        savedCollection.Settings.CacheWidth.Should().Be(1280);
-        savedCollection.Settings.CacheHeight.Should().Be(720);
-        savedCollection.Settings.AdditionalSettingsJson.Should().Contain("customKey");
-        savedCollection.Settings.AdditionalSettingsJson.Should().Contain("customValue");
+        savedCollection!.Settings!.ThumbnailWidth.Should().Be(200);
+        savedCollection!.Settings!.ThumbnailHeight.Should().Be(200);
+        savedCollection!.Settings!.CacheWidth.Should().Be(1280);
+        savedCollection!.Settings!.CacheHeight.Should().Be(720);
+        savedCollection!.Settings!.AdditionalSettingsJson.Should().Contain("customKey");
+        savedCollection!.Settings!.AdditionalSettingsJson.Should().Contain("customValue");
     }
 
     public void Dispose()

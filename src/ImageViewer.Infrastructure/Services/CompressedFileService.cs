@@ -33,22 +33,22 @@ public class CompressedFileService : ICompressedFileService
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    public async Task<bool> IsCompressedFileAsync(string filePath, CancellationToken cancellationToken = default)
+    public Task<bool> IsCompressedFileAsync(string filePath, CancellationToken cancellationToken = default)
     {
         try
         {
             if (!LongPathHandler.PathExistsSafe(filePath))
             {
-                return false;
+                return Task.FromResult(false);
             }
 
             var extension = Path.GetExtension(filePath).ToLowerInvariant();
-            return _supportedExtensions.Contains(extension);
+            return Task.FromResult(_supportedExtensions.Contains(extension));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error checking if file is compressed: {FilePath}", filePath);
-            return false;
+            return Task.FromResult(false);
         }
     }
 
@@ -197,7 +197,7 @@ public class CompressedFileService : ICompressedFileService
         return images;
     }
 
-    private async Task<List<CompressedFileImage>> ExtractFrom7ZipAsync(string filePath, CancellationToken cancellationToken)
+    private Task<List<CompressedFileImage>> ExtractFrom7ZipAsync(string filePath, CancellationToken cancellationToken)
     {
         var images = new List<CompressedFileImage>();
         
@@ -205,10 +205,10 @@ public class CompressedFileService : ICompressedFileService
         // For now, return empty list with warning
         _logger.LogWarning("7-Zip extraction not implemented yet for: {FilePath}", filePath);
         
-        return images;
+        return Task.FromResult(images);
     }
 
-    private async Task<List<CompressedFileImage>> ExtractFromRarAsync(string filePath, CancellationToken cancellationToken)
+    private Task<List<CompressedFileImage>> ExtractFromRarAsync(string filePath, CancellationToken cancellationToken)
     {
         var images = new List<CompressedFileImage>();
         
@@ -216,10 +216,10 @@ public class CompressedFileService : ICompressedFileService
         // For now, return empty list with warning
         _logger.LogWarning("RAR extraction not implemented yet for: {FilePath}", filePath);
         
-        return images;
+        return Task.FromResult(images);
     }
 
-    private async Task<List<CompressedFileImage>> ExtractFromTarAsync(string filePath, CancellationToken cancellationToken)
+    private Task<List<CompressedFileImage>> ExtractFromTarAsync(string filePath, CancellationToken cancellationToken)
     {
         var images = new List<CompressedFileImage>();
         
@@ -227,7 +227,7 @@ public class CompressedFileService : ICompressedFileService
         // For now, return empty list with warning
         _logger.LogWarning("TAR extraction not implemented yet for: {FilePath}", filePath);
         
-        return images;
+        return Task.FromResult(images);
     }
 
     private async Task<CompressedFileImage?> ExtractImageFromZipEntryAsync(ZipArchiveEntry entry, CancellationToken cancellationToken)
@@ -261,7 +261,7 @@ public class CompressedFileService : ICompressedFileService
         }
     }
 
-    private async Task GetZipFileInfoAsync(string filePath, CompressedFileInfo info)
+    private Task GetZipFileInfoAsync(string filePath, CompressedFileInfo info)
     {
         try
         {
@@ -277,24 +277,29 @@ public class CompressedFileService : ICompressedFileService
         {
             _logger.LogError(ex, "Error getting ZIP file info: {FilePath}", filePath);
         }
+        
+        return Task.CompletedTask;
     }
 
-    private async Task Get7ZipFileInfoAsync(string filePath, CompressedFileInfo info)
+    private Task Get7ZipFileInfoAsync(string filePath, CompressedFileInfo info)
     {
         // Note: 7-Zip info requires external library or process
         _logger.LogWarning("7-Zip file info not implemented yet for: {FilePath}", filePath);
+        return Task.CompletedTask;
     }
 
-    private async Task GetRarFileInfoAsync(string filePath, CompressedFileInfo info)
+    private Task GetRarFileInfoAsync(string filePath, CompressedFileInfo info)
     {
         // Note: RAR info requires external library or process
         _logger.LogWarning("RAR file info not implemented yet for: {FilePath}", filePath);
+        return Task.CompletedTask;
     }
 
-    private async Task GetTarFileInfoAsync(string filePath, CompressedFileInfo info)
+    private Task GetTarFileInfoAsync(string filePath, CompressedFileInfo info)
     {
         // Note: TAR info requires additional implementation
         _logger.LogWarning("TAR file info not implemented yet for: {FilePath}", filePath);
+        return Task.CompletedTask;
     }
 
     private bool IsImageFile(string filename)

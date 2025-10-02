@@ -105,7 +105,7 @@ public class FileScannerService : IFileScannerService
         }
     }
 
-    public async Task<bool> IsValidCollectionPathAsync(string path, CancellationToken cancellationToken = default)
+    public Task<bool> IsValidCollectionPathAsync(string path, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -113,13 +113,13 @@ public class FileScannerService : IFileScannerService
 
             if (string.IsNullOrWhiteSpace(path))
             {
-                return false;
+                return Task.FromResult(false);
             }
 
             // Check if it's a directory
             if (LongPathHandler.PathExistsSafe(path))
             {
-                return true;
+                return Task.FromResult(true);
             }
 
             // Check if it's a supported archive file
@@ -127,19 +127,19 @@ public class FileScannerService : IFileScannerService
             {
                 var extension = Path.GetExtension(path).ToLowerInvariant();
                 var supportedArchives = new[] { ".zip", ".7z", ".rar", ".tar" };
-                return supportedArchives.Contains(extension);
+                return Task.FromResult(supportedArchives.Contains(extension));
             }
 
-            return false;
+            return Task.FromResult(false);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error validating collection path {Path}", path);
-            return false;
+            return Task.FromResult(false);
         }
     }
 
-    public async Task<CollectionType> DetectCollectionTypeAsync(string path, CancellationToken cancellationToken = default)
+    public Task<CollectionType> DetectCollectionTypeAsync(string path, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -147,13 +147,13 @@ public class FileScannerService : IFileScannerService
 
             if (LongPathHandler.PathExistsSafe(path))
             {
-                return CollectionType.Folder;
+                return Task.FromResult(CollectionType.Folder);
             }
 
             if (LongPathHandler.PathExistsSafe(path))
             {
                 var extension = Path.GetExtension(path).ToLowerInvariant();
-                return extension switch
+                var result = extension switch
                 {
                     ".zip" => CollectionType.Zip,
                     ".7z" => CollectionType.SevenZip,
@@ -161,6 +161,7 @@ public class FileScannerService : IFileScannerService
                     ".tar" => CollectionType.Tar,
                     _ => throw new ArgumentException($"Unsupported file extension: {extension}")
                 };
+                return Task.FromResult(result);
             }
 
             throw new ArgumentException($"Path does not exist: {path}");
@@ -172,7 +173,7 @@ public class FileScannerService : IFileScannerService
         }
     }
 
-    public async Task<long> GetCollectionSizeAsync(string path, CollectionType type, CancellationToken cancellationToken = default)
+    public Task<long> GetCollectionSizeAsync(string path, CollectionType type, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -180,16 +181,16 @@ public class FileScannerService : IFileScannerService
 
             if (type == CollectionType.Folder && Directory.Exists(path))
             {
-                return GetDirectorySize(path);
+                return Task.FromResult(GetDirectorySize(path));
             }
 
             if (LongPathHandler.PathExistsSafe(path))
             {
                 var fileInfo = new FileInfo(path);
-                return fileInfo.Length;
+                return Task.FromResult(fileInfo.Length);
             }
 
-            return 0;
+            return Task.FromResult(0L);
         }
         catch (Exception ex)
         {
@@ -223,9 +224,9 @@ public class FileScannerService : IFileScannerService
         }
     }
 
-    public async Task<IEnumerable<string>> GetSupportedArchiveFormatsAsync(CancellationToken cancellationToken = default)
+    public Task<IEnumerable<string>> GetSupportedArchiveFormatsAsync(CancellationToken cancellationToken = default)
     {
-        return new[] { "zip", "7z", "rar", "tar" };
+        return Task.FromResult<IEnumerable<string>>(new[] { "zip", "7z", "rar", "tar" });
     }
 
     private async Task<List<Image>> ScanZipArchiveAsync(string archivePath, string[] supportedExtensions, CancellationToken cancellationToken)

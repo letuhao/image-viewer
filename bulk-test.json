@@ -1,0 +1,12 @@
+{
+  "ParentPath": "L:\\EMedia\\AI_Generated\\AiASAG",
+  "CollectionPrefix": "",
+  "IncludeSubfolders": true,
+  "AutoAdd": true,
+  "ThumbnailWidth": 300,
+  "ThumbnailHeight": 300,
+  "CacheWidth": 1920,
+  "CacheHeight": 1080,
+  "EnableCache": true,
+  "AutoScan": true
+}

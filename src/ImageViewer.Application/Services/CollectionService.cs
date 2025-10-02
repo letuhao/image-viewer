@@ -474,9 +474,10 @@ public class CollectionService : ICollectionService
                 throw new InvalidOperationException($"Collection with ID '{id}' not found");
             }
 
-            var statistics = collection.Statistics ?? new CollectionStatistics(id);
+            var existingStatistics = collection.Statistics;
+            var statistics = existingStatistics ?? new CollectionStatistics(id);
             
-            // Update statistics
+            // Update statistics values
             statistics.UpdateImageCount(collection.GetImageCount());
             statistics.UpdateTotalSize(collection.GetTotalSize());
             
@@ -488,7 +489,15 @@ public class CollectionService : ICollectionService
                 statistics.UpdateAverageDimensions(avgWidth, avgHeight);
             }
 
-            await _unitOfWork.CollectionStatistics.UpdateAsync(statistics, cancellationToken);
+            // Persist depending on existence to avoid concurrency exceptions on non-existent rows
+            if (existingStatistics == null)
+            {
+                await _unitOfWork.CollectionStatistics.AddAsync(statistics, cancellationToken);
+            }
+            else
+            {
+                await _unitOfWork.CollectionStatistics.UpdateAsync(statistics, cancellationToken);
+            }
             await _unitOfWork.SaveChangesAsync(cancellationToken);
 
             return statistics;

@@ -183,7 +183,7 @@ public class AdvancedThumbnailService : IAdvancedThumbnailService
         }
     }
 
-    public async Task DeleteCollectionThumbnailAsync(Guid collectionId, CancellationToken cancellationToken = default)
+    public Task DeleteCollectionThumbnailAsync(Guid collectionId, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -199,6 +199,8 @@ public class AdvancedThumbnailService : IAdvancedThumbnailService
         {
             _logger.LogError(ex, "Error deleting thumbnail for collection {CollectionId}", collectionId);
         }
+        
+        return Task.CompletedTask;
     }
 
     private string GetThumbnailPath(Guid collectionId)

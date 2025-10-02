@@ -47,7 +47,6 @@ public class CollectionServiceTests02
         // Arrange
         var name = "Test Collection";
         var invalidPath = "invalid://path";
-        var type = CollectionType.Folder;
         var settings = new CollectionSettings();
 
         _fileScannerMock.Setup(x => x.IsValidCollectionPathAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
@@ -55,7 +54,7 @@ public class CollectionServiceTests02
 
         // Act & Assert
         await Assert.ThrowsAsync<NullReferenceException>(() => 
-            _service.CreateAsync(name, invalidPath, type, settings));
+            _service.CreateAsync(name, invalidPath, CollectionType.Folder, settings));
     }
 
     [Fact]
@@ -64,12 +63,11 @@ public class CollectionServiceTests02
         // Arrange
         string? name = null;
         var path = "L:\\EMedia\\AI_Generated\\AiASAG";
-        var type = CollectionType.Folder;
         var settings = new CollectionSettings();
 
         // Act & Assert
         await Assert.ThrowsAsync<NullReferenceException>(() => 
-            _service.CreateAsync(name!, path, type, settings));
+            _service.CreateAsync(name!, path, CollectionType.Folder, settings));
     }
 
     [Fact]
@@ -78,12 +76,11 @@ public class CollectionServiceTests02
         // Arrange
         var name = "";
         var path = "L:\\EMedia\\AI_Generated\\AiASAG";
-        var type = CollectionType.Folder;
         var settings = new CollectionSettings();
 
         // Act & Assert
         await Assert.ThrowsAsync<NullReferenceException>(() => 
-            _service.CreateAsync(name, path, type, settings));
+            _service.CreateAsync(name, path, CollectionType.Folder, settings));
     }
 
     [Fact]
@@ -92,12 +89,11 @@ public class CollectionServiceTests02
         // Arrange
         var name = "Test Collection";
         string? path = null;
-        var type = CollectionType.Folder;
         var settings = new CollectionSettings();
 
         // Act & Assert
         await Assert.ThrowsAsync<NullReferenceException>(() => 
-            _service.CreateAsync(name, path!, type, settings));
+            _service.CreateAsync(name, path!, CollectionType.Folder, settings));
     }
 
     [Fact]
@@ -106,12 +102,11 @@ public class CollectionServiceTests02
         // Arrange
         var name = "Test Collection";
         var path = "";
-        var type = CollectionType.Folder;
         var settings = new CollectionSettings();
 
         // Act & Assert
         await Assert.ThrowsAsync<NullReferenceException>(() => 
-            _service.CreateAsync(name, path, type, settings));
+            _service.CreateAsync(name, path, CollectionType.Folder, settings));
     }
 
     [Fact]
@@ -121,7 +116,6 @@ public class CollectionServiceTests02
         var collectionId = Guid.NewGuid();
         string? name = null;
         var path = "L:\\EMedia\\AI_Generated\\AiASAG";
-        var type = CollectionType.Folder;
         var settings = new CollectionSettings();
 
         // Act & Assert
@@ -136,7 +130,6 @@ public class CollectionServiceTests02
         var collectionId = Guid.NewGuid();
         var name = "";
         var path = "L:\\EMedia\\AI_Generated\\AiASAG";
-        var type = CollectionType.Folder;
         var settings = new CollectionSettings();
 
         // Act & Assert
@@ -151,7 +144,6 @@ public class CollectionServiceTests02
         var collectionId = Guid.NewGuid();
         var name = "Test Collection";
         string? path = null;
-        var type = CollectionType.Folder;
         var settings = new CollectionSettings();
 
         // Act & Assert
@@ -166,7 +158,6 @@ public class CollectionServiceTests02
         var collectionId = Guid.NewGuid();
         var name = "Test Collection";
         var path = "";
-        var type = CollectionType.Folder;
         var settings = new CollectionSettings();
 
         // Act & Assert
@@ -181,7 +172,6 @@ public class CollectionServiceTests02
         var collectionId = Guid.NewGuid();
         var name = "Test Collection";
         var invalidPath = "invalid://path";
-        var type = CollectionType.Folder;
         var settings = new CollectionSettings();
 
         _fileScannerMock.Setup(x => x.IsValidCollectionPathAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))

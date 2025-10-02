@@ -73,17 +73,19 @@ public class BulkController : ControllerBase
                 {
                     _logger.LogDebug("Processing potential collection {Name} at {Path}", potential.Name, potential.Path);
                     
-                    // Check if collection already exists
-                    var existingCollection = await _collectionService.GetByPathAsync(potential.Path);
+                    // Check if collection already exists - normalize path for comparison
+                    var normalizedPath = Path.GetFullPath(potential.Path).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+                    var existingCollection = await _collectionService.GetByPathAsync(normalizedPath);
                     if (existingCollection != null)
                     {
+                        // Skip existing collections for now to avoid concurrency issues
                         results.Add(new BulkCollectionResult
                         {
                             Name = potential.Name,
                             Path = potential.Path,
                             Type = potential.Type,
                             Status = "Skipped",
-                            Message = "Collection already exists",
+                            Message = "Collection already exists - skipping to avoid concurrency issues",
                             CollectionId = existingCollection.Id
                         });
                         continue;
@@ -99,7 +101,7 @@ public class BulkController : ControllerBase
                     // Create collection (this calls the same logic as single add)
                     var collection = await _collectionService.CreateAsync(
                         potential.Name,
-                        potential.Path,
+                        normalizedPath, // Use normalized path for consistency
                         potential.Type,
                         settings);
                     
@@ -175,18 +177,15 @@ public class BulkController : ControllerBase
             }
             
             var searchOption = includeSubfolders ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly;
-            var directories = Directory.GetDirectories(parentPath, "*", searchOption);
             
+            // Find folders
+            var directories = Directory.GetDirectories(parentPath, "*", searchOption);
             foreach (var directory in directories)
             {
                 var directoryName = Path.GetFileName(directory);
                 
-                // Apply prefix filter if specified
-                if (!string.IsNullOrEmpty(collectionPrefix) && 
-                    !directoryName.StartsWith(collectionPrefix, StringComparison.OrdinalIgnoreCase))
-                {
-                    continue;
-                }
+                // Skip prefix filtering for now - let the main logic handle existing vs new collections
+                // This allows us to process both existing and new collections
                 
                 // Check if directory contains images
                 var hasImages = await HasImageFiles(directory);
@@ -200,6 +199,47 @@ public class BulkController : ControllerBase
                     });
                 }
             }
+            
+            // Find compressed files
+            var compressedExtensions = new[] { ".zip", ".cbz", ".cbr", ".7z", ".rar", ".tar", ".tar.gz", ".tar.bz2" };
+            var files = Directory.GetFiles(parentPath, "*", searchOption);
+            foreach (var file in files)
+            {
+                var fileName = Path.GetFileName(file);
+                var extension = Path.GetExtension(file).ToLowerInvariant();
+                
+                // Check if it's a supported compressed file
+                if (compressedExtensions.Contains(extension))
+                {
+                    // Apply prefix filter if specified
+                    if (!string.IsNullOrEmpty(collectionPrefix) && 
+                        !fileName.StartsWith(collectionPrefix, StringComparison.OrdinalIgnoreCase))
+                    {
+                        continue;
+                    }
+                    
+                    // Check if compressed file contains images
+                    var hasImages = await HasImagesInCompressedFile(file);
+                    if (hasImages)
+                    {
+                        var collectionType = extension switch
+                        {
+                            ".zip" or ".cbz" => CollectionType.Zip,
+                            ".7z" => CollectionType.SevenZip,
+                            ".rar" or ".cbr" => CollectionType.Rar,
+                            ".tar" or ".tar.gz" or ".tar.bz2" => CollectionType.Tar,
+                            _ => CollectionType.Zip // Default to Zip
+                        };
+                        
+                        potentialCollections.Add(new PotentialCollection
+                        {
+                            Name = Path.GetFileNameWithoutExtension(fileName),
+                            Path = file,
+                            Type = collectionType
+                        });
+                    }
+                }
+            }
         }
         catch (Exception ex)
         {
@@ -210,19 +250,46 @@ public class BulkController : ControllerBase
         return potentialCollections;
     }
     
-    private async Task<bool> HasImageFiles(string directory)
+    private Task<bool> HasImageFiles(string directory)
     {
         try
         {
             var imageExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".tiff", ".svg" };
             var files = Directory.GetFiles(directory, "*", SearchOption.TopDirectoryOnly);
             
-            return files.Any(file => 
-                imageExtensions.Contains(Path.GetExtension(file).ToLowerInvariant()));
+            return Task.FromResult(files.Any(file => 
+                imageExtensions.Contains(Path.GetExtension(file).ToLowerInvariant())));
         }
         catch
         {
-            return false;
+            return Task.FromResult(false);
+        }
+    }
+    
+    private Task<bool> HasImagesInCompressedFile(string filePath)
+    {
+        try
+        {
+            var extension = Path.GetExtension(filePath).ToLowerInvariant();
+            
+            // For now, only support ZIP files for bulk operations
+            // Other formats require more complex libraries
+            if (extension == ".zip")
+            {
+                using var archive = System.IO.Compression.ZipFile.OpenRead(filePath);
+                var imageExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".tiff", ".svg" };
+                
+                return Task.FromResult(archive.Entries.Any(entry => 
+                    imageExtensions.Contains(Path.GetExtension(entry.Name).ToLowerInvariant())));
+            }
+            
+            // For other compressed formats, assume they contain images if they exist
+            // This is a simplified approach - in production, you'd want proper archive libraries
+            return Task.FromResult(System.IO.File.Exists(filePath));
+        }
+        catch
+        {
+            return Task.FromResult(false);
         }
     }
 }

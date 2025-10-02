@@ -117,6 +117,11 @@ public class Repository<T> : IRepository<T> where T : class
     {
         try
         {
+            // Clear any existing tracked entities to avoid conflicts
+            _context.ChangeTracker.Clear();
+            
+            // Enable tracking for Add operations
+            _context.ChangeTracker.QueryTrackingBehavior = QueryTrackingBehavior.TrackAll;
             var entry = await _dbSet.AddAsync(entity, cancellationToken);
             _logger.LogDebug("Added entity of type {EntityType}", typeof(T).Name);
             return entry.Entity;
@@ -132,6 +137,11 @@ public class Repository<T> : IRepository<T> where T : class
     {
         try
         {
+            // Clear any existing tracked entities to avoid conflicts
+            _context.ChangeTracker.Clear();
+            
+            // Enable tracking for Add operations
+            _context.ChangeTracker.QueryTrackingBehavior = QueryTrackingBehavior.TrackAll;
             var entityList = entities.ToList();
             await _dbSet.AddRangeAsync(entityList, cancellationToken);
             _logger.LogDebug("Added {Count} entities of type {EntityType}", entityList.Count, typeof(T).Name);
@@ -148,6 +158,8 @@ public class Repository<T> : IRepository<T> where T : class
     {
         try
         {
+            // Enable tracking for Update operations
+            _context.ChangeTracker.QueryTrackingBehavior = QueryTrackingBehavior.TrackAll;
             _dbSet.Update(entity);
             _logger.LogDebug("Updated entity of type {EntityType}", typeof(T).Name);
             return Task.CompletedTask;
@@ -163,6 +175,8 @@ public class Repository<T> : IRepository<T> where T : class
     {
         try
         {
+            // Enable tracking for Update operations
+            _context.ChangeTracker.QueryTrackingBehavior = QueryTrackingBehavior.TrackAll;
             var entityList = entities.ToList();
             _dbSet.UpdateRange(entityList);
             _logger.LogDebug("Updated {Count} entities of type {EntityType}", entityList.Count, typeof(T).Name);

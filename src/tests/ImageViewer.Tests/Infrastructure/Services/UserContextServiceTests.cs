@@ -56,7 +56,7 @@ public class UserContextServiceTests
     {
         // Arrange
         var httpContextMock = new Mock<HttpContext>();
-        httpContextMock.Setup(x => x.User).Returns((ClaimsPrincipal?)null);
+        httpContextMock.Setup(x => x.User).Returns((ClaimsPrincipal?)null!);
         _httpContextAccessorMock.Setup(x => x.HttpContext).Returns(httpContextMock.Object);
 
         // Act

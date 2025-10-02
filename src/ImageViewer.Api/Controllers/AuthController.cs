@@ -25,14 +25,14 @@ public class AuthController : ControllerBase
     /// Login user
     /// </summary>
     [HttpPost("login")]
-    public async Task<ActionResult<LoginResponseDto>> Login([FromBody] LoginRequestDto request)
+    public Task<ActionResult<LoginResponseDto>> Login([FromBody] LoginRequestDto request)
     {
         try
         {
             // Simple authentication - in production, validate against database
             if (string.IsNullOrEmpty(request.Username) || string.IsNullOrEmpty(request.Password))
             {
-                return BadRequest(new { message = "Username and password are required" });
+                return Task.FromResult<ActionResult<LoginResponseDto>>(BadRequest(new { message = "Username and password are required" }));
             }
 
             // For demo purposes, accept any username/password
@@ -51,12 +51,12 @@ public class AuthController : ControllerBase
                 ExpiresAt = DateTime.UtcNow.AddHours(24)
             };
 
-            return Ok(response);
+            return Task.FromResult<ActionResult<LoginResponseDto>>(Ok(response));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error during login for user {Username}", request.Username);
-            return StatusCode(500, "Internal server error");
+            return Task.FromResult<ActionResult<LoginResponseDto>>(StatusCode(500, "Internal server error"));
         }
     }
 

@@ -17,7 +17,7 @@ public class SkiaSharpImageProcessingService : IImageProcessingService
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    public async Task<ImageMetadata> ExtractMetadataAsync(string imagePath, CancellationToken cancellationToken = default)
+    public Task<ImageMetadata> ExtractMetadataAsync(string imagePath, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -37,7 +37,7 @@ public class SkiaSharpImageProcessingService : IImageProcessingService
             );
 
             _logger.LogDebug("Successfully extracted metadata from {ImagePath}", imagePath);
-            return metadata;
+            return Task.FromResult(metadata);
         }
         catch (Exception ex)
         {
@@ -46,7 +46,7 @@ public class SkiaSharpImageProcessingService : IImageProcessingService
         }
     }
 
-    public async Task<byte[]> GenerateThumbnailAsync(string imagePath, int width, int height, CancellationToken cancellationToken = default)
+    public Task<byte[]> GenerateThumbnailAsync(string imagePath, int width, int height, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -75,7 +75,7 @@ public class SkiaSharpImageProcessingService : IImageProcessingService
             var result = thumbnailStream.ToArray();
             
             _logger.LogDebug("Successfully generated thumbnail for {ImagePath}", imagePath);
-            return result;
+            return Task.FromResult(result);
         }
         catch (Exception ex)
         {
@@ -84,7 +84,7 @@ public class SkiaSharpImageProcessingService : IImageProcessingService
         }
     }
 
-    public async Task<byte[]> ResizeImageAsync(string imagePath, int width, int height, int quality = 95, CancellationToken cancellationToken = default)
+    public Task<byte[]> ResizeImageAsync(string imagePath, int width, int height, int quality = 95, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -113,7 +113,7 @@ public class SkiaSharpImageProcessingService : IImageProcessingService
             var result = resizedStream.ToArray();
             
             _logger.LogDebug("Successfully resized image {ImagePath}", imagePath);
-            return result;
+            return Task.FromResult(result);
         }
         catch (Exception ex)
         {
@@ -122,7 +122,7 @@ public class SkiaSharpImageProcessingService : IImageProcessingService
         }
     }
 
-    public async Task<byte[]> ConvertImageFormatAsync(string imagePath, string targetFormat, int quality = 95, CancellationToken cancellationToken = default)
+    public Task<byte[]> ConvertImageFormatAsync(string imagePath, string targetFormat, int quality = 95, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -144,7 +144,7 @@ public class SkiaSharpImageProcessingService : IImageProcessingService
             var result = convertedStream.ToArray();
             
             _logger.LogDebug("Successfully converted image {ImagePath} to {TargetFormat}", imagePath, targetFormat);
-            return result;
+            return Task.FromResult(result);
         }
         catch (Exception ex)
         {
@@ -153,7 +153,7 @@ public class SkiaSharpImageProcessingService : IImageProcessingService
         }
     }
 
-    public async Task<bool> IsImageFileAsync(string filePath, CancellationToken cancellationToken = default)
+    public Task<bool> IsImageFileAsync(string filePath, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -161,7 +161,7 @@ public class SkiaSharpImageProcessingService : IImageProcessingService
 
             if (!File.Exists(filePath))
             {
-                return false;
+                return Task.FromResult(false);
             }
 
             var extension = Path.GetExtension(filePath).ToLowerInvariant();
@@ -169,7 +169,7 @@ public class SkiaSharpImageProcessingService : IImageProcessingService
             
             if (!supportedExtensions.Contains(extension))
             {
-                return false;
+                return Task.FromResult(false);
             }
 
             // Try to decode the image to verify it's valid
@@ -178,21 +178,21 @@ public class SkiaSharpImageProcessingService : IImageProcessingService
             
             var result = codec != null;
             _logger.LogDebug("File {FilePath} is {Result} an image file", filePath, result ? "" : "not");
-            return result;
+            return Task.FromResult(result);
         }
         catch (Exception ex)
         {
             _logger.LogDebug(ex, "Error checking if {FilePath} is an image file", filePath);
-            return false;
+            return Task.FromResult(false);
         }
     }
 
-    public async Task<string[]> GetSupportedFormatsAsync(CancellationToken cancellationToken = default)
+    public Task<string[]> GetSupportedFormatsAsync(CancellationToken cancellationToken = default)
     {
-        return new[] { "jpg", "jpeg", "png", "gif", "bmp", "webp", "tiff" };
+        return Task.FromResult(new[] { "jpg", "jpeg", "png", "gif", "bmp", "webp", "tiff" });
     }
 
-    public async Task<ImageDimensions> GetImageDimensionsAsync(string imagePath, CancellationToken cancellationToken = default)
+    public Task<ImageDimensions> GetImageDimensionsAsync(string imagePath, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -205,7 +205,7 @@ public class SkiaSharpImageProcessingService : IImageProcessingService
             var dimensions = new ImageDimensions(info.Width, info.Height);
             
             _logger.LogDebug("Image {ImagePath} dimensions: {Width}x{Height}", imagePath, dimensions.Width, dimensions.Height);
-            return dimensions;
+            return Task.FromResult(dimensions);
         }
         catch (Exception ex)
         {
@@ -214,14 +214,14 @@ public class SkiaSharpImageProcessingService : IImageProcessingService
         }
     }
 
-    public async Task<ImageDimensions> GetImageDimensionsFromBytesAsync(byte[] imageData, CancellationToken cancellationToken = default)
+    public Task<ImageDimensions> GetImageDimensionsFromBytesAsync(byte[] imageData, CancellationToken cancellationToken = default)
     {
         try
         {
             using var data = SKData.CreateCopy(imageData);
             using var codec = SKCodec.Create(data);
             var info = codec.Info;
-            return new ImageDimensions(info.Width, info.Height);
+            return Task.FromResult(new ImageDimensions(info.Width, info.Height));
         }
         catch (Exception ex)
         {
@@ -230,7 +230,7 @@ public class SkiaSharpImageProcessingService : IImageProcessingService
         }
     }
 
-    public async Task<long> GetImageFileSizeAsync(string imagePath, CancellationToken cancellationToken = default)
+    public Task<long> GetImageFileSizeAsync(string imagePath, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -240,7 +240,7 @@ public class SkiaSharpImageProcessingService : IImageProcessingService
             var size = fileInfo.Length;
             
             _logger.LogDebug("Image {ImagePath} file size: {Size} bytes", imagePath, size);
-            return size;
+            return Task.FromResult(size);
         }
         catch (Exception ex)
         {

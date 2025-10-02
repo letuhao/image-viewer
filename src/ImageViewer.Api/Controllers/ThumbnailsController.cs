@@ -78,8 +78,8 @@ public class ThumbnailsController : ControllerBase
             var filename = $"collection_{collectionId}_thumb.jpg";
 
             // Set cache headers
-            Response.Headers.Add("Cache-Control", "public, max-age=3600"); // 1 hour cache
-            Response.Headers.Add("X-Thumbnail-Source", "advanced-service");
+            Response.Headers["Cache-Control"] = "public, max-age=3600"; // 1 hour cache
+            Response.Headers["X-Thumbnail-Source"] = "advanced-service";
 
             return File(thumbnailData, contentType, filename);
         }

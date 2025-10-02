@@ -18,55 +18,61 @@ public class IntegrationTestFixture : WebApplicationFactory<Program>, IDisposabl
     public IServiceProvider ServiceProvider { get; private set; } = null!;
     public ImageViewerDbContext DbContext { get; private set; } = null!;
 
-    protected override void ConfigureWebHost(IWebHostBuilder builder)
-    {
-        builder.ConfigureServices(services =>
+        protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
-            // Remove the default database context
-            var descriptor = services.SingleOrDefault(d => d.ServiceType == typeof(DbContextOptions<ImageViewerDbContext>));
-            if (descriptor != null)
+            builder.ConfigureServices(services =>
             {
-                services.Remove(descriptor);
-            }
-
-            // Add real database context
-            services.AddDbContext<ImageViewerDbContext>(options =>
-            {
-                options.UseNpgsql(REAL_DATABASE_CONNECTION, npgsqlOptions =>
+                // Remove the default database context
+                var descriptor = services.SingleOrDefault(d => d.ServiceType == typeof(DbContextOptions<ImageViewerDbContext>));
+                if (descriptor != null)
                 {
-                    npgsqlOptions.EnableRetryOnFailure(3);
-                    npgsqlOptions.CommandTimeout(30);
+                    services.Remove(descriptor);
+                }
+
+                // Add real database context
+                services.AddDbContext<ImageViewerDbContext>(options =>
+                {
+                    options.UseNpgsql(REAL_DATABASE_CONNECTION, npgsqlOptions =>
+                    {
+                        npgsqlOptions.EnableRetryOnFailure(3);
+                        npgsqlOptions.CommandTimeout(30);
+                    });
+                });
+
+                // Add logging for debugging
+                services.AddLogging(builder =>
+                {
+                    builder.AddConsole();
+                    builder.SetMinimumLevel(LogLevel.Information);
                 });
             });
+        }
 
-            // Add logging for debugging
-            services.AddLogging(builder =>
-            {
-                builder.AddConsole();
-                builder.SetMinimumLevel(LogLevel.Information);
-            });
-
-            // Ensure database is created and migrated
-            var serviceProvider = services.BuildServiceProvider();
-            using var scope = serviceProvider.CreateScope();
+        public new WebApplicationFactory<Program> WithWebHostBuilder(Action<IWebHostBuilder> configuration)
+        {
+            var factory = base.WithWebHostBuilder(configuration);
+            
+            // Initialize ServiceProvider after WebApplicationFactory is created
+            ServiceProvider = factory.Services;
+            
+            using var scope = ServiceProvider.CreateScope();
             var context = scope.ServiceProvider.GetRequiredService<ImageViewerDbContext>();
 
             try
             {
                 context.Database.EnsureCreated();
-                context.Database.Migrate();
             }
             catch (Exception ex)
             {
                 var logger = scope.ServiceProvider.GetRequiredService<ILogger<IntegrationTestFixture>>();
-                logger.LogError(ex, "Failed to create or migrate database");
+                logger.LogError(ex, "Failed to create database");
                 throw;
             }
 
-            ServiceProvider = serviceProvider;
             DbContext = context;
-        });
-    }
+            
+            return factory;
+        }
 
         protected override void Dispose(bool disposing)
         {

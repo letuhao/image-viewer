@@ -17,6 +17,8 @@ public class ImageViewerDbContext : DbContext
         : base(options)
     {
         _logger = logger;
+        // Force no tracking as default to prevent concurrency issues
+        ChangeTracker.QueryTrackingBehavior = QueryTrackingBehavior.NoTracking;
     }
 
     // DbSets
@@ -61,6 +63,8 @@ public class ImageViewerDbContext : DbContext
                 optionsBuilder.EnableDetailedErrors();
             }
         }
+        
+        // Note: QueryTrackingBehavior will be set in constructor instead
     }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -78,6 +82,9 @@ public class ImageViewerDbContext : DbContext
             // Settings will be handled by separate entity
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("NOW()");
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("NOW()");
+            
+            // Disable concurrency control to prevent optimistic concurrency exceptions
+            // Note: RowVersion property doesn't exist in Collection entity
             
             entity.HasIndex(e => e.Path).IsUnique();
             entity.HasIndex(e => e.Name);

@@ -32,12 +32,12 @@ public class ViewSessionRepository : Repository<ViewSession>, IViewSessionReposi
         }
     }
 
-    public async Task<IEnumerable<ViewSession>> GetByUserIdAsync(string userId)
+    public Task<IEnumerable<ViewSession>> GetByUserIdAsync(string userId)
     {
         // Note: ViewSession entity doesn't currently track user ID
         // This method is kept for interface compliance but returns empty result
         _logger.LogWarning("GetByUserIdAsync called but ViewSession entity doesn't track user ID");
-        return new List<ViewSession>();
+        return Task.FromResult<IEnumerable<ViewSession>>(new List<ViewSession>());
     }
 
     public async Task<IEnumerable<ViewSession>> GetByDateRangeAsync(DateTime fromDate, DateTime toDate)
