@@ -106,6 +106,7 @@ builder.Services.AddScoped<ICacheService, CacheService>();
 builder.Services.AddScoped<ITagService, TagService>();
 builder.Services.AddScoped<IBackgroundJobService, ImageViewer.Application.Services.BackgroundJobService>();
 builder.Services.AddScoped<IStatisticsService, StatisticsService>();
+builder.Services.AddScoped<IBulkService, BulkService>();
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 
 // Add Infrastructure Services

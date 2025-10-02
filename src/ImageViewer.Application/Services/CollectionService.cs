@@ -268,23 +268,53 @@ public class CollectionService : ICollectionService
             var collection = new Collection(name, path, type);
         if (settings != null)
         {
-            var settingsEntity = new CollectionSettingsEntity(
-                collection.Id,
-                settings.TotalImages,
-                settings.TotalSizeBytes,
-                settings.ThumbnailWidth,
-                settings.ThumbnailHeight,
-                settings.CacheWidth,
-                settings.CacheHeight,
-                settings.AutoGenerateThumbnails,
-                settings.AutoGenerateCache,
-                settings.CacheExpiration,
-                settings.AdditionalSettingsJson
-            );
-            collection.SetSettings(settingsEntity);
+            var existingSettings = collection.Settings;
+            if (existingSettings != null)
+            {
+                existingSettings.UpdateTotalImages(settings.TotalImages);
+                existingSettings.UpdateTotalSize(settings.TotalSizeBytes);
+                existingSettings.UpdateThumbnailSize(settings.ThumbnailWidth, settings.ThumbnailHeight);
+                existingSettings.UpdateCacheSize(settings.CacheWidth, settings.CacheHeight);
+                existingSettings.SetAutoGenerateThumbnails(settings.AutoGenerateThumbnails);
+                existingSettings.SetAutoGenerateCache(settings.AutoGenerateCache);
+                existingSettings.UpdateCacheExpiration(settings.CacheExpiration);
+                existingSettings.UpdateAdditionalSettings(settings.AdditionalSettingsJson ?? "{}");
+            }
+            else
+            {
+                var settingsEntity = new CollectionSettingsEntity(
+                    collection.Id,
+                    settings.TotalImages,
+                    settings.TotalSizeBytes,
+                    settings.ThumbnailWidth,
+                    settings.ThumbnailHeight,
+                    settings.CacheWidth,
+                    settings.CacheHeight,
+                    settings.AutoGenerateThumbnails,
+                    settings.AutoGenerateCache,
+                    settings.CacheExpiration,
+                    settings.AdditionalSettingsJson
+                );
+                collection.SetSettings(settingsEntity);
+                await _unitOfWork.CollectionSettings.AddAsync(settingsEntity, cancellationToken);
+            }
         }
             await _unitOfWork.Collections.AddAsync(collection, cancellationToken);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+            // Scan collection for images if auto-scan is enabled
+            if (settings?.AutoGenerateCache == true)
+            {
+                try
+                {
+                    _logger.LogInformation("Auto-scanning newly created collection {CollectionId}", collection.Id);
+                    await ScanCollectionAsync(collection.Id, cancellationToken);
+                }
+                catch (Exception scanEx)
+                {
+                    _logger.LogWarning(scanEx, "Failed to auto-scan newly created collection {CollectionId}, but collection was created", collection.Id);
+                }
+            }
 
             _logger.LogInformation("Successfully created collection {CollectionId} with name {CollectionName}", collection.Id, name);
             return collection;
@@ -336,8 +366,22 @@ public class CollectionService : ICollectionService
             collection.SetSettings(settingsEntity);
         }
 
-            await _unitOfWork.Collections.UpdateAsync(collection, cancellationToken);
+            // Entity is tracked; just save changes
             await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+            // Scan collection for images if auto-scan is enabled
+            if (settings?.AutoGenerateCache == true)
+            {
+                try
+                {
+                    _logger.LogInformation("Auto-scanning updated collection {CollectionId}", id);
+                    await ScanCollectionAsync(id, cancellationToken);
+                }
+                catch (Exception scanEx)
+                {
+                    _logger.LogWarning(scanEx, "Failed to auto-scan updated collection {CollectionId}, but collection was updated", id);
+                }
+            }
 
             _logger.LogInformation("Successfully updated collection {CollectionId}", id);
             return collection;
@@ -362,7 +406,6 @@ public class CollectionService : ICollectionService
             }
 
             collection.SoftDelete();
-            await _unitOfWork.Collections.UpdateAsync(collection, cancellationToken);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
 
             _logger.LogInformation("Successfully deleted collection {CollectionId}", id);
@@ -387,7 +430,6 @@ public class CollectionService : ICollectionService
             }
 
             collection.Restore();
-            await _unitOfWork.Collections.UpdateAsync(collection, cancellationToken);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
 
             _logger.LogInformation("Successfully restored collection {CollectionId}", id);

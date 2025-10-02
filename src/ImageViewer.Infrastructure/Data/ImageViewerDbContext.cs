@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Npgsql.EntityFrameworkCore.PostgreSQL;
 using Microsoft.Extensions.Logging;
 using ImageViewer.Domain.Entities;
 using ImageViewer.Domain.ValueObjects;
@@ -17,8 +18,6 @@ public class ImageViewerDbContext : DbContext
         : base(options)
     {
         _logger = logger;
-        // Force no tracking as default to prevent concurrency issues
-        ChangeTracker.QueryTrackingBehavior = QueryTrackingBehavior.NoTracking;
     }
 
     // DbSets
@@ -72,8 +71,22 @@ public class ImageViewerDbContext : DbContext
         // Configure PostgreSQL-specific settings
         modelBuilder.HasDefaultSchema("public");
         
-        // Configure RowVersion for all entities that inherit from BaseEntity
-        ConfigureRowVersionForAllEntities(modelBuilder);
+        // Use PostgreSQL xmin as the concurrency token for all entities (shadow property)
+        var entityTypes = modelBuilder.Model.GetEntityTypes()
+            .Where(e => typeof(BaseEntity).IsAssignableFrom(e.ClrType))
+            .ToList();
+
+        foreach (var entityType in entityTypes)
+        {
+            var entity = modelBuilder.Entity(entityType.ClrType);
+            // Ensure legacy RowVersion property is not mapped
+            entity.Ignore(nameof(BaseEntity.RowVersion));
+            entity.Property<uint>("xmin")
+                  .HasColumnName("xmin")
+                  .HasColumnType("xid")
+                  .IsConcurrencyToken()
+                  .ValueGeneratedOnAddOrUpdate();
+        }
         
         // Collection configuration
         modelBuilder.Entity<Collection>(entity =>
@@ -86,7 +99,7 @@ public class ImageViewerDbContext : DbContext
             entity.Property(e => e.CreatedAt).HasDefaultValueSql("NOW()").HasConversion(v => v, v => DateTime.SpecifyKind(v, DateTimeKind.Utc));
             entity.Property(e => e.UpdatedAt).HasDefaultValueSql("NOW()").HasConversion(v => v, v => DateTime.SpecifyKind(v, DateTimeKind.Utc));
             
-            // RowVersion is configured globally in ConfigureRowVersionForAllEntities
+            // Concurrency handled via xmin globally
             
             entity.HasIndex(e => e.Path).IsUnique();
             entity.HasIndex(e => e.Name);
@@ -312,24 +325,5 @@ public class ImageViewerDbContext : DbContext
         });
     }
     
-    /// <summary>
-    /// Configure RowVersion for all entities that inherit from BaseEntity
-    /// </summary>
-    private void ConfigureRowVersionForAllEntities(ModelBuilder modelBuilder)
-    {
-        // Get all entity types that inherit from BaseEntity
-        var entityTypes = modelBuilder.Model.GetEntityTypes()
-            .Where(e => typeof(BaseEntity).IsAssignableFrom(e.ClrType))
-            .ToList();
-
-        foreach (var entityType in entityTypes)
-        {
-            var entityBuilder = modelBuilder.Entity(entityType.ClrType);
-            
-            // Configure RowVersion property
-            entityBuilder.Property(nameof(BaseEntity.RowVersion))
-                .IsRowVersion()
-                .HasComment("Row version for optimistic concurrency control");
-        }
-    }
+    // Removed legacy RowVersion mapping in favor of xmin
 }

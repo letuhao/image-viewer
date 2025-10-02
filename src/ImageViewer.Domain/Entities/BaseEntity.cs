@@ -1,5 +1,4 @@
 using ImageViewer.Domain.Events;
-using System.ComponentModel.DataAnnotations;
 
 namespace ImageViewer.Domain.Entities;
 
@@ -8,9 +7,8 @@ namespace ImageViewer.Domain.Entities;
 /// </summary>
 public abstract class BaseEntity
 {
-    // Concurrency token
-    [Timestamp]  // EF Core sẽ dùng cho RowVersion
-    public byte[] RowVersion { get; set; }
+    // Optional legacy column; ignored in EF mapping when using PostgreSQL xmin
+    public byte[]? RowVersion { get; set; }
 
     private readonly List<IDomainEvent> _domainEvents = new();
 
@@ -18,7 +16,6 @@ public abstract class BaseEntity
 
     public BaseEntity()
     {
-        RowVersion = new byte[8];  // Initialize with 8 bytes for timestamp
     }
 
     protected void AddDomainEvent(IDomainEvent domainEvent)
