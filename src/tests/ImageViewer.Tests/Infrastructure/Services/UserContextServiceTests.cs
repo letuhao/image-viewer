@@ -92,7 +92,8 @@ public class UserContextServiceTests
         {
             new Claim("user_id", userId)
         };
-        var claimsPrincipal = new ClaimsPrincipal(new ClaimsIdentity(claims));
+        var claimsIdentity = new ClaimsIdentity(claims, "test");
+        var claimsPrincipal = new ClaimsPrincipal(claimsIdentity);
         httpContextMock.Setup(x => x.User).Returns(claimsPrincipal);
         _httpContextAccessorMock.Setup(x => x.HttpContext).Returns(httpContextMock.Object);
 
@@ -113,7 +114,8 @@ public class UserContextServiceTests
         {
             new Claim(ClaimTypes.NameIdentifier, userId)
         };
-        var claimsPrincipal = new ClaimsPrincipal(new ClaimsIdentity(claims));
+        var claimsIdentity = new ClaimsIdentity(claims, "test");
+        var claimsPrincipal = new ClaimsPrincipal(claimsIdentity);
         httpContextMock.Setup(x => x.User).Returns(claimsPrincipal);
         _httpContextAccessorMock.Setup(x => x.HttpContext).Returns(httpContextMock.Object);
 
@@ -134,7 +136,8 @@ public class UserContextServiceTests
         {
             new Claim("sub", userId)
         };
-        var claimsPrincipal = new ClaimsPrincipal(new ClaimsIdentity(claims));
+        var claimsIdentity = new ClaimsIdentity(claims, "test");
+        var claimsPrincipal = new ClaimsPrincipal(claimsIdentity);
         httpContextMock.Setup(x => x.User).Returns(claimsPrincipal);
         _httpContextAccessorMock.Setup(x => x.HttpContext).Returns(httpContextMock.Object);
 
@@ -155,7 +158,8 @@ public class UserContextServiceTests
         {
             new Claim(ClaimTypes.Name, userName)
         };
-        var claimsPrincipal = new ClaimsPrincipal(new ClaimsIdentity(claims));
+        var claimsIdentity = new ClaimsIdentity(claims, "test");
+        var claimsPrincipal = new ClaimsPrincipal(claimsIdentity);
         httpContextMock.Setup(x => x.User).Returns(claimsPrincipal);
         _httpContextAccessorMock.Setup(x => x.HttpContext).Returns(httpContextMock.Object);
 
@@ -176,6 +180,6 @@ public class UserContextServiceTests
         var userName = _service.GetCurrentUserName();
 
         // Assert
-        userName.Should().Be("anonymous");
+        userName.Should().Be("Anonymous User");
     }
 }
