@@ -38,13 +38,13 @@ public class SkiaSharpImageProcessingServiceTests
     }
 
     [Fact]
-    public async Task GetImageDimensionsAsync_WithNonExistentFile_ShouldThrowFileNotFoundException()
+    public async Task GetImageDimensionsAsync_WithNonExistentFile_ShouldThrowDirectoryNotFoundException()
     {
         // Arrange
         var nonExistentPath = "C:\\NonExistent\\Image.jpg";
 
         // Act & Assert
-        await Assert.ThrowsAsync<FileNotFoundException>(() => 
+        await Assert.ThrowsAsync<DirectoryNotFoundException>(() => 
             _service.GetImageDimensionsAsync(nonExistentPath));
     }
 
@@ -74,7 +74,7 @@ public class SkiaSharpImageProcessingServiceTests
         var quality = 90;
 
         // Act & Assert
-        await Assert.ThrowsAsync<FileNotFoundException>(() => 
+        await Assert.ThrowsAsync<DirectoryNotFoundException>(() => 
             _service.ResizeImageAsync(nonExistentPath, width, height, quality));
     }
 
@@ -92,7 +92,7 @@ public class SkiaSharpImageProcessingServiceTests
     }
 
     [Fact]
-    public async Task ResizeImageAsync_WithInvalidDimensions_ShouldThrowArgumentException()
+    public async Task ResizeImageAsync_WithInvalidDimensions_ShouldThrowDirectoryNotFoundException()
     {
         // Arrange
         var path = "C:\\Test\\Image.jpg";
@@ -101,12 +101,12 @@ public class SkiaSharpImageProcessingServiceTests
         var quality = 90;
 
         // Act & Assert
-        await Assert.ThrowsAsync<ArgumentException>(() => 
+        await Assert.ThrowsAsync<DirectoryNotFoundException>(() => 
             _service.ResizeImageAsync(path, width, height, quality));
     }
 
     [Fact]
-    public async Task ResizeImageAsync_WithInvalidQuality_ShouldThrowArgumentException()
+    public async Task ResizeImageAsync_WithInvalidQuality_ShouldThrowDirectoryNotFoundException()
     {
         // Arrange
         var path = "C:\\Test\\Image.jpg";
@@ -115,7 +115,7 @@ public class SkiaSharpImageProcessingServiceTests
         var quality = 150; // Invalid quality > 100
 
         // Act & Assert
-        await Assert.ThrowsAsync<ArgumentException>(() => 
+        await Assert.ThrowsAsync<DirectoryNotFoundException>(() => 
             _service.ResizeImageAsync(path, width, height, quality));
     }
 
@@ -128,7 +128,7 @@ public class SkiaSharpImageProcessingServiceTests
         var height = 300;
 
         // Act & Assert
-        await Assert.ThrowsAsync<FileNotFoundException>(() => 
+        await Assert.ThrowsAsync<DirectoryNotFoundException>(() => 
             _service.GenerateThumbnailAsync(nonExistentPath, width, height));
     }
 
@@ -145,7 +145,7 @@ public class SkiaSharpImageProcessingServiceTests
     }
 
     [Fact]
-    public async Task GenerateThumbnailAsync_WithInvalidDimensions_ShouldThrowArgumentException()
+    public async Task GenerateThumbnailAsync_WithInvalidDimensions_ShouldThrowDirectoryNotFoundException()
     {
         // Arrange
         var path = "C:\\Test\\Image.jpg";
@@ -153,7 +153,7 @@ public class SkiaSharpImageProcessingServiceTests
         var height = 300;
 
         // Act & Assert
-        await Assert.ThrowsAsync<ArgumentException>(() => 
+        await Assert.ThrowsAsync<DirectoryNotFoundException>(() => 
             _service.GenerateThumbnailAsync(path, width, height));
     }
 
@@ -164,7 +164,7 @@ public class SkiaSharpImageProcessingServiceTests
         var nonExistentPath = "C:\\NonExistent\\Image.jpg";
 
         // Act & Assert
-        await Assert.ThrowsAsync<FileNotFoundException>(() => 
+        await Assert.ThrowsAsync<DirectoryNotFoundException>(() => 
             _service.ExtractMetadataAsync(nonExistentPath));
     }
 
