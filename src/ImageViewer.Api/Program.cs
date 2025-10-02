@@ -55,6 +55,10 @@ builder.Services.Configure<ImageCachePresetsOptions>(builder.Configuration.GetSe
 // Add MongoDB
 builder.Services.AddMongoDb(builder.Configuration);
 
+// Add RabbitMQ
+builder.Services.Configure<ImageViewer.Infrastructure.Data.RabbitMQOptions>(builder.Configuration.GetSection("RabbitMQ"));
+builder.Services.AddScoped<ImageViewer.Domain.Interfaces.IMessageQueueService, ImageViewer.Infrastructure.Services.RabbitMQMessageQueueService>();
+
 // Add CORS
 builder.Services.AddCors(options =>
 {
@@ -76,7 +80,8 @@ builder.Services.AddSession(options =>
 });
 
 // Add Application Services
-builder.Services.AddScoped<ICollectionService, CollectionService>();
+builder.Services.AddScoped<CollectionService>();
+builder.Services.AddScoped<ICollectionService, QueuedCollectionService>();
 builder.Services.AddScoped<IImageService, ImageService>();
 builder.Services.AddScoped<ICacheService, CacheService>();
 builder.Services.AddScoped<ITagService, TagService>();
