@@ -94,6 +94,18 @@ public class AdvancedThumbnailService : IAdvancedThumbnailService
 
     public async Task<BatchThumbnailResult> BatchRegenerateThumbnailsAsync(IEnumerable<Guid> collectionIds, CancellationToken cancellationToken = default)
     {
+        if (collectionIds == null)
+        {
+            return new BatchThumbnailResult
+            {
+                Total = 0,
+                Success = 0,
+                Failed = 0,
+                FailedCollections = new List<Guid>(),
+                Errors = new List<string>()
+            };
+        }
+
         var result = new BatchThumbnailResult
         {
             Total = collectionIds.Count()
