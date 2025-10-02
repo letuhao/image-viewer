@@ -179,3 +179,5 @@ src/tests/ImageViewer.Tests/bin/
 src/tests/ImageViewer.Tests/obj/
 
 .VSCodeCounter/
+
+src/tests/ImageViewer.IntegrationTests/obj/

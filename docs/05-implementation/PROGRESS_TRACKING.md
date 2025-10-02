@@ -52,6 +52,8 @@
 - [x] **Sửa EF Core InMemory issues** ✅
 - [x] **Sửa JSON deserialization issues** ✅
 - [x] **60/60 tests PASSED** ✅
+- [x] **Integration Tests với PostgreSQL thực tế** ✅
+- [x] **9/9 Integration Tests PASSED** ✅
 
 ### 7. **Database & Migration** ✅
 - [x] Setup PostgreSQL connection

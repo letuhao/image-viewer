@@ -1,0 +1,6 @@
+{
+  "ImageViewer.Api, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null": "D:\\Works\\source\\image-viewer\\src\\ImageViewer.Api",
+  "ImageViewer.Application, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null": "D:\\Works\\source\\image-viewer\\src\\ImageViewer.Application",
+  "ImageViewer.Domain, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null": "D:\\Works\\source\\image-viewer\\src\\ImageViewer.Domain",
+  "ImageViewer.Infrastructure, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null": "D:\\Works\\source\\image-viewer\\src\\ImageViewer.Infrastructure"
+}

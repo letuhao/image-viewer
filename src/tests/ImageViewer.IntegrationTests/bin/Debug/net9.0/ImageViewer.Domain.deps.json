@@ -1,0 +1,23 @@
+{
+  "runtimeTarget": {
+    "name": ".NETCoreApp,Version=v8.0",
+    "signature": ""
+  },
+  "compilationOptions": {},
+  "targets": {
+    ".NETCoreApp,Version=v8.0": {
+      "ImageViewer.Domain/1.0.0": {
+        "runtime": {
+          "ImageViewer.Domain.dll": {}
+        }
+      }
+    }
+  },
+  "libraries": {
+    "ImageViewer.Domain/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    }
+  }
+}
