@@ -15,6 +15,24 @@ public class CollectionRepository : Repository<Collection>, ICollectionRepositor
     {
     }
 
+    public override async Task<Collection?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            return await _dbSet
+                .Include(c => c.Images)
+                .Include(c => c.Tags)
+                .Include(c => c.Statistics)
+                .Include(c => c.Settings)
+                .FirstOrDefaultAsync(c => c.Id == id && !c.IsDeleted, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting collection by ID {Id}", id);
+            throw;
+        }
+    }
+
     public async Task<Collection?> GetByNameAsync(string name, CancellationToken cancellationToken = default)
     {
         try

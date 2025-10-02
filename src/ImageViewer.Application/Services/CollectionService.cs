@@ -450,10 +450,54 @@ public class CollectionService : ICollectionService
                 collection.SetSettings(settingsEntity);
             }
 
-            await _unitOfWork.Collections.UpdateAsync(collection, cancellationToken);
+            // Reload entity to avoid concurrency issues
+            var existingCollection = await _unitOfWork.Collections.GetByIdAsync(id, cancellationToken);
+            if (existingCollection == null)
+            {
+                throw new InvalidOperationException($"Collection with ID '{id}' not found during update");
+            }
+
+            // Update the existing entity with new data
+            // Remove all existing images first
+            var existingImages = existingCollection.Images.ToList();
+            foreach (var image in existingImages)
+            {
+                existingCollection.RemoveImage(image.Id);
+            }
+            
+            // Add new images using unit of work
+            foreach (var image in images)
+            {
+                await _unitOfWork.Images.AddAsync(image, cancellationToken);
+                existingCollection.AddImage(image);
+            }
+
+            // Update collection settings
+            var existingSettings = existingCollection.Settings;
+            if (existingSettings != null)
+            {
+                existingSettings.UpdateTotalImages(existingCollection.GetImageCount());
+                existingSettings.UpdateTotalSize(existingCollection.GetTotalSize());
+            }
+            else
+            {
+                var settingsEntity = new CollectionSettingsEntity(
+                    existingCollection.Id,
+                    existingCollection.GetImageCount(),
+                    existingCollection.GetTotalSize(),
+                    _sizeOptions.ThumbnailWidth, _sizeOptions.ThumbnailHeight,
+                    _sizeOptions.CacheWidth, _sizeOptions.CacheHeight,
+                    true, true, // auto generate
+                    TimeSpan.FromDays(30),
+                    "{}"
+                );
+                existingCollection.SetSettings(settingsEntity);
+            }
+
+            await _unitOfWork.Collections.UpdateAsync(existingCollection, cancellationToken);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
 
-            _logger.LogInformation("Successfully scanned collection {CollectionId}, found {ImageCount} images", id, collection.GetImageCount());
+            _logger.LogInformation("Successfully scanned collection {CollectionId}, found {ImageCount} images", id, existingCollection.GetImageCount());
         }
         catch (Exception ex)
         {

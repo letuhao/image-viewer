@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using ImageViewer.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -12,9 +13,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace ImageViewer.Infrastructure.Migrations
 {
     [DbContext(typeof(ImageViewerDbContext))]
-    partial class ImageViewerDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251002190155_FixDateTimeUtc")]
+    partial class FixDateTimeUtc
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -70,13 +73,6 @@ namespace ImageViewer.Infrastructure.Migrations
 
                     b.Property<string>("Result")
                         .HasColumnType("jsonb");
-
-                    b.Property<byte[]>("RowVersion")
-                        .IsConcurrencyToken()
-                        .IsRequired()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("bytea")
-                        .HasComment("Row version for optimistic concurrency control");
 
                     b.Property<DateTime?>("StartedAt")
                         .HasColumnType("timestamp with time zone");
@@ -138,13 +134,6 @@ namespace ImageViewer.Infrastructure.Migrations
                     b.Property<int>("Priority")
                         .HasColumnType("integer");
 
-                    b.Property<byte[]>("RowVersion")
-                        .IsConcurrencyToken()
-                        .IsRequired()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("bytea")
-                        .HasComment("Row version for optimistic concurrency control");
-
                     b.Property<DateTime>("UpdatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
@@ -191,13 +180,6 @@ namespace ImageViewer.Infrastructure.Migrations
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)");
 
-                    b.Property<byte[]>("RowVersion")
-                        .IsConcurrencyToken()
-                        .IsRequired()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("bytea")
-                        .HasComment("Row version for optimistic concurrency control");
-
                     b.Property<int>("Type")
                         .HasColumnType("integer");
 
@@ -239,13 +221,6 @@ namespace ImageViewer.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
                         .HasDefaultValueSql("NOW()");
-
-                    b.Property<byte[]>("RowVersion")
-                        .IsConcurrencyToken()
-                        .IsRequired()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("bytea")
-                        .HasComment("Row version for optimistic concurrency control");
 
                     b.HasKey("Id");
 
@@ -301,13 +276,6 @@ namespace ImageViewer.Infrastructure.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
 
-                    b.Property<byte[]>("RowVersion")
-                        .IsConcurrencyToken()
-                        .IsRequired()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("bytea")
-                        .HasComment("Row version for optimistic concurrency control");
-
                     b.Property<int>("ThumbnailHeight")
                         .HasColumnType("integer");
 
@@ -359,13 +327,6 @@ namespace ImageViewer.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasDefaultValueSql("NOW()");
 
-                    b.Property<byte[]>("RowVersion")
-                        .IsConcurrencyToken()
-                        .IsRequired()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("bytea")
-                        .HasComment("Row version for optimistic concurrency control");
-
                     b.Property<int>("TotalImages")
                         .HasColumnType("integer");
 
@@ -401,13 +362,6 @@ namespace ImageViewer.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
                         .HasDefaultValueSql("NOW()");
-
-                    b.Property<byte[]>("RowVersion")
-                        .IsConcurrencyToken()
-                        .IsRequired()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("bytea")
-                        .HasComment("Row version for optimistic concurrency control");
 
                     b.Property<Guid>("TagId")
                         .HasColumnType("uuid");
@@ -465,13 +419,6 @@ namespace ImageViewer.Infrastructure.Migrations
                         .IsRequired()
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)");
-
-                    b.Property<byte[]>("RowVersion")
-                        .IsConcurrencyToken()
-                        .IsRequired()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("bytea")
-                        .HasComment("Row version for optimistic concurrency control");
 
                     b.Property<DateTime>("UpdatedAt")
                         .ValueGeneratedOnAdd()
@@ -541,13 +488,6 @@ namespace ImageViewer.Infrastructure.Migrations
                     b.Property<bool>("IsValid")
                         .HasColumnType("boolean");
 
-                    b.Property<byte[]>("RowVersion")
-                        .IsConcurrencyToken()
-                        .IsRequired()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("bytea")
-                        .HasComment("Row version for optimistic concurrency control");
-
                     b.HasKey("Id");
 
                     b.HasIndex("CachedAt");
@@ -609,13 +549,6 @@ namespace ImageViewer.Infrastructure.Migrations
                     b.Property<int>("Quality")
                         .HasColumnType("integer");
 
-                    b.Property<byte[]>("RowVersion")
-                        .IsConcurrencyToken()
-                        .IsRequired()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("bytea")
-                        .HasComment("Row version for optimistic concurrency control");
-
                     b.Property<string>("Software")
                         .HasColumnType("text");
 
@@ -658,13 +591,6 @@ namespace ImageViewer.Infrastructure.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
-                    b.Property<byte[]>("RowVersion")
-                        .IsConcurrencyToken()
-                        .IsRequired()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("bytea")
-                        .HasComment("Row version for optimistic concurrency control");
-
                     b.Property<DateTime>("UpdatedAt")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
@@ -701,13 +627,6 @@ namespace ImageViewer.Infrastructure.Migrations
 
                     b.Property<int>("ImagesViewed")
                         .HasColumnType("integer");
-
-                    b.Property<byte[]>("RowVersion")
-                        .IsConcurrencyToken()
-                        .IsRequired()
-                        .ValueGeneratedOnAddOrUpdate()
-                        .HasColumnType("bytea")
-                        .HasComment("Row version for optimistic concurrency control");
 
                     b.Property<string>("Settings")
                         .IsRequired()

@@ -44,8 +44,8 @@ public class ImageMetadataEntity : BaseEntity
         Quality = quality;
         ColorSpace = colorSpace;
         Compression = compression;
-        CreatedDate = createdDate;
-        ModifiedDate = modifiedDate;
+        CreatedDate = createdDate?.Kind == DateTimeKind.Local ? DateTime.SpecifyKind(createdDate.Value, DateTimeKind.Utc) : createdDate;
+        ModifiedDate = modifiedDate?.Kind == DateTimeKind.Local ? DateTime.SpecifyKind(modifiedDate.Value, DateTimeKind.Utc) : modifiedDate;
         Camera = camera;
         Software = software;
         AdditionalMetadataJson = additionalMetadataJson ?? "{}";

@@ -72,6 +72,9 @@ public class ImageViewerDbContext : DbContext
         // Configure PostgreSQL-specific settings
         modelBuilder.HasDefaultSchema("public");
         
+        // Configure RowVersion for all entities that inherit from BaseEntity
+        ConfigureRowVersionForAllEntities(modelBuilder);
+        
         // Collection configuration
         modelBuilder.Entity<Collection>(entity =>
         {
@@ -80,11 +83,10 @@ public class ImageViewerDbContext : DbContext
             entity.Property(e => e.Name).IsRequired().HasMaxLength(255);
             entity.Property(e => e.Path).IsRequired().HasMaxLength(1000);
             // Settings will be handled by separate entity
-            entity.Property(e => e.CreatedAt).HasDefaultValueSql("NOW()");
-            entity.Property(e => e.UpdatedAt).HasDefaultValueSql("NOW()");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("NOW()").HasConversion(v => v, v => DateTime.SpecifyKind(v, DateTimeKind.Utc));
+            entity.Property(e => e.UpdatedAt).HasDefaultValueSql("NOW()").HasConversion(v => v, v => DateTime.SpecifyKind(v, DateTimeKind.Utc));
             
-            // Disable concurrency control to prevent optimistic concurrency exceptions
-            // Note: RowVersion property doesn't exist in Collection entity
+            // RowVersion is configured globally in ConfigureRowVersionForAllEntities
             
             entity.HasIndex(e => e.Path).IsUnique();
             entity.HasIndex(e => e.Name);
@@ -115,8 +117,8 @@ public class ImageViewerDbContext : DbContext
             entity.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()");
             entity.Property(e => e.Filename).IsRequired().HasMaxLength(255);
             entity.Property(e => e.RelativePath).IsRequired().HasMaxLength(1000);
-            entity.Property(e => e.CreatedAt).HasDefaultValueSql("NOW()");
-            entity.Property(e => e.UpdatedAt).HasDefaultValueSql("NOW()");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("NOW()").HasConversion(v => v, v => DateTime.SpecifyKind(v, DateTimeKind.Utc));
+            entity.Property(e => e.UpdatedAt).HasDefaultValueSql("NOW()").HasConversion(v => v, v => DateTime.SpecifyKind(v, DateTimeKind.Utc));
             
             entity.HasIndex(e => e.CollectionId);
             entity.HasIndex(e => e.Filename);
@@ -140,8 +142,8 @@ public class ImageViewerDbContext : DbContext
             entity.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()");
             entity.Property(e => e.Name).IsRequired().HasMaxLength(255);
             entity.Property(e => e.Path).IsRequired().HasMaxLength(1000);
-            entity.Property(e => e.CreatedAt).HasDefaultValueSql("NOW()");
-            entity.Property(e => e.UpdatedAt).HasDefaultValueSql("NOW()");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("NOW()").HasConversion(v => v, v => DateTime.SpecifyKind(v, DateTimeKind.Utc));
+            entity.Property(e => e.UpdatedAt).HasDefaultValueSql("NOW()").HasConversion(v => v, v => DateTime.SpecifyKind(v, DateTimeKind.Utc));
             
             entity.HasIndex(e => e.Name);
             entity.HasIndex(e => e.Path);
@@ -162,8 +164,8 @@ public class ImageViewerDbContext : DbContext
             entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
             entity.Property(e => e.Description).HasMaxLength(500);
             entity.Property(e => e.Color).HasColumnType("jsonb");
-            entity.Property(e => e.CreatedAt).HasDefaultValueSql("NOW()");
-            entity.Property(e => e.UpdatedAt).HasDefaultValueSql("NOW()");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("NOW()").HasConversion(v => v, v => DateTime.SpecifyKind(v, DateTimeKind.Utc));
+            entity.Property(e => e.UpdatedAt).HasDefaultValueSql("NOW()").HasConversion(v => v, v => DateTime.SpecifyKind(v, DateTimeKind.Utc));
             
             entity.HasIndex(e => e.Name).IsUnique();
             entity.HasIndex(e => e.UsageCount);
@@ -280,8 +282,8 @@ public class ImageViewerDbContext : DbContext
             entity.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()");
             entity.Property(e => e.CollectionId).IsRequired();
             entity.Property(e => e.AdditionalSettingsJson).HasDefaultValue("{}");
-            entity.Property(e => e.CreatedAt).HasDefaultValueSql("NOW()");
-            entity.Property(e => e.UpdatedAt).HasDefaultValueSql("NOW()");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("NOW()").HasConversion(v => v, v => DateTime.SpecifyKind(v, DateTimeKind.Utc));
+            entity.Property(e => e.UpdatedAt).HasDefaultValueSql("NOW()").HasConversion(v => v, v => DateTime.SpecifyKind(v, DateTimeKind.Utc));
             
             entity.HasOne(e => e.Collection)
                   .WithOne(c => c.Settings)
@@ -298,8 +300,8 @@ public class ImageViewerDbContext : DbContext
             entity.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()");
             entity.Property(e => e.ImageId).IsRequired();
             entity.Property(e => e.AdditionalMetadataJson).HasDefaultValue("{}");
-            entity.Property(e => e.CreatedAt).HasDefaultValueSql("NOW()");
-            entity.Property(e => e.UpdatedAt).HasDefaultValueSql("NOW()");
+            entity.Property(e => e.CreatedAt).HasDefaultValueSql("NOW()").HasConversion(v => v, v => DateTime.SpecifyKind(v, DateTimeKind.Utc));
+            entity.Property(e => e.UpdatedAt).HasDefaultValueSql("NOW()").HasConversion(v => v, v => DateTime.SpecifyKind(v, DateTimeKind.Utc));
             
             entity.HasOne(e => e.Image)
                   .WithOne(i => i.Metadata)
@@ -308,5 +310,26 @@ public class ImageViewerDbContext : DbContext
                   
             entity.HasIndex(e => e.ImageId).IsUnique();
         });
+    }
+    
+    /// <summary>
+    /// Configure RowVersion for all entities that inherit from BaseEntity
+    /// </summary>
+    private void ConfigureRowVersionForAllEntities(ModelBuilder modelBuilder)
+    {
+        // Get all entity types that inherit from BaseEntity
+        var entityTypes = modelBuilder.Model.GetEntityTypes()
+            .Where(e => typeof(BaseEntity).IsAssignableFrom(e.ClrType))
+            .ToList();
+
+        foreach (var entityType in entityTypes)
+        {
+            var entityBuilder = modelBuilder.Entity(entityType.ClrType);
+            
+            // Configure RowVersion property
+            entityBuilder.Property(nameof(BaseEntity.RowVersion))
+                .IsRowVersion()
+                .HasComment("Row version for optimistic concurrency control");
+        }
     }
 }
