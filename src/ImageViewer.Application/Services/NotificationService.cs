@@ -88,7 +88,7 @@ public class NotificationService : INotificationService
         {
             // TODO: Implement when notification repository is available
             // For now, return empty list
-            return new List<Notification>();
+            return Task.FromResult<IEnumerable<Notification>>(new List<Notification>());
         }
         catch (Exception ex)
         {
@@ -103,7 +103,7 @@ public class NotificationService : INotificationService
         {
             // TODO: Implement when notification repository is available
             // For now, return empty list
-            return new List<Notification>();
+            return Task.FromResult<IEnumerable<Notification>>(new List<Notification>());
         }
         catch (Exception ex)
         {
@@ -162,6 +162,7 @@ public class NotificationService : INotificationService
         {
             // TODO: Implement when notification repository is available
             _logger.LogInformation("Deleted all notifications for user {UserId}", userId);
+            return Task.CompletedTask;
         }
         catch (Exception ex)
         {
