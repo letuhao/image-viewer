@@ -50,7 +50,7 @@ public class CollectionService : ICollectionService
         }
     }
 
-    public async Task<Collection> GetCollectionByIdAsync(ObjectId collectionId)
+    public async Task<Collection?> GetCollectionByIdAsync(ObjectId collectionId)
     {
         try
         {
@@ -67,7 +67,7 @@ public class CollectionService : ICollectionService
         }
     }
 
-    public async Task<Collection> GetCollectionByPathAsync(string path)
+    public async Task<Collection?> GetCollectionByPathAsync(string path)
     {
         try
         {

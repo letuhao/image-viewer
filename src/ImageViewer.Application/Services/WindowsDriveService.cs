@@ -2,6 +2,7 @@ using System.IO;
 using System.Linq;
 using Microsoft.Extensions.Logging;
 using ImageViewer.Domain.Exceptions;
+using ImageViewer.Application.DTOs.Files;
 
 namespace ImageViewer.Application.Services;
 
@@ -201,7 +202,7 @@ public class WindowsDriveService : IWindowsDriveService
             {
                 try
                 {
-                    var dirInfo = new DirectoryInfo(dir);
+                    var dirInfo = new System.IO.DirectoryInfo(dir);
                     var directory = new DirectoryInfoDto
                     {
                         Name = dirInfo.Name,

@@ -29,7 +29,7 @@ public interface ILibraryRepository : IRepository<Library>
     
     #region Statistics Methods
     
-    Task<LibraryStatistics> GetLibraryStatisticsAsync();
+    Task<ImageViewer.Domain.ValueObjects.LibraryStatistics> GetLibraryStatisticsAsync();
     Task<IEnumerable<Library>> GetTopLibrariesByActivityAsync(int limit = 10);
     Task<IEnumerable<Library>> GetRecentLibrariesAsync(int limit = 10);
     

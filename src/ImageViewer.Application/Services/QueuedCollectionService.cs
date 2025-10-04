@@ -220,7 +220,7 @@ public class QueuedCollectionService : ICollectionService
 
     public async Task DeleteCollectionAsync(ObjectId id)
     {
-        return await _collectionService.DeleteCollectionAsync(id);
+        await _collectionService.DeleteCollectionAsync(id);
     }
 
     public async Task<Collection> UpdateSettingsAsync(ObjectId id, UpdateCollectionSettingsRequest request)

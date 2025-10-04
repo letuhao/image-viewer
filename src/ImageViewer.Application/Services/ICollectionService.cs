@@ -13,8 +13,8 @@ public interface ICollectionService
     #region Collection Management
     
     Task<Collection> CreateCollectionAsync(ObjectId libraryId, string name, string path, CollectionType type);
-    Task<Collection> GetCollectionByIdAsync(ObjectId collectionId);
-    Task<Collection> GetCollectionByPathAsync(string path);
+    Task<Collection?> GetCollectionByIdAsync(ObjectId collectionId);
+    Task<Collection?> GetCollectionByPathAsync(string path);
     Task<IEnumerable<Collection>> GetCollectionsByLibraryIdAsync(ObjectId libraryId);
     Task<IEnumerable<Collection>> GetCollectionsAsync(int page = 1, int pageSize = 20);
     Task<Collection> UpdateCollectionAsync(ObjectId collectionId, UpdateCollectionRequest request);

@@ -30,7 +30,7 @@ public interface ICollectionRepository : IRepository<Collection>
     
     #region Statistics Methods
     
-    Task<CollectionStatistics> GetCollectionStatisticsAsync();
+    Task<ImageViewer.Domain.ValueObjects.CollectionStatistics> GetCollectionStatisticsAsync();
     Task<IEnumerable<Collection>> GetTopCollectionsByActivityAsync(int limit = 10);
     Task<IEnumerable<Collection>> GetRecentCollectionsAsync(int limit = 10);
     

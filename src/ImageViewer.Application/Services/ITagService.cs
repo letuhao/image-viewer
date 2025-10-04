@@ -31,7 +31,7 @@ public interface ITagService
     /// <summary>
     /// Get tag by ID
     /// </summary>
-    Task<TagDto> GetTagAsync(Guid tagId);
+    Task<TagDto> GetTagAsync(ObjectId tagId);
 
     /// <summary>
     /// Create new tag
@@ -41,12 +41,12 @@ public interface ITagService
     /// <summary>
     /// Update tag
     /// </summary>
-    Task<TagDto> UpdateTagAsync(Guid tagId, UpdateTagDto dto);
+    Task<TagDto> UpdateTagAsync(ObjectId tagId, UpdateTagDto dto);
 
     /// <summary>
     /// Delete tag
     /// </summary>
-    Task DeleteTagAsync(Guid tagId);
+    Task DeleteTagAsync(ObjectId tagId);
 
     /// <summary>
     /// Get tag statistics

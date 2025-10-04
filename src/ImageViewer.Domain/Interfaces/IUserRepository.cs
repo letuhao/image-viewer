@@ -29,7 +29,7 @@ public interface IUserRepository : IRepository<User>
     
     #region Statistics Methods
     
-    Task<UserStatistics> GetUserStatisticsAsync();
+    Task<ImageViewer.Domain.ValueObjects.UserStatistics> GetUserStatisticsAsync();
     Task<IEnumerable<User>> GetTopUsersByActivityAsync(int limit = 10);
     Task<IEnumerable<User>> GetRecentUsersAsync(int limit = 10);
     
