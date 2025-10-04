@@ -1,3 +1,5 @@
+using MongoDB.Bson;
+
 namespace ImageViewer.Domain.Entities;
 
 /// <summary>
@@ -5,9 +7,9 @@ namespace ImageViewer.Domain.Entities;
 /// </summary>
 public class CollectionTag : BaseEntity
 {
-    public new Guid Id { get; private set; }
-    public Guid CollectionId { get; private set; }
-    public Guid TagId { get; private set; }
+    public new ObjectId Id { get; private set; }
+    public ObjectId CollectionId { get; private set; }
+    public ObjectId TagId { get; private set; }
     public new DateTime CreatedAt { get; private set; }
 
     // Navigation properties
@@ -17,9 +19,9 @@ public class CollectionTag : BaseEntity
     // Private constructor for EF Core
     private CollectionTag() { }
 
-    public CollectionTag(Guid collectionId, Guid tagId)
+    public CollectionTag(ObjectId collectionId, ObjectId tagId)
     {
-        Id = Guid.NewGuid();
+        Id = ObjectId.GenerateNewId();
         CollectionId = collectionId;
         TagId = tagId;
         CreatedAt = DateTime.UtcNow;
