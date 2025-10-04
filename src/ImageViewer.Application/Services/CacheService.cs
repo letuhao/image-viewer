@@ -116,8 +116,7 @@ public class CacheService : ICacheService
             dto.Priority
         );
 
-        await _cacheFolderRepository.AddAsync(cacheFolder);
-        await _cacheFolderRepository.SaveChangesAsync();
+        await _cacheFolderRepository.CreateAsync(cacheFolder);
 
         _logger.LogInformation("Cache folder created with ID: {Id}", cacheFolder.Id);
 
@@ -152,7 +151,6 @@ public class CacheService : ICacheService
         cacheFolder.SetActive(dto.IsActive);
 
         await _cacheFolderRepository.UpdateAsync(cacheFolder);
-        await _cacheFolderRepository.SaveChangesAsync();
 
         _logger.LogInformation("Cache folder updated: {Id}", id);
 
@@ -181,7 +179,6 @@ public class CacheService : ICacheService
         }
 
         await _cacheFolderRepository.DeleteAsync(cacheFolder);
-        await _cacheFolderRepository.SaveChangesAsync();
 
         _logger.LogInformation("Cache folder deleted: {Id}", id);
     }
@@ -227,7 +224,6 @@ public class CacheService : ICacheService
             image.ClearCacheInfo();
         }
 
-        await _imageRepository.SaveChangesAsync();
 
         _logger.LogInformation("Cache cleared for collection: {CollectionId}", collectionId);
     }
@@ -242,7 +238,6 @@ public class CacheService : ICacheService
             image.ClearCacheInfo();
         }
 
-        await _imageRepository.SaveChangesAsync();
 
         _logger.LogInformation("All cache cleared");
     }

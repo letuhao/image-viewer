@@ -3,6 +3,7 @@ using ImageViewer.Domain.Entities;
 using ImageViewer.Domain.Enums;
 using ImageViewer.Domain.Interfaces;
 using Microsoft.Extensions.Logging;
+using MongoDB.Bson;
 
 namespace ImageViewer.Application.Services;
 
@@ -25,7 +26,7 @@ public class BackgroundJobService : IBackgroundJobService
         _logger = logger;
     }
 
-    public async Task<BackgroundJobDto> GetJobAsync(Guid jobId)
+    public async Task<BackgroundJobDto> GetJobAsync(ObjectId jobId)
     {
         _logger.LogInformation("Getting job: {JobId}", jobId);
 
@@ -67,15 +68,14 @@ public class BackgroundJobService : IBackgroundJobService
             new Dictionary<string, object>()
         );
 
-        await _backgroundJobRepository.AddAsync(job);
-        await _backgroundJobRepository.SaveChangesAsync();
+        await _backgroundJobRepository.CreateAsync(job);
 
         _logger.LogInformation("Job created with ID: {JobId}", job.Id);
 
         return MapToDto(job);
     }
 
-    public async Task<BackgroundJobDto> UpdateJobStatusAsync(Guid jobId, string status, string? message = null)
+    public async Task<BackgroundJobDto> UpdateJobStatusAsync(ObjectId jobId, string status, string? message = null)
     {
         _logger.LogInformation("Updating job status: {JobId} to {Status}", jobId, status);
 
@@ -99,14 +99,13 @@ public class BackgroundJobService : IBackgroundJobService
         }
 
         await _backgroundJobRepository.UpdateAsync(job);
-        await _backgroundJobRepository.SaveChangesAsync();
 
         _logger.LogInformation("Job status updated: {JobId}", jobId);
 
         return MapToDto(job);
     }
 
-    public async Task<BackgroundJobDto> UpdateJobProgressAsync(Guid jobId, int completed, int total, string? currentItem = null)
+    public async Task<BackgroundJobDto> UpdateJobProgressAsync(ObjectId jobId, int completed, int total, string? currentItem = null)
     {
         _logger.LogInformation("Updating job progress: {JobId} - {Completed}/{Total}", jobId, completed, total);
 
@@ -123,14 +122,13 @@ public class BackgroundJobService : IBackgroundJobService
         }
 
         await _backgroundJobRepository.UpdateAsync(job);
-        await _backgroundJobRepository.SaveChangesAsync();
 
         _logger.LogInformation("Job progress updated: {JobId}", jobId);
 
         return MapToDto(job);
     }
 
-    public async Task CancelJobAsync(Guid jobId)
+    public async Task CancelJobAsync(ObjectId jobId)
     {
         _logger.LogInformation("Cancelling job: {JobId}", jobId);
 
@@ -142,12 +140,11 @@ public class BackgroundJobService : IBackgroundJobService
 
         job.Cancel();
         await _backgroundJobRepository.UpdateAsync(job);
-        await _backgroundJobRepository.SaveChangesAsync();
 
         _logger.LogInformation("Job cancelled: {JobId}", jobId);
     }
 
-    public async Task DeleteJobAsync(Guid jobId)
+    public async Task DeleteJobAsync(ObjectId jobId)
     {
         _logger.LogInformation("Deleting job: {JobId}", jobId);
 
@@ -158,7 +155,6 @@ public class BackgroundJobService : IBackgroundJobService
         }
 
         await _backgroundJobRepository.DeleteAsync(job);
-        await _backgroundJobRepository.SaveChangesAsync();
 
         _logger.LogInformation("Job deleted: {JobId}", jobId);
     }
@@ -185,7 +181,7 @@ public class BackgroundJobService : IBackgroundJobService
         };
     }
 
-    public async Task<BackgroundJobDto> StartCacheGenerationJobAsync(Guid collectionId)
+    public async Task<BackgroundJobDto> StartCacheGenerationJobAsync(ObjectId collectionId)
     {
         _logger.LogInformation("Starting cache generation job for collection: {CollectionId}", collectionId);
 
@@ -205,15 +201,14 @@ public class BackgroundJobService : IBackgroundJobService
             }
         );
 
-        await _backgroundJobRepository.AddAsync(job);
-        await _backgroundJobRepository.SaveChangesAsync();
+        await _backgroundJobRepository.CreateAsync(job);
 
         _logger.LogInformation("Cache generation job started: {JobId}", job.Id);
 
         return MapToDto(job);
     }
 
-    public async Task<BackgroundJobDto> StartThumbnailGenerationJobAsync(Guid collectionId)
+    public async Task<BackgroundJobDto> StartThumbnailGenerationJobAsync(ObjectId collectionId)
     {
         _logger.LogInformation("Starting thumbnail generation job for collection: {CollectionId}", collectionId);
 
@@ -233,8 +228,7 @@ public class BackgroundJobService : IBackgroundJobService
             }
         );
 
-        await _backgroundJobRepository.AddAsync(job);
-        await _backgroundJobRepository.SaveChangesAsync();
+        await _backgroundJobRepository.CreateAsync(job);
 
         _logger.LogInformation("Thumbnail generation job started: {JobId}", job.Id);
 
@@ -256,8 +250,7 @@ public class BackgroundJobService : IBackgroundJobService
             }
         );
 
-        await _backgroundJobRepository.AddAsync(job);
-        await _backgroundJobRepository.SaveChangesAsync();
+        await _backgroundJobRepository.CreateAsync(job);
 
         _logger.LogInformation("Bulk operation job started: {JobId}", job.Id);
 
