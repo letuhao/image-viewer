@@ -1,29 +1,28 @@
+using MongoDB.Bson;
+
 namespace ImageViewer.Domain.Entities;
 
 /// <summary>
-/// CollectionStatistics entity - represents statistics for a collection
+/// CollectionStatisticsEntity - represents statistics for a collection
 /// </summary>
-public class CollectionStatistics : BaseEntity
+public class CollectionStatisticsEntity : BaseEntity
 {
-    public Guid Id { get; private set; }
-    public Guid CollectionId { get; private set; }
+    public ObjectId CollectionId { get; private set; }
     public int TotalImages { get; private set; }
     public long TotalSizeBytes { get; private set; }
     public int AverageWidth { get; private set; }
     public int AverageHeight { get; private set; }
     public int ViewCount { get; private set; }
     public DateTime LastViewedAt { get; private set; }
-    public DateTime LastUpdatedAt { get; private set; }
 
     // Navigation properties
     public Collection Collection { get; private set; } = null!;
 
-    // Private constructor for EF Core
-    private CollectionStatistics() { }
+    // Private constructor for MongoDB
+    private CollectionStatisticsEntity() { }
 
-    public CollectionStatistics(Guid collectionId)
+    public CollectionStatisticsEntity(ObjectId collectionId)
     {
-        Id = Guid.NewGuid();
         CollectionId = collectionId;
         TotalImages = 0;
         TotalSizeBytes = 0;
@@ -31,7 +30,6 @@ public class CollectionStatistics : BaseEntity
         AverageHeight = 0;
         ViewCount = 0;
         LastViewedAt = DateTime.UtcNow;
-        LastUpdatedAt = DateTime.UtcNow;
     }
 
     public void UpdateImageCount(int totalImages)
@@ -40,7 +38,7 @@ public class CollectionStatistics : BaseEntity
             throw new ArgumentException("Total images cannot be negative", nameof(totalImages));
 
         TotalImages = totalImages;
-        LastUpdatedAt = DateTime.UtcNow;
+        UpdateTimestamp();
     }
 
     public void UpdateTotalSize(long totalSizeBytes)
@@ -49,7 +47,7 @@ public class CollectionStatistics : BaseEntity
             throw new ArgumentException("Total size cannot be negative", nameof(totalSizeBytes));
 
         TotalSizeBytes = totalSizeBytes;
-        LastUpdatedAt = DateTime.UtcNow;
+        UpdateTimestamp();
     }
 
     public void UpdateAverageDimensions(int averageWidth, int averageHeight)
@@ -61,20 +59,20 @@ public class CollectionStatistics : BaseEntity
 
         AverageWidth = averageWidth;
         AverageHeight = averageHeight;
-        LastUpdatedAt = DateTime.UtcNow;
+        UpdateTimestamp();
     }
 
     public void IncrementViewCount()
     {
         ViewCount++;
         LastViewedAt = DateTime.UtcNow;
-        LastUpdatedAt = DateTime.UtcNow;
+        UpdateTimestamp();
     }
 
     public void ResetViewCount()
     {
         ViewCount = 0;
-        LastUpdatedAt = DateTime.UtcNow;
+        UpdateTimestamp();
     }
 
     public double GetAverageFileSize()

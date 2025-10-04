@@ -5,6 +5,6 @@ namespace ImageViewer.Domain.Interfaces;
 /// <summary>
 /// Repository interface for collection statistics
 /// </summary>
-public interface ICollectionStatisticsRepository : IRepository<CollectionStatistics>
+public interface ICollectionStatisticsRepository : IRepository<CollectionStatisticsEntity>
 {
 }

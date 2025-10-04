@@ -79,12 +79,15 @@ public class Collection : BaseEntity
         UpdatedAt = DateTime.UtcNow;
     }
 
+    /*
     public void SetSettings(CollectionSettingsEntity settings)
     {
         Settings = settings ?? throw new ArgumentNullException(nameof(settings));
         UpdatedAt = DateTime.UtcNow;
     }
+    */
 
+    /*
     public void AddImage(Image image)
     {
         if (image == null)
@@ -98,7 +101,9 @@ public class Collection : BaseEntity
         
         AddDomainEvent(new ImageAddedEvent(image, this));
     }
+    */
 
+    /*
     public void RemoveImage(Guid imageId)
     {
         var image = _images.FirstOrDefault(i => i.Id == imageId);
@@ -164,4 +169,5 @@ public class Collection : BaseEntity
     {
         return _images.Where(i => i.Width >= minWidth && i.Height >= minHeight);
     }
+    */
 }

@@ -14,7 +14,7 @@ public interface IUnitOfWork : IDisposable
     IRepository<CollectionTag> CollectionTags { get; }
     IRepository<ImageCacheInfo> ImageCacheInfos { get; }
     IRepository<CollectionCacheBinding> CollectionCacheBindings { get; }
-    IRepository<CollectionStatistics> CollectionStatistics { get; }
+    IRepository<CollectionStatisticsEntity> CollectionStatistics { get; }
     IRepository<ViewSession> ViewSessions { get; }
     IRepository<BackgroundJob> BackgroundJobs { get; }
     IRepository<CollectionSettingsEntity> CollectionSettings { get; }

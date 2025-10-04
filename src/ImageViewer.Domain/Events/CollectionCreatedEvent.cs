@@ -1,3 +1,4 @@
+using MongoDB.Bson;
 using ImageViewer.Domain.Entities;
 
 namespace ImageViewer.Domain.Events;
@@ -5,16 +6,17 @@ namespace ImageViewer.Domain.Events;
 /// <summary>
 /// Domain event raised when a collection is created
 /// </summary>
-public class CollectionCreatedEvent : IDomainEvent
+public class CollectionCreatedEvent : DomainEvent
 {
-    public Guid Id { get; }
-    public DateTime OccurredOn { get; }
-    public Collection Collection { get; }
+    public ObjectId CollectionId { get; }
+    public string CollectionName { get; }
+    public ObjectId LibraryId { get; }
 
-    public CollectionCreatedEvent(Collection collection)
+    public CollectionCreatedEvent(ObjectId collectionId, string collectionName, ObjectId libraryId)
+        : base("CollectionCreated")
     {
-        Id = Guid.NewGuid();
-        OccurredOn = DateTime.UtcNow;
-        Collection = collection ?? throw new ArgumentNullException(nameof(collection));
+        CollectionId = collectionId;
+        CollectionName = collectionName ?? throw new ArgumentNullException(nameof(collectionName));
+        LibraryId = libraryId;
     }
 }
