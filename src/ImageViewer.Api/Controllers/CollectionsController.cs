@@ -1,16 +1,16 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
+using MongoDB.Bson;
 using ImageViewer.Application.Services;
-using ImageViewer.Domain.Entities;
+using ImageViewer.Domain.Exceptions;
 using ImageViewer.Domain.Enums;
-using ImageViewer.Domain.ValueObjects;
-using ImageViewer.Application.DTOs.Common;
-using ImageViewer.Application.Extensions;
 
 namespace ImageViewer.Api.Controllers;
 
+/// <summary>
+/// Controller for Collection operations
+/// </summary>
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/v1/[controller]")]
 public class CollectionsController : ControllerBase
 {
     private readonly ICollectionService _collectionService;
@@ -18,31 +18,42 @@ public class CollectionsController : ControllerBase
 
     public CollectionsController(ICollectionService collectionService, ILogger<CollectionsController> logger)
     {
-        _collectionService = collectionService;
-        _logger = logger;
+        _collectionService = collectionService ?? throw new ArgumentNullException(nameof(collectionService));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
     /// <summary>
-    /// Get all collections with pagination and search
+    /// Create a new collection
     /// </summary>
-    [HttpGet]
-    public async Task<ActionResult<PaginationResponseDto<Collection>>> GetCollections(
-        [FromQuery] PaginationRequestDto pagination,
-        [FromQuery] string? search = null,
-        [FromQuery] string? type = null)
+    [HttpPost]
+    public async Task<IActionResult> CreateCollection([FromBody] CreateCollectionRequest request)
     {
         try
         {
-            _logger.LogInformation("Getting collections with pagination. Page: {Page}, PageSize: {PageSize}, Search: {Search}", 
-                pagination.Page, pagination.PageSize, search);
-            
-            var collections = await _collectionService.GetCollectionsAsync(pagination, search, type);
-            return Ok(collections);
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            if (!ObjectId.TryParse(request.LibraryId, out var libraryId))
+                return BadRequest(new { message = "Invalid library ID format" });
+
+            if (!Enum.TryParse<CollectionType>(request.Type, out var collectionType))
+                return BadRequest(new { message = "Invalid collection type" });
+
+            var collection = await _collectionService.CreateCollectionAsync(libraryId, request.Name, request.Path, collectionType);
+            return CreatedAtAction(nameof(GetCollection), new { id = collection.Id }, collection);
+        }
+        catch (ValidationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (DuplicateEntityException ex)
+        {
+            return Conflict(new { message = ex.Message });
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting collections");
-            return StatusCode(500, "Internal server error");
+            _logger.LogError(ex, "Failed to create collection");
+            return StatusCode(500, new { message = "Internal server error" });
         }
     }
 
@@ -50,78 +61,129 @@ public class CollectionsController : ControllerBase
     /// Get collection by ID
     /// </summary>
     [HttpGet("{id}")]
-    public async Task<ActionResult<Collection>> GetCollection(Guid id)
+    public async Task<IActionResult> GetCollection(string id)
     {
         try
         {
-            var collection = await _collectionService.GetByIdAsync(id);
-            if (collection == null)
-            {
-                return NotFound();
-            }
+            if (!ObjectId.TryParse(id, out var collectionId))
+                return BadRequest(new { message = "Invalid collection ID format" });
+
+            var collection = await _collectionService.GetCollectionByIdAsync(collectionId);
             return Ok(collection);
         }
+        catch (EntityNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting collection {Id}", id);
-            return StatusCode(500, "Internal server error");
+            _logger.LogError(ex, "Failed to get collection with ID {CollectionId}", id);
+            return StatusCode(500, new { message = "Internal server error" });
         }
     }
 
     /// <summary>
-    /// Create new collection
+    /// Get collection by path
     /// </summary>
-    [HttpPost]
-    public async Task<ActionResult<Collection>> CreateCollection([FromBody] CreateCollectionRequest request)
+    [HttpGet("path/{path}")]
+    public async Task<IActionResult> GetCollectionByPath(string path)
     {
         try
         {
-            var settings = new CollectionSettings();
-            settings.UpdateThumbnailSize(request.ThumbnailWidth ?? 200, request.ThumbnailHeight ?? 200);
-            settings.UpdateCacheSize(request.CacheWidth ?? 1280, request.CacheHeight ?? 720);
-            settings.SetAutoGenerateThumbnails(request.EnableCache ?? true);
-            settings.SetAutoGenerateCache(request.AutoScan ?? true);
-
-            var createdCollection = await _collectionService.CreateAsync(
-                request.Name,
-                request.Path,
-                request.Type ?? CollectionType.Folder,
-                settings
-            );
-            return CreatedAtAction(nameof(GetCollection), new { id = createdCollection.Id }, createdCollection);
+            var collection = await _collectionService.GetCollectionByPathAsync(path);
+            return Ok(collection);
+        }
+        catch (ValidationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (EntityNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error creating collection");
-            return StatusCode(500, "Internal server error");
+            _logger.LogError(ex, "Failed to get collection at path {Path}", path);
+            return StatusCode(500, new { message = "Internal server error" });
         }
     }
 
     /// <summary>
-    /// Update collection
+    /// Get collections by library ID
+    /// </summary>
+    [HttpGet("library/{libraryId}")]
+    public async Task<IActionResult> GetCollectionsByLibrary(string libraryId)
+    {
+        try
+        {
+            if (!ObjectId.TryParse(libraryId, out var libraryObjectId))
+                return BadRequest(new { message = "Invalid library ID format" });
+
+            var collections = await _collectionService.GetCollectionsByLibraryIdAsync(libraryObjectId);
+            return Ok(collections);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get collections for library {LibraryId}", libraryId);
+            return StatusCode(500, new { message = "Internal server error" });
+        }
+    }
+
+    /// <summary>
+    /// Get all collections with pagination
+    /// </summary>
+    [HttpGet]
+    public async Task<IActionResult> GetCollections([FromQuery] int page = 1, [FromQuery] int pageSize = 20)
+    {
+        try
+        {
+            var collections = await _collectionService.GetCollectionsAsync(page, pageSize);
+            return Ok(collections);
+        }
+        catch (ValidationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get collections for page {Page} with page size {PageSize}", page, pageSize);
+            return StatusCode(500, new { message = "Internal server error" });
+        }
+    }
+
+    /// <summary>
+    /// Update collection information
     /// </summary>
     [HttpPut("{id}")]
-    public async Task<IActionResult> UpdateCollection(Guid id, [FromBody] UpdateCollectionRequest request)
+    public async Task<IActionResult> UpdateCollection(string id, [FromBody] UpdateCollectionRequest request)
     {
         try
         {
-            CollectionSettings? settings = null;
-            if (request.Settings != null)
-            {
-                settings = new CollectionSettings();
-                settings.UpdateThumbnailSize(request.Settings.ThumbnailWidth ?? 200, request.Settings.ThumbnailHeight ?? 200);
-                settings.UpdateCacheSize(request.Settings.CacheWidth ?? 1280, request.Settings.CacheHeight ?? 720);
-                settings.SetAutoGenerateThumbnails(request.Settings.EnableCache ?? true);
-                settings.SetAutoGenerateCache(request.Settings.AutoScan ?? true);
-            }
+            if (!ObjectId.TryParse(id, out var collectionId))
+                return BadRequest(new { message = "Invalid collection ID format" });
 
-            await _collectionService.UpdateAsync(id, request.Name, request.Path, settings);
-            return NoContent();
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var collection = await _collectionService.UpdateCollectionAsync(collectionId, request);
+            return Ok(collection);
+        }
+        catch (ValidationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (EntityNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (DuplicateEntityException ex)
+        {
+            return Conflict(new { message = ex.Message });
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error updating collection {Id}", id);
-            return StatusCode(500, "Internal server error");
+            _logger.LogError(ex, "Failed to update collection with ID {CollectionId}", id);
+            return StatusCode(500, new { message = "Internal server error" });
         }
     }
 
@@ -129,35 +191,252 @@ public class CollectionsController : ControllerBase
     /// Delete collection
     /// </summary>
     [HttpDelete("{id}")]
-    public async Task<IActionResult> DeleteCollection(Guid id)
+    public async Task<IActionResult> DeleteCollection(string id)
     {
         try
         {
-            await _collectionService.DeleteAsync(id);
+            if (!ObjectId.TryParse(id, out var collectionId))
+                return BadRequest(new { message = "Invalid collection ID format" });
+
+            await _collectionService.DeleteCollectionAsync(collectionId);
             return NoContent();
+        }
+        catch (EntityNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error deleting collection {Id}", id);
-            return StatusCode(500, "Internal server error");
+            _logger.LogError(ex, "Failed to delete collection with ID {CollectionId}", id);
+            return StatusCode(500, new { message = "Internal server error" });
         }
     }
 
     /// <summary>
-    /// Scan collection for images
+    /// Update collection settings
     /// </summary>
-    [HttpPost("{id}/scan")]
-    public async Task<IActionResult> ScanCollection(Guid id)
+    [HttpPut("{id}/settings")]
+    public async Task<IActionResult> UpdateSettings(string id, [FromBody] UpdateCollectionSettingsRequest request)
     {
         try
         {
-            await _collectionService.ScanCollectionAsync(id);
-            return Ok(new { message = "Collection scan started" });
+            if (!ObjectId.TryParse(id, out var collectionId))
+                return BadRequest(new { message = "Invalid collection ID format" });
+
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var collection = await _collectionService.UpdateSettingsAsync(collectionId, request);
+            return Ok(collection);
+        }
+        catch (ValidationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (EntityNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error scanning collection {Id}", id);
-            return StatusCode(500, "Internal server error");
+            _logger.LogError(ex, "Failed to update settings for collection with ID {CollectionId}", id);
+            return StatusCode(500, new { message = "Internal server error" });
+        }
+    }
+
+    /// <summary>
+    /// Update collection metadata
+    /// </summary>
+    [HttpPut("{id}/metadata")]
+    public async Task<IActionResult> UpdateMetadata(string id, [FromBody] UpdateCollectionMetadataRequest request)
+    {
+        try
+        {
+            if (!ObjectId.TryParse(id, out var collectionId))
+                return BadRequest(new { message = "Invalid collection ID format" });
+
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var collection = await _collectionService.UpdateMetadataAsync(collectionId, request);
+            return Ok(collection);
+        }
+        catch (ValidationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (EntityNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to update metadata for collection with ID {CollectionId}", id);
+            return StatusCode(500, new { message = "Internal server error" });
+        }
+    }
+
+    /// <summary>
+    /// Update collection statistics
+    /// </summary>
+    [HttpPut("{id}/statistics")]
+    public async Task<IActionResult> UpdateStatistics(string id, [FromBody] UpdateCollectionStatisticsRequest request)
+    {
+        try
+        {
+            if (!ObjectId.TryParse(id, out var collectionId))
+                return BadRequest(new { message = "Invalid collection ID format" });
+
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var collection = await _collectionService.UpdateStatisticsAsync(collectionId, request);
+            return Ok(collection);
+        }
+        catch (ValidationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (EntityNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to update statistics for collection with ID {CollectionId}", id);
+            return StatusCode(500, new { message = "Internal server error" });
+        }
+    }
+
+    /// <summary>
+    /// Activate collection
+    /// </summary>
+    [HttpPost("{id}/activate")]
+    public async Task<IActionResult> ActivateCollection(string id)
+    {
+        try
+        {
+            if (!ObjectId.TryParse(id, out var collectionId))
+                return BadRequest(new { message = "Invalid collection ID format" });
+
+            var collection = await _collectionService.ActivateCollectionAsync(collectionId);
+            return Ok(collection);
+        }
+        catch (EntityNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to activate collection with ID {CollectionId}", id);
+            return StatusCode(500, new { message = "Internal server error" });
+        }
+    }
+
+    /// <summary>
+    /// Deactivate collection
+    /// </summary>
+    [HttpPost("{id}/deactivate")]
+    public async Task<IActionResult> DeactivateCollection(string id)
+    {
+        try
+        {
+            if (!ObjectId.TryParse(id, out var collectionId))
+                return BadRequest(new { message = "Invalid collection ID format" });
+
+            var collection = await _collectionService.DeactivateCollectionAsync(collectionId);
+            return Ok(collection);
+        }
+        catch (EntityNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to deactivate collection with ID {CollectionId}", id);
+            return StatusCode(500, new { message = "Internal server error" });
+        }
+    }
+
+    /// <summary>
+    /// Enable collection watching
+    /// </summary>
+    [HttpPost("{id}/enable-watching")]
+    public async Task<IActionResult> EnableWatching(string id)
+    {
+        try
+        {
+            if (!ObjectId.TryParse(id, out var collectionId))
+                return BadRequest(new { message = "Invalid collection ID format" });
+
+            var collection = await _collectionService.EnableWatchingAsync(collectionId);
+            return Ok(collection);
+        }
+        catch (EntityNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to enable watching for collection with ID {CollectionId}", id);
+            return StatusCode(500, new { message = "Internal server error" });
+        }
+    }
+
+    /// <summary>
+    /// Disable collection watching
+    /// </summary>
+    [HttpPost("{id}/disable-watching")]
+    public async Task<IActionResult> DisableWatching(string id)
+    {
+        try
+        {
+            if (!ObjectId.TryParse(id, out var collectionId))
+                return BadRequest(new { message = "Invalid collection ID format" });
+
+            var collection = await _collectionService.DisableWatchingAsync(collectionId);
+            return Ok(collection);
+        }
+        catch (EntityNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to disable watching for collection with ID {CollectionId}", id);
+            return StatusCode(500, new { message = "Internal server error" });
+        }
+    }
+
+    /// <summary>
+    /// Update watch settings
+    /// </summary>
+    [HttpPut("{id}/watch-settings")]
+    public async Task<IActionResult> UpdateWatchSettings(string id, [FromBody] UpdateWatchSettingsRequest request)
+    {
+        try
+        {
+            if (!ObjectId.TryParse(id, out var collectionId))
+                return BadRequest(new { message = "Invalid collection ID format" });
+
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var collection = await _collectionService.UpdateWatchSettingsAsync(collectionId, request);
+            return Ok(collection);
+        }
+        catch (ValidationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (EntityNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to update watch settings for collection with ID {CollectionId}", id);
+            return StatusCode(500, new { message = "Internal server error" });
         }
     }
 
@@ -165,51 +444,119 @@ public class CollectionsController : ControllerBase
     /// Search collections
     /// </summary>
     [HttpGet("search")]
-    public async Task<ActionResult<SearchResponseDto<Collection>>> SearchCollections(
-        [FromQuery] SearchRequestDto searchRequest,
-        [FromQuery] PaginationRequestDto pagination)
+    public async Task<IActionResult> SearchCollections([FromQuery] string query, [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
     {
         try
         {
-            var response = await _collectionService.SearchCollectionsAsync(searchRequest, pagination);
-            return Ok(response);
+            var collections = await _collectionService.SearchCollectionsAsync(query, page, pageSize);
+            return Ok(collections);
+        }
+        catch (ValidationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error searching collections");
-            return StatusCode(500, "Internal server error");
+            _logger.LogError(ex, "Failed to search collections with query {Query}", query);
+            return StatusCode(500, new { message = "Internal server error" });
+        }
+    }
+
+    /// <summary>
+    /// Get collection statistics
+    /// </summary>
+    [HttpGet("statistics")]
+    public async Task<IActionResult> GetCollectionStatistics()
+    {
+        try
+        {
+            var statistics = await _collectionService.GetCollectionStatisticsAsync();
+            return Ok(statistics);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get collection statistics");
+            return StatusCode(500, new { message = "Internal server error" });
+        }
+    }
+
+    /// <summary>
+    /// Get top collections by activity
+    /// </summary>
+    [HttpGet("top-activity")]
+    public async Task<IActionResult> GetTopCollectionsByActivity([FromQuery] int limit = 10)
+    {
+        try
+        {
+            var collections = await _collectionService.GetTopCollectionsByActivityAsync(limit);
+            return Ok(collections);
+        }
+        catch (ValidationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get top collections by activity");
+            return StatusCode(500, new { message = "Internal server error" });
+        }
+    }
+
+    /// <summary>
+    /// Get recent collections
+    /// </summary>
+    [HttpGet("recent")]
+    public async Task<IActionResult> GetRecentCollections([FromQuery] int limit = 10)
+    {
+        try
+        {
+            var collections = await _collectionService.GetRecentCollectionsAsync(limit);
+            return Ok(collections);
+        }
+        catch (ValidationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get recent collections");
+            return StatusCode(500, new { message = "Internal server error" });
+        }
+    }
+
+    /// <summary>
+    /// Get collections by type
+    /// </summary>
+    [HttpGet("type/{type}")]
+    public async Task<IActionResult> GetCollectionsByType(string type, [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
+    {
+        try
+        {
+            if (!Enum.TryParse<CollectionType>(type, out var collectionType))
+                return BadRequest(new { message = "Invalid collection type" });
+
+            var collections = await _collectionService.GetCollectionsByTypeAsync(collectionType, page, pageSize);
+            return Ok(collections);
+        }
+        catch (ValidationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get collections by type {Type}", type);
+            return StatusCode(500, new { message = "Internal server error" });
         }
     }
 }
 
+/// <summary>
+/// Request model for creating a collection
+/// </summary>
 public class CreateCollectionRequest
 {
+    public string LibraryId { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
     public string Path { get; set; } = string.Empty;
-    public CollectionType? Type { get; set; }
-    public int? ThumbnailWidth { get; set; }
-    public int? ThumbnailHeight { get; set; }
-    public int? CacheWidth { get; set; }
-    public int? CacheHeight { get; set; }
-    public int? Quality { get; set; }
-    public bool? EnableCache { get; set; }
-    public bool? AutoScan { get; set; }
-}
-
-public class UpdateCollectionRequest
-{
-    public string? Name { get; set; }
-    public string? Path { get; set; }
-    public CollectionSettingsRequest? Settings { get; set; }
-}
-
-public class CollectionSettingsRequest
-{
-    public int? ThumbnailWidth { get; set; }
-    public int? ThumbnailHeight { get; set; }
-    public int? CacheWidth { get; set; }
-    public int? CacheHeight { get; set; }
-    public int? Quality { get; set; }
-    public bool? EnableCache { get; set; }
-    public bool? AutoScan { get; set; }
+    public string Type { get; set; } = string.Empty;
 }
