@@ -103,15 +103,14 @@ builder.Services.AddSingleton<IConnection>(provider =>
 // Register message queue service
 builder.Services.AddScoped<IMessageQueueService, RabbitMQMessageQueueService>();
 
-// Add Application Services
-builder.Services.AddScoped<CollectionService>();
-builder.Services.AddScoped<ICollectionService>(provider =>
-{
-    var collectionService = provider.GetRequiredService<CollectionService>();
-    var messageQueueService = provider.GetRequiredService<IMessageQueueService>();
-    var logger = provider.GetRequiredService<ILogger<QueuedCollectionService>>();
-    return new QueuedCollectionService(collectionService, messageQueueService, logger);
-});
+// Add Application Services - New MongoDB-based services are registered in AddMongoDb extension
+// The following services are registered in ServiceCollectionExtensions.AddMongoDb():
+// - IUserService, UserService
+// - ILibraryService, LibraryService  
+// - ICollectionService, CollectionService
+// - IMediaItemService, MediaItemService
+
+// Legacy services (to be removed in future phases)
 builder.Services.AddScoped<IImageService, ImageService>();
 builder.Services.AddScoped<ICacheService, CacheService>();
 builder.Services.AddScoped<ITagService, TagService>();

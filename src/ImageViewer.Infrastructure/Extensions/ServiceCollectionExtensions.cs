@@ -5,12 +5,13 @@ using Microsoft.Extensions.Logging;
 using ImageViewer.Infrastructure.Data;
 using ImageViewer.Domain.Interfaces;
 using ImageViewer.Domain.Entities;
+using ImageViewer.Application.Services;
 using MongoDB.Driver;
 
 namespace ImageViewer.Infrastructure.Extensions;
 
 /// <summary>
-/// Service collection extensions for MongoDB
+/// Service collection extensions for MongoDB and Application Services
 /// </summary>
 public static class ServiceCollectionExtensions
 {
@@ -37,72 +38,24 @@ public static class ServiceCollectionExtensions
             return client.GetDatabase(options.DatabaseName);
         });
 
-        // Register repositories
-        services.AddScoped<ICollectionRepository, MongoCollectionRepository>();
-        services.AddScoped<IImageRepository, MongoImageRepository>();
-        services.AddScoped<ICacheFolderRepository, MongoCacheFolderRepository>();
-        services.AddScoped<ITagRepository, MongoTagRepository>();
-        services.AddScoped<IBackgroundJobRepository, MongoBackgroundJobRepository>();
-        services.AddScoped<IViewSessionRepository, MongoViewSessionRepository>();
-        services.AddScoped<ICacheInfoRepository, MongoCacheInfoRepository>();
-        services.AddScoped<ICollectionTagRepository, MongoCollectionTagRepository>();
-        services.AddScoped<ICollectionCacheBindingRepository, MongoCollectionCacheBindingRepository>();
-        services.AddScoped<ICollectionSettingsRepository, MongoCollectionSettingsRepository>();
-        services.AddScoped<ICollectionStatisticsRepository, MongoCollectionStatisticsRepository>();
-        services.AddScoped<IImageCacheInfoRepository, MongoImageCacheInfoRepository>();
-        services.AddScoped<IImageMetadataRepository, MongoImageMetadataRepository>();
-        
-        // Register generic repositories with collection names
-        services.AddScoped<IRepository<CacheFolder>>(provider =>
+        // Register MongoDB context
+        services.AddScoped<MongoDbContext>(provider =>
         {
             var database = provider.GetRequiredService<IMongoDatabase>();
-            return new MongoRepository<CacheFolder>(database, "cache_folders");
+            return new MongoDbContext(database);
         });
-        services.AddScoped<IRepository<ImageViewer.Domain.Entities.Tag>>(provider =>
-        {
-            var database = provider.GetRequiredService<IMongoDatabase>();
-            return new MongoRepository<ImageViewer.Domain.Entities.Tag>(database, "tags");
-        });
-        services.AddScoped<IRepository<CollectionTag>>(provider =>
-        {
-            var database = provider.GetRequiredService<IMongoDatabase>();
-            return new MongoRepository<CollectionTag>(database, "collection_tags");
-        });
-        services.AddScoped<IRepository<ImageCacheInfo>>(provider =>
-        {
-            var database = provider.GetRequiredService<IMongoDatabase>();
-            return new MongoRepository<ImageCacheInfo>(database, "image_cache_info");
-        });
-        services.AddScoped<IRepository<CollectionCacheBinding>>(provider =>
-        {
-            var database = provider.GetRequiredService<IMongoDatabase>();
-            return new MongoRepository<CollectionCacheBinding>(database, "collection_cache_bindings");
-        });
-        services.AddScoped<IRepository<CollectionStatistics>>(provider =>
-        {
-            var database = provider.GetRequiredService<IMongoDatabase>();
-            return new MongoRepository<CollectionStatistics>(database, "collection_statistics");
-        });
-        services.AddScoped<IRepository<ViewSession>>(provider =>
-        {
-            var database = provider.GetRequiredService<IMongoDatabase>();
-            return new MongoRepository<ViewSession>(database, "view_sessions");
-        });
-        services.AddScoped<IRepository<BackgroundJob>>(provider =>
-        {
-            var database = provider.GetRequiredService<IMongoDatabase>();
-            return new MongoRepository<BackgroundJob>(database, "background_jobs");
-        });
-        services.AddScoped<IRepository<CollectionSettingsEntity>>(provider =>
-        {
-            var database = provider.GetRequiredService<IMongoDatabase>();
-            return new MongoRepository<CollectionSettingsEntity>(database, "collection_settings");
-        });
-        services.AddScoped<IRepository<ImageMetadataEntity>>(provider =>
-        {
-            var database = provider.GetRequiredService<IMongoDatabase>();
-            return new MongoRepository<ImageMetadataEntity>(database, "image_metadata");
-        });
+
+        // Register new repositories
+        services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<ILibraryRepository, LibraryRepository>();
+        services.AddScoped<ICollectionRepository, CollectionRepository>();
+        services.AddScoped<IMediaItemRepository, MediaItemRepository>();
+
+        // Register application services
+        services.AddScoped<IUserService, UserService>();
+        services.AddScoped<ILibraryService, LibraryService>();
+        services.AddScoped<ICollectionService, CollectionService>();
+        services.AddScoped<IMediaItemService, MediaItemService>();
 
         // Register unit of work
         services.AddScoped<IUnitOfWork, MongoUnitOfWork>(provider =>
