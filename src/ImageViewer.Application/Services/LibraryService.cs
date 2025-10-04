@@ -529,7 +529,7 @@ public class LibraryService : ILibraryService
         }
     }
 
-    public async Task<LibraryStatistics> GetLibraryStatisticsAsync()
+    public async Task<ImageViewer.Domain.ValueObjects.LibraryStatistics> GetLibraryStatisticsAsync()
     {
         try
         {

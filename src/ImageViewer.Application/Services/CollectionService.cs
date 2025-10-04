@@ -532,7 +532,7 @@ public class CollectionService : ICollectionService
         }
     }
 
-    public async Task<CollectionStatistics> GetCollectionStatisticsAsync()
+    public async Task<ImageViewer.Domain.ValueObjects.CollectionStatistics> GetCollectionStatisticsAsync()
     {
         try
         {

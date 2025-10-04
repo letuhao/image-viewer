@@ -568,7 +568,7 @@ public class MediaItemService : IMediaItemService
         }
     }
 
-    public async Task<MediaItemStatistics> GetMediaItemStatisticsAsync()
+    public async Task<ImageViewer.Domain.ValueObjects.MediaItemStatistics> GetMediaItemStatisticsAsync()
     {
         try
         {

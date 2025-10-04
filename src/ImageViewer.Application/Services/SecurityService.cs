@@ -3,7 +3,10 @@ using ImageViewer.Domain.Entities;
 using ImageViewer.Domain.Interfaces;
 using ImageViewer.Domain.Exceptions;
 using ImageViewer.Application.DTOs.Auth;
+using ImageViewer.Application.DTOs.Security;
+using ImageViewer.Domain.Enums;
 using Microsoft.Extensions.Logging;
+// IPasswordService is now in Application layer
 
 namespace ImageViewer.Application.Services;
 
@@ -404,4 +407,253 @@ public class SecurityService : ISecurityService
         var tokenData = $"{userId}:{DateTime.UtcNow:O}";
         return Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(tokenData));
     }
+
+    #region Two-Factor Authentication Methods
+
+    public async Task<TwoFactorSetupResult> SetupTwoFactorAsync(ObjectId userId)
+    {
+        // TODO: Implement 2FA setup
+        await Task.CompletedTask;
+        throw new NotImplementedException("Two-factor authentication setup not yet implemented");
+    }
+
+    public async Task<bool> VerifyTwoFactorAsync(ObjectId userId, string code)
+    {
+        // TODO: Implement 2FA verification
+        await Task.CompletedTask;
+        throw new NotImplementedException("Two-factor authentication verification not yet implemented");
+    }
+
+    public async Task<bool> DisableTwoFactorAsync(ObjectId userId, string code)
+    {
+        // TODO: Implement 2FA disable
+        await Task.CompletedTask;
+        throw new NotImplementedException("Two-factor authentication disable not yet implemented");
+    }
+
+    public async Task<TwoFactorStatus> GetTwoFactorStatusAsync(ObjectId userId)
+    {
+        // TODO: Implement 2FA status check
+        await Task.CompletedTask;
+        throw new NotImplementedException("Two-factor authentication status check not yet implemented");
+    }
+
+    #endregion
+
+    #region Device Management Methods
+
+    public async Task<DeviceInfo> RegisterDeviceAsync(ObjectId userId, RegisterDeviceRequest request)
+    {
+        // TODO: Implement device registration
+        await Task.CompletedTask;
+        throw new NotImplementedException("Device registration not yet implemented");
+    }
+
+    public async Task<IEnumerable<DeviceInfo>> GetUserDevicesAsync(ObjectId userId)
+    {
+        // TODO: Implement device listing
+        await Task.CompletedTask;
+        throw new NotImplementedException("Device listing not yet implemented");
+    }
+
+    public async Task<DeviceInfo> UpdateDeviceAsync(ObjectId userId, UpdateDeviceRequest request)
+    {
+        // TODO: Implement device update
+        await Task.CompletedTask;
+        throw new NotImplementedException("Device update not yet implemented");
+    }
+
+    public async Task<bool> RevokeDeviceAsync(ObjectId userId)
+    {
+        // TODO: Implement device revocation
+        await Task.CompletedTask;
+        throw new NotImplementedException("Device revocation not yet implemented");
+    }
+
+    public async Task<bool> RevokeAllDevicesAsync(ObjectId userId)
+    {
+        // TODO: Implement all devices revocation
+        await Task.CompletedTask;
+        throw new NotImplementedException("All devices revocation not yet implemented");
+    }
+
+    #endregion
+
+    #region Session Management Methods
+
+    public async Task<SessionInfo> CreateSessionAsync(ObjectId userId, CreateSessionRequest request)
+    {
+        // TODO: Implement session creation
+        await Task.CompletedTask;
+        throw new NotImplementedException("Session creation not yet implemented");
+    }
+
+    public async Task<IEnumerable<SessionInfo>> GetUserSessionsAsync(ObjectId userId)
+    {
+        // TODO: Implement session listing
+        await Task.CompletedTask;
+        throw new NotImplementedException("Session listing not yet implemented");
+    }
+
+    public async Task<SessionInfo> UpdateSessionAsync(ObjectId userId, UpdateSessionRequest request)
+    {
+        // TODO: Implement session update
+        await Task.CompletedTask;
+        throw new NotImplementedException("Session update not yet implemented");
+    }
+
+    public async Task<bool> TerminateSessionAsync(ObjectId userId)
+    {
+        // TODO: Implement session termination
+        await Task.CompletedTask;
+        throw new NotImplementedException("Session termination not yet implemented");
+    }
+
+    public async Task<bool> TerminateAllSessionsAsync(ObjectId userId)
+    {
+        // TODO: Implement all sessions termination
+        await Task.CompletedTask;
+        throw new NotImplementedException("All sessions termination not yet implemented");
+    }
+
+    #endregion
+
+    #region IP Whitelist Methods
+
+    public async Task<IPWhitelistEntry> AddIPToWhitelistAsync(ObjectId userId, string ipAddress)
+    {
+        // TODO: Implement IP whitelist addition
+        await Task.CompletedTask;
+        throw new NotImplementedException("IP whitelist addition not yet implemented");
+    }
+
+    public async Task<IEnumerable<IPWhitelistEntry>> GetUserIPWhitelistAsync(ObjectId userId)
+    {
+        // TODO: Implement IP whitelist retrieval
+        await Task.CompletedTask;
+        throw new NotImplementedException("IP whitelist retrieval not yet implemented");
+    }
+
+    public async Task<bool> RemoveIPFromWhitelistAsync(ObjectId userId, string ipAddress)
+    {
+        // TODO: Implement IP whitelist removal
+        await Task.CompletedTask;
+        throw new NotImplementedException("IP whitelist removal not yet implemented");
+    }
+
+    public async Task<bool> IsIPWhitelistedAsync(ObjectId userId, string ipAddress)
+    {
+        // TODO: Implement IP whitelist check
+        await Task.CompletedTask;
+        throw new NotImplementedException("IP whitelist check not yet implemented");
+    }
+
+    #endregion
+
+    #region Geolocation Methods
+
+    public async Task<GeolocationInfo> GetGeolocationInfoAsync(string ipAddress)
+    {
+        // TODO: Implement geolocation info retrieval
+        await Task.CompletedTask;
+        throw new NotImplementedException("Geolocation info retrieval not yet implemented");
+    }
+
+    public async Task<GeolocationSecurityResult> CheckGeolocationSecurityAsync(ObjectId userId, string ipAddress)
+    {
+        // TODO: Implement geolocation security check
+        await Task.CompletedTask;
+        throw new NotImplementedException("Geolocation security check not yet implemented");
+    }
+
+    public async Task<GeolocationAlert> CreateGeolocationAlertAsync(ObjectId userId, string ipAddress, string location)
+    {
+        // TODO: Implement geolocation alert creation
+        await Task.CompletedTask;
+        throw new NotImplementedException("Geolocation alert creation not yet implemented");
+    }
+
+    #endregion
+
+    #region Security Alert Methods
+
+    public async Task<SecurityAlert> CreateSecurityAlertAsync(ObjectId userId, SecurityAlertType alertType, string message)
+    {
+        // TODO: Implement security alert creation
+        await Task.CompletedTask;
+        throw new NotImplementedException("Security alert creation not yet implemented");
+    }
+
+    public async Task<IEnumerable<SecurityAlert>> GetUserSecurityAlertsAsync(ObjectId userId, int page, int pageSize)
+    {
+        // TODO: Implement security alerts retrieval
+        await Task.CompletedTask;
+        throw new NotImplementedException("Security alerts retrieval not yet implemented");
+    }
+
+    public async Task<SecurityAlert> MarkAlertAsReadAsync(ObjectId alertId)
+    {
+        // TODO: Implement alert marking as read
+        await Task.CompletedTask;
+        throw new NotImplementedException("Alert marking as read not yet implemented");
+    }
+
+    public async Task<bool> DeleteSecurityAlertAsync(ObjectId alertId)
+    {
+        // TODO: Implement security alert deletion
+        await Task.CompletedTask;
+        throw new NotImplementedException("Security alert deletion not yet implemented");
+    }
+
+    #endregion
+
+    #region Risk Assessment Methods
+
+    public async Task<RiskAssessment> AssessUserRiskAsync(ObjectId userId)
+    {
+        // TODO: Implement user risk assessment
+        await Task.CompletedTask;
+        throw new NotImplementedException("User risk assessment not yet implemented");
+    }
+
+    public async Task<RiskAssessment> AssessLoginRiskAsync(ObjectId userId, string ipAddress, string userAgent)
+    {
+        // TODO: Implement login risk assessment
+        await Task.CompletedTask;
+        throw new NotImplementedException("Login risk assessment not yet implemented");
+    }
+
+    public async Task<RiskAssessment> AssessActionRiskAsync(ObjectId userId, string action, string? context)
+    {
+        // TODO: Implement action risk assessment
+        await Task.CompletedTask;
+        throw new NotImplementedException("Action risk assessment not yet implemented");
+    }
+
+    #endregion
+
+    #region Security Metrics and Reports
+
+    public async Task<SecurityMetrics> GetSecurityMetricsAsync(DateTime? startDate, DateTime? endDate)
+    {
+        // TODO: Implement security metrics retrieval
+        await Task.CompletedTask;
+        throw new NotImplementedException("Security metrics retrieval not yet implemented");
+    }
+
+    public async Task<SecurityReport> GenerateSecurityReportAsync(DateTime? startDate, DateTime? endDate)
+    {
+        // TODO: Implement security report generation
+        await Task.CompletedTask;
+        throw new NotImplementedException("Security report generation not yet implemented");
+    }
+
+    public async Task<IEnumerable<SecurityEvent>> GetSecurityEventsAsync(DateTime? startDate, DateTime? endDate)
+    {
+        // TODO: Implement security events retrieval
+        await Task.CompletedTask;
+        throw new NotImplementedException("Security events retrieval not yet implemented");
+    }
+
+    #endregion
 }

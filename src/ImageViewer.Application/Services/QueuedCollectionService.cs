@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using MongoDB.Bson;
 using ImageViewer.Domain.Entities;
 using ImageViewer.Domain.Enums;
 using ImageViewer.Domain.Interfaces;
@@ -155,7 +156,7 @@ public class QueuedCollectionService : ICollectionService
         _logger.LogInformation("Queued collection scan for collection {CollectionId}", collection.Id);
     }
 
-    public async Task<CollectionStatistics> GetStatisticsAsync(Guid id, CancellationToken cancellationToken = default)
+    public async Task<ImageViewer.Domain.ValueObjects.CollectionStatistics> GetStatisticsAsync(Guid id, CancellationToken cancellationToken = default)
     {
         return await _collectionService.GetStatisticsAsync(id, cancellationToken);
     }
@@ -184,4 +185,118 @@ public class QueuedCollectionService : ICollectionService
     {
         return await _collectionService.GetTagsAsync(collectionId, cancellationToken);
     }
+
+    #region ICollectionService Implementation
+
+    public async Task<Collection> CreateCollectionAsync(ObjectId libraryId, string name, string path, CollectionType type)
+    {
+        return await _collectionService.CreateCollectionAsync(libraryId, name, path, type);
+    }
+
+    public async Task<Collection?> GetCollectionByIdAsync(ObjectId id)
+    {
+        return await _collectionService.GetCollectionByIdAsync(id);
+    }
+
+    public async Task<Collection?> GetCollectionByPathAsync(string path)
+    {
+        return await _collectionService.GetCollectionByPathAsync(path);
+    }
+
+    public async Task<IEnumerable<Collection>> GetCollectionsByLibraryIdAsync(ObjectId libraryId)
+    {
+        return await _collectionService.GetCollectionsByLibraryIdAsync(libraryId);
+    }
+
+    public async Task<IEnumerable<Collection>> GetCollectionsAsync(int page, int pageSize)
+    {
+        return await _collectionService.GetCollectionsAsync(page, pageSize);
+    }
+
+    public async Task<Collection> UpdateCollectionAsync(ObjectId id, UpdateCollectionRequest request)
+    {
+        return await _collectionService.UpdateCollectionAsync(id, request);
+    }
+
+    public async Task DeleteCollectionAsync(ObjectId id)
+    {
+        return await _collectionService.DeleteCollectionAsync(id);
+    }
+
+    public async Task<Collection> UpdateSettingsAsync(ObjectId id, UpdateCollectionSettingsRequest request)
+    {
+        return await _collectionService.UpdateSettingsAsync(id, request);
+    }
+
+    public async Task<Collection> UpdateMetadataAsync(ObjectId id, UpdateCollectionMetadataRequest request)
+    {
+        return await _collectionService.UpdateMetadataAsync(id, request);
+    }
+
+    public async Task<Collection> UpdateStatisticsAsync(ObjectId id, UpdateCollectionStatisticsRequest request)
+    {
+        return await _collectionService.UpdateStatisticsAsync(id, request);
+    }
+
+    public async Task<Collection> ActivateCollectionAsync(ObjectId id)
+    {
+        return await _collectionService.ActivateCollectionAsync(id);
+    }
+
+    public async Task<Collection> DeactivateCollectionAsync(ObjectId id)
+    {
+        return await _collectionService.DeactivateCollectionAsync(id);
+    }
+
+    public async Task<Collection> EnableWatchingAsync(ObjectId id)
+    {
+        return await _collectionService.EnableWatchingAsync(id);
+    }
+
+    public async Task<Collection> DisableWatchingAsync(ObjectId id)
+    {
+        return await _collectionService.DisableWatchingAsync(id);
+    }
+
+    public async Task<Collection> UpdateWatchSettingsAsync(ObjectId id, UpdateWatchSettingsRequest request)
+    {
+        return await _collectionService.UpdateWatchSettingsAsync(id, request);
+    }
+
+    public async Task<IEnumerable<Collection>> SearchCollectionsAsync(string query, int page, int pageSize)
+    {
+        return await _collectionService.SearchCollectionsAsync(query, page, pageSize);
+    }
+
+    public async Task<IEnumerable<Collection>> GetCollectionsByFilterAsync(CollectionFilterRequest filter, int page, int pageSize)
+    {
+        return await _collectionService.GetCollectionsByFilterAsync(filter, page, pageSize);
+    }
+
+    public async Task<IEnumerable<Collection>> GetCollectionsByLibraryAsync(ObjectId libraryId, int page, int pageSize)
+    {
+        return await _collectionService.GetCollectionsByLibraryAsync(libraryId, page, pageSize);
+    }
+
+    public async Task<ImageViewer.Domain.ValueObjects.CollectionStatistics> GetCollectionStatisticsAsync()
+    {
+        return await _collectionService.GetCollectionStatisticsAsync();
+    }
+
+    public async Task<IEnumerable<Collection>> GetTopCollectionsByActivityAsync(int limit)
+    {
+        return await _collectionService.GetTopCollectionsByActivityAsync(limit);
+    }
+
+    public async Task<IEnumerable<Collection>> GetRecentCollectionsAsync(int limit)
+    {
+        return await _collectionService.GetRecentCollectionsAsync(limit);
+    }
+
+    public async Task<IEnumerable<Collection>> GetCollectionsByTypeAsync(CollectionType type, int page, int pageSize)
+    {
+        return await _collectionService.GetCollectionsByTypeAsync(type, page, pageSize);
+    }
+
+    #endregion
 }

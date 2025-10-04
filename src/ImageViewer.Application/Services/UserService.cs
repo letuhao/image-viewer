@@ -419,7 +419,7 @@ public class UserService : IUserService
         }
     }
 
-    public async Task<UserStatistics> GetUserStatisticsAsync()
+    public async Task<ImageViewer.Domain.ValueObjects.UserStatistics> GetUserStatisticsAsync()
     {
         try
         {
