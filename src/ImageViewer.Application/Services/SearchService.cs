@@ -528,7 +528,7 @@ public class SearchService : ISearchService
                 Category = "Popular"
             });
 
-            return suggestions;
+            return Task.FromResult<IEnumerable<SearchSuggestion>>(suggestions);
         }
         catch (Exception ex)
         {
@@ -543,7 +543,7 @@ public class SearchService : ISearchService
         {
             // This is a simplified implementation
             // Real implementation would query search history and analytics collections
-            return new SearchAnalytics
+            return Task.FromResult(new SearchAnalytics
             {
                 UserId = userId,
                 FromDate = fromDate ?? DateTime.UtcNow.AddDays(-30),
@@ -555,7 +555,7 @@ public class SearchService : ISearchService
                 SearchByType = new Dictionary<string, long>(),
                 AverageSearchTime = 0,
                 ClickThroughRate = 0
-            };
+            });
         }
         catch (Exception ex)
         {
