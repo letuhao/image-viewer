@@ -136,3 +136,93 @@ public class UserSecurityUpdatedEvent : DomainEvent
         UserId = userId;
     }
 }
+
+/// <summary>
+/// User password changed domain event
+/// </summary>
+public class UserPasswordChangedEvent : DomainEvent
+{
+    public ObjectId UserId { get; }
+
+    public UserPasswordChangedEvent(ObjectId userId)
+        : base("UserPasswordChanged")
+    {
+        UserId = userId;
+    }
+}
+
+/// <summary>
+/// User two-factor authentication enabled domain event
+/// </summary>
+public class UserTwoFactorEnabledEvent : DomainEvent
+{
+    public ObjectId UserId { get; }
+
+    public UserTwoFactorEnabledEvent(ObjectId userId)
+        : base("UserTwoFactorEnabled")
+    {
+        UserId = userId;
+    }
+}
+
+/// <summary>
+/// User two-factor authentication disabled domain event
+/// </summary>
+public class UserTwoFactorDisabledEvent : DomainEvent
+{
+    public ObjectId UserId { get; }
+
+    public UserTwoFactorDisabledEvent(ObjectId userId)
+        : base("UserTwoFactorDisabled")
+    {
+        UserId = userId;
+    }
+}
+
+/// <summary>
+/// User login failed domain event
+/// </summary>
+public class UserLoginFailedEvent : DomainEvent
+{
+    public ObjectId UserId { get; }
+    public int FailedAttempts { get; }
+
+    public UserLoginFailedEvent(ObjectId userId, int failedAttempts)
+        : base("UserLoginFailed")
+    {
+        UserId = userId;
+        FailedAttempts = failedAttempts;
+    }
+}
+
+/// <summary>
+/// User login successful domain event
+/// </summary>
+public class UserLoginSuccessfulEvent : DomainEvent
+{
+    public ObjectId UserId { get; }
+    public string IpAddress { get; }
+
+    public UserLoginSuccessfulEvent(ObjectId userId, string ipAddress)
+        : base("UserLoginSuccessful")
+    {
+        UserId = userId;
+        IpAddress = ipAddress;
+    }
+}
+
+/// <summary>
+/// User role updated domain event
+/// </summary>
+public class UserRoleUpdatedEvent : DomainEvent
+{
+    public ObjectId UserId { get; }
+    public string NewRole { get; }
+
+    public UserRoleUpdatedEvent(ObjectId userId, string newRole)
+        : base("UserRoleUpdated")
+    {
+        UserId = userId;
+        NewRole = newRole;
+    }
+}

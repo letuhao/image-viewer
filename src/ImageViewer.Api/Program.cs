@@ -130,15 +130,28 @@ builder.Services.AddScoped<IJwtService, ImageViewer.Infrastructure.Services.JwtS
 builder.Services.AddAuthentication("Bearer")
     .AddJwtBearer("Bearer", options =>
     {
+        var jwtKey = builder.Configuration["Jwt:Key"];
+        var jwtIssuer = builder.Configuration["Jwt:Issuer"];
+        var jwtAudience = builder.Configuration["Jwt:Audience"];
+        
+        if (string.IsNullOrWhiteSpace(jwtKey))
+            throw new InvalidOperationException("JWT:Key is not configured. Please set it in appsettings.json or environment variables.");
+        
+        if (string.IsNullOrWhiteSpace(jwtIssuer))
+            throw new InvalidOperationException("JWT:Issuer is not configured. Please set it in appsettings.json or environment variables.");
+        
+        if (string.IsNullOrWhiteSpace(jwtAudience))
+            throw new InvalidOperationException("JWT:Audience is not configured. Please set it in appsettings.json or environment variables.");
+        
         options.TokenValidationParameters = new Microsoft.IdentityModel.Tokens.TokenValidationParameters
         {
             ValidateIssuerSigningKey = true,
             IssuerSigningKey = new Microsoft.IdentityModel.Tokens.SymmetricSecurityKey(
-                System.Text.Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"] ?? "YourSecretKeyThatIsAtLeast32CharactersLong!")),
+                System.Text.Encoding.UTF8.GetBytes(jwtKey)),
             ValidateIssuer = true,
-            ValidIssuer = builder.Configuration["Jwt:Issuer"] ?? "ImageViewer",
+            ValidIssuer = jwtIssuer,
             ValidateAudience = true,
-            ValidAudience = builder.Configuration["Jwt:Audience"] ?? "ImageViewer",
+            ValidAudience = jwtAudience,
             ValidateLifetime = true,
             ClockSkew = TimeSpan.Zero
         };

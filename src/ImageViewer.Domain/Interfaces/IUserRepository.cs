@@ -33,6 +33,17 @@ public interface IUserRepository : IRepository<User>
     Task<IEnumerable<User>> GetRecentUsersAsync(int limit = 10);
     
     #endregion
+    
+    #region Security Methods
+    
+    Task LogFailedLoginAttemptAsync(ObjectId userId);
+    Task LogSuccessfulLoginAsync(ObjectId userId, string ipAddress, string userAgent);
+    Task ClearFailedLoginAttemptsAsync(ObjectId userId);
+    Task StoreRefreshTokenAsync(ObjectId userId, string refreshToken, DateTime expiryDate);
+    Task<User?> GetByRefreshTokenAsync(string refreshToken);
+    Task InvalidateRefreshTokenAsync(ObjectId userId, string refreshToken);
+    
+    #endregion
 }
 
 /// <summary>

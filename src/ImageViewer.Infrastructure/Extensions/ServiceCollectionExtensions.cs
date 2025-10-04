@@ -3,6 +3,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Logging;
 using ImageViewer.Infrastructure.Data;
+using ImageViewer.Infrastructure.Services;
 using ImageViewer.Domain.Interfaces;
 using ImageViewer.Domain.Entities;
 using ImageViewer.Application.Services;
@@ -62,6 +63,10 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IPerformanceService, PerformanceService>();
         services.AddScoped<ISecurityService, SecurityService>();
         services.AddScoped<IWindowsDriveService, WindowsDriveService>();
+
+        // Register infrastructure services
+        services.AddScoped<IJwtService, JwtService>();
+        services.AddScoped<IPasswordService, PasswordService>();
 
         // Register unit of work
         services.AddScoped<IUnitOfWork, MongoUnitOfWork>(provider =>

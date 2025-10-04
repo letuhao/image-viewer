@@ -1,5 +1,6 @@
 using MongoDB.Bson;
 using ImageViewer.Domain.Entities;
+using ImageViewer.Application.DTOs.Auth;
 
 namespace ImageViewer.Application.Services;
 
@@ -10,10 +11,48 @@ public interface ISecurityService
 {
     #region Authentication
     
-    Task<AuthenticationResult> AuthenticateAsync(LoginRequest request);
-    Task<AuthenticationResult> RefreshTokenAsync(RefreshTokenRequest request);
-    Task LogoutAsync(ObjectId userId, string? token = null);
-    Task<bool> ValidateTokenAsync(string token);
+    /// <summary>
+    /// Authenticate user with username and password
+    /// </summary>
+    /// <param name="request">Login request</param>
+    /// <returns>Login result</returns>
+    Task<LoginResult> LoginAsync(LoginRequest request);
+    
+    /// <summary>
+    /// Register new user
+    /// </summary>
+    /// <param name="request">Registration request</param>
+    /// <returns>Registration result</returns>
+    Task<RegisterResult> RegisterAsync(RegisterRequest request);
+    
+    /// <summary>
+    /// Refresh access token using refresh token
+    /// </summary>
+    /// <param name="refreshToken">Refresh token</param>
+    /// <returns>New login result</returns>
+    Task<LoginResult> RefreshTokenAsync(string refreshToken);
+    
+    /// <summary>
+    /// Logout user and invalidate tokens
+    /// </summary>
+    /// <param name="userId">User ID</param>
+    /// <param name="refreshToken">Refresh token to invalidate</param>
+    Task LogoutAsync(ObjectId userId, string? refreshToken = null);
+    
+    /// <summary>
+    /// Validate JWT token
+    /// </summary>
+    /// <param name="token">JWT token</param>
+    /// <returns>True if valid, false otherwise</returns>
+    bool ValidateToken(string token);
+    
+    /// <summary>
+    /// Change user password
+    /// </summary>
+    /// <param name="userId">User ID</param>
+    /// <param name="currentPassword">Current password</param>
+    /// <param name="newPassword">New password</param>
+    Task ChangePasswordAsync(ObjectId userId, string currentPassword, string newPassword);
     
     #endregion
     
