@@ -329,7 +329,7 @@ public class PerformanceService : IPerformanceService
             // TODO: Implement when CDN repository is available
             _logger.LogInformation("Configured CDN with provider {Provider}", request.Provider);
             
-            return new CDNInfo
+            return Task.FromResult(new CDNInfo
             {
                 Id = ObjectId.GenerateNewId(),
                 Provider = request.Provider,
@@ -343,7 +343,7 @@ public class PerformanceService : IPerformanceService
                 AllowedFileTypes = request.AllowedFileTypes,
                 Status = "Configured",
                 LastConfigured = DateTime.UtcNow
-            };
+            });
         }
         catch (Exception ex) when (!(ex is ValidationException))
         {
