@@ -48,12 +48,12 @@ public class ImageService : IImageService
         }
     }
 
-    public async Task<Image?> GetByCollectionIdAndFilenameAsync(Guid collectionId, string filename, CancellationToken cancellationToken = default)
+    public async Task<Image?> GetByCollectionIdAndFilenameAsync(ObjectId collectionId, string filename, CancellationToken cancellationToken = default)
     {
         try
         {
             _logger.LogDebug("Getting image by collection {CollectionId} and filename {Filename}", collectionId, filename);
-            return await _unitOfWork.Images.GetByCollectionIdAndFilenameAsync(collectionId, filename, cancellationToken);
+            return await _unitOfWork.Images.GetByCollectionIdAndFilenameAsync(collectionId, filename);
         }
         catch (Exception ex)
         {
@@ -62,12 +62,12 @@ public class ImageService : IImageService
         }
     }
 
-    public async Task<IEnumerable<Image>> GetByCollectionIdAsync(Guid collectionId, CancellationToken cancellationToken = default)
+    public async Task<IEnumerable<Image>> GetByCollectionIdAsync(ObjectId collectionId, CancellationToken cancellationToken = default)
     {
         try
         {
             _logger.LogDebug("Getting images by collection {CollectionId}", collectionId);
-            return await _unitOfWork.Images.GetByCollectionIdAsync(collectionId, cancellationToken);
+            return await _unitOfWork.Images.GetByCollectionIdAsync(collectionId);
         }
         catch (Exception ex)
         {
@@ -146,12 +146,12 @@ public class ImageService : IImageService
         }
     }
 
-    public async Task<Image?> GetRandomImageByCollectionAsync(Guid collectionId, CancellationToken cancellationToken = default)
+    public async Task<Image?> GetRandomImageByCollectionAsync(ObjectId collectionId, CancellationToken cancellationToken = default)
     {
         try
         {
             _logger.LogDebug("Getting random image by collection {CollectionId}", collectionId);
-            return await _unitOfWork.Images.GetRandomImageByCollectionAsync(collectionId, cancellationToken);
+            return await _unitOfWork.Images.GetRandomImageByCollectionAsync(collectionId);
         }
         catch (Exception ex)
         {
@@ -160,12 +160,12 @@ public class ImageService : IImageService
         }
     }
 
-    public async Task<Image?> GetNextImageAsync(Guid currentImageId, CancellationToken cancellationToken = default)
+    public async Task<Image?> GetNextImageAsync(ObjectId currentImageId, CancellationToken cancellationToken = default)
     {
         try
         {
             _logger.LogDebug("Getting next image for {CurrentImageId}", currentImageId);
-            return await _unitOfWork.Images.GetNextImageAsync(currentImageId, cancellationToken);
+            return await _unitOfWork.Images.GetNextImageAsync(currentImageId);
         }
         catch (Exception ex)
         {
@@ -174,12 +174,12 @@ public class ImageService : IImageService
         }
     }
 
-    public async Task<Image?> GetPreviousImageAsync(Guid currentImageId, CancellationToken cancellationToken = default)
+    public async Task<Image?> GetPreviousImageAsync(ObjectId currentImageId, CancellationToken cancellationToken = default)
     {
         try
         {
             _logger.LogDebug("Getting previous image for {CurrentImageId}", currentImageId);
-            return await _unitOfWork.Images.GetPreviousImageAsync(currentImageId, cancellationToken);
+            return await _unitOfWork.Images.GetPreviousImageAsync(currentImageId);
         }
         catch (Exception ex)
         {
@@ -188,7 +188,7 @@ public class ImageService : IImageService
         }
     }
 
-    public async Task<byte[]?> GetImageFileAsync(Guid id, CancellationToken cancellationToken = default)
+    public async Task<byte[]?> GetImageFileAsync(ObjectId id, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -224,7 +224,7 @@ public class ImageService : IImageService
         }
     }
 
-    public async Task<byte[]?> GetThumbnailAsync(Guid id, int? width = null, int? height = null, CancellationToken cancellationToken = default)
+    public async Task<byte[]?> GetThumbnailAsync(ObjectId id, int? width = null, int? height = null, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -267,7 +267,7 @@ public class ImageService : IImageService
         }
     }
 
-    public async Task<byte[]?> GetCachedImageAsync(Guid id, int? width = null, int? height = null, CancellationToken cancellationToken = default)
+    public async Task<byte[]?> GetCachedImageAsync(ObjectId id, int? width = null, int? height = null, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -322,7 +322,7 @@ public class ImageService : IImageService
         }
     }
 
-    public async Task DeleteAsync(Guid id, CancellationToken cancellationToken = default)
+    public async Task DeleteAsync(ObjectId id, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -347,7 +347,7 @@ public class ImageService : IImageService
         }
     }
 
-    public async Task RestoreAsync(Guid id, CancellationToken cancellationToken = default)
+    public async Task RestoreAsync(ObjectId id, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -372,12 +372,12 @@ public class ImageService : IImageService
         }
     }
 
-    public async Task<long> GetTotalSizeByCollectionAsync(Guid collectionId, CancellationToken cancellationToken = default)
+    public async Task<long> GetTotalSizeByCollectionAsync(ObjectId collectionId, CancellationToken cancellationToken = default)
     {
         try
         {
             _logger.LogDebug("Getting total size for collection {CollectionId}", collectionId);
-            return await _unitOfWork.Images.GetTotalSizeByCollectionAsync(collectionId, cancellationToken);
+            return await _unitOfWork.Images.GetTotalSizeByCollectionAsync(collectionId);
         }
         catch (Exception ex)
         {
@@ -386,12 +386,12 @@ public class ImageService : IImageService
         }
     }
 
-    public async Task<int> GetCountByCollectionAsync(Guid collectionId, CancellationToken cancellationToken = default)
+    public async Task<int> GetCountByCollectionAsync(ObjectId collectionId, CancellationToken cancellationToken = default)
     {
         try
         {
             _logger.LogDebug("Getting count for collection {CollectionId}", collectionId);
-            return await _unitOfWork.Images.GetCountByCollectionAsync(collectionId, cancellationToken);
+            return await _unitOfWork.Images.GetCountByCollectionAsync(collectionId);
         }
         catch (Exception ex)
         {
@@ -400,7 +400,7 @@ public class ImageService : IImageService
         }
     }
 
-    public async Task GenerateThumbnailAsync(Guid id, int width, int height, CancellationToken cancellationToken = default)
+    public async Task GenerateThumbnailAsync(ObjectId id, int width, int height, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -438,7 +438,7 @@ public class ImageService : IImageService
         }
     }
 
-    public async Task GenerateCacheAsync(Guid id, int width, int height, CancellationToken cancellationToken = default)
+    public async Task GenerateCacheAsync(ObjectId id, int width, int height, CancellationToken cancellationToken = default)
     {
         try
         {
