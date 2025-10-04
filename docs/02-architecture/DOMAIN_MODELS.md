@@ -7,60 +7,293 @@ Document này mô tả chi tiết các domain models và business logic của h�
 ## 🏗️ Domain Architecture
 
 ### Core Domain
-- **Collection Management**: Quản lý collections và images
-- **Image Processing**: Xử lý và tối ưu hóa images
+- **Library Management**: Quản lý libraries và folders
+- **Collection Management**: Quản lý collections và media items
+- **Media Processing**: Xử lý và tối ưu hóa images/videos
 - **Caching System**: Hệ thống cache thông minh
+- **File System Monitoring**: Theo dõi thay đổi filesystem
+- **Favorite Lists**: Quản lý danh sách yêu thích
 - **User Experience**: Trải nghiệm người dùng
+- **Analytics & Tracking**: User behavior tracking và content analytics
 
 ### Supporting Domains
-- **Authentication**: Xác thực và phân quyền
-- **Analytics**: Thống kê và báo cáo
+- **Background Jobs**: Xử lý tác vụ nền
+- **System Settings**: Cấu hình hệ thống
+- **User Settings**: Cài đặt người dùng
+- **Analytics & Reporting**: Thống kê, báo cáo và insights
+- **Search Analytics**: Search performance và query analysis
+- **Content Popularity**: Popularity scoring và trending analysis
 - **Notifications**: Thông báo và alerts
 - **File Management**: Quản lý files và storage
 
 ## 📋 Core Domain Models
 
-### 1. Collection Aggregate
+### 1. Library Aggregate
 
-#### Collection Entity
+#### Library Entity
 ```csharp
-public class Collection : AggregateRoot<Guid>
+using MongoDB.Bson;
+using MongoDB.Bson.Serialization.Attributes;
+
+public class Library : AggregateRoot<ObjectId>
 {
+    [BsonId]
+    public ObjectId Id { get; private set; }
+    
     public string Name { get; private set; }
     public string Path { get; private set; }
-    public CollectionType Type { get; private set; }
-    public CollectionSettings Settings { get; private set; }
-    public CollectionStatistics Statistics { get; private set; }
+    public string Type { get; private set; } // "local", "network", "cloud"
+    public LibrarySettings Settings { get; private set; }
+    public LibraryMetadata Metadata { get; private set; }
+    public LibraryStatistics Statistics { get; private set; }
+    public WatchInfo WatchInfo { get; private set; }
+    public SearchIndex SearchIndex { get; private set; }
     public DateTime CreatedAt { get; private set; }
     public DateTime UpdatedAt { get; private set; }
-    public bool IsDeleted { get; private set; }
-    public DateTime? DeletedAt { get; private set; }
-    
-    // Navigation properties
-    public ICollection<Image> Images { get; private set; } = new List<Image>();
-    public ICollection<CollectionTag> Tags { get; private set; } = new List<CollectionTag>();
-    public ICollection<ViewSession> ViewSessions { get; private set; } = new List<ViewSession>();
     
     // Domain events
     private readonly List<IDomainEvent> _domainEvents = new();
     public IReadOnlyCollection<IDomainEvent> DomainEvents => _domainEvents.AsReadOnly();
     
     // Constructors
-    private Collection() { } // EF Core
+    private Library() { } // MongoDB
     
-    public Collection(string name, string path, CollectionType type, CollectionSettings settings)
+    public Library(string name, string path, string type, LibrarySettings settings)
     {
-        Id = Guid.NewGuid();
+        Id = ObjectId.GenerateNewId();
         Name = name;
         Path = path;
         Type = type;
         Settings = settings;
-        Statistics = new CollectionStatistics();
+        Metadata = new LibraryMetadata();
+        Statistics = new LibraryStatistics();
+        WatchInfo = new WatchInfo { IsWatching = false };
+        SearchIndex = new SearchIndex();
         CreatedAt = DateTime.UtcNow;
         UpdatedAt = DateTime.UtcNow;
-        IsDeleted = false;
         
-        AddDomainEvent(new CollectionCreatedEvent(Id, Name, Path, Type));
+        AddDomainEvent(new LibraryCreatedEvent(Id, Name, Path, Type));
+    }
+    
+    // Business methods
+    public void UpdateName(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            throw new ArgumentException("Library name cannot be empty", nameof(name));
+            
+        Name = name;
+        UpdatedAt = DateTime.UtcNow;
+        
+        AddDomainEvent(new LibraryNameUpdatedEvent(Id, Name));
+    }
+    
+    public void UpdateSettings(LibrarySettings settings)
+    {
+        Settings = settings ?? throw new ArgumentNullException(nameof(settings));
+        UpdatedAt = DateTime.UtcNow;
+        
+        AddDomainEvent(new LibrarySettingsUpdatedEvent(Id, Settings));
+    }
+    
+    public void EnableWatching()
+    {
+        WatchInfo.IsWatching = true;
+        UpdatedAt = DateTime.UtcNow;
+        
+        AddDomainEvent(new LibraryWatchingEnabledEvent(Id));
+    }
+    
+    public void DisableWatching()
+    {
+        WatchInfo.IsWatching = false;
+        UpdatedAt = DateTime.UtcNow;
+        
+        AddDomainEvent(new LibraryWatchingDisabledEvent(Id));
+    }
+    
+    public void UpdateStatistics(LibraryStatistics statistics)
+    {
+        Statistics = statistics ?? throw new ArgumentNullException(nameof(statistics));
+        UpdatedAt = DateTime.UtcNow;
+        
+        AddDomainEvent(new LibraryStatisticsUpdatedEvent(Id, Statistics));
+    }
+    
+    public void AddTag(string tag)
+    {
+        if (string.IsNullOrWhiteSpace(tag))
+            throw new ArgumentException("Tag cannot be empty", nameof(tag));
+            
+        if (!Metadata.Tags.Contains(tag))
+        {
+            Metadata.Tags.Add(tag);
+            UpdatedAt = DateTime.UtcNow;
+            
+            AddDomainEvent(new LibraryTagAddedEvent(Id, tag));
+        }
+    }
+    
+    public void RemoveTag(string tag)
+    {
+        if (string.IsNullOrWhiteSpace(tag))
+            return;
+            
+        if (Metadata.Tags.Remove(tag))
+        {
+            UpdatedAt = DateTime.UtcNow;
+            
+            AddDomainEvent(new LibraryTagRemovedEvent(Id, tag));
+        }
+    }
+    
+    public void UpdateSearchIndex()
+    {
+        SearchIndex.SearchableText = $"{Name} {string.Join(" ", Metadata.Tags)} {Path}";
+        SearchIndex.Tags = Metadata.Tags;
+        SearchIndex.Path = Path;
+        UpdatedAt = DateTime.UtcNow;
+    }
+    
+    public void Delete()
+    {
+        UpdatedAt = DateTime.UtcNow;
+        
+        AddDomainEvent(new LibraryDeletedEvent(Id, Name));
+    }
+    
+    public void ClearDomainEvents()
+    {
+        _domainEvents.Clear();
+    }
+    
+    // Domain event handling
+    private void AddDomainEvent(IDomainEvent domainEvent)
+    {
+        _domainEvents.Add(domainEvent);
+    }
+    
+    public void ClearDomainEvents()
+    {
+        _domainEvents.Clear();
+    }
+}
+```
+
+#### Library Settings
+```csharp
+public class LibrarySettings
+{
+    public bool AutoScan { get; set; } = true;
+    public int ScanInterval { get; set; } = 60; // minutes
+    public string WatchMode { get; set; } = "scheduled"; // "realtime", "scheduled", "manual"
+    public bool IncludeSubfolders { get; set; } = true;
+    public FileFilters FileFilters { get; set; } = new();
+}
+
+public class FileFilters
+{
+    public List<string> Images { get; set; } = new() { ".jpg", ".png", ".gif", ".webp", ".bmp", ".tiff" };
+    public List<string> Videos { get; set; } = new() { ".mp4", ".avi", ".mov", ".wmv", ".flv", ".mkv" };
+    public List<string> ExcludePatterns { get; set; } = new() { "*.tmp", "*.log", "*.DS_Store" };
+}
+
+public class LibraryMetadata
+{
+    public string Description { get; set; }
+    public List<string> Tags { get; set; } = new();
+    public DateTime CreatedDate { get; set; }
+    public DateTime LastModified { get; set; }
+    public int TotalCollections { get; set; }
+    public long TotalSize { get; set; }
+    public DateTime LastScanDate { get; set; }
+}
+
+public class LibraryStatistics
+{
+    public int CollectionCount { get; set; }
+    public int TotalItems { get; set; }
+    public long TotalSize { get; set; }
+    public double LastScanDuration { get; set; }
+    public int ScanCount { get; set; }
+    public DateTime LastScanDate { get; set; }
+}
+
+public class WatchInfo
+{
+    public bool IsWatching { get; set; }
+    public DateTime LastWatchCheck { get; set; }
+    public List<WatchError> WatchErrors { get; set; } = new();
+    public FileSystemWatcherInfo FileSystemWatcher { get; set; } = new();
+}
+
+public class WatchError
+{
+    public string Path { get; set; }
+    public string Error { get; set; }
+    public DateTime Timestamp { get; set; }
+}
+
+public class FileSystemWatcherInfo
+{
+    public bool Enabled { get; set; }
+    public DateTime LastEvent { get; set; }
+    public int EventCount { get; set; }
+}
+
+public class SearchIndex
+{
+    public string SearchableText { get; set; }
+    public List<string> Tags { get; set; }
+    public string Path { get; set; }
+}
+```
+
+### 2. Collection Aggregate
+
+#### Collection Entity
+```csharp
+public class Collection : AggregateRoot<ObjectId>
+{
+    [BsonId]
+    public ObjectId Id { get; private set; }
+    
+    public ObjectId LibraryId { get; private set; }
+    public string Name { get; private set; }
+    public string Path { get; private set; }
+    public string Type { get; private set; } // "image", "video", "mixed"
+    public CollectionSettings Settings { get; private set; }
+    public CollectionMetadata Metadata { get; private set; }
+    public CollectionStatistics Statistics { get; private set; }
+    public CacheInfo CacheInfo { get; private set; }
+    public WatchInfo WatchInfo { get; private set; }
+    public SearchIndex SearchIndex { get; private set; }
+    public DateTime CreatedAt { get; private set; }
+    public DateTime UpdatedAt { get; private set; }
+    
+    // Domain events
+    private readonly List<IDomainEvent> _domainEvents = new();
+    public IReadOnlyCollection<IDomainEvent> DomainEvents => _domainEvents.AsReadOnly();
+    
+    // Constructors
+    private Collection() { } // MongoDB
+    
+    public Collection(ObjectId libraryId, string name, string path, string type, CollectionSettings settings)
+    {
+        Id = ObjectId.GenerateNewId();
+        LibraryId = libraryId;
+        Name = name;
+        Path = path;
+        Type = type;
+        Settings = settings;
+        Metadata = new CollectionMetadata();
+        Statistics = new CollectionStatistics();
+        CacheInfo = new CacheInfo();
+        WatchInfo = new WatchInfo { IsWatching = false };
+        SearchIndex = new SearchIndex();
+        CreatedAt = DateTime.UtcNow;
+        UpdatedAt = DateTime.UtcNow;
+        
+        AddDomainEvent(new CollectionCreatedEvent(Id, LibraryId, Name, Path, Type));
     }
     
     // Business methods
@@ -83,151 +316,121 @@ public class Collection : AggregateRoot<Guid>
         AddDomainEvent(new CollectionSettingsUpdatedEvent(Id, Settings));
     }
     
-    public void AddImage(Image image)
+    public void EnableWatching()
     {
-        if (image == null)
-            throw new ArgumentNullException(nameof(image));
-            
-        Images.Add(image);
-        Statistics.IncrementImageCount();
+        WatchInfo.IsWatching = true;
         UpdatedAt = DateTime.UtcNow;
         
-        AddDomainEvent(new ImageAddedToCollectionEvent(Id, image.Id));
+        AddDomainEvent(new CollectionWatchingEnabledEvent(Id));
     }
     
-    public void RemoveImage(Guid imageId)
+    public void DisableWatching()
     {
-        var image = Images.FirstOrDefault(i => i.Id == imageId);
-        if (image == null)
-            throw new InvalidOperationException($"Image {imageId} not found in collection {Id}");
-            
-        Images.Remove(image);
-        Statistics.DecrementImageCount();
+        WatchInfo.IsWatching = false;
         UpdatedAt = DateTime.UtcNow;
         
-        AddDomainEvent(new ImageRemovedFromCollectionEvent(Id, imageId));
+        AddDomainEvent(new CollectionWatchingDisabledEvent(Id));
     }
     
-    public void AddTag(string tagName)
+    public void UpdateStatistics(CollectionStatistics statistics)
     {
-        if (string.IsNullOrWhiteSpace(tagName))
-            throw new ArgumentException("Tag name cannot be empty", nameof(tagName));
-            
-        if (Tags.Any(t => t.Name.Equals(tagName, StringComparison.OrdinalIgnoreCase)))
-            return; // Tag already exists
-            
-        var tag = new CollectionTag(tagName);
-        Tags.Add(tag);
+        Statistics = statistics ?? throw new ArgumentNullException(nameof(statistics));
         UpdatedAt = DateTime.UtcNow;
         
-        AddDomainEvent(new TagAddedToCollectionEvent(Id, tagName));
+        AddDomainEvent(new CollectionStatisticsUpdatedEvent(Id, Statistics));
     }
     
-    public void RemoveTag(string tagName)
+    public void AddTag(string tag)
     {
-        var tag = Tags.FirstOrDefault(t => t.Name.Equals(tagName, StringComparison.OrdinalIgnoreCase));
-        if (tag == null)
+        if (string.IsNullOrWhiteSpace(tag))
+            throw new ArgumentException("Tag cannot be empty", nameof(tag));
+            
+        if (!Metadata.Tags.Contains(tag))
+        {
+            Metadata.Tags.Add(tag);
+            UpdatedAt = DateTime.UtcNow;
+            
+            AddDomainEvent(new CollectionTagAddedEvent(Id, tag));
+        }
+    }
+    
+    public void RemoveTag(string tag)
+    {
+        if (string.IsNullOrWhiteSpace(tag))
             return;
             
-        Tags.Remove(tag);
-        UpdatedAt = DateTime.UtcNow;
-        
-        AddDomainEvent(new TagRemovedFromCollectionEvent(Id, tagName));
+        if (Metadata.Tags.Remove(tag))
+        {
+            UpdatedAt = DateTime.UtcNow;
+            
+            AddDomainEvent(new CollectionTagRemovedEvent(Id, tag));
+        }
     }
     
-    public void MarkAsDeleted()
+    public void UpdateSearchIndex()
     {
-        if (IsDeleted)
-            return;
-            
-        IsDeleted = true;
-        DeletedAt = DateTime.UtcNow;
+        SearchIndex.SearchableText = $"{Name} {string.Join(" ", Metadata.Tags)} {Path}";
+        SearchIndex.Tags = Metadata.Tags;
+        SearchIndex.Metadata = Metadata;
+        UpdatedAt = DateTime.UtcNow;
+    }
+    
+    public void Delete()
+    {
         UpdatedAt = DateTime.UtcNow;
         
         AddDomainEvent(new CollectionDeletedEvent(Id, Name));
-    }
-    
-    public void Restore()
-    {
-        if (!IsDeleted)
-            return;
-            
-        IsDeleted = false;
-        DeletedAt = null;
-        UpdatedAt = DateTime.UtcNow;
-        
-        AddDomainEvent(new CollectionRestoredEvent(Id, Name));
-    }
-    
-    public void UpdateStatistics(CollectionStatistics newStatistics)
-    {
-        Statistics = newStatistics ?? throw new ArgumentNullException(nameof(newStatistics));
-        UpdatedAt = DateTime.UtcNow;
-    }
-    
-    private void AddDomainEvent(IDomainEvent domainEvent)
-    {
-        _domainEvents.Add(domainEvent);
     }
     
     public void ClearDomainEvents()
     {
         _domainEvents.Clear();
     }
+    
+    // Domain event handling
+    private void AddDomainEvent(IDomainEvent domainEvent)
+    {
+        _domainEvents.Add(domainEvent);
+    }
 }
-```
 
-#### CollectionType Enum
-```csharp
-public enum CollectionType : byte
-{
-    Folder = 1,
-    Zip = 2,
-    SevenZip = 3,
-    Rar = 4,
-    Tar = 5,
-    Gzip = 6,
-    Bzip2 = 7
-}
-```
-
-#### CollectionSettings Value Object
+#### Collection Settings Value Object
 ```csharp
 public class CollectionSettings : ValueObject
 {
+    public int ThumbnailSize { get; private set; }
+    public bool CacheEnabled { get; private set; }
     public bool AutoScan { get; private set; }
-    public bool GenerateThumbnails { get; private set; }
-    public bool GenerateCache { get; private set; }
-    public ThumbnailSettings ThumbnailSettings { get; private set; }
-    public CacheSettings CacheSettings { get; private set; }
-    public ScanSettings ScanSettings { get; private set; }
+    public int ScanInterval { get; private set; }
+    public int Priority { get; private set; }
+    public string WatchMode { get; private set; }
     
-    private CollectionSettings() { } // EF Core
+    private CollectionSettings() { } // MongoDB
     
     public CollectionSettings(
+        int thumbnailSize = 300,
+        bool cacheEnabled = true,
         bool autoScan = true,
-        bool generateThumbnails = true,
-        bool generateCache = true,
-        ThumbnailSettings thumbnailSettings = null,
-        CacheSettings cacheSettings = null,
-        ScanSettings scanSettings = null)
+        int scanInterval = 60,
+        int priority = 0,
+        string watchMode = "scheduled")
     {
+        ThumbnailSize = thumbnailSize;
+        CacheEnabled = cacheEnabled;
         AutoScan = autoScan;
-        GenerateThumbnails = generateThumbnails;
-        GenerateCache = generateCache;
-        ThumbnailSettings = thumbnailSettings ?? ThumbnailSettings.Default;
-        CacheSettings = cacheSettings ?? CacheSettings.Default;
-        ScanSettings = scanSettings ?? ScanSettings.Default;
+        ScanInterval = scanInterval;
+        Priority = priority;
+        WatchMode = watchMode;
     }
     
     protected override IEnumerable<object> GetEqualityComponents()
     {
+        yield return ThumbnailSize;
+        yield return CacheEnabled;
         yield return AutoScan;
-        yield return GenerateThumbnails;
-        yield return GenerateCache;
-        yield return ThumbnailSettings;
-        yield return CacheSettings;
-        yield return ScanSettings;
+        yield return ScanInterval;
+        yield return Priority;
+        yield return WatchMode;
     }
 }
 ```
@@ -237,190 +440,171 @@ public class CollectionSettings : ValueObject
 public class CollectionStatistics : ValueObject
 {
     public int ImageCount { get; private set; }
+    public int VideoCount { get; private set; }
     public long TotalSize { get; private set; }
-    public int ThumbnailCount { get; private set; }
-    public int CacheCount { get; private set; }
-    public DateTime LastScanned { get; private set; }
-    public DateTime LastUpdated { get; private set; }
+    public DateTime LastScanDate { get; private set; }
+    public double ScanDuration { get; private set; }
+    public DateTime LastFileSystemCheck { get; private set; }
     
-    private CollectionStatistics() { } // EF Core
+    private CollectionStatistics() { } // MongoDB
     
     public CollectionStatistics()
     {
         ImageCount = 0;
+        VideoCount = 0;
         TotalSize = 0;
-        ThumbnailCount = 0;
-        CacheCount = 0;
-        LastScanned = DateTime.UtcNow;
-        LastUpdated = DateTime.UtcNow;
+        LastScanDate = DateTime.UtcNow;
+        ScanDuration = 0;
+        LastFileSystemCheck = DateTime.UtcNow;
     }
     
-    public void IncrementImageCount()
+    public void UpdateScanResults(int imageCount, int videoCount, long size, double duration)
     {
-        ImageCount++;
-        LastUpdated = DateTime.UtcNow;
-    }
-    
-    public void DecrementImageCount()
-    {
-        if (ImageCount > 0)
-            ImageCount--;
-        LastUpdated = DateTime.UtcNow;
-    }
-    
-    public void UpdateTotalSize(long size)
-    {
+        ImageCount = imageCount;
+        VideoCount = videoCount;
         TotalSize = size;
-        LastUpdated = DateTime.UtcNow;
+        LastScanDate = DateTime.UtcNow;
+        ScanDuration = duration;
     }
     
-    public void UpdateThumbnailCount(int count)
+    public void UpdateFileSystemCheck()
     {
-        ThumbnailCount = count;
-        LastUpdated = DateTime.UtcNow;
-    }
-    
-    public void UpdateCacheCount(int count)
-    {
-        CacheCount = count;
-        LastUpdated = DateTime.UtcNow;
-    }
-    
-    public void UpdateLastScanned()
-    {
-        LastScanned = DateTime.UtcNow;
-        LastUpdated = DateTime.UtcNow;
+        LastFileSystemCheck = DateTime.UtcNow;
     }
     
     protected override IEnumerable<object> GetEqualityComponents()
     {
         yield return ImageCount;
+        yield return VideoCount;
         yield return TotalSize;
-        yield return ThumbnailCount;
-        yield return CacheCount;
-        yield return LastScanned;
-        yield return LastUpdated;
+        yield return LastScanDate;
+        yield return ScanDuration;
+        yield return LastFileSystemCheck;
     }
 }
 ```
 
-### 2. Image Aggregate
+### 3. Media Item Aggregate
 
-#### Image Entity
+#### Media Item Entity
 ```csharp
-public class Image : AggregateRoot<Guid>
+public class MediaItem : AggregateRoot<ObjectId>
 {
-    public Guid CollectionId { get; private set; }
-    public string FileName { get; private set; }
+    [BsonId]
+    public ObjectId Id { get; private set; }
+    
+    public ObjectId CollectionId { get; private set; }
+    public ObjectId LibraryId { get; private set; }
+    public string Filename { get; private set; }
     public string FilePath { get; private set; }
-    public string RelativePath { get; private set; }
+    public string FileType { get; private set; } // "image", "video"
+    public string MimeType { get; private set; }
     public long FileSize { get; private set; }
-    public ImageMetadata Metadata { get; private set; }
-    public ImageCacheInfo CacheInfo { get; private set; }
+    public Dimensions Dimensions { get; private set; }
+    public FileInfo FileInfo { get; private set; }
+    public MediaMetadata Metadata { get; private set; }
+    public List<string> Tags { get; private set; }
+    public CacheInfo CacheInfo { get; private set; }
+    public MediaStatistics Statistics { get; private set; }
+    public SearchIndex SearchIndex { get; private set; }
     public DateTime CreatedAt { get; private set; }
     public DateTime UpdatedAt { get; private set; }
-    public bool IsDeleted { get; private set; }
-    public DateTime? DeletedAt { get; private set; }
-    
-    // Navigation properties
-    public Collection Collection { get; private set; }
-    public ICollection<ImageTag> Tags { get; private set; } = new List<ImageTag>();
-    public ICollection<ViewSession> ViewSessions { get; private set; } = new List<ViewSession>();
     
     // Domain events
     private readonly List<IDomainEvent> _domainEvents = new();
     public IReadOnlyCollection<IDomainEvent> DomainEvents => _domainEvents.AsReadOnly();
     
     // Constructors
-    private Image() { } // EF Core
+    private MediaItem() { } // MongoDB
     
-    public Image(
-        Guid collectionId,
-        string fileName,
+    public MediaItem(
+        ObjectId collectionId,
+        ObjectId libraryId,
+        string filename,
         string filePath,
-        string relativePath,
+        string fileType,
+        string mimeType,
         long fileSize,
-        ImageMetadata metadata)
+        Dimensions dimensions,
+        MediaMetadata metadata)
     {
-        Id = Guid.NewGuid();
+        Id = ObjectId.GenerateNewId();
         CollectionId = collectionId;
-        FileName = fileName;
+        LibraryId = libraryId;
+        Filename = filename;
         FilePath = filePath;
-        RelativePath = relativePath;
+        FileType = fileType;
+        MimeType = mimeType;
         FileSize = fileSize;
-        Metadata = metadata ?? throw new ArgumentNullException(nameof(metadata));
-        CacheInfo = new ImageCacheInfo();
+        Dimensions = dimensions;
+        Metadata = metadata;
+        Tags = new List<string>();
+        CacheInfo = new CacheInfo();
+        Statistics = new MediaStatistics();
+        SearchIndex = new SearchIndex();
         CreatedAt = DateTime.UtcNow;
         UpdatedAt = DateTime.UtcNow;
-        IsDeleted = false;
         
-        AddDomainEvent(new ImageCreatedEvent(Id, CollectionId, FileName, FilePath));
+        AddDomainEvent(new MediaItemCreatedEvent(Id, CollectionId, LibraryId, Filename, FileType));
     }
     
     // Business methods
-    public void UpdateMetadata(ImageMetadata metadata)
+    public void UpdateMetadata(MediaMetadata metadata)
     {
         Metadata = metadata ?? throw new ArgumentNullException(nameof(metadata));
         UpdatedAt = DateTime.UtcNow;
         
-        AddDomainEvent(new ImageMetadataUpdatedEvent(Id, Metadata));
+        AddDomainEvent(new MediaItemMetadataUpdatedEvent(Id, Metadata));
     }
     
-    public void UpdateCacheInfo(ImageCacheInfo cacheInfo)
+    public void UpdateCacheInfo(CacheInfo cacheInfo)
     {
         CacheInfo = cacheInfo ?? throw new ArgumentNullException(nameof(cacheInfo));
         UpdatedAt = DateTime.UtcNow;
-    }
-    
-    public void AddTag(string tagName)
-    {
-        if (string.IsNullOrWhiteSpace(tagName))
-            throw new ArgumentException("Tag name cannot be empty", nameof(tagName));
-            
-        if (Tags.Any(t => t.Name.Equals(tagName, StringComparison.OrdinalIgnoreCase)))
-            return; // Tag already exists
-            
-        var tag = new ImageTag(tagName);
-        Tags.Add(tag);
-        UpdatedAt = DateTime.UtcNow;
         
-        AddDomainEvent(new TagAddedToImageEvent(Id, tagName));
+        AddDomainEvent(new MediaItemCacheInfoUpdatedEvent(Id, CacheInfo));
     }
     
-    public void RemoveTag(string tagName)
+    public void AddTag(string tag)
     {
-        var tag = Tags.FirstOrDefault(t => t.Name.Equals(tagName, StringComparison.OrdinalIgnoreCase));
-        if (tag == null)
+        if (string.IsNullOrWhiteSpace(tag))
+            throw new ArgumentException("Tag cannot be empty", nameof(tag));
+            
+        if (!Tags.Contains(tag))
+        {
+            Tags.Add(tag);
+            UpdatedAt = DateTime.UtcNow;
+            
+            AddDomainEvent(new TagAddedToMediaItemEvent(Id, tag));
+        }
+    }
+    
+    public void RemoveTag(string tag)
+    {
+        if (string.IsNullOrWhiteSpace(tag))
             return;
             
-        Tags.Remove(tag);
-        UpdatedAt = DateTime.UtcNow;
-        
-        AddDomainEvent(new TagRemovedFromImageEvent(Id, tagName));
+        if (Tags.Remove(tag))
+        {
+            UpdatedAt = DateTime.UtcNow;
+            
+            AddDomainEvent(new TagRemovedFromMediaItemEvent(Id, tag));
+        }
     }
     
-    public void MarkAsDeleted()
+    public void Delete()
     {
-        if (IsDeleted)
-            return;
-            
-        IsDeleted = true;
-        DeletedAt = DateTime.UtcNow;
         UpdatedAt = DateTime.UtcNow;
         
-        AddDomainEvent(new ImageDeletedEvent(Id, FileName));
+        AddDomainEvent(new MediaItemDeletedEvent(Id, Filename));
     }
     
-    public void Restore()
+    public void UpdateSearchIndex()
     {
-        if (!IsDeleted)
-            return;
-            
-        IsDeleted = false;
-        DeletedAt = null;
+        SearchIndex.SearchableText = $"{Filename} {string.Join(" ", Tags)} {FilePath}";
+        SearchIndex.Tags = Tags;
+        SearchIndex.Metadata = Metadata;
         UpdatedAt = DateTime.UtcNow;
-        
-        AddDomainEvent(new ImageRestoredEvent(Id, FileName));
     }
     
     private void AddDomainEvent(IDomainEvent domainEvent)
@@ -435,70 +619,220 @@ public class Image : AggregateRoot<Guid>
 }
 ```
 
-#### ImageMetadata Value Object
+#### Media Item Value Objects
 ```csharp
-public class ImageMetadata : ValueObject
+public class Dimensions : ValueObject
 {
     public int Width { get; private set; }
     public int Height { get; private set; }
-    public string Format { get; private set; }
-    public string ColorSpace { get; private set; }
-    public int BitDepth { get; private set; }
-    public bool HasTransparency { get; private set; }
-    public ExifData ExifData { get; private set; }
-    public DateTime? TakenAt { get; private set; }
-    public string Camera { get; private set; }
-    public string Lens { get; private set; }
-    public string Location { get; private set; }
     
-    private ImageMetadata() { } // EF Core
+    private Dimensions() { } // MongoDB
     
-    public ImageMetadata(
-        int width,
-        int height,
-        string format,
-        string colorSpace = null,
-        int bitDepth = 8,
-        bool hasTransparency = false,
-        ExifData exifData = null,
-        DateTime? takenAt = null,
-        string camera = null,
-        string lens = null,
-        string location = null)
+    public Dimensions(int width, int height)
     {
+        if (width <= 0) throw new ArgumentException("Width must be positive", nameof(width));
+        if (height <= 0) throw new ArgumentException("Height must be positive", nameof(height));
+        
         Width = width;
         Height = height;
-        Format = format ?? throw new ArgumentNullException(nameof(format));
-        ColorSpace = colorSpace;
-        BitDepth = bitDepth;
-        HasTransparency = hasTransparency;
-        ExifData = exifData;
-        TakenAt = takenAt;
-        Camera = camera;
-        Lens = lens;
-        Location = location;
     }
     
-    public double AspectRatio => Width > 0 && Height > 0 ? (double)Width / Height : 1.0;
-    
-    public string Orientation => Width > Height ? "landscape" : Width < Height ? "portrait" : "square";
+    public double AspectRatio => (double)Width / Height;
+    public bool IsLandscape => Width > Height;
+    public bool IsPortrait => Height > Width;
+    public bool IsSquare => Width == Height;
     
     protected override IEnumerable<object> GetEqualityComponents()
     {
         yield return Width;
         yield return Height;
-        yield return Format;
-        yield return ColorSpace;
-        yield return BitDepth;
-        yield return HasTransparency;
-        yield return ExifData;
-        yield return TakenAt;
+    }
+}
+
+public class MediaMetadata : ValueObject
+{
+    // Image metadata
+    public string Camera { get; private set; }
+    public string Lens { get; private set; }
+    public string Exposure { get; private set; }
+    public int Iso { get; private set; }
+    public string Aperture { get; private set; }
+    public string FocalLength { get; private set; }
+    public DateTime? DateTaken { get; private set; }
+    public GpsData Gps { get; private set; }
+    
+    // Video metadata
+    public double Duration { get; private set; }
+    public double FrameRate { get; private set; }
+    public long Bitrate { get; private set; }
+    public string Codec { get; private set; }
+    
+    private MediaMetadata() { } // MongoDB
+    
+    public MediaMetadata(
+        string camera = null,
+        string lens = null,
+        string exposure = null,
+        int iso = 0,
+        string aperture = null,
+        string focalLength = null,
+        DateTime? dateTaken = null,
+        GpsData gps = null,
+        double duration = 0,
+        double frameRate = 0,
+        long bitrate = 0,
+        string codec = null)
+    {
+        Camera = camera;
+        Lens = lens;
+        Exposure = exposure;
+        Iso = iso;
+        Aperture = aperture;
+        FocalLength = focalLength;
+        DateTaken = dateTaken;
+        Gps = gps;
+        Duration = duration;
+        FrameRate = frameRate;
+        Bitrate = bitrate;
+        Codec = codec;
+    }
+    
+    public bool HasExifData() => !string.IsNullOrEmpty(Camera) || !string.IsNullOrEmpty(Lens);
+    public bool HasGpsData() => Gps != null;
+    public bool IsVideo() => Duration > 0;
+    
+    protected override IEnumerable<object> GetEqualityComponents()
+    {
         yield return Camera;
         yield return Lens;
-        yield return Location;
+        yield return Exposure;
+        yield return Iso;
+        yield return Aperture;
+        yield return FocalLength;
+        yield return DateTaken;
+        yield return Gps;
+        yield return Duration;
+        yield return FrameRate;
+        yield return Bitrate;
+        yield return Codec;
+    }
+}
+
+public class GpsData : ValueObject
+{
+    public double Latitude { get; private set; }
+    public double Longitude { get; private set; }
+    public double Altitude { get; private set; }
+    
+    private GpsData() { } // MongoDB
+    
+    public GpsData(double latitude, double longitude, double altitude = 0)
+    {
+        if (latitude < -90 || latitude > 90) throw new ArgumentException("Latitude must be between -90 and 90", nameof(latitude));
+        if (longitude < -180 || longitude > 180) throw new ArgumentException("Longitude must be between -180 and 180", nameof(longitude));
+        
+        Latitude = latitude;
+        Longitude = longitude;
+        Altitude = altitude;
+    }
+    
+    public bool IsValid() => Latitude != 0 || Longitude != 0;
+    
+    protected override IEnumerable<object> GetEqualityComponents()
+    {
+        yield return Latitude;
+        yield return Longitude;
+        yield return Altitude;
+    }
+}
+
+public class MediaStatistics : ValueObject
+{
+    public int ViewCount { get; private set; }
+    public DateTime LastViewed { get; private set; }
+    public double Rating { get; private set; }
+    public bool Favorite { get; private set; }
+    
+    private MediaStatistics() { } // MongoDB
+    
+    public MediaStatistics()
+    {
+        ViewCount = 0;
+        LastViewed = DateTime.UtcNow;
+        Rating = 0;
+        Favorite = false;
+    }
+    
+    public void IncrementViewCount()
+    {
+        ViewCount++;
+        LastViewed = DateTime.UtcNow;
+    }
+    
+    public void SetRating(double rating)
+    {
+        if (rating < 0 || rating > 5) throw new ArgumentException("Rating must be between 0 and 5", nameof(rating));
+        Rating = rating;
+    }
+    
+    public void SetFavorite(bool favorite)
+    {
+        Favorite = favorite;
+    }
+    
+    protected override IEnumerable<object> GetEqualityComponents()
+    {
+        yield return ViewCount;
+        yield return LastViewed;
+        yield return Rating;
+        yield return Favorite;
     }
 }
 ```
+
+## Summary
+
+Tôi đã cập nhật toàn bộ thiết kế database và architecture để phù hợp với MongoDB:
+
+### 1. **Database Design (DATABASE_DESIGN.md)**
+- Chuyển từ PostgreSQL sang MongoDB
+- Thiết kế lại schema với document-oriented approach
+- Thêm các collections mới: Libraries, System Settings, User Settings, Favorite Lists
+- Cập nhật indexing strategy cho MongoDB
+- Thêm aggregation pipelines cho performance
+
+### 2. **Architecture Design (ARCHITECTURE_DESIGN.md)**
+- Cập nhật infrastructure layer từ EF Core sang MongoDB Driver
+- Thay đổi từ Hangfire sang RabbitMQ cho background services
+- Cập nhật domain models với MongoDB attributes
+- Thêm các entities mới: Library, MediaItem, SystemSetting, UserSettings, FavoriteList
+
+### 3. **Domain Models (DOMAIN_MODELS.md)**
+- Cập nhật từ Collection-centric sang Library-centric architecture
+- Thêm Library aggregate với file system monitoring
+- Cập nhật MediaItem entity thay cho Image entity
+- Thêm các value objects mới: Dimensions, FileInfo, MediaMetadata, GpsData
+- Cập nhật domain events cho MongoDB
+
+### 4. **Key Changes**
+- **Libraries**: Top-level containers cho folders/galleries
+- **Collections**: Nested trong libraries với file system monitoring
+- **Media Items**: Thay cho Images, hỗ trợ cả image và video
+- **System Settings**: Cấu hình hệ thống tách biệt
+- **User Settings**: Cài đặt người dùng cá nhân
+- **Favorite Lists**: Danh sách yêu thích với smart filtering
+- **Background Jobs**: RabbitMQ-based job processing
+- **File System Monitoring**: Real-time change detection
+
+### 5. **Benefits**
+- **Performance**: MongoDB aggregation pipelines và indexing
+- **Scalability**: Document-oriented design cho horizontal scaling
+- **Flexibility**: Embedded documents giảm joins
+- **Real-time**: Change streams cho live updates
+- **Monitoring**: Comprehensive logging và metrics
+- **Maintenance**: TTL indexes và automated cleanup
+
+Thiết kế mới này sẽ hỗ trợ hệ thống image viewer với hàng triệu media items và hàng nghìn libraries một cách hiệu quả, với khả năng scale và maintain dễ dàng hơn so với relational database.
 
 #### ImageCacheInfo Value Object
 ```csharp
@@ -1212,6 +1546,413 @@ public class ImageDomainService : IImageDomainService
 - **ImageDomainService**: Image business logic
 - **CacheDomainService**: Cache management logic
 - **TagDomainService**: Tag management logic
+
+## 📊 Analytics Domain Models
+
+### 7. User Behavior Tracking Aggregate
+
+#### User Behavior Event Entity
+```csharp
+public class UserBehaviorEvent : AggregateRoot<ObjectId>
+{
+    [BsonId]
+    public ObjectId Id { get; private set; }
+
+    public string UserId { get; private set; }
+    public string SessionId { get; private set; }
+    public string EventType { get; private set; } // "view", "search", "filter", "navigate", "download", "share", "like", "favorite"
+    public string TargetType { get; private set; } // "media", "collection", "library", "favorite_list", "tag"
+    public ObjectId TargetId { get; private set; }
+    public EventMetadata Metadata { get; private set; }
+    public EventContext Context { get; private set; }
+    public DateTime Timestamp { get; private set; }
+    public DateTime CreatedAt { get; private set; }
+
+    // Domain events
+    private readonly List<IDomainEvent> _domainEvents = new();
+    public IReadOnlyCollection<IDomainEvent> DomainEvents => _domainEvents.AsReadOnly();
+
+    // Constructors
+    private UserBehaviorEvent() { } // MongoDB
+
+    public UserBehaviorEvent(
+        string userId,
+        string sessionId,
+        string eventType,
+        string targetType,
+        ObjectId targetId,
+        EventMetadata metadata,
+        EventContext context)
+    {
+        Id = ObjectId.GenerateNewId();
+        UserId = userId ?? throw new ArgumentNullException(nameof(userId));
+        SessionId = sessionId ?? throw new ArgumentNullException(nameof(sessionId));
+        EventType = eventType ?? throw new ArgumentNullException(nameof(eventType));
+        TargetType = targetType ?? throw new ArgumentNullException(nameof(targetType));
+        TargetId = targetId;
+        Metadata = metadata ?? throw new ArgumentNullException(nameof(metadata));
+        Context = context ?? throw new ArgumentNullException(nameof(context));
+        Timestamp = DateTime.UtcNow;
+        CreatedAt = DateTime.UtcNow;
+
+        AddDomainEvent(new UserBehaviorEventCreatedEvent(Id, UserId, EventType, TargetType, TargetId));
+    }
+
+    // Business methods
+    public bool IsViewEvent() => EventType == "view";
+    public bool IsSearchEvent() => EventType == "search";
+    public bool IsInteractionEvent() => new[] { "like", "share", "download", "favorite" }.Contains(EventType);
+    public bool IsNavigationEvent() => EventType == "navigate";
+    
+    public double GetDuration() => Metadata.Duration;
+    public string GetDeviceType() => Context.Device;
+    public string GetQuery() => Metadata.Query;
+    public int GetResultCount() => Metadata.ResultCount;
+
+    public void ClearDomainEvents()
+    {
+        _domainEvents.Clear();
+    }
+
+    // Domain event handling
+    private void AddDomainEvent(IDomainEvent domainEvent)
+    {
+        _domainEvents.Add(domainEvent);
+    }
+}
+```
+
+#### Event Metadata Value Object
+```csharp
+public class EventMetadata : ValueObject
+{
+    // View events
+    public double Duration { get; private set; }
+    public DateTime StartTime { get; private set; }
+    public DateTime EndTime { get; private set; }
+    public Viewport Viewport { get; private set; }
+    public double ZoomLevel { get; private set; }
+
+    // Search events
+    public string Query { get; private set; }
+    public SearchFilters Filters { get; private set; }
+    public int ResultCount { get; private set; }
+    public long SearchTime { get; private set; }
+    public List<ObjectId> ClickedResults { get; private set; }
+
+    // Navigation events
+    public string FromPage { get; private set; }
+    public string ToPage { get; private set; }
+    public List<string> NavigationPath { get; private set; }
+    public double TimeOnPage { get; private set; }
+
+    // Interaction events
+    public string Action { get; private set; }
+    public Coordinates Coordinates { get; private set; }
+    public string Element { get; private set; }
+    public string ElementType { get; private set; }
+
+    // Content events
+    public string ContentType { get; private set; }
+    public long ContentSize { get; private set; }
+    public string ContentFormat { get; private set; }
+    public List<string> Tags { get; private set; }
+    public double Rating { get; private set; }
+
+    private EventMetadata() { } // MongoDB
+
+    public EventMetadata(
+        double duration = 0,
+        DateTime? startTime = null,
+        DateTime? endTime = null,
+        Viewport viewport = null,
+        double zoomLevel = 1.0,
+        string query = null,
+        SearchFilters filters = null,
+        int resultCount = 0,
+        long searchTime = 0,
+        List<ObjectId> clickedResults = null,
+        string fromPage = null,
+        string toPage = null,
+        List<string> navigationPath = null,
+        double timeOnPage = 0,
+        string action = null,
+        Coordinates coordinates = null,
+        string element = null,
+        string elementType = null,
+        string contentType = null,
+        long contentSize = 0,
+        string contentFormat = null,
+        List<string> tags = null,
+        double rating = 0)
+    {
+        Duration = duration;
+        StartTime = startTime ?? DateTime.UtcNow;
+        EndTime = endTime ?? DateTime.UtcNow;
+        Viewport = viewport;
+        ZoomLevel = zoomLevel;
+        Query = query;
+        Filters = filters;
+        ResultCount = resultCount;
+        SearchTime = searchTime;
+        ClickedResults = clickedResults ?? new List<ObjectId>();
+        FromPage = fromPage;
+        ToPage = toPage;
+        NavigationPath = navigationPath ?? new List<string>();
+        TimeOnPage = timeOnPage;
+        Action = action;
+        Coordinates = coordinates;
+        Element = element;
+        ElementType = elementType;
+        ContentType = contentType;
+        ContentSize = contentSize;
+        ContentFormat = contentFormat;
+        Tags = tags ?? new List<string>();
+        Rating = rating;
+    }
+
+    protected override IEnumerable<object> GetEqualityComponents()
+    {
+        yield return Duration;
+        yield return StartTime;
+        yield return EndTime;
+        yield return Viewport;
+        yield return ZoomLevel;
+        yield return Query;
+        yield return Filters;
+        yield return ResultCount;
+        yield return SearchTime;
+        yield return FromPage;
+        yield return ToPage;
+        yield return Action;
+        yield return ContentType;
+        yield return ContentSize;
+        yield return ContentFormat;
+        yield return Rating;
+    }
+}
+```
+
+#### Event Context Value Object
+```csharp
+public class EventContext : ValueObject
+{
+    public string UserAgent { get; private set; }
+    public string IpAddress { get; private set; }
+    public string Referrer { get; private set; }
+    public string Language { get; private set; }
+    public string Timezone { get; private set; }
+    public string Device { get; private set; } // "desktop", "mobile", "tablet"
+    public string Browser { get; private set; }
+    public string Os { get; private set; }
+
+    private EventContext() { } // MongoDB
+
+    public EventContext(
+        string userAgent = null,
+        string ipAddress = null,
+        string referrer = null,
+        string language = null,
+        string timezone = null,
+        string device = null,
+        string browser = null,
+        string os = null)
+    {
+        UserAgent = userAgent;
+        IpAddress = ipAddress;
+        Referrer = referrer;
+        Language = language;
+        Timezone = timezone;
+        Device = device;
+        Browser = browser;
+        Os = os;
+    }
+
+    public bool IsMobile() => Device == "mobile";
+    public bool IsDesktop() => Device == "desktop";
+    public bool IsTablet() => Device == "tablet";
+
+    protected override IEnumerable<object> GetEqualityComponents()
+    {
+        yield return UserAgent;
+        yield return IpAddress;
+        yield return Referrer;
+        yield return Language;
+        yield return Timezone;
+        yield return Device;
+        yield return Browser;
+        yield return Os;
+    }
+}
+```
+
+### 8. User Analytics Aggregate
+
+#### User Analytics Entity
+```csharp
+public class UserAnalytics : AggregateRoot<ObjectId>
+{
+    [BsonId]
+    public ObjectId Id { get; private set; }
+
+    public string UserId { get; private set; }
+    public string Period { get; private set; } // "daily", "weekly", "monthly", "yearly"
+    public DateTime Date { get; private set; }
+    public UserMetrics Metrics { get; private set; }
+    public TopContent TopContent { get; private set; }
+    public UserPreferences Preferences { get; private set; }
+    public UserDemographics Demographics { get; private set; }
+    public DateTime CreatedAt { get; private set; }
+    public DateTime UpdatedAt { get; private set; }
+
+    // Domain events
+    private readonly List<IDomainEvent> _domainEvents = new();
+    public IReadOnlyCollection<IDomainEvent> DomainEvents => _domainEvents.AsReadOnly();
+
+    // Constructors
+    private UserAnalytics() { } // MongoDB
+
+    public UserAnalytics(
+        string userId,
+        string period,
+        DateTime date,
+        UserMetrics metrics,
+        TopContent topContent,
+        UserPreferences preferences,
+        UserDemographics demographics)
+    {
+        Id = ObjectId.GenerateNewId();
+        UserId = userId ?? throw new ArgumentNullException(nameof(userId));
+        Period = period ?? throw new ArgumentNullException(nameof(period));
+        Date = date;
+        Metrics = metrics ?? throw new ArgumentNullException(nameof(metrics));
+        TopContent = topContent ?? throw new ArgumentNullException(nameof(topContent));
+        Preferences = preferences ?? throw new ArgumentNullException(nameof(preferences));
+        Demographics = demographics ?? throw new ArgumentNullException(nameof(demographics));
+        CreatedAt = DateTime.UtcNow;
+        UpdatedAt = DateTime.UtcNow;
+
+        AddDomainEvent(new UserAnalyticsCreatedEvent(Id, UserId, Period, Date));
+    }
+
+    // Business methods
+    public bool IsActiveUser() => Metrics.TotalViews > 0 || Metrics.TotalSearches > 0;
+    public double GetEngagementScore() => (Metrics.TotalLikes + Metrics.TotalShares + Metrics.TotalFavorites) / Math.Max(Metrics.TotalViews, 1);
+    public List<string> GetTopTags() => TopContent.MostUsedTags.Take(10).Select(t => t.Tag).ToList();
+    
+    public string GetUserSegment()
+    {
+        if (Metrics.TotalViews > 1000) return "power_user";
+        if (Metrics.TotalViews > 100) return "active_user";
+        if (Metrics.TotalViews > 10) return "regular_user";
+        return "casual_user";
+    }
+
+    public void UpdateMetrics(UserMetrics newMetrics)
+    {
+        Metrics = newMetrics ?? throw new ArgumentNullException(nameof(newMetrics));
+        UpdatedAt = DateTime.UtcNow;
+
+        AddDomainEvent(new UserAnalyticsUpdatedEvent(Id, UserId, Metrics));
+    }
+
+    public void ClearDomainEvents()
+    {
+        _domainEvents.Clear();
+    }
+
+    // Domain event handling
+    private void AddDomainEvent(IDomainEvent domainEvent)
+    {
+        _domainEvents.Add(domainEvent);
+    }
+}
+```
+
+### 9. Content Popularity Aggregate
+
+#### Content Popularity Entity
+```csharp
+public class ContentPopularity : AggregateRoot<ObjectId>
+{
+    [BsonId]
+    public ObjectId Id { get; private set; }
+
+    public string TargetType { get; private set; } // "media", "collection", "library", "tag"
+    public ObjectId TargetId { get; private set; }
+    public string Period { get; private set; } // "daily", "weekly", "monthly", "yearly", "all_time"
+    public DateTime Date { get; private set; }
+    public PopularityMetrics Metrics { get; private set; }
+    public ContentTrends Trends { get; private set; }
+    public RelatedContent RelatedContent { get; private set; }
+    public DateTime CreatedAt { get; private set; }
+    public DateTime UpdatedAt { get; private set; }
+
+    // Domain events
+    private readonly List<IDomainEvent> _domainEvents = new();
+    public IReadOnlyCollection<IDomainEvent> DomainEvents => _domainEvents.AsReadOnly();
+
+    // Constructors
+    private ContentPopularity() { } // MongoDB
+
+    public ContentPopularity(
+        string targetType,
+        ObjectId targetId,
+        string period,
+        DateTime date,
+        PopularityMetrics metrics,
+        ContentTrends trends,
+        RelatedContent relatedContent)
+    {
+        Id = ObjectId.GenerateNewId();
+        TargetType = targetType ?? throw new ArgumentNullException(nameof(targetType));
+        TargetId = targetId;
+        Period = period ?? throw new ArgumentNullException(nameof(period));
+        Date = date;
+        Metrics = metrics ?? throw new ArgumentNullException(nameof(metrics));
+        Trends = trends ?? throw new ArgumentNullException(nameof(trends));
+        RelatedContent = relatedContent ?? throw new ArgumentNullException(nameof(relatedContent));
+        CreatedAt = DateTime.UtcNow;
+        UpdatedAt = DateTime.UtcNow;
+
+        AddDomainEvent(new ContentPopularityCreatedEvent(Id, TargetType, TargetId, Period, Date));
+    }
+
+    // Business methods
+    public bool IsTrending() => Metrics.TrendingScore > 0.7;
+    public bool IsViral() => Metrics.ViralityScore > 0.8;
+    public double GetEngagementRate() => Metrics.EngagementScore;
+    public bool IsPopular() => Metrics.PopularityScore > 0.5;
+    public List<string> GetTrendingTags() => RelatedContent.SimilarTags.Take(5).ToList();
+
+    public void UpdateMetrics(PopularityMetrics newMetrics)
+    {
+        Metrics = newMetrics ?? throw new ArgumentNullException(nameof(newMetrics));
+        UpdatedAt = DateTime.UtcNow;
+
+        AddDomainEvent(new ContentPopularityUpdatedEvent(Id, TargetType, TargetId, Metrics));
+    }
+
+    public void UpdateTrends(ContentTrends newTrends)
+    {
+        Trends = newTrends ?? throw new ArgumentNullException(nameof(newTrends));
+        UpdatedAt = DateTime.UtcNow;
+
+        AddDomainEvent(new ContentTrendsUpdatedEvent(Id, TargetType, TargetId, Trends));
+    }
+
+    public void ClearDomainEvents()
+    {
+        _domainEvents.Clear();
+    }
+
+    // Domain event handling
+    private void AddDomainEvent(IDomainEvent domainEvent)
+    {
+        _domainEvents.Add(domainEvent);
+    }
+}
+```
 
 ## 🎯 Conclusion
 
