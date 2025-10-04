@@ -171,7 +171,7 @@ public class NotificationService : INotificationService
         }
     }
 
-    public Task SendRealTimeNotificationAsync(ObjectId userId, NotificationMessage message)
+    public async Task SendRealTimeNotificationAsync(ObjectId userId, NotificationMessage message)
     {
         try
         {
@@ -188,7 +188,7 @@ public class NotificationService : INotificationService
         }
     }
 
-    public Task SendBroadcastNotificationAsync(NotificationMessage message)
+    public async Task SendBroadcastNotificationAsync(NotificationMessage message)
     {
         try
         {
@@ -205,7 +205,7 @@ public class NotificationService : INotificationService
         }
     }
 
-    public Task SendGroupNotificationAsync(List<ObjectId> userIds, NotificationMessage message)
+    public async Task SendGroupNotificationAsync(List<ObjectId> userIds, NotificationMessage message)
     {
         try
         {
@@ -258,7 +258,7 @@ public class NotificationService : INotificationService
             // TODO: Save to database when template repository is implemented
             _logger.LogInformation("Created notification template {TemplateId}: {Name}", template.Id, template.Name);
 
-            return template;
+            return Task.FromResult(template);
         }
         catch (Exception ex) when (!(ex is ValidationException))
         {
@@ -286,7 +286,7 @@ public class NotificationService : INotificationService
         try
         {
             // TODO: Implement when template repository is available
-            return new List<NotificationTemplate>();
+            return Task.FromResult<IEnumerable<NotificationTemplate>>(new List<NotificationTemplate>());
         }
         catch (Exception ex)
         {
