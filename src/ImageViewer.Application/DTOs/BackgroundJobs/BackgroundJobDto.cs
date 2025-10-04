@@ -1,3 +1,5 @@
+using MongoDB.Bson;
+
 namespace ImageViewer.Application.DTOs.BackgroundJobs;
 
 /// <summary>
@@ -5,7 +7,7 @@ namespace ImageViewer.Application.DTOs.BackgroundJobs;
 /// </summary>
 public class BackgroundJobDto
 {
-    public Guid JobId { get; set; }
+    public ObjectId JobId { get; set; }
     public string Type { get; set; } = string.Empty;
     public string Status { get; set; } = string.Empty;
     public JobProgressDto Progress { get; set; } = null!;
