@@ -1,4 +1,5 @@
 using ImageViewer.Domain.ValueObjects;
+using MongoDB.Bson;
 
 namespace ImageViewer.Domain.Entities;
 
@@ -7,8 +8,8 @@ namespace ImageViewer.Domain.Entities;
 /// </summary>
 public class ImageCacheInfo : BaseEntity
 {
-    public new Guid Id { get; private set; }
-    public Guid ImageId { get; private set; }
+    public new ObjectId Id { get; private set; }
+    public ObjectId ImageId { get; private set; }
     public string CachePath { get; private set; }
     public string Dimensions { get; private set; }
     public long FileSizeBytes { get; private set; }
@@ -22,9 +23,9 @@ public class ImageCacheInfo : BaseEntity
     // Private constructor for EF Core
     private ImageCacheInfo() { }
 
-    public ImageCacheInfo(Guid imageId, string cachePath, string dimensions, long fileSizeBytes, DateTime expiresAt)
+    public ImageCacheInfo(ObjectId imageId, string cachePath, string dimensions, long fileSizeBytes, DateTime expiresAt)
     {
-        Id = Guid.NewGuid();
+        Id = ObjectId.GenerateNewId();
         ImageId = imageId;
         CachePath = cachePath ?? throw new ArgumentNullException(nameof(cachePath));
         Dimensions = dimensions ?? throw new ArgumentNullException(nameof(dimensions));
