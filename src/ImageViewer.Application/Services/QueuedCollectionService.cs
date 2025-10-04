@@ -33,7 +33,14 @@ public class QueuedCollectionService : ICollectionService
 
     public async Task<SearchResponseDto<Collection>> SearchCollectionsAsync(SearchRequestDto searchRequest, PaginationRequestDto pagination, CancellationToken cancellationToken = default)
     {
-        return await _collectionService.GetCollectionsAsync();
+        var collections = await _collectionService.GetCollectionsAsync();
+        return new SearchResponseDto<Collection>
+        {
+            Data = collections,
+            TotalCount = collections.Count(),
+            Page = pagination.Page,
+            PageSize = pagination.PageSize
+        };
     }
 
     public async Task<Collection?> GetByIdAsync(ObjectId id, CancellationToken cancellationToken = default)
@@ -64,7 +71,7 @@ public class QueuedCollectionService : ICollectionService
         // Note: This is a simplified implementation, proper pagination would be handled by the repository
         return new PaginationResponseDto<Collection>
         {
-            Items = collections,
+            Data = collections,
             TotalCount = collections.Count(),
             Page = pagination.Page,
             PageSize = pagination.PageSize
@@ -119,7 +126,7 @@ public class QueuedCollectionService : ICollectionService
         return collection;
     }
 
-    public async Task<Collection> UpdateAsync(Guid id, string? name = null, string? path = null, CollectionSettings? settings = null, CancellationToken cancellationToken = default)
+    public async Task<Collection> UpdateAsync(ObjectId id, string? name = null, string? path = null, CollectionSettings? settings = null, CancellationToken cancellationToken = default)
     {
         var updateRequest = new UpdateCollectionRequest
         {
@@ -146,18 +153,18 @@ public class QueuedCollectionService : ICollectionService
         return collection;
     }
 
-    public async Task DeleteAsync(Guid id, CancellationToken cancellationToken = default)
+    public async Task DeleteAsync(ObjectId id, CancellationToken cancellationToken = default)
     {
         await _collectionService.DeleteCollectionAsync(id);
     }
 
-    public async Task RestoreAsync(Guid id, CancellationToken cancellationToken = default)
+    public async Task RestoreAsync(ObjectId id, CancellationToken cancellationToken = default)
     {
         // TODO: Implement restore functionality
         throw new NotImplementedException("Restore functionality not yet implemented");
     }
 
-    public async Task ScanCollectionAsync(Guid id, CancellationToken cancellationToken = default)
+    public async Task ScanCollectionAsync(ObjectId id, CancellationToken cancellationToken = default)
     {
         // Queue the scan operation instead of doing it synchronously
         var collection = await _collectionService.GetCollectionByIdAsync(id);
@@ -178,7 +185,7 @@ public class QueuedCollectionService : ICollectionService
         _logger.LogInformation("Queued collection scan for collection {CollectionId}", collection.Id);
     }
 
-    public async Task<ImageViewer.Domain.ValueObjects.CollectionStatistics> GetStatisticsAsync(Guid id, CancellationToken cancellationToken = default)
+    public async Task<ImageViewer.Domain.ValueObjects.CollectionStatistics> GetStatisticsAsync(ObjectId id, CancellationToken cancellationToken = default)
     {
         // TODO: Implement GetStatisticsAsync
         throw new NotImplementedException("GetStatisticsAsync not yet implemented");
@@ -196,19 +203,19 @@ public class QueuedCollectionService : ICollectionService
         throw new NotImplementedException("GetTotalImageCountAsync not yet implemented");
     }
 
-    public async Task AddTagAsync(Guid collectionId, string tagName, string? description = null, TagColor? color = null, CancellationToken cancellationToken = default)
+    public async Task AddTagAsync(ObjectId collectionId, string tagName, string? description = null, TagColor? color = null, CancellationToken cancellationToken = default)
     {
         // TODO: Implement AddTagAsync
         throw new NotImplementedException("AddTagAsync not yet implemented");
     }
 
-    public async Task RemoveTagAsync(Guid collectionId, string tagName, CancellationToken cancellationToken = default)
+    public async Task RemoveTagAsync(ObjectId collectionId, string tagName, CancellationToken cancellationToken = default)
     {
         // TODO: Implement RemoveTagAsync
         throw new NotImplementedException("RemoveTagAsync not yet implemented");
     }
 
-    public async Task<IEnumerable<Tag>> GetTagsAsync(Guid collectionId, CancellationToken cancellationToken = default)
+    public async Task<IEnumerable<Tag>> GetTagsAsync(ObjectId collectionId, CancellationToken cancellationToken = default)
     {
         // TODO: Implement GetTagsAsync
         throw new NotImplementedException("GetTagsAsync not yet implemented");

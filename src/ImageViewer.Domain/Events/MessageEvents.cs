@@ -1,4 +1,5 @@
 using ImageViewer.Domain.Enums;
+using MongoDB.Bson;
 
 namespace ImageViewer.Domain.Events;
 
@@ -20,7 +21,7 @@ public abstract class MessageEvent : IDomainEvent
 /// </summary>
 public class CollectionScanMessage : MessageEvent
 {
-    public Guid CollectionId { get; set; }
+    public ObjectId CollectionId { get; set; }
     public string CollectionPath { get; set; } = string.Empty;
     public CollectionType CollectionType { get; set; }
     public bool ForceRescan { get; set; } = false;
