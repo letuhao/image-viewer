@@ -75,4 +75,19 @@ public class MongoTagRepository : MongoRepository<ImageViewer.Domain.Entities.Ta
         var tag = await _collection.Find(filter).FirstOrDefaultAsync(cancellationToken);
         return tag?.UsageCount ?? 0;
     }
+
+    public async Task<IEnumerable<ImageViewer.Domain.Entities.Tag>> GetByCollectionIdAsync(ObjectId collectionId, CancellationToken cancellationToken = default)
+    {
+        // This is a simplified implementation
+        // In a real scenario, you would join with CollectionTag collection
+        var filter = Builders<ImageViewer.Domain.Entities.Tag>.Filter.Empty;
+        return await _collection.Find(filter).ToListAsync(cancellationToken);
+    }
+
+    public async Task<long> GetUsageCountAsync(ObjectId tagId, CancellationToken cancellationToken = default)
+    {
+        var filter = Builders<ImageViewer.Domain.Entities.Tag>.Filter.Eq(x => x.Id, tagId);
+        var tag = await _collection.Find(filter).FirstOrDefaultAsync(cancellationToken);
+        return tag?.UsageCount ?? 0;
+    }
 }
