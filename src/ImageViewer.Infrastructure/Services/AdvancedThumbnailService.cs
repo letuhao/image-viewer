@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using ImageViewer.Application.Services;
 using ImageViewer.Domain.Interfaces;
 using ImageViewer.Domain.Entities;
+using MongoDB.Bson;
 using SkiaSharp;
 using ImageViewer.Application.Options;
 using Microsoft.Extensions.Options;
@@ -38,13 +39,13 @@ public class AdvancedThumbnailService : IAdvancedThumbnailService
         }
     }
 
-    public async Task<string?> GenerateCollectionThumbnailAsync(Guid collectionId, CancellationToken cancellationToken = default)
+    public async Task<string?> GenerateCollectionThumbnailAsync(ObjectId collectionId, CancellationToken cancellationToken = default)
     {
         try
         {
             _logger.LogInformation("Generating thumbnail for collection {CollectionId}", collectionId);
 
-            var collection = await _unitOfWork.Collections.GetByIdAsync(collectionId, cancellationToken);
+            var collection = await _unitOfWork.Collections.GetByIdAsync(collectionId);
             if (collection == null)
             {
                 _logger.LogWarning("Collection {CollectionId} not found", collectionId);
@@ -92,7 +93,7 @@ public class AdvancedThumbnailService : IAdvancedThumbnailService
         }
     }
 
-    public async Task<BatchThumbnailResult> BatchRegenerateThumbnailsAsync(IEnumerable<Guid> collectionIds, CancellationToken cancellationToken = default)
+    public async Task<BatchThumbnailResult> BatchRegenerateThumbnailsAsync(IEnumerable<ObjectId> collectionIds, CancellationToken cancellationToken = default)
     {
         if (collectionIds == null)
         {
@@ -101,7 +102,7 @@ public class AdvancedThumbnailService : IAdvancedThumbnailService
                 Total = 0,
                 Success = 0,
                 Failed = 0,
-                FailedCollections = new List<Guid>(),
+                FailedCollections = new List<ObjectId>(),
                 Errors = new List<string>()
             };
         }
@@ -145,7 +146,7 @@ public class AdvancedThumbnailService : IAdvancedThumbnailService
         return result;
     }
 
-    public async Task<byte[]?> GetCollectionThumbnailAsync(Guid collectionId, int? width = null, int? height = null, CancellationToken cancellationToken = default)
+    public async Task<byte[]?> GetCollectionThumbnailAsync(ObjectId collectionId, int? width = null, int? height = null, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -183,7 +184,7 @@ public class AdvancedThumbnailService : IAdvancedThumbnailService
         }
     }
 
-    public Task DeleteCollectionThumbnailAsync(Guid collectionId, CancellationToken cancellationToken = default)
+    public Task DeleteCollectionThumbnailAsync(ObjectId collectionId, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -203,7 +204,7 @@ public class AdvancedThumbnailService : IAdvancedThumbnailService
         return Task.CompletedTask;
     }
 
-    private string GetThumbnailPath(Guid collectionId)
+    private string GetThumbnailPath(ObjectId collectionId)
     {
         return Path.Combine(_thumbnailBasePath, $"{collectionId}.jpg");
     }

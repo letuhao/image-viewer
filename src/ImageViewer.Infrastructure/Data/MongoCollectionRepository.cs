@@ -23,125 +23,59 @@ public class MongoCollectionRepository : MongoRepository<Collection>, ICollectio
         return await _collection.Find(filter).FirstOrDefaultAsync(cancellationToken);
     }
 
-    public async Task<Collection?> GetByPathAsync(string path, CancellationToken cancellationToken = default)
+    public async Task<Collection> GetByPathAsync(string path)
     {
         var filter = Builders<Collection>.Filter.Eq(x => x.Path, path) & 
                     Builders<Collection>.Filter.Eq(x => x.IsDeleted, false);
-        return await _collection.Find(filter).FirstOrDefaultAsync(cancellationToken);
-    }
-
-    public async Task<IEnumerable<Collection>> GetActiveCollectionsAsync(CancellationToken cancellationToken = default)
-    {
-        var filter = Builders<Collection>.Filter.Eq(x => x.IsDeleted, false);
-        return await _collection.Find(filter).ToListAsync(cancellationToken);
-    }
-
-    public async Task<IEnumerable<Collection>> GetActiveCollectionsQueryableAsync(CancellationToken cancellationToken = default)
-    {
-        var filter = Builders<Collection>.Filter.Eq(x => x.IsDeleted, false);
-        return await _collection.Find(filter).ToListAsync(cancellationToken);
-    }
-
-    public async Task<IEnumerable<Collection>> GetByTypeAsync(CollectionType type, CancellationToken cancellationToken = default)
-    {
-        var filter = Builders<Collection>.Filter.Eq(x => x.Type, type) & 
-                    Builders<Collection>.Filter.Eq(x => x.IsDeleted, false);
-        return await _collection.Find(filter).ToListAsync(cancellationToken);
-    }
-
-    public async Task<IEnumerable<Collection>> SearchByNameAsync(string searchTerm, CancellationToken cancellationToken = default)
-    {
-        var filter = Builders<Collection>.Filter.And(
-            Builders<Collection>.Filter.Eq(x => x.IsDeleted, false),
-            Builders<Collection>.Filter.Regex(x => x.Name, new MongoDB.Bson.BsonRegularExpression(searchTerm, "i"))
-        );
-        return await _collection.Find(filter).ToListAsync(cancellationToken);
-    }
-
-    public async Task<IEnumerable<Collection>> GetCollectionsWithImagesAsync(CancellationToken cancellationToken = default)
-    {
-        var filter = Builders<Collection>.Filter.And(
-            Builders<Collection>.Filter.Eq(x => x.IsDeleted, false),
-            Builders<Collection>.Filter.Exists("Images", true)
-        );
-        return await _collection.Find(filter).ToListAsync(cancellationToken);
-    }
-
-    public async Task<IEnumerable<Collection>> GetCollectionsByTagAsync(string tagName, CancellationToken cancellationToken = default)
-    {
-        // This would require a more complex aggregation pipeline in MongoDB
-        // For now, we'll get all active collections and filter in memory
-        var collections = await GetActiveCollectionsAsync(cancellationToken);
-        return collections.Where(c => c.Tags.Any(t => t.TagId.ToString().Contains(tagName)));
-    }
-
-    public async Task<long> GetTotalSizeAsync(CancellationToken cancellationToken = default)
-    {
-        var filter = Builders<Collection>.Filter.Eq(x => x.IsDeleted, false);
-        var collections = await _collection.Find(filter).ToListAsync(cancellationToken);
-        return collections.Sum(c => c.GetTotalSize());
-    }
-
-    public async Task<int> GetTotalImageCountAsync(CancellationToken cancellationToken = default)
-    {
-        var filter = Builders<Collection>.Filter.Eq(x => x.IsDeleted, false);
-        var collections = await _collection.Find(filter).ToListAsync(cancellationToken);
-        return collections.Sum(c => c.GetImageCount());
-    }
-
-    public async Task<Collection> GetByPathAsync(string path, CancellationToken cancellationToken = default)
-    {
-        var filter = Builders<Collection>.Filter.Eq(x => x.Path, path) & 
-                    Builders<Collection>.Filter.Eq(x => x.IsDeleted, false);
-        var result = await _collection.Find(filter).FirstOrDefaultAsync(cancellationToken);
+        var result = await _collection.Find(filter).FirstOrDefaultAsync();
         return result ?? throw new EntityNotFoundException($"Collection with path '{path}' not found");
     }
 
-    public async Task<IEnumerable<Collection>> GetByLibraryIdAsync(ObjectId libraryId, CancellationToken cancellationToken = default)
+    public async Task<IEnumerable<Collection>> GetByLibraryIdAsync(ObjectId libraryId)
     {
         var filter = Builders<Collection>.Filter.Eq(x => x.LibraryId, libraryId) & 
                     Builders<Collection>.Filter.Eq(x => x.IsDeleted, false);
-        return await _collection.Find(filter).ToListAsync(cancellationToken);
+        return await _collection.Find(filter).ToListAsync();
     }
 
-    public async Task<IEnumerable<Collection>> GetActiveCollectionsAsync(CancellationToken cancellationToken = default)
+    public async Task<IEnumerable<Collection>> GetActiveCollectionsAsync()
     {
         var filter = Builders<Collection>.Filter.Eq(x => x.IsActive, true) & 
                     Builders<Collection>.Filter.Eq(x => x.IsDeleted, false);
-        return await _collection.Find(filter).ToListAsync(cancellationToken);
+        return await _collection.Find(filter).ToListAsync();
     }
 
-    public async Task<IEnumerable<Collection>> GetCollectionsByTypeAsync(CollectionType type, CancellationToken cancellationToken = default)
+    public async Task<IEnumerable<Collection>> GetCollectionsByTypeAsync(CollectionType type)
     {
         var filter = Builders<Collection>.Filter.Eq(x => x.Type, type) & 
                     Builders<Collection>.Filter.Eq(x => x.IsDeleted, false);
-        return await _collection.Find(filter).ToListAsync(cancellationToken);
+        return await _collection.Find(filter).ToListAsync();
     }
 
-    public async Task<long> GetCollectionCountAsync(CancellationToken cancellationToken = default)
+    public async Task<long> GetCollectionCountAsync()
     {
         var filter = Builders<Collection>.Filter.Eq(x => x.IsDeleted, false);
-        return await _collection.CountDocumentsAsync(filter, cancellationToken: cancellationToken);
+        return await _collection.CountDocumentsAsync(filter);
     }
 
-    public async Task<long> GetActiveCollectionCountAsync(CancellationToken cancellationToken = default)
+    public async Task<long> GetActiveCollectionCountAsync()
     {
         var filter = Builders<Collection>.Filter.Eq(x => x.IsActive, true) & 
                     Builders<Collection>.Filter.Eq(x => x.IsDeleted, false);
-        return await _collection.CountDocumentsAsync(filter, cancellationToken: cancellationToken);
+        return await _collection.CountDocumentsAsync(filter);
     }
 
-    public async Task<IEnumerable<Collection>> SearchCollectionsAsync(string query, CancellationToken cancellationToken = default)
+    public async Task<IEnumerable<Collection>> SearchCollectionsAsync(string query)
     {
         var filter = Builders<Collection>.Filter.Or(
             Builders<Collection>.Filter.Regex(x => x.Name, new MongoDB.Bson.BsonRegularExpression(query, "i")),
             Builders<Collection>.Filter.Regex(x => x.Path, new MongoDB.Bson.BsonRegularExpression(query, "i"))
         ) & Builders<Collection>.Filter.Eq(x => x.IsDeleted, false);
         
-        return await _collection.Find(filter).ToListAsync(cancellationToken);
+        return await _collection.Find(filter).ToListAsync();
     }
 
-    public async Task<IEnumerable<Collection>> GetCollectionsByFilterAsync(CollectionFilter filter, CancellationToken cancellationToken = default)
+    public async Task<IEnumerable<Collection>> GetCollectionsByFilterAsync(CollectionFilter filter)
     {
         var mongoFilter = Builders<Collection>.Filter.Eq(x => x.IsDeleted, false);
         
@@ -154,13 +88,13 @@ public class MongoCollectionRepository : MongoRepository<Collection>, ICollectio
         if (!string.IsNullOrEmpty(filter.Name))
             mongoFilter &= Builders<Collection>.Filter.Regex(x => x.Name, new MongoDB.Bson.BsonRegularExpression(filter.Name, "i"));
         
-        return await _collection.Find(mongoFilter).ToListAsync(cancellationToken);
+        return await _collection.Find(mongoFilter).ToListAsync();
     }
 
-    public async Task<ImageViewer.Domain.ValueObjects.CollectionStatistics> GetCollectionStatisticsAsync(CancellationToken cancellationToken = default)
+    public async Task<ImageViewer.Domain.ValueObjects.CollectionStatistics> GetCollectionStatisticsAsync()
     {
         var filter = Builders<Collection>.Filter.Eq(x => x.IsDeleted, false);
-        var collections = await _collection.Find(filter).ToListAsync(cancellationToken);
+        var collections = await _collection.Find(filter).ToListAsync();
         
         return new ImageViewer.Domain.ValueObjects.CollectionStatistics
         {
@@ -173,56 +107,21 @@ public class MongoCollectionRepository : MongoRepository<Collection>, ICollectio
         };
     }
 
-    public async Task<IEnumerable<Collection>> GetTopCollectionsByActivityAsync(int limit = 10, CancellationToken cancellationToken = default)
+    public async Task<IEnumerable<Collection>> GetTopCollectionsByActivityAsync(int limit = 10)
     {
         var filter = Builders<Collection>.Filter.Eq(x => x.IsDeleted, false);
         return await _collection.Find(filter)
             .Sort(Builders<Collection>.Sort.Descending(x => x.Statistics.LastViewed))
             .Limit(limit)
-            .ToListAsync(cancellationToken);
+            .ToListAsync();
     }
 
-    public async Task<IEnumerable<Collection>> GetRecentCollectionsAsync(int limit = 10, CancellationToken cancellationToken = default)
+    public async Task<IEnumerable<Collection>> GetRecentCollectionsAsync(int limit = 10)
     {
         var filter = Builders<Collection>.Filter.Eq(x => x.IsDeleted, false);
         return await _collection.Find(filter)
             .Sort(Builders<Collection>.Sort.Descending(x => x.CreatedAt))
             .Limit(limit)
-            .ToListAsync(cancellationToken);
-    }
-
-    public async Task<Collection> GetByPathAsync(string path, CancellationToken cancellationToken = default)
-    {
-        var filter = Builders<Collection>.Filter.Eq(x => x.Path, path) & 
-                    Builders<Collection>.Filter.Eq(x => x.IsDeleted, false);
-        var result = await _collection.Find(filter).FirstOrDefaultAsync(cancellationToken);
-        return result ?? throw new EntityNotFoundException($"Collection with path '{path}' not found");
-    }
-
-    public async Task<IEnumerable<Collection>> GetByLibraryIdAsync(ObjectId libraryId, CancellationToken cancellationToken = default)
-    {
-        var filter = Builders<Collection>.Filter.Eq(x => x.LibraryId, libraryId) & 
-                    Builders<Collection>.Filter.Eq(x => x.IsDeleted, false);
-        return await _collection.Find(filter).ToListAsync(cancellationToken);
-    }
-
-    public async Task<IEnumerable<Collection>> GetActiveCollectionsAsync(CancellationToken cancellationToken = default)
-    {
-        var filter = Builders<Collection>.Filter.Eq(x => x.IsActive, true) & 
-                    Builders<Collection>.Filter.Eq(x => x.IsDeleted, false);
-        return await _collection.Find(filter).ToListAsync(cancellationToken);
-    }
-
-    public async Task<IEnumerable<Collection>> GetCollectionsByTypeAsync(CollectionType type, CancellationToken cancellationToken = default)
-    {
-        var filter = Builders<Collection>.Filter.Eq(x => x.Type, type) & 
-                    Builders<Collection>.Filter.Eq(x => x.IsDeleted, false);
-        return await _collection.Find(filter).ToListAsync(cancellationToken);
-    }
-
-    public async Task<long> GetCollectionCountAsync(CancellationToken cancellationToken = default)
-    {
-        var filter = Builders<Collection>.Filter.Eq(x => x.IsDeleted, false);
-        return await _collection.CountDocumentsAsync(filter, cancellationToken: cancellationToken);
+            .ToListAsync();
     }
 }

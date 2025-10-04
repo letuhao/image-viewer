@@ -55,39 +55,18 @@ public class MongoTagRepository : MongoRepository<ImageViewer.Domain.Entities.Ta
     /// <summary>
     /// Get tag usage count
     /// </summary>
-    public async Task<int> GetUsageCountAsync(Guid tagId)
+    public async Task<int> GetUsageCountAsync(ObjectId tagId)
     {
         var tag = await GetByIdAsync(tagId);
         return tag?.UsageCount ?? 0;
     }
 
-    public async Task<IEnumerable<ImageViewer.Domain.Entities.Tag>> GetByCollectionIdAsync(ObjectId collectionId, CancellationToken cancellationToken = default)
+    public async Task<IEnumerable<ImageViewer.Domain.Entities.Tag>> GetByCollectionIdAsync(ObjectId collectionId)
     {
         // This is a simplified implementation
         // In a real scenario, you would join with CollectionTag collection
         var filter = Builders<ImageViewer.Domain.Entities.Tag>.Filter.Empty;
-        return await _collection.Find(filter).ToListAsync(cancellationToken);
+        return await _collection.Find(filter).ToListAsync();
     }
 
-    public async Task<long> GetUsageCountAsync(ObjectId tagId, CancellationToken cancellationToken = default)
-    {
-        var filter = Builders<ImageViewer.Domain.Entities.Tag>.Filter.Eq(x => x.Id, tagId);
-        var tag = await _collection.Find(filter).FirstOrDefaultAsync(cancellationToken);
-        return tag?.UsageCount ?? 0;
-    }
-
-    public async Task<IEnumerable<ImageViewer.Domain.Entities.Tag>> GetByCollectionIdAsync(ObjectId collectionId, CancellationToken cancellationToken = default)
-    {
-        // This is a simplified implementation
-        // In a real scenario, you would join with CollectionTag collection
-        var filter = Builders<ImageViewer.Domain.Entities.Tag>.Filter.Empty;
-        return await _collection.Find(filter).ToListAsync(cancellationToken);
-    }
-
-    public async Task<long> GetUsageCountAsync(ObjectId tagId, CancellationToken cancellationToken = default)
-    {
-        var filter = Builders<ImageViewer.Domain.Entities.Tag>.Filter.Eq(x => x.Id, tagId);
-        var tag = await _collection.Find(filter).FirstOrDefaultAsync(cancellationToken);
-        return tag?.UsageCount ?? 0;
-    }
 }

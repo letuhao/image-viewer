@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using ImageViewer.Application.Services;
 using ImageViewer.Application.DTOs.Statistics;
+using MongoDB.Bson;
 
 namespace ImageViewer.Api.Controllers;
 
@@ -43,7 +44,7 @@ public class StatisticsController : ControllerBase
     /// Get statistics for specific collection
     /// </summary>
     [HttpGet("collections/{collectionId}")]
-    public async Task<ActionResult<CollectionStatisticsDto>> GetCollectionStatistics(Guid collectionId)
+    public async Task<ActionResult<CollectionStatisticsDto>> GetCollectionStatistics(ObjectId collectionId)
     {
         try
         {
@@ -67,7 +68,7 @@ public class StatisticsController : ControllerBase
     /// Get statistics for specific image
     /// </summary>
     [HttpGet("images/{imageId}")]
-    public async Task<ActionResult<ImageStatisticsDto>> GetImageStatistics(Guid imageId)
+    public async Task<ActionResult<ImageStatisticsDto>> GetImageStatistics(ObjectId imageId)
     {
         try
         {

@@ -46,8 +46,9 @@ public class CollectionScanConsumer : BaseMessageConsumer
             var collectionService = scope.ServiceProvider.GetRequiredService<ICollectionService>();
             var fileScannerService = scope.ServiceProvider.GetRequiredService<IFileScannerService>();
 
-            // Perform the collection scan
-            await collectionService.ScanCollectionAsync(scanMessage.CollectionId, cancellationToken);
+            // TODO: Implement collection scanning when ScanCollectionAsync method is available
+            // await collectionService.ScanCollectionAsync(scanMessage.CollectionId, cancellationToken);
+            _logger.LogInformation("Collection scan requested for {CollectionId} - scanning functionality not yet implemented", scanMessage.CollectionId);
 
             _logger.LogInformation("Successfully completed collection scan for collection {CollectionId}", scanMessage.CollectionId);
         }

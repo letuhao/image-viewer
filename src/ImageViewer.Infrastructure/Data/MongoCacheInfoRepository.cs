@@ -18,7 +18,7 @@ public class MongoCacheInfoRepository : MongoRepository<ImageCacheInfo>, ICacheI
     /// <summary>
     /// Get cache info by image ID
     /// </summary>
-    public async Task<ImageCacheInfo?> GetByImageIdAsync(Guid imageId)
+    public async Task<ImageCacheInfo?> GetByImageIdAsync(ObjectId imageId)
     {
         var filter = Builders<ImageCacheInfo>.Filter.Eq(x => x.ImageId, imageId);
         return await _collection.Find(filter).FirstOrDefaultAsync();
@@ -27,7 +27,7 @@ public class MongoCacheInfoRepository : MongoRepository<ImageCacheInfo>, ICacheI
     /// <summary>
     /// Get cache info by cache folder ID
     /// </summary>
-    public async Task<IEnumerable<ImageCacheInfo>> GetByCacheFolderIdAsync(Guid cacheFolderId)
+    public async Task<IEnumerable<ImageCacheInfo>> GetByCacheFolderIdAsync(ObjectId cacheFolderId)
     {
         // Note: ImageCacheInfo doesn't have CacheFolderId property
         // This would need to be implemented based on the actual cache folder structure
@@ -100,18 +100,6 @@ public class MongoCacheInfoRepository : MongoRepository<ImageCacheInfo>, ICacheI
         };
     }
 
-    public async Task<ImageCacheInfo?> GetByImageIdAsync(ObjectId imageId, CancellationToken cancellationToken = default)
-    {
-        var filter = Builders<ImageCacheInfo>.Filter.Eq(x => x.ImageId, imageId);
-        return await _collection.Find(filter).FirstOrDefaultAsync(cancellationToken);
-    }
-
-    public async Task<IEnumerable<ImageCacheInfo>> GetByCacheFolderIdAsync(ObjectId cacheFolderId, CancellationToken cancellationToken = default)
-    {
-        var filter = Builders<ImageCacheInfo>.Filter.Eq(x => x.CachePath, cacheFolderId.ToString());
-        return await _collection.Find(filter).ToListAsync(cancellationToken);
-    }
-
     public async Task<IEnumerable<ImageCacheInfo>> GetExpiredAsync(CancellationToken cancellationToken = default)
     {
         var filter = Builders<ImageCacheInfo>.Filter.Lt(x => x.ExpiresAt, DateTime.UtcNow);
@@ -174,17 +162,5 @@ public class MongoCacheInfoRepository : MongoRepository<ImageCacheInfo>, ICacheI
     public async Task<CacheStatistics> GetStatisticsAsync(CancellationToken cancellationToken = default)
     {
         return await GetCacheStatisticsAsync(cancellationToken);
-    }
-
-    public async Task<ImageCacheInfo?> GetByImageIdAsync(ObjectId imageId, CancellationToken cancellationToken = default)
-    {
-        var filter = Builders<ImageCacheInfo>.Filter.Eq(x => x.ImageId, imageId);
-        return await _collection.Find(filter).FirstOrDefaultAsync(cancellationToken);
-    }
-
-    public async Task<IEnumerable<ImageCacheInfo>> GetByCacheFolderIdAsync(ObjectId cacheFolderId, CancellationToken cancellationToken = default)
-    {
-        var filter = Builders<ImageCacheInfo>.Filter.Eq(x => x.CachePath, cacheFolderId.ToString());
-        return await _collection.Find(filter).ToListAsync(cancellationToken);
     }
 }

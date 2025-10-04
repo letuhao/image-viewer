@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using ImageViewer.Application.Services;
 using ImageViewer.Application.DTOs.BackgroundJobs;
+using MongoDB.Bson;
 
 namespace ImageViewer.Api.Controllers;
 
@@ -45,7 +46,7 @@ public class JobsController : ControllerBase
     /// Get job by ID
     /// </summary>
     [HttpGet("{jobId}")]
-    public async Task<ActionResult<BackgroundJobDto>> GetJob(Guid jobId)
+    public async Task<ActionResult<BackgroundJobDto>> GetJob(ObjectId jobId)
     {
         try
         {
@@ -93,7 +94,7 @@ public class JobsController : ControllerBase
     /// Update job status
     /// </summary>
     [HttpPut("{jobId}/status")]
-    public async Task<ActionResult<BackgroundJobDto>> UpdateJobStatus(Guid jobId, [FromBody] UpdateJobStatusDto dto)
+    public async Task<ActionResult<BackgroundJobDto>> UpdateJobStatus(ObjectId jobId, [FromBody] UpdateJobStatusDto dto)
     {
         try
         {
@@ -122,7 +123,7 @@ public class JobsController : ControllerBase
     /// Update job progress
     /// </summary>
     [HttpPut("{jobId}/progress")]
-    public async Task<ActionResult<BackgroundJobDto>> UpdateJobProgress(Guid jobId, [FromBody] UpdateJobProgressDto dto)
+    public async Task<ActionResult<BackgroundJobDto>> UpdateJobProgress(ObjectId jobId, [FromBody] UpdateJobProgressDto dto)
     {
         try
         {
@@ -151,7 +152,7 @@ public class JobsController : ControllerBase
     /// Cancel job
     /// </summary>
     [HttpPost("{jobId}/cancel")]
-    public async Task<ActionResult> CancelJob(Guid jobId)
+    public async Task<ActionResult> CancelJob(ObjectId jobId)
     {
         try
         {
@@ -175,7 +176,7 @@ public class JobsController : ControllerBase
     /// Delete job
     /// </summary>
     [HttpDelete("{jobId}")]
-    public async Task<ActionResult> DeleteJob(Guid jobId)
+    public async Task<ActionResult> DeleteJob(ObjectId jobId)
     {
         try
         {

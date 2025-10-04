@@ -2,6 +2,7 @@ using MongoDB.Driver;
 using MongoDB.Bson;
 using ImageViewer.Domain.Entities;
 using ImageViewer.Domain.Interfaces;
+using ImageViewer.Domain.Exceptions;
 using Microsoft.Extensions.Logging;
 
 namespace ImageViewer.Infrastructure.Data;
@@ -152,12 +153,12 @@ public class LibraryRepository : MongoRepository<Library>, ILibraryRepository
 
             if (filter.Tags != null && filter.Tags.Any())
             {
-                filters.Add(builder.In(l => l.Metadata.Tags, filter.Tags));
+                filters.Add(builder.In("metadata.tags", filter.Tags));
             }
 
             if (filter.Categories != null && filter.Categories.Any())
             {
-                filters.Add(builder.In(l => l.Metadata.Categories, filter.Categories));
+                filters.Add(builder.In("metadata.categories", filter.Categories));
             }
 
             var combinedFilter = filters.Any() ? builder.And(filters) : builder.Empty;
@@ -170,7 +171,7 @@ public class LibraryRepository : MongoRepository<Library>, ILibraryRepository
         }
     }
 
-    public async Task<LibraryStatistics> GetLibraryStatisticsAsync()
+    public async Task<ImageViewer.Domain.ValueObjects.LibraryStatistics> GetLibraryStatisticsAsync()
     {
         try
         {
@@ -183,7 +184,7 @@ public class LibraryRepository : MongoRepository<Library>, ILibraryRepository
             var newLibrariesThisWeek = await _collection.CountDocumentsAsync(l => l.CreatedAt >= now.AddDays(-7));
             var newLibrariesToday = await _collection.CountDocumentsAsync(l => l.CreatedAt >= now.AddDays(-1));
 
-            return new LibraryStatistics
+            return new ImageViewer.Domain.ValueObjects.LibraryStatistics
             {
                 TotalLibraries = totalLibraries,
                 ActiveLibraries = activeLibraries,

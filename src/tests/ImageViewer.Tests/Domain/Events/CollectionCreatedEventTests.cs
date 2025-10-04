@@ -3,6 +3,7 @@ using ImageViewer.Domain.Events;
 using ImageViewer.Domain.Enums;
 using FluentAssertions;
 using Xunit;
+using MongoDB.Bson;
 
 namespace ImageViewer.Tests.Domain.Events;
 
@@ -12,28 +13,34 @@ public class CollectionCreatedEventTests
     public void Constructor_WithValidCollection_ShouldCreateEvent()
     {
         // Arrange
-        var collection = new Collection("Test Collection", "/test/path", CollectionType.Folder);
+        var collectionId = ObjectId.GenerateNewId();
+        var libraryId = ObjectId.GenerateNewId();
+        var collectionName = "Test Collection";
 
         // Act
-        var domainEvent = new CollectionCreatedEvent(collection);
+        var domainEvent = new CollectionCreatedEvent(collectionId, collectionName, libraryId);
 
         // Assert
         domainEvent.Should().NotBeNull();
         domainEvent.Id.Should().NotBeEmpty();
         domainEvent.OccurredOn.Should().BeCloseTo(DateTime.UtcNow, TimeSpan.FromSeconds(1));
-        domainEvent.Collection.Should().Be(collection);
+        domainEvent.CollectionId.Should().Be(collectionId);
+        domainEvent.CollectionName.Should().Be(collectionName);
+        domainEvent.LibraryId.Should().Be(libraryId);
     }
 
     [Fact]
     public void Constructor_WithNullCollection_ShouldThrowArgumentNullException()
     {
         // Arrange
-        Collection collection = null!;
+        var collectionId = ObjectId.GenerateNewId();
+        var libraryId = ObjectId.GenerateNewId();
+        string collectionName = null!;
 
         // Act & Assert
-        var action = () => new CollectionCreatedEvent(collection);
+        var action = () => new CollectionCreatedEvent(collectionId, collectionName, libraryId);
         action.Should().Throw<ArgumentNullException>()
-            .WithParameterName("collection");
+            .WithParameterName("collectionName");
     }
 
     [Fact]

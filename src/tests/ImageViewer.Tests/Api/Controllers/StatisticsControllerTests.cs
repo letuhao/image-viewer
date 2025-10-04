@@ -6,6 +6,7 @@ using ImageViewer.Tests.Common;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Moq;
+using MongoDB.Bson;
 
 namespace ImageViewer.Tests.Api.Controllers;
 
@@ -77,7 +78,7 @@ public class StatisticsControllerTests : TestBase
     public async Task GetCollectionStatistics_WithValidCollectionId_ShouldReturnOkResult()
     {
         // Arrange
-        var collectionId = Guid.NewGuid();
+        var collectionId = ObjectId.GenerateNewId();
         var expectedStatistics = new CollectionStatisticsDto
         {
             CollectionId = collectionId,
@@ -115,7 +116,7 @@ public class StatisticsControllerTests : TestBase
     public async Task GetCollectionStatistics_WhenServiceThrowsException_ShouldReturnInternalServerError()
     {
         // Arrange
-        var collectionId = Guid.NewGuid();
+        var collectionId = ObjectId.GenerateNewId();
         _statisticsServiceMock
             .Setup(x => x.GetCollectionStatisticsAsync(collectionId))
             .ThrowsAsync(new Exception("Database error"));
@@ -134,7 +135,7 @@ public class StatisticsControllerTests : TestBase
     public async Task GetImageStatistics_WithValidImageId_ShouldReturnOkResult()
     {
         // Arrange
-        var imageId = Guid.NewGuid();
+        var imageId = ObjectId.GenerateNewId();
         var expectedStatistics = new ImageStatisticsDto
         {
             TotalImages = 1,
@@ -169,7 +170,7 @@ public class StatisticsControllerTests : TestBase
     public async Task GetImageStatistics_WhenServiceThrowsException_ShouldReturnInternalServerError()
     {
         // Arrange
-        var imageId = Guid.NewGuid();
+        var imageId = ObjectId.GenerateNewId();
         _statisticsServiceMock
             .Setup(x => x.GetImageStatisticsAsync(imageId))
             .ThrowsAsync(new Exception("Database error"));

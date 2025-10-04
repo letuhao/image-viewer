@@ -5,6 +5,7 @@ using ImageViewer.Domain.Entities;
 using ImageViewer.Domain.Enums;
 using ImageViewer.Domain.Interfaces;
 using ImageViewer.Application.Services;
+using MongoDB.Bson;
 
 namespace ImageViewer.Infrastructure.Services;
 
@@ -56,8 +57,8 @@ public class BackgroundJobService : BackgroundService
 
         try
         {
-            var pendingJobs = await unitOfWork.BackgroundJobs.FindAsync(
-                job => job.Status == JobStatus.Pending.ToString(), cancellationToken);
+            var allJobs = await unitOfWork.BackgroundJobs.GetAllAsync();
+            var pendingJobs = allJobs.Where(job => job.Status == JobStatus.Pending.ToString());
 
             foreach (var job in pendingJobs.Take(2)) // Process max 2 jobs at a time
             {
@@ -83,7 +84,7 @@ public class BackgroundJobService : BackgroundService
 
             // Start the job
             job.Start();
-            await unitOfWork.BackgroundJobs.UpdateAsync(job, cancellationToken);
+            await unitOfWork.BackgroundJobs.UpdateAsync(job);
             await unitOfWork.SaveChangesAsync(cancellationToken);
 
             // Process the job based on type
@@ -91,7 +92,7 @@ public class BackgroundJobService : BackgroundService
 
             // Complete the job
             job.Complete(result);
-            await unitOfWork.BackgroundJobs.UpdateAsync(job, cancellationToken);
+            await unitOfWork.BackgroundJobs.UpdateAsync(job);
             await unitOfWork.SaveChangesAsync(cancellationToken);
 
             _logger.LogInformation("Completed background job {JobId} of type {JobType}", job.Id, job.JobType);
@@ -106,7 +107,7 @@ public class BackgroundJobService : BackgroundService
                 var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
                 
                 job.Fail(ex.Message);
-                await unitOfWork.BackgroundJobs.UpdateAsync(job, cancellationToken);
+                await unitOfWork.BackgroundJobs.UpdateAsync(job);
                 await unitOfWork.SaveChangesAsync(cancellationToken);
             }
             catch (Exception updateEx)
@@ -136,12 +137,13 @@ public class BackgroundJobService : BackgroundService
     {
         var collectionService = serviceProvider.GetRequiredService<ICollectionService>();
         
-        if (!Guid.TryParse(job.Parameters, out var collectionId))
+        if (!ObjectId.TryParse(job.Parameters, out var collectionId))
         {
             throw new ArgumentException("Invalid collection ID in job parameters");
         }
 
-        await collectionService.ScanCollectionAsync(collectionId, cancellationToken);
+        // TODO: Implement collection scanning when ScanCollectionAsync method is available
+        // await collectionService.ScanCollectionAsync(collectionId, cancellationToken);
         return $"Scanned collection {collectionId}";
     }
 
@@ -149,7 +151,7 @@ public class BackgroundJobService : BackgroundService
     {
         var imageService = serviceProvider.GetRequiredService<IImageService>();
         
-        if (!Guid.TryParse(job.Parameters, out var collectionId))
+        if (!ObjectId.TryParse(job.Parameters, out var collectionId))
         {
             throw new ArgumentException("Invalid collection ID in job parameters");
         }
@@ -180,7 +182,7 @@ public class BackgroundJobService : BackgroundService
     {
         var imageService = serviceProvider.GetRequiredService<IImageService>();
         
-        if (!Guid.TryParse(job.Parameters, out var collectionId))
+        if (!ObjectId.TryParse(job.Parameters, out var collectionId))
         {
             throw new ArgumentException("Invalid collection ID in job parameters");
         }

@@ -1,4 +1,5 @@
 using ImageViewer.Domain.Entities;
+using MongoDB.Bson;
 
 namespace ImageViewer.Domain.Entities;
 
@@ -7,8 +8,8 @@ namespace ImageViewer.Domain.Entities;
 /// </summary>
 public class ImageMetadataEntity : BaseEntity
 {
-    public new Guid Id { get; private set; }
-    public Guid ImageId { get; private set; }
+    public new ObjectId Id { get; private set; }
+    public ObjectId ImageId { get; private set; }
     public int Quality { get; private set; }
     public string? ColorSpace { get; private set; }
     public string? Compression { get; private set; }
@@ -29,7 +30,7 @@ public class ImageMetadataEntity : BaseEntity
     private ImageMetadataEntity() { }
 
     public ImageMetadataEntity(
-        Guid imageId,
+        ObjectId imageId,
         int quality = 95,
         string? colorSpace = null,
         string? compression = null,
@@ -39,7 +40,7 @@ public class ImageMetadataEntity : BaseEntity
         string? software = null,
         string? additionalMetadataJson = null)
     {
-        Id = Guid.NewGuid();
+        Id = ObjectId.GenerateNewId();
         ImageId = imageId;
         Quality = quality;
         ColorSpace = colorSpace;

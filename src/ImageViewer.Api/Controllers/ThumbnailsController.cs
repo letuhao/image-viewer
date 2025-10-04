@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using ImageViewer.Application.Services;
+using MongoDB.Bson;
 
 namespace ImageViewer.Api.Controllers;
 
@@ -24,7 +25,7 @@ public class ThumbnailsController : ControllerBase
     /// Generate thumbnail for collection
     /// </summary>
     [HttpPost("collections/{collectionId}/generate")]
-    public async Task<ActionResult<ThumbnailGenerationResponse>> GenerateCollectionThumbnail(Guid collectionId)
+    public async Task<ActionResult<ThumbnailGenerationResponse>> GenerateCollectionThumbnail(ObjectId collectionId)
     {
         try
         {
@@ -58,7 +59,7 @@ public class ThumbnailsController : ControllerBase
     /// </summary>
     [HttpGet("collections/{collectionId}")]
     public async Task<IActionResult> GetCollectionThumbnail(
-        Guid collectionId, 
+        ObjectId collectionId, 
         [FromQuery] int? width = null, 
         [FromQuery] int? height = null)
     {
@@ -121,7 +122,7 @@ public class ThumbnailsController : ControllerBase
     /// Delete collection thumbnail
     /// </summary>
     [HttpDelete("collections/{collectionId}")]
-    public async Task<IActionResult> DeleteCollectionThumbnail(Guid collectionId)
+    public async Task<IActionResult> DeleteCollectionThumbnail(ObjectId collectionId)
     {
         try
         {
@@ -141,13 +142,13 @@ public class ThumbnailsController : ControllerBase
 
 public class ThumbnailGenerationResponse
 {
-    public Guid CollectionId { get; set; }
+    public ObjectId CollectionId { get; set; }
     public string ThumbnailPath { get; set; } = string.Empty;
     public DateTime GeneratedAt { get; set; }
 }
 
 public class BatchThumbnailRequest
 {
-    public IEnumerable<Guid> CollectionIds { get; set; } = Enumerable.Empty<Guid>();
+    public IEnumerable<ObjectId> CollectionIds { get; set; } = Enumerable.Empty<ObjectId>();
 }
 

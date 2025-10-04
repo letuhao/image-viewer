@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using ImageViewer.Application.Services;
 using ImageViewer.Application.DTOs.Tags;
+using MongoDB.Bson;
 
 namespace ImageViewer.Api.Controllers;
 
@@ -43,7 +44,7 @@ public class TagsController : ControllerBase
     /// Get tags for specific collection
     /// </summary>
     [HttpGet("collections/{collectionId}")]
-    public async Task<ActionResult<IEnumerable<CollectionTagDto>>> GetCollectionTags(Guid collectionId)
+    public async Task<ActionResult<IEnumerable<CollectionTagDto>>> GetCollectionTags(ObjectId collectionId)
     {
         try
         {
@@ -67,7 +68,7 @@ public class TagsController : ControllerBase
     /// Add tag to collection
     /// </summary>
     [HttpPost("collections/{collectionId}")]
-    public async Task<ActionResult<CollectionTagDto>> AddTagToCollection(Guid collectionId, [FromBody] AddTagToCollectionDto dto)
+    public async Task<ActionResult<CollectionTagDto>> AddTagToCollection(ObjectId collectionId, [FromBody] AddTagToCollectionDto dto)
     {
         try
         {
@@ -96,7 +97,7 @@ public class TagsController : ControllerBase
     /// Update tag
     /// </summary>
     [HttpPut("{tagId}")]
-    public async Task<ActionResult<TagDto>> UpdateTag(Guid tagId, [FromBody] UpdateTagDto dto)
+    public async Task<ActionResult<TagDto>> UpdateTag(ObjectId tagId, [FromBody] UpdateTagDto dto)
     {
         try
         {
@@ -125,7 +126,7 @@ public class TagsController : ControllerBase
     /// Remove tag from collection
     /// </summary>
     [HttpDelete("collections/{collectionId}/tags/{tagName}")]
-    public async Task<ActionResult> RemoveTagFromCollection(Guid collectionId, string tagName)
+    public async Task<ActionResult> RemoveTagFromCollection(ObjectId collectionId, string tagName)
     {
         try
         {
@@ -149,7 +150,7 @@ public class TagsController : ControllerBase
     /// Delete tag completely
     /// </summary>
     [HttpDelete("{tagId}")]
-    public async Task<ActionResult> DeleteTag(Guid tagId)
+    public async Task<ActionResult> DeleteTag(ObjectId tagId)
     {
         try
         {

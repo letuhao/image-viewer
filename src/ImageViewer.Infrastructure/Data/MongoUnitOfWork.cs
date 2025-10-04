@@ -28,7 +28,7 @@ public class MongoUnitOfWork : IUnitOfWork
     public IRepository<CollectionTag> CollectionTags { get; set; } = null!;
     public IRepository<ImageCacheInfo> ImageCacheInfos { get; set; } = null!;
     public IRepository<CollectionCacheBinding> CollectionCacheBindings { get; set; } = null!;
-    public IRepository<CollectionStatistics> CollectionStatistics { get; set; } = null!;
+    public IRepository<CollectionStatisticsEntity> CollectionStatistics { get; set; } = null!;
     public IRepository<ViewSession> ViewSessions { get; set; } = null!;
     public IRepository<BackgroundJob> BackgroundJobs { get; set; } = null!;
     public IRepository<CollectionSettingsEntity> CollectionSettings { get; set; } = null!;
@@ -43,7 +43,7 @@ public class MongoUnitOfWork : IUnitOfWork
         CollectionTags = new MongoRepository<CollectionTag>(_database, "collection_tags");
         ImageCacheInfos = new MongoRepository<ImageCacheInfo>(_database, "image_cache_infos");
         CollectionCacheBindings = new MongoRepository<CollectionCacheBinding>(_database, "collection_cache_bindings");
-        CollectionStatistics = new MongoRepository<CollectionStatistics>(_database, "collection_statistics");
+        CollectionStatistics = new MongoRepository<CollectionStatisticsEntity>(_database, "collection_statistics");
         ViewSessions = new MongoRepository<ViewSession>(_database, "view_sessions");
         BackgroundJobs = new MongoRepository<BackgroundJob>(_database, "background_jobs");
         CollectionSettings = new MongoRepository<CollectionSettingsEntity>(_database, "collection_settings");

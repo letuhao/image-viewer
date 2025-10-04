@@ -3,6 +3,7 @@ using ImageViewer.Domain.Entities;
 using ImageViewer.Domain.Enums;
 using ImageViewer.Domain.Interfaces;
 using ImageViewer.Domain.ValueObjects;
+using MongoDB.Bson;
 using System.IO.Compression;
 
 namespace ImageViewer.Infrastructure.Services;
@@ -307,7 +308,7 @@ public class FileScannerService : IFileScannerService
             
             // Create image entity (CollectionId will be set when added to collection)
             var image = new Image(
-                Guid.Empty, // Will be set when added to collection
+                ObjectId.Empty, // Will be set when added to collection
                 Path.GetFileName(filePath),
                 relativePath,
                 fileSize,

@@ -6,6 +6,7 @@ using ImageViewer.Tests.Common;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Moq;
+using MongoDB.Bson;
 
 namespace ImageViewer.Tests.Api.Controllers;
 
@@ -28,8 +29,8 @@ public class TagsControllerTests : TestBase
         // Arrange
         var expectedTags = new List<TagDto>
         {
-            new() { Id = Guid.NewGuid(), Name = "manga", Description = "Manga collection" },
-            new() { Id = Guid.NewGuid(), Name = "anime", Description = "Anime collection" }
+            new() { Id = ObjectId.GenerateNewId(), Name = "manga", Description = "Manga collection" },
+            new() { Id = ObjectId.GenerateNewId(), Name = "anime", Description = "Anime collection" }
         };
         _tagServiceMock
             .Setup(x => x.GetAllTagsAsync())
@@ -69,7 +70,7 @@ public class TagsControllerTests : TestBase
     public async Task GetCollectionTags_WithValidCollectionId_ShouldReturnOkResult()
     {
         // Arrange
-        var collectionId = Guid.NewGuid();
+        var collectionId = ObjectId.GenerateNewId();
         var expectedTags = new List<CollectionTagDto>
         {
             new() { Tag = "manga", Count = 5, AddedBy = "user1", AddedAt = DateTime.UtcNow },
@@ -95,7 +96,7 @@ public class TagsControllerTests : TestBase
     public async Task GetCollectionTags_WhenCollectionNotFound_ShouldReturnNotFound()
     {
         // Arrange
-        var collectionId = Guid.NewGuid();
+        var collectionId = ObjectId.GenerateNewId();
         _tagServiceMock
             .Setup(x => x.GetCollectionTagsAsync(collectionId))
             .ThrowsAsync(new KeyNotFoundException("Collection not found"));
@@ -113,7 +114,7 @@ public class TagsControllerTests : TestBase
     public async Task GetCollectionTags_WhenServiceThrowsException_ShouldReturnInternalServerError()
     {
         // Arrange
-        var collectionId = Guid.NewGuid();
+        var collectionId = ObjectId.GenerateNewId();
         _tagServiceMock
             .Setup(x => x.GetCollectionTagsAsync(collectionId))
             .ThrowsAsync(new Exception("Database error"));
@@ -132,7 +133,7 @@ public class TagsControllerTests : TestBase
     public async Task AddTagToCollection_WithValidRequest_ShouldReturnCreatedResult()
     {
         // Arrange
-        var collectionId = Guid.NewGuid();
+        var collectionId = ObjectId.GenerateNewId();
         var request = new AddTagToCollectionDto
         {
             TagName = "new-tag",
@@ -166,7 +167,7 @@ public class TagsControllerTests : TestBase
     public async Task AddTagToCollection_WhenCollectionNotFound_ShouldReturnNotFound()
     {
         // Arrange
-        var collectionId = Guid.NewGuid();
+        var collectionId = ObjectId.GenerateNewId();
         var request = new AddTagToCollectionDto { TagName = "new-tag" };
 
         _tagServiceMock
@@ -186,7 +187,7 @@ public class TagsControllerTests : TestBase
     public async Task AddTagToCollection_WhenInvalidData_ShouldReturnBadRequest()
     {
         // Arrange
-        var collectionId = Guid.NewGuid();
+        var collectionId = ObjectId.GenerateNewId();
         var request = new AddTagToCollectionDto { TagName = "" };
 
         _tagServiceMock
@@ -206,7 +207,7 @@ public class TagsControllerTests : TestBase
     public async Task UpdateTag_WithValidRequest_ShouldReturnOkResult()
     {
         // Arrange
-        var tagId = Guid.NewGuid();
+        var tagId = ObjectId.GenerateNewId();
         var request = new UpdateTagDto
         {
             Name = "updated-tag",
@@ -240,7 +241,7 @@ public class TagsControllerTests : TestBase
     public async Task UpdateTag_WhenTagNotFound_ShouldReturnNotFound()
     {
         // Arrange
-        var tagId = Guid.NewGuid();
+        var tagId = ObjectId.GenerateNewId();
         var request = new UpdateTagDto { Name = "updated-tag" };
 
         _tagServiceMock
@@ -260,7 +261,7 @@ public class TagsControllerTests : TestBase
     public async Task UpdateTag_WhenInvalidData_ShouldReturnBadRequest()
     {
         // Arrange
-        var tagId = Guid.NewGuid();
+        var tagId = ObjectId.GenerateNewId();
         var request = new UpdateTagDto { Name = "" };
 
         _tagServiceMock
@@ -280,7 +281,7 @@ public class TagsControllerTests : TestBase
     public async Task RemoveTagFromCollection_WithValidParameters_ShouldReturnNoContent()
     {
         // Arrange
-        var collectionId = Guid.NewGuid();
+        var collectionId = ObjectId.GenerateNewId();
         var tagName = "test-tag";
 
         _tagServiceMock
@@ -298,7 +299,7 @@ public class TagsControllerTests : TestBase
     public async Task RemoveTagFromCollection_WhenTagOrCollectionNotFound_ShouldReturnNotFound()
     {
         // Arrange
-        var collectionId = Guid.NewGuid();
+        var collectionId = ObjectId.GenerateNewId();
         var tagName = "test-tag";
 
         _tagServiceMock
@@ -316,7 +317,7 @@ public class TagsControllerTests : TestBase
     public async Task DeleteTag_WithValidId_ShouldReturnNoContent()
     {
         // Arrange
-        var tagId = Guid.NewGuid();
+        var tagId = ObjectId.GenerateNewId();
         _tagServiceMock
             .Setup(x => x.DeleteTagAsync(tagId))
             .Returns(Task.CompletedTask);
@@ -332,7 +333,7 @@ public class TagsControllerTests : TestBase
     public async Task DeleteTag_WhenTagNotFound_ShouldReturnNotFound()
     {
         // Arrange
-        var tagId = Guid.NewGuid();
+        var tagId = ObjectId.GenerateNewId();
         _tagServiceMock
             .Setup(x => x.DeleteTagAsync(tagId))
             .ThrowsAsync(new KeyNotFoundException("Tag not found"));
@@ -348,7 +349,7 @@ public class TagsControllerTests : TestBase
     public async Task DeleteTag_WhenServiceThrowsException_ShouldReturnInternalServerError()
     {
         // Arrange
-        var tagId = Guid.NewGuid();
+        var tagId = ObjectId.GenerateNewId();
         _tagServiceMock
             .Setup(x => x.DeleteTagAsync(tagId))
             .ThrowsAsync(new Exception("Database error"));

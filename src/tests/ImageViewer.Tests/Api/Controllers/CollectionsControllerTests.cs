@@ -125,7 +125,7 @@ public class CollectionsControllerTests : TestBase
         {
             Name = "Test Collection",
             Path = "C:\\Test\\Path",
-            Type = CollectionType.Folder,
+            Type = CollectionType.Folder.ToString().ToString(),
             ThumbnailWidth = 200,
             ThumbnailHeight = 200,
             CacheWidth = 1280,
@@ -163,7 +163,7 @@ public class CollectionsControllerTests : TestBase
         {
             Name = "Test Collection",
             Path = "C:\\Test\\Path",
-            Type = CollectionType.Folder
+            Type = CollectionType.Folder.ToString()
         };
 
         _collectionServiceMock

@@ -39,6 +39,24 @@ public class LibraryStatistics
     
     [BsonElement("lastActivity")]
     public DateTime? LastActivity { get; private set; }
+    
+    [BsonElement("totalLibraries")]
+    public long TotalLibraries { get; set; }
+    
+    [BsonElement("activeLibraries")]
+    public long ActiveLibraries { get; set; }
+    
+    [BsonElement("publicLibraries")]
+    public long PublicLibraries { get; set; }
+    
+    [BsonElement("newLibrariesThisMonth")]
+    public long NewLibrariesThisMonth { get; set; }
+    
+    [BsonElement("newLibrariesThisWeek")]
+    public long NewLibrariesThisWeek { get; set; }
+    
+    [BsonElement("newLibrariesToday")]
+    public long NewLibrariesToday { get; set; }
 
     public LibraryStatistics()
     {
@@ -51,6 +69,12 @@ public class LibraryStatistics
         TotalLikes = 0;
         TotalComments = 0;
         ScanCount = 0;
+        TotalLibraries = 0;
+        ActiveLibraries = 0;
+        PublicLibraries = 0;
+        NewLibrariesThisMonth = 0;
+        NewLibrariesThisWeek = 0;
+        NewLibrariesToday = 0;
     }
 
     public void IncrementCollections(long count = 1)

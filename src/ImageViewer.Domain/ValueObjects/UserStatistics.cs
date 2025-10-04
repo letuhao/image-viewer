@@ -54,6 +54,24 @@ public class UserStatistics
     
     [BsonElement("joinDate")]
     public DateTime JoinDate { get; private set; }
+    
+    [BsonElement("totalUsers")]
+    public long TotalUsers { get; set; }
+    
+    [BsonElement("activeUsers")]
+    public long ActiveUsers { get; set; }
+    
+    [BsonElement("verifiedUsers")]
+    public long VerifiedUsers { get; set; }
+    
+    [BsonElement("newUsersThisMonth")]
+    public long NewUsersThisMonth { get; set; }
+    
+    [BsonElement("newUsersThisWeek")]
+    public long NewUsersThisWeek { get; set; }
+    
+    [BsonElement("newUsersToday")]
+    public long NewUsersToday { get; set; }
 
     public UserStatistics()
     {
@@ -71,6 +89,12 @@ public class UserStatistics
         TotalFollowing = 0;
         TotalPoints = 0;
         TotalAchievements = 0;
+        TotalUsers = 0;
+        ActiveUsers = 0;
+        VerifiedUsers = 0;
+        NewUsersThisMonth = 0;
+        NewUsersThisWeek = 0;
+        NewUsersToday = 0;
         JoinDate = DateTime.UtcNow;
     }
 

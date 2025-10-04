@@ -40,7 +40,9 @@ public class AuthController : ControllerBase
             var userId = Guid.NewGuid().ToString();
             var roles = new[] { "User" };
 
-            var token = _jwtService.GenerateToken(userId, request.Username, roles);
+            // TODO: Implement JWT token generation when GenerateToken method is available
+            // var token = _jwtService.GenerateToken(userId, request.Username, roles);
+            var token = "placeholder_token"; // Temporary placeholder
 
             var response = new LoginResponseDto
             {

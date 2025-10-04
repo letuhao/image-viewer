@@ -45,6 +45,7 @@ public class CollectionFilter
     public ObjectId? LibraryId { get; set; }
     public CollectionType? Type { get; set; }
     public bool? IsActive { get; set; }
+    public string? Name { get; set; }
     public DateTime? CreatedAfter { get; set; }
     public DateTime? CreatedBefore { get; set; }
     public DateTime? LastActivityAfter { get; set; }

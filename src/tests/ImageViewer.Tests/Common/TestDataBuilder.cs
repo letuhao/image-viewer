@@ -2,6 +2,7 @@ using AutoFixture;
 using ImageViewer.Domain.Entities;
 using ImageViewer.Domain.Enums;
 using ImageViewer.Domain.ValueObjects;
+using MongoDB.Bson;
 
 namespace ImageViewer.Tests.Common;
 
@@ -75,11 +76,12 @@ public class CollectionBuilder
 
     public Collection Build()
     {
-        var collection = new Collection(_name, _path, _type);
-        if (_settings != null)
-        {
-            collection.SetSettings(_settings);
-        }
+        var collection = new Collection(ObjectId.GenerateNewId(), _name, _path, _type);
+        // TODO: Implement SetSettings method in Collection entity
+        // if (_settings != null)
+        // {
+        //     collection.SetSettings(_settings);
+        // }
         return collection;
     }
 }
@@ -87,7 +89,7 @@ public class CollectionBuilder
 public class ImageBuilder
 {
     private readonly IFixture _fixture;
-    private Guid _collectionId = Guid.NewGuid();
+    private ObjectId _collectionId = ObjectId.GenerateNewId();
     private string _filename = "test.jpg";
     private string _relativePath = "test.jpg";
     private string _format = "jpeg";
@@ -100,7 +102,7 @@ public class ImageBuilder
         _fixture = fixture;
     }
 
-    public ImageBuilder WithCollectionId(Guid collectionId)
+    public ImageBuilder WithCollectionId(ObjectId collectionId)
     {
         _collectionId = collectionId;
         return this;
@@ -156,7 +158,7 @@ public class ImageBuilder
 public class CollectionSettingsBuilder
 {
     private readonly IFixture _fixture;
-    private Guid _collectionId = Guid.NewGuid();
+    private ObjectId _collectionId = ObjectId.GenerateNewId();
     private int _totalImages = 0;
     private long _totalSizeBytes = 0;
     private int _thumbnailWidth = 300;

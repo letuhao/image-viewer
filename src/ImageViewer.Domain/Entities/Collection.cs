@@ -129,4 +129,14 @@ public class Collection : BaseEntity
         Type = newType;
         UpdatedAt = DateTime.UtcNow;
     }
+
+    public long GetImageCount()
+    {
+        return Statistics.TotalItems;
+    }
+
+    public long GetTotalSize()
+    {
+        return Statistics.TotalSize;
+    }
 }

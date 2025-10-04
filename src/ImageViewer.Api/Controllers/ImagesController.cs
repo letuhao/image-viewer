@@ -4,6 +4,7 @@ using ImageViewer.Application.Services;
 using ImageViewer.Domain.Entities;
 using ImageViewer.Application.DTOs.Common;
 using ImageViewer.Application.Extensions;
+using MongoDB.Bson;
 
 namespace ImageViewer.Api.Controllers;
 
@@ -47,7 +48,7 @@ public class ImagesController : ControllerBase
     /// Get random image within a collection
     /// </summary>
     [HttpGet("collection/{collectionId}/random")]
-    public async Task<ActionResult<Image>> GetRandomImageByCollection(Guid collectionId)
+    public async Task<ActionResult<Image>> GetRandomImageByCollection(ObjectId collectionId)
     {
         try
         {
@@ -71,7 +72,7 @@ public class ImagesController : ControllerBase
     /// </summary>
     [HttpGet("collection/{collectionId}")]
     public async Task<ActionResult<PaginationResponseDto<Image>>> GetImagesByCollection(
-        Guid collectionId,
+        ObjectId collectionId,
         [FromQuery] PaginationRequestDto pagination)
     {
         try
@@ -97,7 +98,7 @@ public class ImagesController : ControllerBase
     /// Get image by ID
     /// </summary>
     [HttpGet("{id}")]
-    public async Task<ActionResult<Image>> GetImage(Guid id)
+    public async Task<ActionResult<Image>> GetImage(ObjectId id)
     {
         try
         {
@@ -119,7 +120,7 @@ public class ImagesController : ControllerBase
     /// Get image file content
     /// </summary>
     [HttpGet("{id}/file")]
-    public async Task<IActionResult> GetImageFile(Guid id, [FromQuery] int? width = null, [FromQuery] int? height = null)
+    public async Task<IActionResult> GetImageFile(ObjectId id, [FromQuery] int? width = null, [FromQuery] int? height = null)
     {
         try
         {
@@ -149,7 +150,7 @@ public class ImagesController : ControllerBase
     /// Get image thumbnail
     /// </summary>
     [HttpGet("{id}/thumbnail")]
-    public async Task<IActionResult> GetImageThumbnail(Guid id, [FromQuery] int? width = null, [FromQuery] int? height = null)
+    public async Task<IActionResult> GetImageThumbnail(ObjectId id, [FromQuery] int? width = null, [FromQuery] int? height = null)
     {
         try
         {
@@ -178,7 +179,7 @@ public class ImagesController : ControllerBase
     /// Delete image
     /// </summary>
     [HttpDelete("{id}")]
-    public async Task<IActionResult> DeleteImage(Guid id)
+    public async Task<IActionResult> DeleteImage(ObjectId id)
     {
         try
         {

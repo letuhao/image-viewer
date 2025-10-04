@@ -3,6 +3,7 @@ using ImageViewer.Domain.Events;
 using ImageViewer.Domain.Enums;
 using FluentAssertions;
 using Xunit;
+using MongoDB.Bson;
 
 namespace ImageViewer.Tests.Domain.Events;
 
@@ -12,7 +13,7 @@ public class ImageAddedEventTests
     public void Constructor_WithValidImageAndCollection_ShouldCreateEvent()
     {
         // Arrange
-        var collection = new Collection("Test Collection", "/test/path", CollectionType.Folder);
+        var collection = new Collection(ObjectId.GenerateNewId(), "Test Collection", "/test/path", CollectionType.Folder);
         var image = new Image(collection.Id, "test.jpg", "/test/path/test.jpg", 1024, 1920, 1080, "jpg");
 
         // Act
@@ -30,7 +31,7 @@ public class ImageAddedEventTests
     public void Constructor_WithNullImage_ShouldThrowArgumentNullException()
     {
         // Arrange
-        var collection = new Collection("Test Collection", "/test/path", CollectionType.Folder);
+        var collection = new Collection(ObjectId.GenerateNewId(), "Test Collection", "/test/path", CollectionType.Folder);
         Image image = null!;
 
         // Act & Assert
@@ -43,7 +44,7 @@ public class ImageAddedEventTests
     public void Constructor_WithNullCollection_ShouldThrowArgumentNullException()
     {
         // Arrange
-        var collection = new Collection("Test Collection", "/test/path", CollectionType.Folder);
+        var collection = new Collection(ObjectId.GenerateNewId(), "Test Collection", "/test/path", CollectionType.Folder);
         var image = new Image(collection.Id, "test.jpg", "/test/path/test.jpg", 1024, 1920, 1080, "jpg");
         Collection nullCollection = null!;
 
@@ -57,7 +58,7 @@ public class ImageAddedEventTests
     public void Constructor_ShouldGenerateUniqueId()
     {
         // Arrange
-        var collection = new Collection("Test Collection", "/test/path", CollectionType.Folder);
+        var collection = new Collection(ObjectId.GenerateNewId(), "Test Collection", "/test/path", CollectionType.Folder);
         var image = new Image(collection.Id, "test.jpg", "/test/path/test.jpg", 1024, 1920, 1080, "jpg");
 
         // Act
@@ -72,7 +73,7 @@ public class ImageAddedEventTests
     public void Constructor_ShouldSetOccurredOnToCurrentTime()
     {
         // Arrange
-        var collection = new Collection("Test Collection", "/test/path", CollectionType.Folder);
+        var collection = new Collection(ObjectId.GenerateNewId(), "Test Collection", "/test/path", CollectionType.Folder);
         var image = new Image(collection.Id, "test.jpg", "/test/path/test.jpg", 1024, 1920, 1080, "jpg");
         var beforeCreation = DateTime.UtcNow;
 

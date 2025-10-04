@@ -1,4 +1,5 @@
 using ImageViewer.Domain.Entities;
+using MongoDB.Bson;
 
 namespace ImageViewer.Application.Services;
 
@@ -7,10 +8,10 @@ namespace ImageViewer.Application.Services;
 /// </summary>
 public interface IAdvancedThumbnailService
 {
-    Task<string?> GenerateCollectionThumbnailAsync(Guid collectionId, CancellationToken cancellationToken = default);
-    Task<BatchThumbnailResult> BatchRegenerateThumbnailsAsync(IEnumerable<Guid> collectionIds, CancellationToken cancellationToken = default);
-    Task<byte[]?> GetCollectionThumbnailAsync(Guid collectionId, int? width = null, int? height = null, CancellationToken cancellationToken = default);
-    Task DeleteCollectionThumbnailAsync(Guid collectionId, CancellationToken cancellationToken = default);
+    Task<string?> GenerateCollectionThumbnailAsync(ObjectId collectionId, CancellationToken cancellationToken = default);
+    Task<BatchThumbnailResult> BatchRegenerateThumbnailsAsync(IEnumerable<ObjectId> collectionIds, CancellationToken cancellationToken = default);
+    Task<byte[]?> GetCollectionThumbnailAsync(ObjectId collectionId, int? width = null, int? height = null, CancellationToken cancellationToken = default);
+    Task DeleteCollectionThumbnailAsync(ObjectId collectionId, CancellationToken cancellationToken = default);
 }
 
 /// <summary>
@@ -22,6 +23,6 @@ public class BatchThumbnailResult
     public int Success { get; set; }
     public int Failed { get; set; }
     public List<string> Errors { get; set; } = new();
-    public List<Guid> SuccessfulCollections { get; set; } = new();
-    public List<Guid> FailedCollections { get; set; } = new();
+    public List<ObjectId> SuccessfulCollections { get; set; } = new();
+    public List<ObjectId> FailedCollections { get; set; } = new();
 }

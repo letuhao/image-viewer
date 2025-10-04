@@ -14,7 +14,7 @@ public class ApplicationServiceTests
     public void CollectionService_ShouldBeCreated()
     {
         // Arrange
-        var unitOfWorkMock = new Mock<IUnitOfWork>();
+        var collectionRepositoryMock = new Mock<ICollectionRepository>();
         var fileScannerMock = new Mock<IFileScannerService>();
         var loggerMock = new Mock<ILogger<CollectionService>>();
         var optionsMock = new Mock<Microsoft.Extensions.Options.IOptions<ImageViewer.Application.Options.ImageSizeOptions>>();
@@ -30,10 +30,8 @@ public class ApplicationServiceTests
 
         // Act
         var service = new CollectionService(
-            unitOfWorkMock.Object,
-            fileScannerMock.Object,
-            loggerMock.Object,
-            optionsMock.Object);
+            collectionRepositoryMock.Object,
+            loggerMock.Object);
 
         // Assert
         service.Should().NotBeNull();
@@ -43,7 +41,7 @@ public class ApplicationServiceTests
     public void ImageService_ShouldBeCreated()
     {
         // Arrange
-        var unitOfWorkMock = new Mock<IUnitOfWork>();
+        var collectionRepositoryMock = new Mock<ICollectionRepository>();
         var imageProcessingMock = new Mock<IImageProcessingService>();
         var cacheServiceMock = new Mock<ICacheService>();
         var loggerMock = new Mock<ILogger<ImageService>>();
@@ -60,7 +58,7 @@ public class ApplicationServiceTests
 
         // Act
         var service = new ImageService(
-            unitOfWorkMock.Object,
+            collectionRepositoryMock.Object,
             imageProcessingMock.Object,
             cacheServiceMock.Object,
             loggerMock.Object,
@@ -123,7 +121,7 @@ public class ApplicationServiceTests
         var imageRepositoryMock = new Mock<IImageRepository>();
         var cacheInfoRepositoryMock = new Mock<ICacheInfoRepository>();
         var imageProcessingMock = new Mock<IImageProcessingService>();
-        var unitOfWorkMock = new Mock<IUnitOfWork>();
+        var collectionRepositoryMock = new Mock<ICollectionRepository>();
         var loggerMock = new Mock<ILogger<CacheService>>();
         var optionsMock = new Mock<Microsoft.Extensions.Options.IOptions<ImageViewer.Application.Options.ImageSizeOptions>>();
         
@@ -143,7 +141,7 @@ public class ApplicationServiceTests
             imageRepositoryMock.Object,
             cacheInfoRepositoryMock.Object,
             imageProcessingMock.Object,
-            unitOfWorkMock.Object,
+            collectionRepositoryMock.Object,
             loggerMock.Object,
             optionsMock.Object);
 

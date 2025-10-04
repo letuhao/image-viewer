@@ -2,6 +2,7 @@ using MongoDB.Driver;
 using MongoDB.Bson;
 using ImageViewer.Domain.Entities;
 using ImageViewer.Domain.Interfaces;
+using ImageViewer.Domain.Exceptions;
 using Microsoft.Extensions.Logging;
 
 namespace ImageViewer.Infrastructure.Data;
@@ -170,12 +171,12 @@ public class MediaItemRepository : MongoRepository<MediaItem>, IMediaItemReposit
 
             if (filter.Tags != null && filter.Tags.Any())
             {
-                filters.Add(builder.In(m => m.Metadata.Tags, filter.Tags));
+                filters.Add(builder.In("metadata.tags", filter.Tags));
             }
 
             if (filter.Categories != null && filter.Categories.Any())
             {
-                filters.Add(builder.In(m => m.Metadata.Categories, filter.Categories));
+                filters.Add(builder.In("metadata.categories", filter.Categories));
             }
 
             if (filter.MinWidth.HasValue)
@@ -218,7 +219,7 @@ public class MediaItemRepository : MongoRepository<MediaItem>, IMediaItemReposit
         }
     }
 
-    public async Task<MediaItemStatistics> GetMediaItemStatisticsAsync()
+    public async Task<ImageViewer.Domain.ValueObjects.MediaItemStatistics> GetMediaItemStatisticsAsync()
     {
         try
         {
@@ -246,7 +247,7 @@ public class MediaItemRepository : MongoRepository<MediaItem>, IMediaItemReposit
             var count = result?["count"]?.AsInt32 ?? 0;
             var averageFileSize = count > 0 ? (double)totalFileSize / count : 0;
 
-            return new MediaItemStatistics
+            return new ImageViewer.Domain.ValueObjects.MediaItemStatistics
             {
                 TotalMediaItems = totalMediaItems,
                 ActiveMediaItems = activeMediaItems,

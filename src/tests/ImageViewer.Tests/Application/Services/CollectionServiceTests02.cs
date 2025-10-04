@@ -12,7 +12,7 @@ namespace ImageViewer.Tests.Application.Services;
 
 public class CollectionServiceTests02
 {
-    private readonly Mock<IUnitOfWork> _unitOfWorkMock;
+    private readonly Mock<ICollectionRepository> _collectionRepositoryMock;
     private readonly Mock<IFileScannerService> _fileScannerMock;
     private readonly Mock<ILogger<CollectionService>> _loggerMock;
     private readonly Mock<Microsoft.Extensions.Options.IOptions<ImageViewer.Application.Options.ImageSizeOptions>> _optionsMock;
@@ -20,7 +20,7 @@ public class CollectionServiceTests02
 
     public CollectionServiceTests02()
     {
-        _unitOfWorkMock = new Mock<IUnitOfWork>();
+        _collectionRepositoryMock = new Mock<ICollectionRepository>();
         _fileScannerMock = new Mock<IFileScannerService>();
         _loggerMock = new Mock<ILogger<CollectionService>>();
         _optionsMock = new Mock<Microsoft.Extensions.Options.IOptions<ImageViewer.Application.Options.ImageSizeOptions>>();
@@ -35,10 +35,8 @@ public class CollectionServiceTests02
         _optionsMock.Setup(x => x.Value).Returns(sizeOptions);
 
         _service = new CollectionService(
-            _unitOfWorkMock.Object,
-            _fileScannerMock.Object,
-            _loggerMock.Object,
-            _optionsMock.Object);
+            _collectionRepositoryMock.Object,
+            _loggerMock.Object);
     }
 
     [Fact]

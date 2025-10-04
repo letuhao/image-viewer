@@ -17,7 +17,7 @@ public class MongoCollectionTagRepository : MongoRepository<CollectionTag>, ICol
     /// <summary>
     /// Get collection tags by collection ID
     /// </summary>
-    public async Task<IEnumerable<CollectionTag>> GetByCollectionIdAsync(Guid collectionId)
+    public async Task<IEnumerable<CollectionTag>> GetByCollectionIdAsync(ObjectId collectionId)
     {
         var filter = Builders<CollectionTag>.Filter.Eq(x => x.CollectionId, collectionId);
         var sort = Builders<CollectionTag>.Sort.Ascending(x => x.CreatedAt);
@@ -27,7 +27,7 @@ public class MongoCollectionTagRepository : MongoRepository<CollectionTag>, ICol
     /// <summary>
     /// Get collection tags by tag ID
     /// </summary>
-    public async Task<IEnumerable<CollectionTag>> GetByTagIdAsync(Guid tagId)
+    public async Task<IEnumerable<CollectionTag>> GetByTagIdAsync(ObjectId tagId)
     {
         var filter = Builders<CollectionTag>.Filter.Eq(x => x.TagId, tagId);
         var sort = Builders<CollectionTag>.Sort.Ascending(x => x.CreatedAt);
@@ -37,7 +37,7 @@ public class MongoCollectionTagRepository : MongoRepository<CollectionTag>, ICol
     /// <summary>
     /// Get collection tag by collection and tag IDs
     /// </summary>
-    public async Task<CollectionTag?> GetByCollectionAndTagAsync(Guid collectionId, Guid tagId)
+    public async Task<CollectionTag?> GetByCollectionAndTagAsync(ObjectId collectionId, ObjectId tagId)
     {
         var filter = Builders<CollectionTag>.Filter.And(
             Builders<CollectionTag>.Filter.Eq(x => x.CollectionId, collectionId),
@@ -49,7 +49,7 @@ public class MongoCollectionTagRepository : MongoRepository<CollectionTag>, ICol
     /// <summary>
     /// Check if collection has tag
     /// </summary>
-    public async Task<bool> HasTagAsync(Guid collectionId, Guid tagId)
+    public async Task<bool> HasTagAsync(ObjectId collectionId, ObjectId tagId)
     {
         var filter = Builders<CollectionTag>.Filter.And(
             Builders<CollectionTag>.Filter.Eq(x => x.CollectionId, collectionId),
@@ -61,36 +61,11 @@ public class MongoCollectionTagRepository : MongoRepository<CollectionTag>, ICol
     /// <summary>
     /// Get tag usage statistics
     /// </summary>
-    public async Task<Dictionary<Guid, int>> GetTagUsageCountsAsync()
-    {
-        var pipeline = new[]
-        {
-            new BsonDocument("$group", new BsonDocument
-            {
-                { "_id", "$TagId" },
-                { "count", new BsonDocument("$sum", 1) }
-            })
-        };
-
-        var results = await _collection.Aggregate<BsonDocument>(pipeline).ToListAsync();
-        
-        var counts = new Dictionary<Guid, int>();
-        foreach (var result in results)
-        {
-            if (result.TryGetValue("_id", out var tagIdValue) && 
-                result.TryGetValue("count", out var countValue))
-            {
-                counts[tagIdValue.AsGuid] = countValue.ToInt32();
-            }
-        }
-
-        return counts;
-    }
 
     /// <summary>
     /// Get collections by tag ID
     /// </summary>
-    public async Task<IEnumerable<CollectionTag>> GetCollectionsByTagIdAsync(Guid tagId)
+    public async Task<IEnumerable<CollectionTag>> GetCollectionsByTagIdAsync(ObjectId tagId)
     {
         var filter = Builders<CollectionTag>.Filter.Eq(x => x.TagId, tagId);
         var sort = Builders<CollectionTag>.Sort.Ascending(x => x.CreatedAt);
@@ -130,24 +105,6 @@ public class MongoCollectionTagRepository : MongoRepository<CollectionTag>, ICol
         return count > 0;
     }
 
-    public async Task<Dictionary<ObjectId, int>> GetTagUsageCountsAsync(CancellationToken cancellationToken = default)
-    {
-        var pipeline = new[]
-        {
-            new BsonDocument("$group", new BsonDocument
-            {
-                { "_id", "$TagId" },
-                { "count", new BsonDocument("$sum", 1) }
-            })
-        };
-        
-        var results = await _collection.Aggregate<BsonDocument>(pipeline).ToListAsync(cancellationToken);
-        
-        return results.ToDictionary(
-            r => r["_id"].AsObjectId,
-            r => r["count"].AsInt32
-        );
-    }
 
     public async Task<IEnumerable<CollectionTag>> GetCollectionsByTagIdAsync(ObjectId tagId, CancellationToken cancellationToken = default)
     {
@@ -165,7 +122,7 @@ public class MongoCollectionTagRepository : MongoRepository<CollectionTag>, ICol
         return await _collection.Find(filter).FirstOrDefaultAsync(cancellationToken);
     }
 
-    public async Task<Dictionary<ObjectId, int>> GetTagUsageCountsAsync(CancellationToken cancellationToken = default)
+    public async Task<Dictionary<ObjectId, int>> GetTagUsageCountsAsync()
     {
         var pipeline = new[]
         {
@@ -176,7 +133,7 @@ public class MongoCollectionTagRepository : MongoRepository<CollectionTag>, ICol
             })
         };
         
-        var results = await _collection.Aggregate<BsonDocument>(pipeline).ToListAsync(cancellationToken);
+        var results = await _collection.Aggregate<BsonDocument>(pipeline).ToListAsync();
         
         return results.ToDictionary(
             r => r["_id"].AsObjectId,
@@ -184,71 +141,12 @@ public class MongoCollectionTagRepository : MongoRepository<CollectionTag>, ICol
         );
     }
 
-    public async Task<IEnumerable<CollectionTag>> GetCollectionsByTagIdAsync(ObjectId tagId, CancellationToken cancellationToken = default)
-    {
-        var filter = Builders<CollectionTag>.Filter.Eq(x => x.TagId, tagId);
-        var sort = Builders<CollectionTag>.Sort.Ascending(x => x.CreatedAt);
-        return await _collection.Find(filter).Sort(sort).ToListAsync(cancellationToken);
-    }
-
-    public async Task<CollectionTag?> GetByCollectionIdAndTagIdAsync(ObjectId collectionId, ObjectId tagId, CancellationToken cancellationToken = default)
+    public async Task<CollectionTag?> GetByCollectionIdAndTagIdAsync(ObjectId collectionId, ObjectId tagId)
     {
         var filter = Builders<CollectionTag>.Filter.And(
             Builders<CollectionTag>.Filter.Eq(x => x.CollectionId, collectionId),
             Builders<CollectionTag>.Filter.Eq(x => x.TagId, tagId)
         );
-        return await _collection.Find(filter).FirstOrDefaultAsync(cancellationToken);
-    }
-
-    public async Task<IEnumerable<CollectionTag>> GetByCollectionIdAsync(ObjectId collectionId, CancellationToken cancellationToken = default)
-    {
-        var filter = Builders<CollectionTag>.Filter.Eq(x => x.CollectionId, collectionId);
-        var sort = Builders<CollectionTag>.Sort.Ascending(x => x.CreatedAt);
-        return await _collection.Find(filter).Sort(sort).ToListAsync(cancellationToken);
-    }
-
-    public async Task<IEnumerable<CollectionTag>> GetByTagIdAsync(ObjectId tagId, CancellationToken cancellationToken = default)
-    {
-        var filter = Builders<CollectionTag>.Filter.Eq(x => x.TagId, tagId);
-        var sort = Builders<CollectionTag>.Sort.Ascending(x => x.CreatedAt);
-        return await _collection.Find(filter).Sort(sort).ToListAsync(cancellationToken);
-    }
-
-    public async Task<CollectionTag?> GetByCollectionAndTagAsync(ObjectId collectionId, ObjectId tagId, CancellationToken cancellationToken = default)
-    {
-        var filter = Builders<CollectionTag>.Filter.And(
-            Builders<CollectionTag>.Filter.Eq(x => x.CollectionId, collectionId),
-            Builders<CollectionTag>.Filter.Eq(x => x.TagId, tagId)
-        );
-        return await _collection.Find(filter).FirstOrDefaultAsync(cancellationToken);
-    }
-
-    public async Task<bool> HasTagAsync(ObjectId collectionId, ObjectId tagId, CancellationToken cancellationToken = default)
-    {
-        var filter = Builders<CollectionTag>.Filter.And(
-            Builders<CollectionTag>.Filter.Eq(x => x.CollectionId, collectionId),
-            Builders<CollectionTag>.Filter.Eq(x => x.TagId, tagId)
-        );
-        var count = await _collection.CountDocumentsAsync(filter, cancellationToken: cancellationToken);
-        return count > 0;
-    }
-
-    public async Task<Dictionary<ObjectId, int>> GetTagUsageCountsAsync(CancellationToken cancellationToken = default)
-    {
-        var pipeline = new[]
-        {
-            new BsonDocument("$group", new BsonDocument
-            {
-                { "_id", "$TagId" },
-                { "count", new BsonDocument("$sum", 1) }
-            })
-        };
-        
-        var results = await _collection.Aggregate<BsonDocument>(pipeline).ToListAsync(cancellationToken);
-        
-        return results.ToDictionary(
-            r => r["_id"].AsObjectId,
-            r => r["count"].AsInt32
-        );
+        return await _collection.Find(filter).FirstOrDefaultAsync();
     }
 }

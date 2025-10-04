@@ -29,10 +29,28 @@ public class MediaItemStatistics
     public long TotalComments { get; private set; }
     
     [BsonElement("averageFileSize")]
-    public double AverageFileSize { get; private set; }
+    public double AverageFileSize { get; set; }
     
     [BsonElement("lastActivity")]
     public DateTime? LastActivity { get; private set; }
+    
+    [BsonElement("totalMediaItems")]
+    public long TotalMediaItems { get; set; }
+    
+    [BsonElement("activeMediaItems")]
+    public long ActiveMediaItems { get; set; }
+    
+    [BsonElement("newMediaItemsThisMonth")]
+    public long NewMediaItemsThisMonth { get; set; }
+    
+    [BsonElement("newMediaItemsThisWeek")]
+    public long NewMediaItemsThisWeek { get; set; }
+    
+    [BsonElement("newMediaItemsToday")]
+    public long NewMediaItemsToday { get; set; }
+    
+    [BsonElement("totalFileSize")]
+    public long TotalFileSize { get; set; }
 
     public MediaItemStatistics()
     {
@@ -44,6 +62,12 @@ public class MediaItemStatistics
         TotalLikes = 0;
         TotalComments = 0;
         AverageFileSize = 0;
+        TotalMediaItems = 0;
+        ActiveMediaItems = 0;
+        NewMediaItemsThisMonth = 0;
+        NewMediaItemsThisWeek = 0;
+        NewMediaItemsToday = 0;
+        TotalFileSize = 0;
     }
 
     public void UpdateStats(long totalItems, long totalSize)

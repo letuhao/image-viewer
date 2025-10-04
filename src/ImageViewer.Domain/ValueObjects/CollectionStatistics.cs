@@ -11,7 +11,7 @@ public class CollectionStatistics
     public long TotalItems { get; private set; }
     
     [BsonElement("totalSize")]
-    public long TotalSize { get; private set; }
+    public long TotalSize { get; set; }
     
     [BsonElement("totalViews")]
     public long TotalViews { get; private set; }
@@ -36,6 +36,24 @@ public class CollectionStatistics
     
     [BsonElement("lastActivity")]
     public DateTime? LastActivity { get; private set; }
+    
+    [BsonElement("totalCollections")]
+    public long TotalCollections { get; set; }
+    
+    [BsonElement("activeCollections")]
+    public long ActiveCollections { get; set; }
+    
+    [BsonElement("totalImages")]
+    public long TotalImages { get; set; }
+    
+    [BsonElement("averageImagesPerCollection")]
+    public double AverageImagesPerCollection { get; set; }
+    
+    [BsonElement("averageSizePerCollection")]
+    public double AverageSizePerCollection { get; set; }
+    
+    [BsonElement("lastViewed")]
+    public DateTime? LastViewed { get; set; }
 
     public CollectionStatistics()
     {
@@ -47,6 +65,12 @@ public class CollectionStatistics
         TotalLikes = 0;
         TotalComments = 0;
         ScanCount = 0;
+        TotalCollections = 0;
+        ActiveCollections = 0;
+        TotalImages = 0;
+        AverageImagesPerCollection = 0;
+        AverageSizePerCollection = 0;
+        LastViewed = null;
     }
 
     public void UpdateStats(long totalItems, long totalSize)

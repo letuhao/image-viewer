@@ -4,6 +4,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Logging;
 using ImageViewer.Infrastructure.Data;
 using ImageViewer.Infrastructure.Services;
+using ImageViewer.Infrastructure.Configuration;
 using ImageViewer.Domain.Interfaces;
 using ImageViewer.Domain.Entities;
 using ImageViewer.Application.Services;
@@ -49,7 +50,7 @@ public static class ServiceCollectionExtensions
         // Register new repositories
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<ILibraryRepository, LibraryRepository>();
-        services.AddScoped<ICollectionRepository, CollectionRepository>();
+        services.AddScoped<ICollectionRepository, MongoCollectionRepository>();
         services.AddScoped<IMediaItemRepository, MediaItemRepository>();
 
         // Register application services

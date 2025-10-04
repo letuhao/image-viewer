@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using ImageViewer.Application.Services;
 using ImageViewer.Application.DTOs.Cache;
+using MongoDB.Bson;
 
 namespace ImageViewer.Api.Controllers;
 
@@ -62,7 +63,7 @@ public class CacheController : ControllerBase
     /// Get cache folder by ID
     /// </summary>
     [HttpGet("folders/{id}")]
-    public async Task<ActionResult<CacheFolderDto>> GetCacheFolder(Guid id)
+    public async Task<ActionResult<CacheFolderDto>> GetCacheFolder(ObjectId id)
     {
         try
         {
@@ -108,7 +109,7 @@ public class CacheController : ControllerBase
     /// Update cache folder
     /// </summary>
     [HttpPut("folders/{id}")]
-    public async Task<ActionResult<CacheFolderDto>> UpdateCacheFolder(Guid id, [FromBody] UpdateCacheFolderDto dto)
+    public async Task<ActionResult<CacheFolderDto>> UpdateCacheFolder(ObjectId id, [FromBody] UpdateCacheFolderDto dto)
     {
         try
         {
@@ -137,7 +138,7 @@ public class CacheController : ControllerBase
     /// Delete cache folder
     /// </summary>
     [HttpDelete("folders/{id}")]
-    public async Task<ActionResult> DeleteCacheFolder(Guid id)
+    public async Task<ActionResult> DeleteCacheFolder(ObjectId id)
     {
         try
         {
@@ -161,7 +162,7 @@ public class CacheController : ControllerBase
     /// Clear cache for specific collection
     /// </summary>
     [HttpPost("collections/{collectionId}/clear")]
-    public async Task<ActionResult> ClearCollectionCache(Guid collectionId)
+    public async Task<ActionResult> ClearCollectionCache(ObjectId collectionId)
     {
         try
         {
@@ -204,7 +205,7 @@ public class CacheController : ControllerBase
     /// Get cache status for collection
     /// </summary>
     [HttpGet("collections/{collectionId}/status")]
-    public async Task<ActionResult<CollectionCacheStatusDto>> GetCollectionCacheStatus(Guid collectionId)
+    public async Task<ActionResult<CollectionCacheStatusDto>> GetCollectionCacheStatus(ObjectId collectionId)
     {
         try
         {
@@ -228,7 +229,7 @@ public class CacheController : ControllerBase
     /// Regenerate cache for collection
     /// </summary>
     [HttpPost("collections/{collectionId}/regenerate")]
-    public async Task<ActionResult> RegenerateCollectionCache(Guid collectionId, [FromBody] RegenerateCacheRequest? request = null)
+    public async Task<ActionResult> RegenerateCollectionCache(ObjectId collectionId, [FromBody] RegenerateCacheRequest? request = null)
     {
         try
         {

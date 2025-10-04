@@ -2,6 +2,7 @@ using ImageViewer.Domain.Entities;
 using ImageViewer.Domain.ValueObjects;
 using FluentAssertions;
 using Xunit;
+using MongoDB.Bson;
 
 namespace ImageViewer.Tests.Domain.Entities;
 
@@ -20,7 +21,7 @@ public class TagTests
 
         // Assert
         tag.Should().NotBeNull();
-        tag.Id.Should().NotBeEmpty();
+        tag.Id.Should().NotBe(ObjectId.Empty);
         tag.Name.Should().Be(name);
         tag.Description.Should().Be(description);
         tag.Color.Should().Be(color);

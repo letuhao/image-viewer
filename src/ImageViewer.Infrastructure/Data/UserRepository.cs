@@ -2,6 +2,7 @@ using MongoDB.Driver;
 using MongoDB.Bson;
 using ImageViewer.Domain.Entities;
 using ImageViewer.Domain.Interfaces;
+using ImageViewer.Domain.Exceptions;
 using Microsoft.Extensions.Logging;
 
 namespace ImageViewer.Infrastructure.Data;
@@ -169,7 +170,7 @@ public class UserRepository : MongoRepository<User>, IUserRepository
         }
     }
 
-    public async Task<UserStatistics> GetUserStatisticsAsync()
+    public async Task<ImageViewer.Domain.ValueObjects.UserStatistics> GetUserStatisticsAsync()
     {
         try
         {
@@ -182,7 +183,7 @@ public class UserRepository : MongoRepository<User>, IUserRepository
             var newUsersThisWeek = await _collection.CountDocumentsAsync(u => u.CreatedAt >= now.AddDays(-7));
             var newUsersToday = await _collection.CountDocumentsAsync(u => u.CreatedAt >= now.AddDays(-1));
 
-            return new UserStatistics
+            return new ImageViewer.Domain.ValueObjects.UserStatistics
             {
                 TotalUsers = totalUsers,
                 ActiveUsers = activeUsers,
