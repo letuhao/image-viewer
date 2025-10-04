@@ -282,7 +282,7 @@ public class MediaItemService : IMediaItemService
         {
             var mediaItem = await GetMediaItemByIdAsync(mediaItemId);
             
-            var newCacheInfo = new CacheInfo();
+            var newCacheInfo = new ImageViewer.Domain.ValueObjects.CacheInfo();
             
             if (request.IsCached.HasValue && request.IsCached.Value)
             {

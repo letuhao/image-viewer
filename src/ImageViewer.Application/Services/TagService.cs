@@ -2,6 +2,7 @@ using ImageViewer.Application.DTOs.Tags;
 using ImageViewer.Domain.Entities;
 using ImageViewer.Domain.Interfaces;
 using Microsoft.Extensions.Logging;
+using MongoDB.Bson;
 
 namespace ImageViewer.Application.Services;
 
@@ -30,7 +31,7 @@ public class TagService : ITagService
         _logger = logger;
     }
 
-    public async Task<IEnumerable<CollectionTagDto>> GetCollectionTagsAsync(Guid collectionId)
+    public async Task<IEnumerable<CollectionTagDto>> GetCollectionTagsAsync(ObjectId collectionId)
     {
         _logger.LogInformation("Getting tags for collection: {CollectionId}", collectionId);
 
@@ -50,7 +51,7 @@ public class TagService : ITagService
         });
     }
 
-    public async Task<CollectionTagDto> AddTagToCollectionAsync(Guid collectionId, AddTagToCollectionDto dto)
+    public async Task<CollectionTagDto> AddTagToCollectionAsync(ObjectId collectionId, AddTagToCollectionDto dto)
     {
         _logger.LogInformation("Adding tag {TagName} to collection: {CollectionId}", dto.TagName, collectionId);
 
@@ -92,7 +93,7 @@ public class TagService : ITagService
         };
     }
 
-    public async Task RemoveTagFromCollectionAsync(Guid collectionId, string tagName)
+    public async Task RemoveTagFromCollectionAsync(ObjectId collectionId, string tagName)
     {
         _logger.LogInformation("Removing tag {TagName} from collection: {CollectionId}", tagName, collectionId);
 
@@ -323,7 +324,7 @@ public class TagService : ITagService
             .Take(limit);
     }
 
-    public async Task<IEnumerable<TagSuggestionDto>> GetTagSuggestionsAsync(Guid collectionId, int limit = 10)
+    public async Task<IEnumerable<TagSuggestionDto>> GetTagSuggestionsAsync(ObjectId collectionId, int limit = 10)
     {
         _logger.LogInformation("Getting tag suggestions for collection: {CollectionId}", collectionId);
 
@@ -365,7 +366,7 @@ public class TagService : ITagService
             .Take(limit);
     }
 
-    public async Task<IEnumerable<CollectionTagDto>> BulkAddTagsToCollectionAsync(Guid collectionId, IEnumerable<string> tagNames)
+    public async Task<IEnumerable<CollectionTagDto>> BulkAddTagsToCollectionAsync(ObjectId collectionId, IEnumerable<string> tagNames)
     {
         _logger.LogInformation("Bulk adding tags to collection: {CollectionId}", collectionId);
 
@@ -400,7 +401,7 @@ public class TagService : ITagService
         return results;
     }
 
-    public async Task BulkRemoveTagsFromCollectionAsync(Guid collectionId, IEnumerable<string> tagNames)
+    public async Task BulkRemoveTagsFromCollectionAsync(ObjectId collectionId, IEnumerable<string> tagNames)
     {
         _logger.LogInformation("Bulk removing tags from collection: {CollectionId}", collectionId);
 

@@ -1,4 +1,5 @@
 using ImageViewer.Application.DTOs.Tags;
+using MongoDB.Bson;
 
 namespace ImageViewer.Application.Services;
 
@@ -10,17 +11,17 @@ public interface ITagService
     /// <summary>
     /// Get collection tags
     /// </summary>
-    Task<IEnumerable<CollectionTagDto>> GetCollectionTagsAsync(Guid collectionId);
+    Task<IEnumerable<CollectionTagDto>> GetCollectionTagsAsync(ObjectId collectionId);
 
     /// <summary>
     /// Add tag to collection
     /// </summary>
-    Task<CollectionTagDto> AddTagToCollectionAsync(Guid collectionId, AddTagToCollectionDto dto);
+    Task<CollectionTagDto> AddTagToCollectionAsync(ObjectId collectionId, AddTagToCollectionDto dto);
 
     /// <summary>
     /// Remove tag from collection
     /// </summary>
-    Task RemoveTagFromCollectionAsync(Guid collectionId, string tagName);
+    Task RemoveTagFromCollectionAsync(ObjectId collectionId, string tagName);
 
     /// <summary>
     /// Get all tags
@@ -65,15 +66,15 @@ public interface ITagService
     /// <summary>
     /// Get tag suggestions for collection
     /// </summary>
-    Task<IEnumerable<TagSuggestionDto>> GetTagSuggestionsAsync(Guid collectionId, int limit = 10);
+    Task<IEnumerable<TagSuggestionDto>> GetTagSuggestionsAsync(ObjectId collectionId, int limit = 10);
 
     /// <summary>
     /// Bulk add tags to collection
     /// </summary>
-    Task<IEnumerable<CollectionTagDto>> BulkAddTagsToCollectionAsync(Guid collectionId, IEnumerable<string> tagNames);
+    Task<IEnumerable<CollectionTagDto>> BulkAddTagsToCollectionAsync(ObjectId collectionId, IEnumerable<string> tagNames);
 
     /// <summary>
     /// Bulk remove tags from collection
     /// </summary>
-    Task BulkRemoveTagsFromCollectionAsync(Guid collectionId, IEnumerable<string> tagNames);
+    Task BulkRemoveTagsFromCollectionAsync(ObjectId collectionId, IEnumerable<string> tagNames);
 }

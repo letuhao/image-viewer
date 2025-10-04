@@ -300,7 +300,7 @@ public class CollectionService : ICollectionService
         {
             var collection = await GetCollectionByIdAsync(collectionId);
             
-            var newStatistics = new CollectionStatistics();
+            var newStatistics = new ImageViewer.Domain.ValueObjects.CollectionStatistics();
             
             if (request.TotalItems.HasValue)
                 newStatistics.UpdateStats(request.TotalItems.Value, request.TotalSize ?? 0);

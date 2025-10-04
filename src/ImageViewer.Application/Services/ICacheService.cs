@@ -1,4 +1,5 @@
 using ImageViewer.Application.DTOs.Cache;
+using MongoDB.Bson;
 
 namespace ImageViewer.Application.Services;
 
@@ -40,7 +41,7 @@ public interface ICacheService
     /// <summary>
     /// Clear cache for collection
     /// </summary>
-    Task ClearCollectionCacheAsync(Guid collectionId);
+    Task ClearCollectionCacheAsync(ObjectId collectionId);
 
     /// <summary>
     /// Clear all cache
@@ -50,23 +51,23 @@ public interface ICacheService
     /// <summary>
     /// Get cache status for collection
     /// </summary>
-    Task<CollectionCacheStatusDto> GetCollectionCacheStatusAsync(Guid collectionId);
+    Task<CollectionCacheStatusDto> GetCollectionCacheStatusAsync(ObjectId collectionId);
 
     /// <summary>
     /// Regenerate cache for collection
     /// </summary>
-    Task RegenerateCollectionCacheAsync(Guid collectionId);
-    Task RegenerateCollectionCacheAsync(Guid collectionId, IEnumerable<(int Width, int Height)> sizes);
+    Task RegenerateCollectionCacheAsync(ObjectId collectionId);
+    Task RegenerateCollectionCacheAsync(ObjectId collectionId, IEnumerable<(int Width, int Height)> sizes);
 
     /// <summary>
     /// Get cached image
     /// </summary>
-    Task<byte[]?> GetCachedImageAsync(Guid imageId, string dimensions, CancellationToken cancellationToken = default);
+    Task<byte[]?> GetCachedImageAsync(ObjectId imageId, string dimensions, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Save cached image
     /// </summary>
-    Task SaveCachedImageAsync(Guid imageId, string dimensions, byte[] imageData, CancellationToken cancellationToken = default);
+    Task SaveCachedImageAsync(ObjectId imageId, string dimensions, byte[] imageData, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Cleanup expired cache entries

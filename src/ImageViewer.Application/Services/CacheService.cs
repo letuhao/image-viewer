@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using ImageViewer.Application.Constants;
 using ImageViewer.Application.Options;
 using Microsoft.Extensions.Options;
+using MongoDB.Bson;
 
 namespace ImageViewer.Application.Services;
 
@@ -209,7 +210,7 @@ public class CacheService : ICacheService
         };
     }
 
-    public async Task ClearCollectionCacheAsync(Guid collectionId)
+    public async Task ClearCollectionCacheAsync(ObjectId collectionId)
     {
         _logger.LogInformation("Clearing cache for collection: {CollectionId}", collectionId);
 
@@ -246,7 +247,7 @@ public class CacheService : ICacheService
         _logger.LogInformation("All cache cleared");
     }
 
-    public async Task<CollectionCacheStatusDto> GetCollectionCacheStatusAsync(Guid collectionId)
+    public async Task<CollectionCacheStatusDto> GetCollectionCacheStatusAsync(ObjectId collectionId)
     {
         _logger.LogInformation("Getting cache status for collection: {CollectionId}", collectionId);
 
@@ -271,7 +272,7 @@ public class CacheService : ICacheService
         };
     }
 
-    public async Task RegenerateCollectionCacheAsync(Guid collectionId)
+    public async Task RegenerateCollectionCacheAsync(ObjectId collectionId)
     {
         _logger.LogInformation("Regenerating cache for collection: {CollectionId}", collectionId);
 
@@ -359,7 +360,7 @@ public class CacheService : ICacheService
         }
     }
 
-    public async Task RegenerateCollectionCacheAsync(Guid collectionId, IEnumerable<(int Width, int Height)> sizes)
+    public async Task RegenerateCollectionCacheAsync(ObjectId collectionId, IEnumerable<(int Width, int Height)> sizes)
     {
         _logger.LogInformation("Regenerating cache for collection: {CollectionId} with multiple sizes", collectionId);
 
@@ -437,7 +438,7 @@ public class CacheService : ICacheService
         }
     }
 
-    public async Task<byte[]?> GetCachedImageAsync(Guid imageId, string dimensions, CancellationToken cancellationToken = default)
+    public async Task<byte[]?> GetCachedImageAsync(ObjectId imageId, string dimensions, CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("Getting cached image: {ImageId} with dimensions: {Dimensions}", imageId, dimensions);
 
@@ -477,7 +478,7 @@ public class CacheService : ICacheService
         }
     }
 
-    public async Task SaveCachedImageAsync(Guid imageId, string dimensions, byte[] imageData, CancellationToken cancellationToken = default)
+    public async Task SaveCachedImageAsync(ObjectId imageId, string dimensions, byte[] imageData, CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("Saving cached image: {ImageId} with dimensions: {Dimensions}", imageId, dimensions);
 
@@ -549,7 +550,7 @@ public class CacheService : ICacheService
         }
     }
 
-    private async Task<CacheFolder?> GetCacheFolderForCollectionAsync(Guid collectionId)
+    private async Task<CacheFolder?> GetCacheFolderForCollectionAsync(ObjectId collectionId)
     {
         try
         {
@@ -562,9 +563,11 @@ public class CacheService : ICacheService
 
             // Find the first available cache folder for this collection
             var cacheBinding = collection.CacheBindings.FirstOrDefault();
-            if (cacheBinding?.CacheFolder != null)
+            if (!string.IsNullOrEmpty(cacheBinding?.CacheFolder))
             {
-                return cacheBinding.CacheFolder;
+                var cacheFolder = await _cacheFolderRepository.GetByPathAsync(cacheBinding.CacheFolder);
+                if (cacheFolder != null)
+                    return cacheFolder;
             }
 
             // If no specific cache folder is bound, get the first available cache folder
@@ -578,7 +581,7 @@ public class CacheService : ICacheService
         }
     }
 
-    private async Task UpdateCacheFolderStatisticsAsync(Guid cacheFolderId)
+    private async Task UpdateCacheFolderStatisticsAsync(ObjectId cacheFolderId)
     {
         try
         {

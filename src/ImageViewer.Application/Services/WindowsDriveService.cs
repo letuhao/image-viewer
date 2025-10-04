@@ -202,7 +202,7 @@ public class WindowsDriveService : IWindowsDriveService
                 try
                 {
                     var dirInfo = new DirectoryInfo(dir);
-                    var directory = new DirectoryInfo
+                    var directory = new DirectoryInfoDto
                     {
                         Name = dirInfo.Name,
                         FullPath = dirInfo.FullName,

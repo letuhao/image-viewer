@@ -1,5 +1,6 @@
 using MongoDB.Bson;
 using ImageViewer.Domain.Entities;
+using ImageViewer.Domain.ValueObjects;
 using ImageViewer.Domain.Enums;
 
 namespace ImageViewer.Domain.Interfaces;

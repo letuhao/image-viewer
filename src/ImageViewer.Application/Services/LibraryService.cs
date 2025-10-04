@@ -304,7 +304,7 @@ public class LibraryService : ILibraryService
         {
             var library = await GetLibraryByIdAsync(libraryId);
             
-            var newStatistics = new LibraryStatistics();
+            var newStatistics = new ImageViewer.Domain.ValueObjects.LibraryStatistics();
             
             if (request.TotalCollections.HasValue)
                 newStatistics.IncrementCollections(request.TotalCollections.Value);

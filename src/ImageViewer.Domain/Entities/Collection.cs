@@ -40,6 +40,9 @@ public class Collection : BaseEntity
     
     [BsonElement("searchIndex")]
     public SearchIndex SearchIndex { get; private set; }
+    
+    [BsonElement("cacheBindings")]
+    public List<CacheBinding> CacheBindings { get; private set; } = new();
 
     // Private constructor for MongoDB
     private Collection() { }
@@ -118,6 +121,12 @@ public class Collection : BaseEntity
     public void DisableWatching()
     {
         WatchInfo.DisableWatching();
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void UpdateType(CollectionType newType)
+    {
+        Type = newType;
         UpdatedAt = DateTime.UtcNow;
     }
 }
