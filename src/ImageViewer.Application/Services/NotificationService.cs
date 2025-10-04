@@ -67,13 +67,13 @@ public class NotificationService : INotificationService
         }
     }
 
-    public async Task<Notification> GetNotificationByIdAsync(ObjectId notificationId)
+    public Task<Notification> GetNotificationByIdAsync(ObjectId notificationId)
     {
         try
         {
             // TODO: Implement when notification repository is available
             // For now, return a placeholder
-            throw new NotImplementedException("Notification repository not yet implemented");
+            return Task.FromException<Notification>(new NotImplementedException("Notification repository not yet implemented"));
         }
         catch (Exception ex)
         {
@@ -82,7 +82,7 @@ public class NotificationService : INotificationService
         }
     }
 
-    public async Task<IEnumerable<Notification>> GetNotificationsByUserIdAsync(ObjectId userId, int page = 1, int pageSize = 20)
+    public Task<IEnumerable<Notification>> GetNotificationsByUserIdAsync(ObjectId userId, int page = 1, int pageSize = 20)
     {
         try
         {
@@ -97,7 +97,7 @@ public class NotificationService : INotificationService
         }
     }
 
-    public async Task<IEnumerable<Notification>> GetUnreadNotificationsAsync(ObjectId userId)
+    public Task<IEnumerable<Notification>> GetUnreadNotificationsAsync(ObjectId userId)
     {
         try
         {
@@ -112,12 +112,12 @@ public class NotificationService : INotificationService
         }
     }
 
-    public async Task<Notification> MarkAsReadAsync(ObjectId notificationId)
+    public Task<Notification> MarkAsReadAsync(ObjectId notificationId)
     {
         try
         {
             // TODO: Implement when notification repository is available
-            throw new NotImplementedException("Notification repository not yet implemented");
+            return Task.FromException<Notification>(new NotImplementedException("Notification repository not yet implemented"));
         }
         catch (Exception ex)
         {
@@ -126,12 +126,13 @@ public class NotificationService : INotificationService
         }
     }
 
-    public async Task MarkAllAsReadAsync(ObjectId userId)
+    public Task MarkAllAsReadAsync(ObjectId userId)
     {
         try
         {
             // TODO: Implement when notification repository is available
             _logger.LogInformation("Marked all notifications as read for user {UserId}", userId);
+            return Task.CompletedTask;
         }
         catch (Exception ex)
         {
@@ -140,12 +141,13 @@ public class NotificationService : INotificationService
         }
     }
 
-    public async Task DeleteNotificationAsync(ObjectId notificationId)
+    public Task DeleteNotificationAsync(ObjectId notificationId)
     {
         try
         {
             // TODO: Implement when notification repository is available
             _logger.LogInformation("Deleted notification {NotificationId}", notificationId);
+            return Task.CompletedTask;
         }
         catch (Exception ex)
         {
@@ -154,7 +156,7 @@ public class NotificationService : INotificationService
         }
     }
 
-    public async Task DeleteAllNotificationsAsync(ObjectId userId)
+    public Task DeleteAllNotificationsAsync(ObjectId userId)
     {
         try
         {
@@ -168,7 +170,7 @@ public class NotificationService : INotificationService
         }
     }
 
-    public async Task SendRealTimeNotificationAsync(ObjectId userId, NotificationMessage message)
+    public Task SendRealTimeNotificationAsync(ObjectId userId, NotificationMessage message)
     {
         try
         {
@@ -185,7 +187,7 @@ public class NotificationService : INotificationService
         }
     }
 
-    public async Task SendBroadcastNotificationAsync(NotificationMessage message)
+    public Task SendBroadcastNotificationAsync(NotificationMessage message)
     {
         try
         {
@@ -202,7 +204,7 @@ public class NotificationService : INotificationService
         }
     }
 
-    public async Task SendGroupNotificationAsync(List<ObjectId> userIds, NotificationMessage message)
+    public Task SendGroupNotificationAsync(List<ObjectId> userIds, NotificationMessage message)
     {
         try
         {

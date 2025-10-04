@@ -187,48 +187,48 @@ public class UserPreferencesService : IUserPreferencesService
         }
     }
 
-    public async Task<bool> ValidatePreferencesAsync(UpdateUserPreferencesRequest request)
+    public Task<bool> ValidatePreferencesAsync(UpdateUserPreferencesRequest request)
     {
         try
         {
             if (request == null)
-                return false;
+                return Task.FromResult(false);
 
             // Validate display preferences
             if (request.Display != null)
             {
                 if (request.Display.ItemsPerPage < 1 || request.Display.ItemsPerPage > 100)
-                    return false;
+                    return Task.FromResult(false);
                 
                 if (request.Display.ThumbnailSize < 50 || request.Display.ThumbnailSize > 500)
-                    return false;
+                    return Task.FromResult(false);
                 
                 if (string.IsNullOrWhiteSpace(request.Display.Theme))
-                    return false;
+                    return Task.FromResult(false);
                 
                 if (string.IsNullOrWhiteSpace(request.Display.Language))
-                    return false;
+                    return Task.FromResult(false);
             }
 
             // Validate performance preferences
             if (request.Performance != null)
             {
                 if (request.Performance.CacheSize < 10 || request.Performance.CacheSize > 1000)
-                    return false;
+                    return Task.FromResult(false);
                 
                 if (request.Performance.MaxConcurrentDownloads < 1 || request.Performance.MaxConcurrentDownloads > 10)
-                    return false;
+                    return Task.FromResult(false);
                 
                 if (request.Performance.AutoSaveInterval < 5 || request.Performance.AutoSaveInterval > 300)
-                    return false;
+                    return Task.FromResult(false);
             }
 
-            return true;
+            return Task.FromResult(true);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to validate preferences");
-            return false;
+            return Task.FromResult(false);
         }
     }
 
