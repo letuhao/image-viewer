@@ -2,7 +2,7 @@
 
 ## Tổng quan kiến trúc mới
 
-### Kiến trúc tổng thể
+### Kiến trúc tổng thể (Updated for 57 Collections & 56 Feature Categories)
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                    Presentation Layer                       │
@@ -11,6 +11,9 @@
 │  - Image Grid Component     │  - Offline Support          │
 │  - Image Viewer Component   │  - Push Notifications       │
 │  - Collection Management    │  - Mobile Optimization      │
+│  - Social Features UI       │  - Advanced Search UI       │
+│  - Analytics Dashboard      │  - Content Moderation UI    │
+│  - User Management UI       │  - System Health Dashboard  │
 └─────────────────────────────────────────────────────────────┘
                               │
                               ▼
@@ -18,18 +21,20 @@
 │                    API Gateway Layer                       │
 ├─────────────────────────────────────────────────────────────┤
 │  ASP.NET Core Web API                                      │
-│  - Authentication/Authorization                            │
-│  - Rate Limiting                                           │
-│  - Request/Response Logging                                │
-│  - API Versioning                                          │
-│  - Swagger/OpenAPI Documentation                           │
+│  - Authentication/Authorization (2FA, Device Management)   │
+│  - Rate Limiting & Security Policies                       │
+│  - Request/Response Logging & Analytics                    │
+│  - API Versioning & Documentation                          │
+│  - Content Moderation & Copyright Management               │
+│  - Advanced Search & Discovery APIs                        │
+│  - Real-time Notifications & WebSocket Support             │
 └─────────────────────────────────────────────────────────────┘
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────┐
 │                    Application Layer                       │
 ├─────────────────────────────────────────────────────────────┤
-│  CQRS + MediatR                                            │
+│  CQRS + MediatR + Event Sourcing                           │
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐        │
 │  │   Commands  │  │   Queries   │  │   Events    │        │
 │  │             │  │             │  │             │        │
@@ -37,6 +42,9 @@
 │  │ - Update    │  │ - Search    │  │ - Updated   │        │
 │  │ - Delete    │  │ - List      │  │ - Deleted   │        │
 │  │ - Process   │  │ - Count     │  │ - Processed │        │
+│  │ - Moderate  │  │ - Analytics │  │ - Moderated │        │
+│  │ - Reward    │  │ - Reports   │  │ - Rewarded  │        │
+│  │ - Notify    │  │ - Health    │  │ - Notified  │        │
 │  └─────────────┘  └─────────────┘  └─────────────┘        │
 └─────────────────────────────────────────────────────────────┘
                               │
@@ -44,10 +52,24 @@
 ┌─────────────────────────────────────────────────────────────┐
 │                    Domain Layer                            │
 ├─────────────────────────────────────────────────────────────┤
-│  Domain Models & Business Logic                            │
+│  Domain Models & Business Logic (57 Collections)           │
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐        │
-│  │ Libraries   │  │ Collections │  │ Media Items │        │
-│  │             │  │             │  │             │        │
+│  │ Core        │  │ Social      │  │ Enterprise  │        │
+│  │ - Libraries │  │ - Users     │  │ - Security  │        │
+│  │ - Collections│  │ - Groups   │  │ - Moderation│        │
+│  │ - Media     │  │ - Messages  │  │ - Analytics │        │
+│  │ - Settings  │  │ - Comments  │  │ - Reports   │        │
+│  │ - Jobs      │  │ - Ratings   │  │ - Health    │        │
+│  │ - Favorites │  │ - Follows   │  │ - Maintenance│       │
+│  └─────────────┘  └─────────────┘  └─────────────┘        │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐        │
+│  │ Distribution│  │ Rewards     │  │ Advanced    │        │
+│  │ - Torrents  │  │ - Points    │  │ - Search    │        │
+│  │ - Downloads │  │ - Badges    │  │ - Processing│        │
+│  │ - Nodes     │  │ - Premium   │  │ - Notifications│     │
+│  │ - Links     │  │ - Achievements│  │ - File Mgmt│        │
+│  │ - Health    │  │ - Transactions│  │ - Versions │        │
+│  └─────────────┘  └─────────────┘  └─────────────┘        │
 │  │ - Entity    │  │ - Entity    │  │ - Entity    │        │
 │  │ - Services  │  │ - Services  │  │ - Services  │        │
 │  │ - Rules     │  │ - Rules     │  │ - Rules     │        │
@@ -81,6 +103,12 @@
 │  │ - Worker    │  │   Processing│  │ - ELK Stack │        │
 │  │ - Analytics │  │ - AI/ML     │  │ - Audit Logs│        │
 │  │ - Monitoring│  │ - Analytics │  │ - Error Logs│        │
+│  │ - Security  │  │ - Content   │  │ - Health    │        │
+│  │ - Moderation│  │   Moderation│  │   Monitoring│        │
+│  │ - Notifications│  │ - Search   │  │ - Performance│      │
+│  │ - File Mgmt │  │   Engine    │  │   Metrics   │        │
+│  │ - Versioning│  │ - Copyright │  │ - System    │        │
+│  │ - Storage   │  │   Detection │  │   Health    │        │
 │  └─────────────┘  └─────────────┘  └─────────────┘        │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -1472,24 +1500,276 @@ app.Run();
 - **Field Selection**: Allow clients to select specific fields
 - **Rate Limiting**: Implement rate limiting to prevent abuse
 
+## Missing Features Domain Models
+
+### Content Moderation Entity
+```csharp
+public class ContentModeration : BaseEntity
+{
+    [BsonId]
+    public ObjectId Id { get; set; }
+    
+    public ObjectId ContentId { get; set; }
+    public string ContentType { get; set; } // "collection", "media", "comment", "message"
+    public string ModerationStatus { get; set; } // "pending", "approved", "rejected", "flagged"
+    public string ModerationReason { get; set; }
+    public List<FlaggedBy> FlaggedBy { get; set; }
+    public string ModeratedBy { get; set; }
+    public DateTime? ModeratedAt { get; set; }
+    public string ModerationNotes { get; set; }
+    public AIAnalysis AIAnalysis { get; set; }
+    public HumanReview HumanReview { get; set; }
+    public List<Appeal> Appeals { get; set; }
+    public List<ModerationAction> Actions { get; set; }
+    public ModerationStatistics Statistics { get; set; }
+    
+    // Domain methods
+    public bool IsPending() => ModerationStatus == "pending";
+    public bool IsApproved() => ModerationStatus == "approved";
+    public bool IsRejected() => ModerationStatus == "rejected";
+    public void FlagContent(string userId, string reason, string details);
+    public void ModerateContent(string moderatorId, string status, string notes);
+    public void AppealDecision(string userId, string reason);
+}
+```
+
+### Copyright Management Entity
+```csharp
+public class CopyrightManagement : BaseEntity
+{
+    [BsonId]
+    public ObjectId Id { get; set; }
+    
+    public ObjectId ContentId { get; set; }
+    public string ContentType { get; set; }
+    public string CopyrightStatus { get; set; } // "original", "licensed", "fair_use", "infringing"
+    public LicenseInfo License { get; set; }
+    public AttributionInfo Attribution { get; set; }
+    public OwnershipInfo Ownership { get; set; }
+    public DMCAInfo DMCA { get; set; }
+    public FairUseInfo FairUse { get; set; }
+    public List<Permission> Permissions { get; set; }
+    public List<Violation> Violations { get; set; }
+    
+    // Domain methods
+    public bool IsOriginal() => CopyrightStatus == "original";
+    public bool IsLicensed() => CopyrightStatus == "licensed";
+    public bool IsFairUse() => CopyrightStatus == "fair_use";
+    public void ClaimOwnership(string userId, string verificationMethod);
+    public void ReportDMCA(string reporterId, string reportId);
+    public void GrantPermission(string userId, string permission, DateTime? expiresAt);
+}
+```
+
+### User Security Entity
+```csharp
+public class UserSecurity : BaseEntity
+{
+    [BsonId]
+    public ObjectId Id { get; set; }
+    
+    public string UserId { get; set; }
+    public TwoFactorInfo TwoFactor { get; set; }
+    public List<Device> Devices { get; set; }
+    public SecuritySettings SecuritySettings { get; set; }
+    public List<SecurityEvent> SecurityEvents { get; set; }
+    public List<LoginHistory> LoginHistory { get; set; }
+    public List<PasswordHistory> PasswordHistory { get; set; }
+    public List<APIKey> APIKeys { get; set; }
+    public RiskScore RiskScore { get; set; }
+    
+    // Domain methods
+    public bool IsTwoFactorEnabled() => TwoFactor.Enabled;
+    public bool IsDeviceTrusted(string deviceId);
+    public void AddDevice(Device device);
+    public void RemoveDevice(string deviceId);
+    public void RecordSecurityEvent(SecurityEvent securityEvent);
+    public void UpdateRiskScore(RiskScore newScore);
+    public bool IsIPWhitelisted(string ip);
+    public bool IsLocationAllowed(string country);
+}
+```
+
+### System Health Entity
+```csharp
+public class SystemHealth : BaseEntity
+{
+    [BsonId]
+    public ObjectId Id { get; set; }
+    
+    public DateTime Timestamp { get; set; }
+    public string Component { get; set; } // "database", "storage", "api", "worker"
+    public string Status { get; set; } // "healthy", "warning", "critical", "down"
+    public HealthMetrics Metrics { get; set; }
+    public PerformanceMetrics Performance { get; set; }
+    public List<HealthAlert> Alerts { get; set; }
+    public List<HealthAction> Actions { get; set; }
+    public EnvironmentInfo Environment { get; set; }
+    public List<DependencyHealth> Dependencies { get; set; }
+    
+    // Domain methods
+    public bool IsHealthy() => Status == "healthy";
+    public bool IsWarning() => Status == "warning";
+    public bool IsCritical() => Status == "critical";
+    public bool IsDown() => Status == "down";
+    public void AddAlert(HealthAlert alert);
+    public void ResolveAlert(string alertId);
+    public void RecordAction(HealthAction action);
+    public void UpdateMetrics(HealthMetrics metrics);
+}
+```
+
+### Notification Template Entity
+```csharp
+public class NotificationTemplate : BaseEntity
+{
+    [BsonId]
+    public ObjectId Id { get; set; }
+    
+    public string TemplateId { get; set; }
+    public string Name { get; set; }
+    public string Description { get; set; }
+    public string Type { get; set; } // "email", "push", "sms", "in_app"
+    public string Category { get; set; } // "system", "user", "content", "security"
+    public string Language { get; set; }
+    public string Subject { get; set; }
+    public string Content { get; set; }
+    public string HtmlContent { get; set; }
+    public List<TemplateVariable> Variables { get; set; }
+    public TemplateStyling Styling { get; set; }
+    public List<TemplateCondition> Conditions { get; set; }
+    public TemplateScheduling Scheduling { get; set; }
+    public TemplateDelivery Delivery { get; set; }
+    public TemplateCompliance Compliance { get; set; }
+    public TemplateAnalytics Analytics { get; set; }
+    public bool IsActive { get; set; }
+    public bool IsDefault { get; set; }
+    public int Version { get; set; }
+    
+    // Domain methods
+    public bool IsActiveTemplate() => IsActive;
+    public bool IsDefaultTemplate() => IsDefault;
+    public void Activate();
+    public void Deactivate();
+    public void SetAsDefault();
+    public void UpdateVersion(int newVersion);
+    public bool MatchesConditions(Dictionary<string, object> context);
+    public string RenderContent(Dictionary<string, object> variables);
+}
+```
+
+### File Version Entity
+```csharp
+public class FileVersion : BaseEntity
+{
+    [BsonId]
+    public ObjectId Id { get; set; }
+    
+    public ObjectId FileId { get; set; }
+    public int Version { get; set; }
+    public string VersionName { get; set; }
+    public string Changes { get; set; }
+    public string CreatedBy { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public long FileSize { get; set; }
+    public string FileHash { get; set; }
+    public ObjectId StorageLocation { get; set; }
+    public string Path { get; set; }
+    public string Url { get; set; }
+    public FileMetadata Metadata { get; set; }
+    public VersionDiff Diff { get; set; }
+    public bool IsActive { get; set; }
+    public bool IsDeleted { get; set; }
+    public DateTime? DeletedAt { get; set; }
+    public VersionRetention Retention { get; set; }
+    public VersionAccess Access { get; set; }
+    public VersionStatistics Statistics { get; set; }
+    
+    // Domain methods
+    public bool IsCurrentVersion() => IsActive;
+    public bool IsDeletedVersion() => IsDeleted;
+    public void Activate();
+    public void Deactivate();
+    public void Delete();
+    public void Restore();
+    public bool ShouldRetain();
+    public bool CanAccess(string userId);
+    public void RecordDownload(string userId);
+    public void RecordView(string userId);
+}
+```
+
+### User Group Entity
+```csharp
+public class UserGroup : BaseEntity
+{
+    [BsonId]
+    public ObjectId Id { get; set; }
+    
+    public string GroupId { get; set; }
+    public string Name { get; set; }
+    public string Description { get; set; }
+    public string Type { get; set; } // "public", "private", "invite_only"
+    public string Category { get; set; } // "interest", "location", "skill"
+    public List<GroupMember> Members { get; set; }
+    public List<string> Permissions { get; set; }
+    public GroupSettings Settings { get; set; }
+    public GroupContent Content { get; set; }
+    public GroupStatistics Statistics { get; set; }
+    public GroupModeration Moderation { get; set; }
+    public GroupNotifications Notifications { get; set; }
+    public string CreatedBy { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
+    public DateTime LastActivity { get; set; }
+    
+    // Domain methods
+    public bool IsPublic() => Type == "public";
+    public bool IsPrivate() => Type == "private";
+    public bool IsInviteOnly() => Type == "invite_only";
+    public void AddMember(string userId, string role);
+    public void RemoveMember(string userId);
+    public void UpdateMemberRole(string userId, string newRole);
+    public bool IsMember(string userId);
+    public bool IsModerator(string userId);
+    public bool IsAdmin(string userId);
+    public void BanUser(string userId, string reason);
+    public void UnbanUser(string userId);
+    public void UpdateSettings(GroupSettings newSettings);
+}
+```
+
 ## Security Considerations
 
 ### 1. Authentication & Authorization
 - **JWT Tokens**: Use JWT for stateless authentication
+- **Two-Factor Authentication**: Implement 2FA with TOTP and backup codes
+- **Device Management**: Track and manage user devices
+- **Session Management**: Advanced session handling with device binding
 - **Role-based Access**: Implement role-based access control
 - **API Keys**: Support API key authentication for external services
+- **IP Whitelisting**: Restrict access by IP addresses
+- **Geolocation Security**: Location-based access control
 
 ### 2. Data Protection
 - **Input Validation**: Validate all inputs
 - **SQL Injection Prevention**: Use parameterized queries
 - **File Upload Security**: Validate file types and sizes
 - **Path Traversal Prevention**: Prevent directory traversal attacks
+- **Content Moderation**: AI-powered content filtering
+- **Copyright Protection**: DMCA compliance and copyright detection
+- **Data Encryption**: Encrypt sensitive data at rest and in transit
+- **Privacy Controls**: GDPR compliance and data anonymization
 
 ### 3. Infrastructure Security
 - **HTTPS**: Enforce HTTPS for all communications
 - **CORS**: Configure CORS properly
 - **Security Headers**: Add security headers
 - **Logging**: Implement comprehensive security logging
+- **Security Monitoring**: Real-time security event monitoring
+- **Threat Detection**: AI-powered threat detection
+- **Risk Assessment**: Automated risk scoring
+- **Security Policies**: Configurable security policies
 
 ## Monitoring & Observability
 
@@ -1510,6 +1790,10 @@ app.Run();
 - **Cache Health**: Check cache connectivity
 - **External Services**: Check external service health
 - **Custom Health Checks**: Implement custom health checks
+- **System Health Dashboard**: Real-time system health monitoring
+- **Component Health**: Individual component health tracking
+- **Performance Metrics**: System performance monitoring
+- **Dependency Health**: External dependency monitoring
 
 ## Deployment Strategy
 
