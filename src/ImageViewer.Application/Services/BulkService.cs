@@ -167,8 +167,8 @@ public class BulkService : IBulkService
     private static CollectionSettings CreateCollectionSettings(BulkAddCollectionsRequest request)
     {
         var settings = new CollectionSettings();
-        settings.UpdateThumbnailSize(request.ThumbnailWidth ?? 300, request.ThumbnailHeight ?? 300);
-        settings.UpdateCacheSize(request.CacheWidth ?? 1920, request.CacheHeight ?? 1080);
+        settings.UpdateThumbnailSize(request.ThumbnailWidth ?? 300);
+        settings.UpdateCacheSize(request.CacheWidth ?? 1920);
         settings.SetAutoGenerateThumbnails(request.EnableCache ?? true);
         // Map AutoScan to AutoGenerateCache - when AutoScan is true, enable auto cache generation
         settings.SetAutoGenerateCache(request.AutoScan ?? true);

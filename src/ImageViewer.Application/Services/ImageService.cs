@@ -5,6 +5,7 @@ using ImageViewer.Domain.ValueObjects;
 using ImageViewer.Application.Constants;
 using ImageViewer.Application.Options;
 using Microsoft.Extensions.Options;
+using MongoDB.Bson;
 
 namespace ImageViewer.Application.Services;
 
@@ -33,12 +34,12 @@ public class ImageService : IImageService
         _sizeOptions = sizeOptions?.Value ?? new ImageSizeOptions();
     }
 
-    public async Task<Image?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+    public async Task<Image?> GetByIdAsync(ObjectId id, CancellationToken cancellationToken = default)
     {
         try
         {
             _logger.LogDebug("Getting image by ID {ImageId}", id);
-            return await _unitOfWork.Images.GetByIdAsync(id, cancellationToken);
+            return await _unitOfWork.Images.GetByIdAsync(id);
         }
         catch (Exception ex)
         {

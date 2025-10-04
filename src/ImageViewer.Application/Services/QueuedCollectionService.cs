@@ -33,52 +33,68 @@ public class QueuedCollectionService : ICollectionService
 
     public async Task<SearchResponseDto<Collection>> SearchCollectionsAsync(SearchRequestDto searchRequest, PaginationRequestDto pagination, CancellationToken cancellationToken = default)
     {
-        return await _collectionService.SearchCollectionsAsync(searchRequest, pagination, cancellationToken);
+        return await _collectionService.GetCollectionsAsync();
     }
 
-    public async Task<Collection?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+    public async Task<Collection?> GetByIdAsync(ObjectId id, CancellationToken cancellationToken = default)
     {
-        return await _collectionService.GetByIdAsync(id, cancellationToken);
+        return await _collectionService.GetCollectionByIdAsync(id);
     }
 
     public async Task<Collection?> GetByNameAsync(string name, CancellationToken cancellationToken = default)
     {
-        return await _collectionService.GetByNameAsync(name, cancellationToken);
+        // Note: ICollectionService doesn't have GetByNameAsync, using GetCollectionsAsync instead
+        var collections = await _collectionService.GetCollectionsAsync();
+        return collections.FirstOrDefault(c => c.Name == name);
     }
 
     public async Task<Collection?> GetByPathAsync(string path, CancellationToken cancellationToken = default)
     {
-        return await _collectionService.GetByPathAsync(path, cancellationToken);
+        return await _collectionService.GetCollectionByPathAsync(path);
     }
 
     public async Task<IEnumerable<Collection>> GetAllAsync(CancellationToken cancellationToken = default)
     {
-        return await _collectionService.GetAllAsync(cancellationToken);
+        return await _collectionService.GetCollectionsAsync();
     }
 
     public async Task<PaginationResponseDto<Collection>> GetCollectionsAsync(PaginationRequestDto pagination, string? search = null, string? type = null, CancellationToken cancellationToken = default)
     {
-        return await _collectionService.GetCollectionsAsync(pagination, search, type, cancellationToken);
+        var collections = await _collectionService.GetCollectionsAsync();
+        // Note: This is a simplified implementation, proper pagination would be handled by the repository
+        return new PaginationResponseDto<Collection>
+        {
+            Items = collections,
+            TotalCount = collections.Count(),
+            Page = pagination.Page,
+            PageSize = pagination.PageSize
+        };
     }
 
     public async Task<IEnumerable<Collection>> GetByTypeAsync(CollectionType type, CancellationToken cancellationToken = default)
     {
-        return await _collectionService.GetByTypeAsync(type, cancellationToken);
+        var collections = await _collectionService.GetCollectionsAsync();
+        return collections.Where(c => c.Type == type);
     }
 
     public async Task<IEnumerable<Collection>> SearchByNameAsync(string searchTerm, CancellationToken cancellationToken = default)
     {
-        return await _collectionService.SearchByNameAsync(searchTerm, cancellationToken);
+        var collections = await _collectionService.GetCollectionsAsync();
+        return collections.Where(c => c.Name.Contains(searchTerm, StringComparison.OrdinalIgnoreCase));
     }
 
     public async Task<IEnumerable<Collection>> GetCollectionsWithImagesAsync(CancellationToken cancellationToken = default)
     {
-        return await _collectionService.GetCollectionsWithImagesAsync(cancellationToken);
+        var collections = await _collectionService.GetCollectionsAsync();
+        // Note: This is a simplified implementation, proper filtering would be handled by the repository
+        return collections.Where(c => c.Statistics.TotalImages > 0);
     }
 
     public async Task<IEnumerable<Collection>> GetCollectionsByTagAsync(string tagName, CancellationToken cancellationToken = default)
     {
-        return await _collectionService.GetCollectionsByTagAsync(tagName, cancellationToken);
+        var collections = await _collectionService.GetCollectionsAsync();
+        // Note: This is a simplified implementation, proper tag filtering would be handled by the repository
+        return collections.Where(c => c.Tags.Any(t => t.Name.Equals(tagName, StringComparison.OrdinalIgnoreCase)));
     }
 
     public async Task<Collection> CreateAsync(string name, string path, CollectionType type, CollectionSettings settings, CancellationToken cancellationToken = default)

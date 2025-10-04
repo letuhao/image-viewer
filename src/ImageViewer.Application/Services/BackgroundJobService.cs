@@ -154,7 +154,7 @@ public class BackgroundJobService : IBackgroundJobService
             throw new ArgumentException($"Job with ID {jobId} not found");
         }
 
-        await _backgroundJobRepository.DeleteAsync(job);
+        await _backgroundJobRepository.DeleteAsync(job.Id);
 
         _logger.LogInformation("Job deleted: {JobId}", jobId);
     }

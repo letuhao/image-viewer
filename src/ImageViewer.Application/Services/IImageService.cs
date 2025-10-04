@@ -1,4 +1,5 @@
 using ImageViewer.Domain.Entities;
+using MongoDB.Bson;
 
 namespace ImageViewer.Application.Services;
 
@@ -7,30 +8,30 @@ namespace ImageViewer.Application.Services;
 /// </summary>
 public interface IImageService
 {
-    Task<Image?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
-    Task<Image?> GetByCollectionIdAndFilenameAsync(Guid collectionId, string filename, CancellationToken cancellationToken = default);
-    Task<IEnumerable<Image>> GetByCollectionIdAsync(Guid collectionId, CancellationToken cancellationToken = default);
+    Task<Image?> GetByIdAsync(ObjectId id, CancellationToken cancellationToken = default);
+    Task<Image?> GetByCollectionIdAndFilenameAsync(ObjectId collectionId, string filename, CancellationToken cancellationToken = default);
+    Task<IEnumerable<Image>> GetByCollectionIdAsync(ObjectId collectionId, CancellationToken cancellationToken = default);
     Task<IEnumerable<Image>> GetByFormatAsync(string format, CancellationToken cancellationToken = default);
     Task<IEnumerable<Image>> GetBySizeRangeAsync(int minWidth, int minHeight, CancellationToken cancellationToken = default);
     Task<IEnumerable<Image>> GetLargeImagesAsync(long minSizeBytes, CancellationToken cancellationToken = default);
     Task<IEnumerable<Image>> GetHighResolutionImagesAsync(int minWidth, int minHeight, CancellationToken cancellationToken = default);
     
     Task<Image?> GetRandomImageAsync(CancellationToken cancellationToken = default);
-    Task<Image?> GetRandomImageByCollectionAsync(Guid collectionId, CancellationToken cancellationToken = default);
-    Task<Image?> GetNextImageAsync(Guid currentImageId, CancellationToken cancellationToken = default);
-    Task<Image?> GetPreviousImageAsync(Guid currentImageId, CancellationToken cancellationToken = default);
+    Task<Image?> GetRandomImageByCollectionAsync(ObjectId collectionId, CancellationToken cancellationToken = default);
+    Task<Image?> GetNextImageAsync(ObjectId currentImageId, CancellationToken cancellationToken = default);
+    Task<Image?> GetPreviousImageAsync(ObjectId currentImageId, CancellationToken cancellationToken = default);
     
-    Task<byte[]?> GetImageFileAsync(Guid id, CancellationToken cancellationToken = default);
-    Task<byte[]?> GetThumbnailAsync(Guid id, int? width = null, int? height = null, CancellationToken cancellationToken = default);
-    Task<byte[]?> GetCachedImageAsync(Guid id, int? width = null, int? height = null, CancellationToken cancellationToken = default);
+    Task<byte[]?> GetImageFileAsync(ObjectId id, CancellationToken cancellationToken = default);
+    Task<byte[]?> GetThumbnailAsync(ObjectId id, int? width = null, int? height = null, CancellationToken cancellationToken = default);
+    Task<byte[]?> GetCachedImageAsync(ObjectId id, int? width = null, int? height = null, CancellationToken cancellationToken = default);
     
-    Task DeleteAsync(Guid id, CancellationToken cancellationToken = default);
-    Task RestoreAsync(Guid id, CancellationToken cancellationToken = default);
+    Task DeleteAsync(ObjectId id, CancellationToken cancellationToken = default);
+    Task RestoreAsync(ObjectId id, CancellationToken cancellationToken = default);
     
-    Task<long> GetTotalSizeByCollectionAsync(Guid collectionId, CancellationToken cancellationToken = default);
-    Task<int> GetCountByCollectionAsync(Guid collectionId, CancellationToken cancellationToken = default);
+    Task<long> GetTotalSizeByCollectionAsync(ObjectId collectionId, CancellationToken cancellationToken = default);
+    Task<int> GetCountByCollectionAsync(ObjectId collectionId, CancellationToken cancellationToken = default);
     
-    Task GenerateThumbnailAsync(Guid id, int width, int height, CancellationToken cancellationToken = default);
-    Task GenerateCacheAsync(Guid id, int width, int height, CancellationToken cancellationToken = default);
+    Task GenerateThumbnailAsync(ObjectId id, int width, int height, CancellationToken cancellationToken = default);
+    Task GenerateCacheAsync(ObjectId id, int width, int height, CancellationToken cancellationToken = default);
 }
 
