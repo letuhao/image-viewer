@@ -43,7 +43,7 @@ public class BackgroundJob : BaseEntity
 
     public BackgroundJob(string jobType, string description, Dictionary<string, object> parameters)
     {
-        Id = Guid.NewGuid();
+        Id = ObjectId.GenerateNewId();
         JobType = jobType ?? throw new ArgumentNullException(nameof(jobType));
         Status = JobStatus.Pending.ToString();
         Parameters = System.Text.Json.JsonSerializer.Serialize(parameters);
