@@ -180,7 +180,7 @@ public class WindowsDriveService : IWindowsDriveService
         }
     }
 
-    public async Task<IEnumerable<DirectoryInfo>> GetDirectoryStructureAsync(string driveLetter, string? path = null)
+    public async Task<IEnumerable<DirectoryInfoDto>> GetDirectoryStructureAsync(string driveLetter, string? path = null)
     {
         try
         {
@@ -192,10 +192,10 @@ public class WindowsDriveService : IWindowsDriveService
             if (!Directory.Exists(basePath))
             {
                 _logger.LogWarning("Path {Path} does not exist", basePath);
-                return new List<DirectoryInfo>();
+                return new List<DirectoryInfoDto>();
             }
 
-            var directories = new List<DirectoryInfo>();
+            var directories = new List<DirectoryInfoDto>();
             var dirs = Directory.GetDirectories(basePath, "*", SearchOption.TopDirectoryOnly);
 
             foreach (var dir in dirs)

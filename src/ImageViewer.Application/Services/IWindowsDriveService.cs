@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using ImageViewer.Application.DTOs.Files;
 
 namespace ImageViewer.Application.Services;
 
@@ -31,7 +32,7 @@ public interface IWindowsDriveService
     /// <summary>
     /// Get directory structure
     /// </summary>
-    Task<IEnumerable<DirectoryInfo>> GetDirectoryStructureAsync(string driveLetter, string? path = null);
+    Task<IEnumerable<DirectoryInfoDto>> GetDirectoryStructureAsync(string driveLetter, string? path = null);
 
     /// <summary>
     /// Create library from drive
