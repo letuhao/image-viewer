@@ -56,6 +56,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ILibraryService, LibraryService>();
         services.AddScoped<ICollectionService, CollectionService>();
         services.AddScoped<IMediaItemService, MediaItemService>();
+        services.AddScoped<ISearchService, SearchService>();
 
         // Register unit of work
         services.AddScoped<IUnitOfWork, MongoUnitOfWork>(provider =>
