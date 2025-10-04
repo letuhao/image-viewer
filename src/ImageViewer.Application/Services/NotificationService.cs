@@ -435,7 +435,7 @@ public class NotificationService : INotificationService
         }
     }
 
-    public async Task<NotificationAnalytics> GetNotificationAnalyticsAsync(ObjectId? userId = null, DateTime? fromDate = null, DateTime? toDate = null)
+    public Task<NotificationAnalytics> GetNotificationAnalyticsAsync(ObjectId? userId = null, DateTime? fromDate = null, DateTime? toDate = null)
     {
         try
         {
@@ -444,7 +444,7 @@ public class NotificationService : INotificationService
 
             // TODO: Implement when analytics repository is available
             // For now, return placeholder analytics
-            return new NotificationAnalytics
+            var analytics = new NotificationAnalytics
             {
                 UserId = userId,
                 FromDate = from,
@@ -460,6 +460,7 @@ public class NotificationService : INotificationService
                 SentByMethod = new Dictionary<NotificationDeliveryMethod, long>(),
                 DailyStatistics = new List<NotificationStatistic>()
             };
+            return Task.FromResult(analytics);
         }
         catch (Exception ex)
         {
@@ -468,13 +469,13 @@ public class NotificationService : INotificationService
         }
     }
 
-    public async Task<IEnumerable<NotificationStatistic>> GetNotificationStatisticsAsync(DateTime? fromDate = null, DateTime? toDate = null)
+    public Task<IEnumerable<NotificationStatistic>> GetNotificationStatisticsAsync(DateTime? fromDate = null, DateTime? toDate = null)
     {
         try
         {
             // TODO: Implement when statistics repository is available
             // For now, return empty list
-            return new List<NotificationStatistic>();
+            return Task.FromResult<IEnumerable<NotificationStatistic>>(new List<NotificationStatistic>());
         }
         catch (Exception ex)
         {

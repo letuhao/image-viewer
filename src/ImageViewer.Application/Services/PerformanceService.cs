@@ -445,7 +445,7 @@ public class PerformanceService : IPerformanceService
         }
     }
 
-    public async Task<LazyLoadingStatistics> GetLazyLoadingStatisticsAsync()
+    public Task<LazyLoadingStatistics> GetLazyLoadingStatisticsAsync()
     {
         try
         {
@@ -470,13 +470,13 @@ public class PerformanceService : IPerformanceService
         }
     }
 
-    public async Task<PerformanceMetrics> GetPerformanceMetricsAsync()
+    public Task<PerformanceMetrics> GetPerformanceMetricsAsync()
     {
         try
         {
             // TODO: Implement when performance metrics repository is available
             // For now, return placeholder metrics
-            return new PerformanceMetrics
+            var metrics = new PerformanceMetrics
             {
                 Id = ObjectId.GenerateNewId(),
                 Timestamp = DateTime.UtcNow,
@@ -489,6 +489,7 @@ public class PerformanceService : IPerformanceService
                 ErrorRate = 0,
                 CustomMetrics = new Dictionary<string, object>()
             };
+            return Task.FromResult(metrics);
         }
         catch (Exception ex)
         {
@@ -497,7 +498,7 @@ public class PerformanceService : IPerformanceService
         }
     }
 
-    public async Task<PerformanceMetrics> GetPerformanceMetricsByTimeRangeAsync(DateTime fromDate, DateTime toDate)
+    public Task<PerformanceMetrics> GetPerformanceMetricsByTimeRangeAsync(DateTime fromDate, DateTime toDate)
     {
         try
         {
@@ -506,7 +507,7 @@ public class PerformanceService : IPerformanceService
 
             // TODO: Implement when performance metrics repository is available
             // For now, return placeholder metrics
-            return new PerformanceMetrics
+            var metrics = new PerformanceMetrics
             {
                 Id = ObjectId.GenerateNewId(),
                 Timestamp = DateTime.UtcNow,
@@ -519,6 +520,7 @@ public class PerformanceService : IPerformanceService
                 ErrorRate = 0,
                 CustomMetrics = new Dictionary<string, object>()
             };
+            return Task.FromResult(metrics);
         }
         catch (Exception ex) when (!(ex is ValidationException))
         {
@@ -527,7 +529,7 @@ public class PerformanceService : IPerformanceService
         }
     }
 
-    public async Task<PerformanceReport> GeneratePerformanceReportAsync(DateTime? fromDate = null, DateTime? toDate = null)
+    public Task<PerformanceReport> GeneratePerformanceReportAsync(DateTime? fromDate = null, DateTime? toDate = null)
     {
         try
         {
@@ -539,7 +541,7 @@ public class PerformanceService : IPerformanceService
 
             // TODO: Implement when performance report repository is available
             // For now, return placeholder report
-            return new PerformanceReport
+            var report = new PerformanceReport
             {
                 Id = ObjectId.GenerateNewId(),
                 GeneratedAt = DateTime.UtcNow,
@@ -559,6 +561,7 @@ public class PerformanceService : IPerformanceService
                 Metrics = new List<PerformanceMetrics>(),
                 Recommendations = new List<PerformanceRecommendation>()
             };
+            return Task.FromResult(report);
         }
         catch (Exception ex) when (!(ex is ValidationException))
         {
