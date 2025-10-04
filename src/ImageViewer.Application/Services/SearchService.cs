@@ -478,7 +478,7 @@ public class SearchService : ISearchService
                 query + " libraries"
             };
 
-            return suggestions.Take(limit);
+            return Task.FromResult<IEnumerable<string>>(suggestions.Take(limit));
         }
         catch (Exception ex)
         {
@@ -503,7 +503,7 @@ public class SearchService : ISearchService
                 partialQuery + "c"
             };
 
-            return completions.Take(limit);
+            return Task.FromResult<IEnumerable<string>>(completions.Take(limit));
         }
         catch (Exception ex)
         {
