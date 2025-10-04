@@ -1,0 +1,38 @@
+---
+description: Project-specific rules for ImageViewer Platform
+alwaysApply: true
+---
+
+# Project Rules - ImageViewer Platform
+
+## File Organization
+- One class/interface/enum per file
+- Use English names for properties
+- Add comments in both Chinese and Vietnamese when needed
+
+## Data Types
+- Use int64 for all integers
+- Use double for all float numbers
+- Use ObjectId for MongoDB IDs
+
+## Performance
+- Performance is critical for game-like features
+- Avoid excessive flexibility that could slow down the system
+- Optimize for speed over flexibility
+
+## Testing
+- Place test files in the test folder
+- Use strong typing instead of 'any' type
+- Create interfaces for all config objects
+
+## Development
+- Don't start servers automatically
+- User controls when servers are started
+- Use hot reload when available
+- Don't build/run app after changing source code
+
+## Architecture
+- Follow SOLID principles
+- Use dependency injection
+- Implement proper error handling
+- Use structured logging

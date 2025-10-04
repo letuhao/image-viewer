@@ -1,0 +1,47 @@
+---
+description: Simplified C# coding rules for ImageViewer Platform
+alwaysApply: true
+---
+
+# C# Rules - ImageViewer Platform
+
+## Naming
+- PascalCase: Classes, Methods, Properties (`UserService`, `GetUserAsync()`)
+- camelCase: Variables, Parameters (`userId`, `userName`)
+- Prefix: Interfaces with "I" (`IUserService`), Private fields with "_" (`_logger`)
+
+## Structure
+- One class per file
+- Namespace: `ImageViewer.{Layer}.{Feature}`
+- Async methods end with "Async"
+- Use `ObjectId` for MongoDB IDs
+
+## MongoDB
+- Use `[BsonId]` for ID properties
+- Use `[BsonIgnore]` for navigation properties
+- Embedded documents for related data
+- References for independent data
+
+## API
+- RESTful URLs: `/api/v1/collections`
+- HTTP status codes: 200, 201, 400, 404, 500
+- Use DTOs for requests/responses
+- Global exception handling
+
+## Testing
+- Test naming: `MethodName_Scenario_ExpectedResult`
+- Use Moq for mocking
+- AAA pattern: Arrange, Act, Assert
+- Minimum 80% code coverage
+
+## Security
+- Validate all inputs
+- Use JWT authentication
+- Encrypt sensitive data
+- Use HTTPS
+
+## Performance
+- Use async/await
+- Implement caching
+- Use projection for MongoDB queries
+- Monitor query performance
