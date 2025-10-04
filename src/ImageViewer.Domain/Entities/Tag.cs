@@ -1,4 +1,5 @@
 using ImageViewer.Domain.ValueObjects;
+using MongoDB.Bson;
 
 namespace ImageViewer.Domain.Entities;
 
@@ -78,7 +79,7 @@ public class Tag : BaseEntity
         IncrementUsage();
     }
 
-    public void RemoveCollectionTag(Guid collectionId)
+    public void RemoveCollectionTag(ObjectId collectionId)
     {
         var collectionTag = _collectionTags.FirstOrDefault(ct => ct.CollectionId == collectionId);
         if (collectionTag == null)
