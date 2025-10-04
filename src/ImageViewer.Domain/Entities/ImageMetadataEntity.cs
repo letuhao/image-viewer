@@ -7,7 +7,7 @@ namespace ImageViewer.Domain.Entities;
 /// </summary>
 public class ImageMetadataEntity : BaseEntity
 {
-    public Guid Id { get; private set; }
+    public new Guid Id { get; private set; }
     public Guid ImageId { get; private set; }
     public int Quality { get; private set; }
     public string? ColorSpace { get; private set; }
@@ -17,8 +17,8 @@ public class ImageMetadataEntity : BaseEntity
     public string? Camera { get; private set; }
     public string? Software { get; private set; }
     public string AdditionalMetadataJson { get; private set; } = "{}";
-    public DateTime CreatedAt { get; private set; }
-    public DateTime UpdatedAt { get; private set; }
+    public new DateTime CreatedAt { get; private set; }
+    public new DateTime UpdatedAt { get; private set; }
     public bool IsDeleted { get; private set; }
     public DateTime? DeletedAt { get; private set; }
 

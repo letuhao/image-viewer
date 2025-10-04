@@ -7,7 +7,7 @@ namespace ImageViewer.Domain.Entities;
 /// </summary>
 public class CacheFolder : BaseEntity
 {
-    public Guid Id { get; private set; }
+    public new Guid Id { get; private set; }
     public string Name { get; private set; }
     public string Path { get; private set; }
     public long MaxSizeBytes { get; private set; }
@@ -18,8 +18,8 @@ public class CacheFolder : BaseEntity
     public long CurrentSize => CurrentSizeBytes;
     public int Priority { get; private set; }
     public bool IsActive { get; private set; }
-    public DateTime CreatedAt { get; private set; }
-    public DateTime UpdatedAt { get; private set; }
+    public new DateTime CreatedAt { get; private set; }
+    public new DateTime UpdatedAt { get; private set; }
 
     // Navigation properties
     private readonly List<CollectionCacheBinding> _bindings = new();

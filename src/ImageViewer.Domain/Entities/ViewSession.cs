@@ -7,7 +7,7 @@ namespace ImageViewer.Domain.Entities;
 /// </summary>
 public class ViewSession : BaseEntity
 {
-    public Guid Id { get; private set; }
+    public new Guid Id { get; private set; }
     public Guid CollectionId { get; private set; }
     public Guid? CurrentImageId { get; private set; }
     public ViewSessionSettings Settings { get; private set; }

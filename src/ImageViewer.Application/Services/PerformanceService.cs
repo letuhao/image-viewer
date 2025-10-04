@@ -20,13 +20,13 @@ public class PerformanceService : IPerformanceService
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    public async Task<CacheInfo> GetCacheInfoAsync()
+    public Task<CacheInfo> GetCacheInfoAsync()
     {
         try
         {
             // TODO: Implement when cache repository is available
             // For now, return placeholder cache info
-            return new CacheInfo
+            var cacheInfo = new CacheInfo
             {
                 Id = ObjectId.GenerateNewId(),
                 Type = CacheType.System,
@@ -37,6 +37,7 @@ public class PerformanceService : IPerformanceService
                 IsOptimized = true,
                 Status = "Active"
             };
+            return Task.FromResult(cacheInfo);
         }
         catch (Exception ex)
         {
@@ -97,13 +98,13 @@ public class PerformanceService : IPerformanceService
         }
     }
 
-    public async Task<CacheStatistics> GetCacheStatisticsAsync()
+    public Task<CacheStatistics> GetCacheStatisticsAsync()
     {
         try
         {
             // TODO: Implement when cache repository is available
             // For now, return placeholder statistics
-            return new CacheStatistics
+            var statistics = new CacheStatistics
             {
                 TotalSize = 0,
                 TotalItems = 0,
@@ -114,6 +115,7 @@ public class PerformanceService : IPerformanceService
                 LastReset = DateTime.UtcNow,
                 CacheByType = new Dictionary<CacheType, CacheInfo>()
             };
+            return Task.FromResult(statistics);
         }
         catch (Exception ex)
         {

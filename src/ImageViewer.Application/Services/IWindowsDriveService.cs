@@ -26,17 +26,17 @@ public interface IWindowsDriveService
     /// <summary>
     /// Scan drive for media files
     /// </summary>
-    Task<IEnumerable<MediaFileInfo>> ScanDriveForMediaAsync(string driveLetter, string[] extensions = null);
+    Task<IEnumerable<MediaFileInfo>> ScanDriveForMediaAsync(string driveLetter, string[]? extensions = null);
 
     /// <summary>
     /// Get directory structure
     /// </summary>
-    Task<IEnumerable<DirectoryInfo>> GetDirectoryStructureAsync(string driveLetter, string path = null);
+    Task<IEnumerable<DirectoryInfo>> GetDirectoryStructureAsync(string driveLetter, string? path = null);
 
     /// <summary>
     /// Create library from drive
     /// </summary>
-    Task<string> CreateLibraryFromDriveAsync(string driveLetter, string libraryName, string description = null);
+    Task<string> CreateLibraryFromDriveAsync(string driveLetter, string libraryName, string? description = null);
 
     /// <summary>
     /// Monitor drive for changes

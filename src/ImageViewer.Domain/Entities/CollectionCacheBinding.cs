@@ -5,10 +5,10 @@ namespace ImageViewer.Domain.Entities;
 /// </summary>
 public class CollectionCacheBinding : BaseEntity
 {
-    public Guid Id { get; private set; }
+    public new Guid Id { get; private set; }
     public Guid CollectionId { get; private set; }
     public Guid CacheFolderId { get; private set; }
-    public DateTime CreatedAt { get; private set; }
+    public new DateTime CreatedAt { get; private set; }
 
     // Navigation properties
     public Collection Collection { get; private set; } = null!;

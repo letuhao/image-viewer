@@ -9,7 +9,7 @@ namespace ImageViewer.Domain.Entities;
 public class Image : BaseEntity
 {
     [BsonId]
-    public Guid Id { get; private set; }
+    public new Guid Id { get; private set; }
     public Guid CollectionId { get; private set; }
     public string Filename { get; private set; }
     public string RelativePath { get; private set; }
@@ -19,8 +19,8 @@ public class Image : BaseEntity
     public int Height { get; private set; }
     public string Format { get; private set; }
     public int ViewCount { get; private set; }
-    public DateTime CreatedAt { get; private set; }
-    public DateTime UpdatedAt { get; private set; }
+    public new DateTime CreatedAt { get; private set; }
+    public new DateTime UpdatedAt { get; private set; }
     public bool IsDeleted { get; private set; }
     public DateTime? DeletedAt { get; private set; }
 

@@ -7,7 +7,7 @@ namespace ImageViewer.Domain.Entities;
 /// </summary>
 public class BackgroundJob : BaseEntity
 {
-    public Guid Id { get; private set; }
+    public new Guid Id { get; private set; }
     public string JobType { get; private set; }
     public string Status { get; private set; }
     public string? Parameters { get; private set; }
@@ -20,7 +20,7 @@ public class BackgroundJob : BaseEntity
     public string? Message { get; private set; }
     public List<string>? Errors { get; private set; }
     public DateTime? EstimatedCompletion { get; private set; }
-    public DateTime CreatedAt { get; private set; }
+    public new DateTime CreatedAt { get; private set; }
     public DateTime? StartedAt { get; private set; }
     public DateTime? CompletedAt { get; private set; }
 

@@ -76,7 +76,7 @@ public class WindowsDriveService : IWindowsDriveService
             if (!Directory.Exists(drivePath))
             {
                 _logger.LogWarning("Drive {DriveLetter} is not accessible", driveLetter);
-                return null;
+                return null!;
             }
 
             var systemDrive = new System.IO.DriveInfo(driveLetter);
@@ -105,7 +105,7 @@ public class WindowsDriveService : IWindowsDriveService
         }
     }
 
-    public async Task<IEnumerable<MediaFileInfo>> ScanDriveForMediaAsync(string driveLetter, string[] extensions = null)
+    public async Task<IEnumerable<MediaFileInfo>> ScanDriveForMediaAsync(string driveLetter, string[]? extensions = null)
     {
         try
         {
@@ -180,7 +180,7 @@ public class WindowsDriveService : IWindowsDriveService
         }
     }
 
-    public async Task<IEnumerable<DirectoryInfo>> GetDirectoryStructureAsync(string driveLetter, string path = null)
+    public async Task<IEnumerable<DirectoryInfo>> GetDirectoryStructureAsync(string driveLetter, string? path = null)
     {
         try
         {
@@ -233,7 +233,7 @@ public class WindowsDriveService : IWindowsDriveService
         }
     }
 
-    public async Task<string> CreateLibraryFromDriveAsync(string driveLetter, string libraryName, string description = null)
+    public async Task<string> CreateLibraryFromDriveAsync(string driveLetter, string libraryName, string? description = null)
     {
         try
         {
@@ -395,7 +395,7 @@ public class WindowsDriveService : IWindowsDriveService
         }
     }
 
-    private void OnFileSystemEvent(string driveLetter, string eventType, string fullPath, string oldFullPath = null)
+    private void OnFileSystemEvent(string driveLetter, string eventType, string fullPath, string? oldFullPath = null)
     {
         try
         {

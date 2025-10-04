@@ -7,7 +7,7 @@ namespace ImageViewer.Domain.Entities;
 /// </summary>
 public class CollectionSettingsEntity : BaseEntity
 {
-    public Guid Id { get; private set; }
+    public new Guid Id { get; private set; }
     public Guid CollectionId { get; private set; }
     public int TotalImages { get; private set; }
     public long TotalSizeBytes { get; private set; }
@@ -19,8 +19,8 @@ public class CollectionSettingsEntity : BaseEntity
     public bool AutoGenerateCache { get; private set; }
     public TimeSpan CacheExpiration { get; private set; }
     public string AdditionalSettingsJson { get; private set; } = "{}";
-    public DateTime CreatedAt { get; private set; }
-    public DateTime UpdatedAt { get; private set; }
+    public new DateTime CreatedAt { get; private set; }
+    public new DateTime UpdatedAt { get; private set; }
     public bool IsDeleted { get; private set; }
     public DateTime? DeletedAt { get; private set; }
 

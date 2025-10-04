@@ -7,13 +7,13 @@ namespace ImageViewer.Domain.Entities;
 /// </summary>
 public class Tag : BaseEntity
 {
-    public Guid Id { get; private set; }
+    public new Guid Id { get; private set; }
     public string Name { get; private set; }
     public string Description { get; private set; }
     public TagColor Color { get; private set; }
     public int UsageCount { get; private set; }
-    public DateTime CreatedAt { get; private set; }
-    public DateTime UpdatedAt { get; private set; }
+    public new DateTime CreatedAt { get; private set; }
+    public new DateTime UpdatedAt { get; private set; }
 
     // Navigation properties
     private readonly List<CollectionTag> _collectionTags = new();
