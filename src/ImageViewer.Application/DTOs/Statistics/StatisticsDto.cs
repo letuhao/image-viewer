@@ -114,7 +114,7 @@ public class StorageStatisticsDto
 /// </summary>
 public class CacheFolderStorageDto
 {
-    public Guid Id { get; set; }
+    public ObjectId Id { get; set; }
     public string Name { get; set; } = string.Empty;
     public string Path { get; set; } = string.Empty;
     public long MaxSize { get; set; }
