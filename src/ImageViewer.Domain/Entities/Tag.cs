@@ -8,7 +8,7 @@ namespace ImageViewer.Domain.Entities;
 /// </summary>
 public class Tag : BaseEntity
 {
-    public new Guid Id { get; private set; }
+    public new ObjectId Id { get; private set; }
     public string Name { get; private set; }
     public string Description { get; private set; }
     public TagColor Color { get; private set; }
@@ -25,7 +25,7 @@ public class Tag : BaseEntity
 
     public Tag(string name, string description = "", TagColor? color = null)
     {
-        Id = Guid.NewGuid();
+        Id = ObjectId.GenerateNewId();
         Name = name ?? throw new ArgumentNullException(nameof(name));
         Description = description ?? "";
         Color = color ?? TagColor.Default;

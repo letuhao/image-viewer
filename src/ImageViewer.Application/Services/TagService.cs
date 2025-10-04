@@ -109,7 +109,7 @@ public class TagService : ITagService
             throw new ArgumentException($"Tag {tagName} not found in collection {collectionId}");
         }
 
-        await _collectionTagRepository.DeleteAsync(collectionTag);
+        await _collectionTagRepository.DeleteAsync(collectionTag.Id);
         // Repository automatically saves changes in MongoDB
 
         _logger.LogInformation("Tag {TagName} removed from collection: {CollectionId}", tagName, collectionId);
