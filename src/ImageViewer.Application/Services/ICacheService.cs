@@ -26,17 +26,17 @@ public interface ICacheService
     /// <summary>
     /// Update cache folder
     /// </summary>
-    Task<CacheFolderDto> UpdateCacheFolderAsync(Guid id, UpdateCacheFolderDto dto);
+    Task<CacheFolderDto> UpdateCacheFolderAsync(ObjectId id, UpdateCacheFolderDto dto);
 
     /// <summary>
     /// Delete cache folder
     /// </summary>
-    Task DeleteCacheFolderAsync(Guid id);
+    Task DeleteCacheFolderAsync(ObjectId id);
 
     /// <summary>
     /// Get cache folder by ID
     /// </summary>
-    Task<CacheFolderDto> GetCacheFolderAsync(Guid id);
+    Task<CacheFolderDto> GetCacheFolderAsync(ObjectId id);
 
     /// <summary>
     /// Clear cache for collection

@@ -194,14 +194,14 @@ public class ImageService : IImageService
         {
             _logger.LogDebug("Getting image file for {ImageId}", id);
 
-            var image = await _unitOfWork.Images.GetByIdAsync(id, cancellationToken);
+            var image = await _unitOfWork.Images.GetByIdAsync(id);
             if (image == null)
             {
                 _logger.LogWarning("Image {ImageId} not found", id);
                 return null;
             }
 
-            var collection = await _unitOfWork.Collections.GetByIdAsync(image.CollectionId, cancellationToken);
+            var collection = await _unitOfWork.Collections.GetByIdAsync(image.CollectionId);
             if (collection == null)
             {
                 _logger.LogWarning("Collection for image {ImageId} not found", id);
@@ -230,7 +230,7 @@ public class ImageService : IImageService
         {
             _logger.LogDebug("Getting thumbnail for {ImageId} with size {Width}x{Height}", id, width, height);
 
-            var image = await _unitOfWork.Images.GetByIdAsync(id, cancellationToken);
+            var image = await _unitOfWork.Images.GetByIdAsync(id);
             if (image == null)
             {
                 _logger.LogWarning("Image {ImageId} not found", id);
@@ -241,7 +241,7 @@ public class ImageService : IImageService
             var thumbnailHeight = height ?? _sizeOptions.ThumbnailHeight;
 
             // Generate thumbnail directly (avoid conflicting with collection cache entry)
-            var collection = await _unitOfWork.Collections.GetByIdAsync(image.CollectionId, cancellationToken);
+            var collection = await _unitOfWork.Collections.GetByIdAsync(image.CollectionId);
             if (collection == null)
             {
                 _logger.LogWarning("Collection for image {ImageId} not found", id);
@@ -273,7 +273,7 @@ public class ImageService : IImageService
         {
             _logger.LogDebug("Getting cached image for {ImageId} with size {Width}x{Height}", id, width, height);
 
-            var image = await _unitOfWork.Images.GetByIdAsync(id, cancellationToken);
+            var image = await _unitOfWork.Images.GetByIdAsync(id);
             if (image == null)
             {
                 _logger.LogWarning("Image {ImageId} not found", id);
@@ -293,7 +293,7 @@ public class ImageService : IImageService
             }
 
             // Generate cached image
-            var collection = await _unitOfWork.Collections.GetByIdAsync(image.CollectionId, cancellationToken);
+            var collection = await _unitOfWork.Collections.GetByIdAsync(image.CollectionId);
             if (collection == null)
             {
                 _logger.LogWarning("Collection for image {ImageId} not found", id);
@@ -328,14 +328,14 @@ public class ImageService : IImageService
         {
             _logger.LogInformation("Deleting image {ImageId}", id);
 
-            var image = await _unitOfWork.Images.GetByIdAsync(id, cancellationToken);
+            var image = await _unitOfWork.Images.GetByIdAsync(id);
             if (image == null)
             {
                 throw new InvalidOperationException($"Image with ID '{id}' not found");
             }
 
             image.SoftDelete();
-            await _unitOfWork.Images.UpdateAsync(image, cancellationToken);
+            await _unitOfWork.Images.UpdateAsync(image);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
 
             _logger.LogInformation("Successfully deleted image {ImageId}", id);
@@ -353,14 +353,14 @@ public class ImageService : IImageService
         {
             _logger.LogInformation("Restoring image {ImageId}", id);
 
-            var image = await _unitOfWork.Images.GetByIdAsync(id, cancellationToken);
+            var image = await _unitOfWork.Images.GetByIdAsync(id);
             if (image == null)
             {
                 throw new InvalidOperationException($"Image with ID '{id}' not found");
             }
 
             image.Restore();
-            await _unitOfWork.Images.UpdateAsync(image, cancellationToken);
+            await _unitOfWork.Images.UpdateAsync(image);
             await _unitOfWork.SaveChangesAsync(cancellationToken);
 
             _logger.LogInformation("Successfully restored image {ImageId}", id);
@@ -406,13 +406,13 @@ public class ImageService : IImageService
         {
             _logger.LogInformation("Generating thumbnail for image {ImageId} with size {Width}x{Height}", id, width, height);
 
-            var image = await _unitOfWork.Images.GetByIdAsync(id, cancellationToken);
+            var image = await _unitOfWork.Images.GetByIdAsync(id);
             if (image == null)
             {
                 throw new InvalidOperationException($"Image with ID '{id}' not found");
             }
 
-            var collection = await _unitOfWork.Collections.GetByIdAsync(image.CollectionId, cancellationToken);
+            var collection = await _unitOfWork.Collections.GetByIdAsync(image.CollectionId);
             if (collection == null)
             {
                 throw new InvalidOperationException($"Collection for image {id} not found");
@@ -444,13 +444,13 @@ public class ImageService : IImageService
         {
             _logger.LogInformation("Generating cache for image {ImageId} with size {Width}x{Height}", id, width, height);
 
-            var image = await _unitOfWork.Images.GetByIdAsync(id, cancellationToken);
+            var image = await _unitOfWork.Images.GetByIdAsync(id);
             if (image == null)
             {
                 throw new InvalidOperationException($"Image with ID '{id}' not found");
             }
 
-            var collection = await _unitOfWork.Collections.GetByIdAsync(image.CollectionId, cancellationToken);
+            var collection = await _unitOfWork.Collections.GetByIdAsync(image.CollectionId);
             if (collection == null)
             {
                 throw new InvalidOperationException($"Collection for image {id} not found");

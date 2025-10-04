@@ -1,4 +1,5 @@
 using ImageViewer.Domain.Enums;
+using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
 namespace ImageViewer.Domain.Entities;
@@ -9,8 +10,8 @@ namespace ImageViewer.Domain.Entities;
 public class Image : BaseEntity
 {
     [BsonId]
-    public new Guid Id { get; private set; }
-    public Guid CollectionId { get; private set; }
+    public new ObjectId Id { get; private set; }
+    public ObjectId CollectionId { get; private set; }
     public string Filename { get; private set; }
     public string RelativePath { get; private set; }
     public long FileSize { get; private set; }
@@ -39,10 +40,10 @@ public class Image : BaseEntity
     // Private constructor for EF Core
     private Image() { }
 
-    public Image(Guid collectionId, string filename, string relativePath, long fileSize, 
+    public Image(ObjectId collectionId, string filename, string relativePath, long fileSize, 
         int width, int height, string format)
     {
-        Id = Guid.NewGuid();
+        Id = ObjectId.GenerateNewId();
         CollectionId = collectionId;
         Filename = filename ?? throw new ArgumentNullException(nameof(filename));
         RelativePath = relativePath ?? throw new ArgumentNullException(nameof(relativePath));

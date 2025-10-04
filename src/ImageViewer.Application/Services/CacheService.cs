@@ -134,7 +134,7 @@ public class CacheService : ICacheService
         };
     }
 
-    public async Task<CacheFolderDto> UpdateCacheFolderAsync(Guid id, UpdateCacheFolderDto dto)
+    public async Task<CacheFolderDto> UpdateCacheFolderAsync(ObjectId id, UpdateCacheFolderDto dto)
     {
         _logger.LogInformation("Updating cache folder: {Id}", id);
 
@@ -168,7 +168,7 @@ public class CacheService : ICacheService
         };
     }
 
-    public async Task DeleteCacheFolderAsync(Guid id)
+    public async Task DeleteCacheFolderAsync(ObjectId id)
     {
         _logger.LogInformation("Deleting cache folder: {Id}", id);
 
@@ -178,12 +178,12 @@ public class CacheService : ICacheService
             throw new ArgumentException($"Cache folder with ID {id} not found");
         }
 
-        await _cacheFolderRepository.DeleteAsync(cacheFolder);
+        await _cacheFolderRepository.DeleteAsync(cacheFolder.Id);
 
         _logger.LogInformation("Cache folder deleted: {Id}", id);
     }
 
-    public async Task<CacheFolderDto> GetCacheFolderAsync(Guid id)
+    public async Task<CacheFolderDto> GetCacheFolderAsync(ObjectId id)
     {
         _logger.LogInformation("Getting cache folder: {Id}", id);
 
