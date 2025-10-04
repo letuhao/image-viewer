@@ -383,7 +383,7 @@ public class PerformanceService : IPerformanceService
         {
             // TODO: Implement when lazy loading repository is available
             // For now, return placeholder info
-            return new LazyLoadingInfo
+            return Task.FromResult(new LazyLoadingInfo
             {
                 Id = ObjectId.GenerateNewId(),
                 IsEnabled = true,
@@ -395,7 +395,7 @@ public class PerformanceService : IPerformanceService
                 PreloadTimeout = 5000,
                 Status = "Active",
                 LastConfigured = DateTime.UtcNow
-            };
+            });
         }
         catch (Exception ex)
         {
@@ -424,7 +424,7 @@ public class PerformanceService : IPerformanceService
             // TODO: Implement when lazy loading repository is available
             _logger.LogInformation("Configured lazy loading with batch size {BatchSize}", request.BatchSize);
             
-            return new LazyLoadingInfo
+            return Task.FromResult(new LazyLoadingInfo
             {
                 Id = ObjectId.GenerateNewId(),
                 IsEnabled = request.EnableLazyLoading,
@@ -436,7 +436,7 @@ public class PerformanceService : IPerformanceService
                 PreloadTimeout = request.PreloadTimeout,
                 Status = "Configured",
                 LastConfigured = DateTime.UtcNow
-            };
+            });
         }
         catch (Exception ex) when (!(ex is ValidationException))
         {
