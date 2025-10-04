@@ -1,4 +1,5 @@
 using ImageViewer.Domain.Entities;
+using MongoDB.Bson;
 
 namespace ImageViewer.Domain.Interfaces;
 
@@ -10,7 +11,7 @@ public interface IViewSessionRepository : IRepository<ViewSession>
     /// <summary>
     /// Get view sessions by collection ID
     /// </summary>
-    Task<IEnumerable<ViewSession>> GetByCollectionIdAsync(Guid collectionId);
+    Task<IEnumerable<ViewSession>> GetByCollectionIdAsync(ObjectId collectionId);
 
     /// <summary>
     /// Get view sessions by user ID
