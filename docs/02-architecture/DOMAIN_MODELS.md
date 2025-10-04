@@ -1954,6 +1954,647 @@ public class ContentPopularity : AggregateRoot<ObjectId>
 }
 ```
 
+## 🚀 Missing Features Domain Models
+
+### 1. Content Moderation Aggregate
+
+#### ContentModeration Entity
+```csharp
+public class ContentModeration : AggregateRoot<ObjectId>
+{
+    [BsonId]
+    public ObjectId Id { get; private set; }
+    
+    public ObjectId ContentId { get; private set; }
+    public string ContentType { get; private set; } // "collection", "media", "comment", "message"
+    public ModerationStatus Status { get; private set; }
+    public string ModerationReason { get; private set; }
+    public List<FlaggedBy> FlaggedBy { get; private set; }
+    public string ModeratedBy { get; private set; }
+    public DateTime? ModeratedAt { get; private set; }
+    public string ModerationNotes { get; private set; }
+    public AIAnalysis AIAnalysis { get; private set; }
+    public HumanReview HumanReview { get; private set; }
+    public List<Appeal> Appeals { get; private set; }
+    public List<ModerationAction> Actions { get; private set; }
+    public ModerationStatistics Statistics { get; private set; }
+    
+    // Domain methods
+    public bool IsPending() => Status == ModerationStatus.Pending;
+    public bool IsApproved() => Status == ModerationStatus.Approved;
+    public bool IsRejected() => Status == ModerationStatus.Rejected;
+    
+    public void FlagContent(string userId, string reason, string details)
+    {
+        var flaggedBy = new FlaggedBy(userId, reason, DateTime.UtcNow, details);
+        FlaggedBy.Add(flaggedBy);
+        Status = ModerationStatus.Flagged;
+        Statistics.IncrementFlagCount();
+        
+        AddDomainEvent(new ContentFlaggedEvent(Id, ContentId, userId, reason));
+    }
+    
+    public void ModerateContent(string moderatorId, ModerationStatus status, string notes)
+    {
+        ModeratedBy = moderatorId;
+        ModeratedAt = DateTime.UtcNow;
+        ModerationNotes = notes;
+        Status = status;
+        
+        AddDomainEvent(new ContentModeratedEvent(Id, ContentId, moderatorId, status));
+    }
+    
+    public void AppealDecision(string userId, string reason)
+    {
+        var appeal = new Appeal(userId, reason, DateTime.UtcNow);
+        Appeals.Add(appeal);
+        Statistics.IncrementAppealCount();
+        
+        AddDomainEvent(new ContentAppealedEvent(Id, ContentId, userId, reason));
+    }
+}
+```
+
+#### ModerationStatus Value Object
+```csharp
+public class ModerationStatus : ValueObject
+{
+    public static readonly ModerationStatus Pending = new("pending");
+    public static readonly ModerationStatus Approved = new("approved");
+    public static readonly ModerationStatus Rejected = new("rejected");
+    public static readonly ModerationStatus Flagged = new("flagged");
+    public static readonly ModerationStatus UnderReview = new("under_review");
+    
+    public string Value { get; private set; }
+    
+    private ModerationStatus(string value)
+    {
+        Value = value;
+    }
+    
+    protected override IEnumerable<object> GetEqualityComponents()
+    {
+        yield return Value;
+    }
+}
+```
+
+### 2. Copyright Management Aggregate
+
+#### CopyrightManagement Entity
+```csharp
+public class CopyrightManagement : AggregateRoot<ObjectId>
+{
+    [BsonId]
+    public ObjectId Id { get; private set; }
+    
+    public ObjectId ContentId { get; private set; }
+    public string ContentType { get; private set; }
+    public CopyrightStatus Status { get; private set; }
+    public LicenseInfo License { get; private set; }
+    public AttributionInfo Attribution { get; private set; }
+    public OwnershipInfo Ownership { get; private set; }
+    public DMCAInfo DMCA { get; private set; }
+    public FairUseInfo FairUse { get; private set; }
+    public List<Permission> Permissions { get; private set; }
+    public List<Violation> Violations { get; private set; }
+    
+    // Domain methods
+    public bool IsOriginal() => Status == CopyrightStatus.Original;
+    public bool IsLicensed() => Status == CopyrightStatus.Licensed;
+    public bool IsFairUse() => Status == CopyrightStatus.FairUse;
+    
+    public void ClaimOwnership(string userId, string verificationMethod)
+    {
+        Ownership = new OwnershipInfo(userId, DateTime.UtcNow, true, verificationMethod);
+        Status = CopyrightStatus.Original;
+        
+        AddDomainEvent(new OwnershipClaimedEvent(Id, ContentId, userId));
+    }
+    
+    public void ReportDMCA(string reporterId, string reportId)
+    {
+        DMCA = new DMCAInfo(true, reportId, reporterId, DateTime.UtcNow, DMCAStatus.Pending);
+        
+        AddDomainEvent(new DMCAReportedEvent(Id, ContentId, reporterId, reportId));
+    }
+    
+    public void GrantPermission(string userId, string permission, DateTime? expiresAt)
+    {
+        var newPermission = new Permission(userId, permission, DateTime.UtcNow, expiresAt, true);
+        Permissions.Add(newPermission);
+        
+        AddDomainEvent(new PermissionGrantedEvent(Id, ContentId, userId, permission));
+    }
+}
+```
+
+### 3. User Security Aggregate
+
+#### UserSecurity Entity
+```csharp
+public class UserSecurity : AggregateRoot<ObjectId>
+{
+    [BsonId]
+    public ObjectId Id { get; private set; }
+    
+    public string UserId { get; private set; }
+    public TwoFactorInfo TwoFactor { get; private set; }
+    public List<Device> Devices { get; private set; }
+    public SecuritySettings SecuritySettings { get; private set; }
+    public List<SecurityEvent> SecurityEvents { get; private set; }
+    public List<LoginHistory> LoginHistory { get; private set; }
+    public List<PasswordHistory> PasswordHistory { get; private set; }
+    public List<APIKey> APIKeys { get; private set; }
+    public RiskScore RiskScore { get; private set; }
+    
+    // Domain methods
+    public bool IsTwoFactorEnabled() => TwoFactor.Enabled;
+    
+    public bool IsDeviceTrusted(string deviceId)
+    {
+        var device = Devices.FirstOrDefault(d => d.DeviceId == deviceId);
+        return device?.IsTrusted ?? false;
+    }
+    
+    public void AddDevice(Device device)
+    {
+        Devices.Add(device);
+        RecordSecurityEvent(new SecurityEvent("device_added", DateTime.UtcNow, device.IPAddress, device.Location, device, "low"));
+        
+        AddDomainEvent(new DeviceAddedEvent(UserId, device.DeviceId));
+    }
+    
+    public void RemoveDevice(string deviceId)
+    {
+        var device = Devices.FirstOrDefault(d => d.DeviceId == deviceId);
+        if (device != null)
+        {
+            Devices.Remove(device);
+            RecordSecurityEvent(new SecurityEvent("device_removed", DateTime.UtcNow, device.IPAddress, device.Location, device, "low"));
+            
+            AddDomainEvent(new DeviceRemovedEvent(UserId, deviceId));
+        }
+    }
+    
+    public void RecordSecurityEvent(SecurityEvent securityEvent)
+    {
+        SecurityEvents.Add(securityEvent);
+        
+        // Update risk score based on event
+        UpdateRiskScore(securityEvent);
+    }
+    
+    public void UpdateRiskScore(SecurityEvent securityEvent)
+    {
+        var riskFactors = new List<RiskFactor>();
+        
+        // Analyze security event and calculate risk
+        if (securityEvent.Type == "failed_login")
+        {
+            riskFactors.Add(new RiskFactor("failed_login", 20, 0.3, "Multiple failed login attempts"));
+        }
+        else if (securityEvent.Type == "suspicious_activity")
+        {
+            riskFactors.Add(new RiskFactor("suspicious_activity", 40, 0.5, "Suspicious activity detected"));
+        }
+        
+        RiskScore = new RiskScore(CalculateRiskScore(riskFactors), riskFactors, DateTime.UtcNow);
+    }
+    
+    public bool IsIPWhitelisted(string ip)
+    {
+        return SecuritySettings.IPWhitelist.Contains(ip);
+    }
+    
+    public bool IsLocationAllowed(string country)
+    {
+        return !SecuritySettings.GeolocationRestrictions.Contains(country);
+    }
+    
+    private int CalculateRiskScore(List<RiskFactor> factors)
+    {
+        return (int)factors.Sum(f => f.Score * f.Weight);
+    }
+}
+```
+
+### 4. System Health Aggregate
+
+#### SystemHealth Entity
+```csharp
+public class SystemHealth : AggregateRoot<ObjectId>
+{
+    [BsonId]
+    public ObjectId Id { get; private set; }
+    
+    public DateTime Timestamp { get; private set; }
+    public string Component { get; private set; } // "database", "storage", "api", "worker"
+    public HealthStatus Status { get; private set; }
+    public HealthMetrics Metrics { get; private set; }
+    public PerformanceMetrics Performance { get; private set; }
+    public List<HealthAlert> Alerts { get; private set; }
+    public List<HealthAction> Actions { get; private set; }
+    public EnvironmentInfo Environment { get; private set; }
+    public List<DependencyHealth> Dependencies { get; private set; }
+    
+    // Domain methods
+    public bool IsHealthy() => Status == HealthStatus.Healthy;
+    public bool IsWarning() => Status == HealthStatus.Warning;
+    public bool IsCritical() => Status == HealthStatus.Critical;
+    public bool IsDown() => Status == HealthStatus.Down;
+    
+    public void AddAlert(HealthAlert alert)
+    {
+        Alerts.Add(alert);
+        
+        // Update status based on alert severity
+        if (alert.Severity == "critical" && Status != HealthStatus.Critical)
+        {
+            Status = HealthStatus.Critical;
+        }
+        else if (alert.Severity == "warning" && Status == HealthStatus.Healthy)
+        {
+            Status = HealthStatus.Warning;
+        }
+        
+        AddDomainEvent(new HealthAlertAddedEvent(Component, alert));
+    }
+    
+    public void ResolveAlert(string alertId)
+    {
+        var alert = Alerts.FirstOrDefault(a => a.Id == alertId);
+        if (alert != null)
+        {
+            alert.Resolve();
+            
+            // Check if we can improve status
+            if (Status == HealthStatus.Critical && !Alerts.Any(a => a.Severity == "critical" && !a.Resolved))
+            {
+                Status = HealthStatus.Warning;
+            }
+            else if (Status == HealthStatus.Warning && !Alerts.Any(a => !a.Resolved))
+            {
+                Status = HealthStatus.Healthy;
+            }
+            
+            AddDomainEvent(new HealthAlertResolvedEvent(Component, alertId));
+        }
+    }
+    
+    public void RecordAction(HealthAction action)
+    {
+        Actions.Add(action);
+        
+        AddDomainEvent(new HealthActionRecordedEvent(Component, action));
+    }
+    
+    public void UpdateMetrics(HealthMetrics metrics)
+    {
+        Metrics = metrics;
+        
+        // Analyze metrics and determine health status
+        var newStatus = AnalyzeHealthStatus(metrics);
+        if (newStatus != Status)
+        {
+            Status = newStatus;
+            AddDomainEvent(new HealthStatusChangedEvent(Component, Status, metrics));
+        }
+    }
+    
+    private HealthStatus AnalyzeHealthStatus(HealthMetrics metrics)
+    {
+        // CPU usage analysis
+        if (metrics.CPU.Usage > 90)
+            return HealthStatus.Critical;
+        else if (metrics.CPU.Usage > 80)
+            return HealthStatus.Warning;
+        
+        // Memory usage analysis
+        if (metrics.Memory.Usage > 95)
+            return HealthStatus.Critical;
+        else if (metrics.Memory.Usage > 85)
+            return HealthStatus.Warning;
+        
+        // Disk usage analysis
+        if (metrics.Disk.Usage > 95)
+            return HealthStatus.Critical;
+        else if (metrics.Disk.Usage > 85)
+            return HealthStatus.Warning;
+        
+        return HealthStatus.Healthy;
+    }
+}
+```
+
+### 5. Notification Template Aggregate
+
+#### NotificationTemplate Entity
+```csharp
+public class NotificationTemplate : AggregateRoot<ObjectId>
+{
+    [BsonId]
+    public ObjectId Id { get; private set; }
+    
+    public string TemplateId { get; private set; }
+    public string Name { get; private set; }
+    public string Description { get; private set; }
+    public NotificationType Type { get; private set; }
+    public string Category { get; private set; }
+    public string Language { get; private set; }
+    public string Subject { get; private set; }
+    public string Content { get; private set; }
+    public string HtmlContent { get; private set; }
+    public List<TemplateVariable> Variables { get; private set; }
+    public TemplateStyling Styling { get; private set; }
+    public List<TemplateCondition> Conditions { get; private set; }
+    public TemplateScheduling Scheduling { get; private set; }
+    public TemplateDelivery Delivery { get; private set; }
+    public TemplateCompliance Compliance { get; private set; }
+    public TemplateAnalytics Analytics { get; private set; }
+    public bool IsActive { get; private set; }
+    public bool IsDefault { get; private set; }
+    public int Version { get; private set; }
+    
+    // Domain methods
+    public bool IsActiveTemplate() => IsActive;
+    public bool IsDefaultTemplate() => IsDefault;
+    
+    public void Activate()
+    {
+        IsActive = true;
+        AddDomainEvent(new TemplateActivatedEvent(TemplateId));
+    }
+    
+    public void Deactivate()
+    {
+        IsActive = false;
+        AddDomainEvent(new TemplateDeactivatedEvent(TemplateId));
+    }
+    
+    public void SetAsDefault()
+    {
+        IsDefault = true;
+        AddDomainEvent(new TemplateSetAsDefaultEvent(TemplateId));
+    }
+    
+    public void UpdateVersion(int newVersion)
+    {
+        Version = newVersion;
+        AddDomainEvent(new TemplateVersionUpdatedEvent(TemplateId, newVersion));
+    }
+    
+    public bool MatchesConditions(Dictionary<string, object> context)
+    {
+        return Conditions.All(condition => condition.Evaluate(context));
+    }
+    
+    public string RenderContent(Dictionary<string, object> variables)
+    {
+        var renderedContent = Content;
+        
+        foreach (var variable in Variables)
+        {
+            if (variables.ContainsKey(variable.Name))
+            {
+                var value = variables[variable.Name]?.ToString() ?? variable.DefaultValue;
+                renderedContent = renderedContent.Replace($"{{{variable.Name}}}", value);
+            }
+        }
+        
+        return renderedContent;
+    }
+}
+```
+
+### 6. File Version Aggregate
+
+#### FileVersion Entity
+```csharp
+public class FileVersion : AggregateRoot<ObjectId>
+{
+    [BsonId]
+    public ObjectId Id { get; private set; }
+    
+    public ObjectId FileId { get; private set; }
+    public int Version { get; private set; }
+    public string VersionName { get; private set; }
+    public string Changes { get; private set; }
+    public string CreatedBy { get; private set; }
+    public DateTime CreatedAt { get; private set; }
+    public long FileSize { get; private set; }
+    public string FileHash { get; private set; }
+    public ObjectId StorageLocation { get; private set; }
+    public string Path { get; private set; }
+    public string Url { get; private set; }
+    public FileMetadata Metadata { get; private set; }
+    public VersionDiff Diff { get; private set; }
+    public bool IsActive { get; private set; }
+    public bool IsDeleted { get; private set; }
+    public DateTime? DeletedAt { get; private set; }
+    public VersionRetention Retention { get; private set; }
+    public VersionAccess Access { get; private set; }
+    public VersionStatistics Statistics { get; private set; }
+    
+    // Domain methods
+    public bool IsCurrentVersion() => IsActive;
+    public bool IsDeletedVersion() => IsDeleted;
+    
+    public void Activate()
+    {
+        IsActive = true;
+        AddDomainEvent(new FileVersionActivatedEvent(FileId, Version));
+    }
+    
+    public void Deactivate()
+    {
+        IsActive = false;
+        AddDomainEvent(new FileVersionDeactivatedEvent(FileId, Version));
+    }
+    
+    public void Delete()
+    {
+        IsDeleted = true;
+        DeletedAt = DateTime.UtcNow;
+        AddDomainEvent(new FileVersionDeletedEvent(FileId, Version));
+    }
+    
+    public void Restore()
+    {
+        IsDeleted = false;
+        DeletedAt = null;
+        AddDomainEvent(new FileVersionRestoredEvent(FileId, Version));
+    }
+    
+    public bool ShouldRetain()
+    {
+        if (Retention.Policy == "keep_all")
+            return true;
+        else if (Retention.Policy == "keep_latest")
+            return IsActive;
+        else if (Retention.Policy == "keep_scheduled")
+            return DateTime.UtcNow < Retention.KeepUntil;
+        
+        return false;
+    }
+    
+    public bool CanAccess(string userId)
+    {
+        if (Access.Public)
+            return true;
+        
+        var permission = Access.Permissions.FirstOrDefault(p => p.UserId == userId);
+        return permission != null && permission.Permission == "read" && 
+               (permission.ExpiresAt == null || permission.ExpiresAt > DateTime.UtcNow);
+    }
+    
+    public void RecordDownload(string userId)
+    {
+        Statistics.IncrementDownloadCount();
+        Statistics.UpdateLastDownloaded(DateTime.UtcNow);
+        
+        AddDomainEvent(new FileVersionDownloadedEvent(FileId, Version, userId));
+    }
+    
+    public void RecordView(string userId)
+    {
+        Statistics.IncrementViewCount();
+        Statistics.UpdateLastViewed(DateTime.UtcNow);
+        
+        AddDomainEvent(new FileVersionViewedEvent(FileId, Version, userId));
+    }
+}
+```
+
+### 7. User Group Aggregate
+
+#### UserGroup Entity
+```csharp
+public class UserGroup : AggregateRoot<ObjectId>
+{
+    [BsonId]
+    public ObjectId Id { get; private set; }
+    
+    public string GroupId { get; private set; }
+    public string Name { get; private set; }
+    public string Description { get; private set; }
+    public GroupType Type { get; private set; }
+    public string Category { get; private set; }
+    public List<GroupMember> Members { get; private set; }
+    public List<string> Permissions { get; private set; }
+    public GroupSettings Settings { get; private set; }
+    public GroupContent Content { get; private set; }
+    public GroupStatistics Statistics { get; private set; }
+    public GroupModeration Moderation { get; private set; }
+    public GroupNotifications Notifications { get; private set; }
+    public string CreatedBy { get; private set; }
+    public DateTime CreatedAt { get; private set; }
+    public DateTime UpdatedAt { get; private set; }
+    public DateTime LastActivity { get; private set; }
+    
+    // Domain methods
+    public bool IsPublic() => Type == GroupType.Public;
+    public bool IsPrivate() => Type == GroupType.Private;
+    public bool IsInviteOnly() => Type == GroupType.InviteOnly;
+    
+    public void AddMember(string userId, string role)
+    {
+        if (Members.Any(m => m.UserId == userId))
+            throw new InvalidOperationException("User is already a member");
+        
+        var member = new GroupMember(userId, role, DateTime.UtcNow, CreatedBy, "active");
+        Members.Add(member);
+        Statistics.IncrementMemberCount();
+        UpdateLastActivity();
+        
+        AddDomainEvent(new UserAddedToGroupEvent(GroupId, userId, role));
+    }
+    
+    public void RemoveMember(string userId)
+    {
+        var member = Members.FirstOrDefault(m => m.UserId == userId);
+        if (member != null)
+        {
+            Members.Remove(member);
+            Statistics.DecrementMemberCount();
+            UpdateLastActivity();
+            
+            AddDomainEvent(new UserRemovedFromGroupEvent(GroupId, userId));
+        }
+    }
+    
+    public void UpdateMemberRole(string userId, string newRole)
+    {
+        var member = Members.FirstOrDefault(m => m.UserId == userId);
+        if (member != null)
+        {
+            var oldRole = member.Role;
+            member.UpdateRole(newRole);
+            UpdateLastActivity();
+            
+            AddDomainEvent(new UserRoleUpdatedEvent(GroupId, userId, oldRole, newRole));
+        }
+    }
+    
+    public bool IsMember(string userId)
+    {
+        return Members.Any(m => m.UserId == userId && m.Status == "active");
+    }
+    
+    public bool IsModerator(string userId)
+    {
+        var member = Members.FirstOrDefault(m => m.UserId == userId);
+        return member?.Role == "moderator" || member?.Role == "admin";
+    }
+    
+    public bool IsAdmin(string userId)
+    {
+        var member = Members.FirstOrDefault(m => m.UserId == userId);
+        return member?.Role == "admin";
+    }
+    
+    public void BanUser(string userId, string reason)
+    {
+        var member = Members.FirstOrDefault(m => m.UserId == userId);
+        if (member != null)
+        {
+            member.Ban(reason);
+            Moderation.AddBannedUser(userId);
+            UpdateLastActivity();
+            
+            AddDomainEvent(new UserBannedFromGroupEvent(GroupId, userId, reason));
+        }
+    }
+    
+    public void UnbanUser(string userId)
+    {
+        var member = Members.FirstOrDefault(m => m.UserId == userId);
+        if (member != null)
+        {
+            member.Unban();
+            Moderation.RemoveBannedUser(userId);
+            UpdateLastActivity();
+            
+            AddDomainEvent(new UserUnbannedFromGroupEvent(GroupId, userId));
+        }
+    }
+    
+    public void UpdateSettings(GroupSettings newSettings)
+    {
+        Settings = newSettings;
+        UpdatedAt = DateTime.UtcNow;
+        UpdateLastActivity();
+        
+        AddDomainEvent(new GroupSettingsUpdatedEvent(GroupId, newSettings));
+    }
+    
+    private void UpdateLastActivity()
+    {
+        LastActivity = DateTime.UtcNow;
+    }
+}
+```
+
 ## 🎯 Conclusion
 
 Domain models được thiết kế theo DDD principles với:
@@ -1969,3 +2610,6 @@ Thiết kế này đảm bảo:
 - **Testability**: Domain logic dễ test
 - **Consistency**: Business rules được enforce consistently
 - **Scalability**: Architecture có thể scale được
+- **Enterprise Features**: Support cho các tính năng enterprise-level
+- **Security**: Built-in security và compliance features
+- **Analytics**: Comprehensive tracking và monitoring
