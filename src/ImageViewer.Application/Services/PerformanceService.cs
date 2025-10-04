@@ -257,13 +257,13 @@ public class PerformanceService : IPerformanceService
         }
     }
 
-    public async Task<DatabaseStatistics> GetDatabaseStatisticsAsync()
+    public Task<DatabaseStatistics> GetDatabaseStatisticsAsync()
     {
         try
         {
             // TODO: Implement when database statistics repository is available
             // For now, return placeholder statistics
-            return new DatabaseStatistics
+            var statistics = new DatabaseStatistics
             {
                 TotalQueries = 0,
                 SlowQueries = 0,
@@ -273,6 +273,7 @@ public class PerformanceService : IPerformanceService
                 QueriesByType = new Dictionary<string, long>(),
                 QueryTimesByType = new Dictionary<string, double>()
             };
+            return Task.FromResult(statistics);
         }
         catch (Exception ex)
         {
@@ -281,13 +282,13 @@ public class PerformanceService : IPerformanceService
         }
     }
 
-    public async Task<CDNInfo> GetCDNInfoAsync()
+    public Task<CDNInfo> GetCDNInfoAsync()
     {
         try
         {
             // TODO: Implement when CDN repository is available
             // For now, return placeholder info
-            return new CDNInfo
+            var info = new CDNInfo
             {
                 Id = ObjectId.GenerateNewId(),
                 Provider = "Local",
@@ -302,6 +303,7 @@ public class PerformanceService : IPerformanceService
                 Status = "Disabled",
                 LastConfigured = DateTime.UtcNow
             };
+            return Task.FromResult(info);
         }
         catch (Exception ex)
         {
@@ -310,7 +312,7 @@ public class PerformanceService : IPerformanceService
         }
     }
 
-    public async Task<CDNInfo> ConfigureCDNAsync(CDNConfigurationRequest request)
+    public Task<CDNInfo> ConfigureCDNAsync(CDNConfigurationRequest request)
     {
         try
         {
@@ -350,13 +352,13 @@ public class PerformanceService : IPerformanceService
         }
     }
 
-    public async Task<CDNStatistics> GetCDNStatisticsAsync()
+    public Task<CDNStatistics> GetCDNStatisticsAsync()
     {
         try
         {
             // TODO: Implement when CDN statistics repository is available
             // For now, return placeholder statistics
-            return new CDNStatistics
+            var statistics = new CDNStatistics
             {
                 TotalRequests = 0,
                 TotalBytesServed = 0,
@@ -366,6 +368,7 @@ public class PerformanceService : IPerformanceService
                 RequestsByFileType = new Dictionary<string, long>(),
                 RequestsByRegion = new Dictionary<string, long>()
             };
+            return Task.FromResult(statistics);
         }
         catch (Exception ex)
         {
@@ -374,7 +377,7 @@ public class PerformanceService : IPerformanceService
         }
     }
 
-    public async Task<LazyLoadingInfo> GetLazyLoadingInfoAsync()
+    public Task<LazyLoadingInfo> GetLazyLoadingInfoAsync()
     {
         try
         {
@@ -401,7 +404,7 @@ public class PerformanceService : IPerformanceService
         }
     }
 
-    public async Task<LazyLoadingInfo> ConfigureLazyLoadingAsync(LazyLoadingConfigurationRequest request)
+    public Task<LazyLoadingInfo> ConfigureLazyLoadingAsync(LazyLoadingConfigurationRequest request)
     {
         try
         {
@@ -448,7 +451,7 @@ public class PerformanceService : IPerformanceService
         {
             // TODO: Implement when lazy loading statistics repository is available
             // For now, return placeholder statistics
-            return new LazyLoadingStatistics
+            var statistics = new LazyLoadingStatistics
             {
                 TotalRequests = 0,
                 TotalPreloaded = 0,
@@ -458,6 +461,7 @@ public class PerformanceService : IPerformanceService
                 PreloadedByType = new Dictionary<string, long>(),
                 PreloadTimesByType = new Dictionary<string, double>()
             };
+            return Task.FromResult(statistics);
         }
         catch (Exception ex)
         {

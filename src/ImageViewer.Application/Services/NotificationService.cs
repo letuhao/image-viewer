@@ -226,7 +226,7 @@ public class NotificationService : INotificationService
         }
     }
 
-    public async Task<NotificationTemplate> CreateTemplateAsync(CreateNotificationTemplateRequest request)
+    public Task<NotificationTemplate> CreateTemplateAsync(CreateNotificationTemplateRequest request)
     {
         try
         {
@@ -266,12 +266,12 @@ public class NotificationService : INotificationService
         }
     }
 
-    public async Task<NotificationTemplate> GetTemplateByIdAsync(ObjectId templateId)
+    public Task<NotificationTemplate> GetTemplateByIdAsync(ObjectId templateId)
     {
         try
         {
             // TODO: Implement when template repository is available
-            throw new NotImplementedException("Notification template repository not yet implemented");
+            return Task.FromException<NotificationTemplate>(new NotImplementedException("Notification template repository not yet implemented"));
         }
         catch (Exception ex)
         {
@@ -280,7 +280,7 @@ public class NotificationService : INotificationService
         }
     }
 
-    public async Task<IEnumerable<NotificationTemplate>> GetTemplatesByTypeAsync(NotificationType type)
+    public Task<IEnumerable<NotificationTemplate>> GetTemplatesByTypeAsync(NotificationType type)
     {
         try
         {
@@ -294,12 +294,12 @@ public class NotificationService : INotificationService
         }
     }
 
-    public async Task<NotificationTemplate> UpdateTemplateAsync(ObjectId templateId, UpdateNotificationTemplateRequest request)
+    public Task<NotificationTemplate> UpdateTemplateAsync(ObjectId templateId, UpdateNotificationTemplateRequest request)
     {
         try
         {
             // TODO: Implement when template repository is available
-            throw new NotImplementedException("Notification template repository not yet implemented");
+            return Task.FromException<NotificationTemplate>(new NotImplementedException("Notification template repository not yet implemented"));
         }
         catch (Exception ex)
         {
@@ -308,12 +308,13 @@ public class NotificationService : INotificationService
         }
     }
 
-    public async Task DeleteTemplateAsync(ObjectId templateId)
+    public Task DeleteTemplateAsync(ObjectId templateId)
     {
         try
         {
             // TODO: Implement when template repository is available
             _logger.LogInformation("Deleted notification template {TemplateId}", templateId);
+            return Task.CompletedTask;
         }
         catch (Exception ex)
         {
