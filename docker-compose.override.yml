@@ -1,0 +1,55 @@
+version: '3.8'
+
+# Override for development environment
+services:
+  # MongoDB Database - Development
+  mongodb:
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: devpassword
+    volumes:
+      - ./scripts/mongo-init-dev.js:/docker-entrypoint-initdb.d/mongo-init-dev.js:ro
+
+  # RabbitMQ Message Broker - Development
+  rabbitmq:
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: admin
+      RABBITMQ_DEFAULT_PASS: devpassword
+
+  # ImageViewer API - Development
+  imageviewer-api:
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - MongoDB__ConnectionString=mongodb://admin:devpassword@mongodb:27017/image_viewer_dev?authSource=admin
+      - MongoDB__DatabaseName=image_viewer_dev
+      - RabbitMQ__UserName=admin
+      - RabbitMQ__Password=devpassword
+    volumes:
+      - ./src:/app/src:ro
+      - ./logs:/app/logs
+      - ./temp:/app/temp
+      - ./data:/app/data
+
+  # ImageViewer Worker - Development
+  imageviewer-worker:
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - MongoDB__ConnectionString=mongodb://admin:devpassword@mongodb:27017/image_viewer_dev?authSource=admin
+      - MongoDB__DatabaseName=image_viewer_dev
+      - RabbitMQ__UserName=admin
+      - RabbitMQ__Password=devpassword
+    volumes:
+      - ./src:/app/src:ro
+      - ./logs:/app/logs
+      - ./temp:/app/temp
+      - ./data:/app/data
+
+  # Disable Nginx in development
+  nginx:
+    profiles:
+      - production

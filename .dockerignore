@@ -1,0 +1,134 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Documentation
+docs/
+*.md
+README.md
+
+# Build outputs
+**/bin/
+**/obj/
+**/out/
+**/publish/
+
+# IDE files
+.vs/
+.vscode/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+
+# Temporary files
+temp/
+tmp/
+*.tmp
+
+# Test files
+**/test*/
+**/tests/
+**/*.Tests/
+**/*.Test/
+
+# Node modules (if any)
+node_modules/
+npm-debug.log*
+
+# Environment files
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+
+# Docker files
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# Scripts
+scripts/
+deploy*.ps1
+deploy*.bat
+start*.ps1
+start*.bat
+stop*.ps1
+stop*.bat
+check*.ps1
+check*.bat
+
+# Data files
+data/
+*.db
+*.sqlite
+*.sqlite3
+
+# Cache
+cache/
+.cache/
+
+# Coverage
+coverage/
+*.coverage
+*.coveragexml
+
+# NuGet
+packages/
+*.nupkg
+
+# JetBrains
+.idea/
+*.sln.iml
+
+# Visual Studio
+*.sln
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.user
+
+# Rider
+*.sln.DotSettings.user
+
+# ReSharper
+_ReSharper*/
+*.DotSettings.user
+
+# User-specific files
+*.rsuser
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Mono auto generated files
+mono_crash.*
+
+# Windows image file caches
+Thumbs.db
+ehthumbs.db
+
+# Folder config file
+Desktop.ini
+
+# Recycle Bin used on file shares
+$RECYCLE.BIN/
+
+# Windows Installer files
+*.cab
+*.msi
+*.msm
+*.msp
+
+# Windows shortcuts
+*.lnk
