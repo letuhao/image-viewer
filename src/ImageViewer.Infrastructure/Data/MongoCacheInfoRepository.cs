@@ -99,4 +99,80 @@ public class MongoCacheInfoRepository : MongoRepository<ImageCacheInfo>, ICacheI
                 (double)result.GetValue("totalSize", 0L).ToInt64() / result.GetValue("totalEntries", 0).ToInt32() : 0
         };
     }
+
+    public async Task<ImageCacheInfo?> GetByImageIdAsync(ObjectId imageId, CancellationToken cancellationToken = default)
+    {
+        var filter = Builders<ImageCacheInfo>.Filter.Eq(x => x.ImageId, imageId);
+        return await _collection.Find(filter).FirstOrDefaultAsync(cancellationToken);
+    }
+
+    public async Task<IEnumerable<ImageCacheInfo>> GetByCacheFolderIdAsync(ObjectId cacheFolderId, CancellationToken cancellationToken = default)
+    {
+        var filter = Builders<ImageCacheInfo>.Filter.Eq(x => x.CachePath, cacheFolderId.ToString());
+        return await _collection.Find(filter).ToListAsync(cancellationToken);
+    }
+
+    public async Task<IEnumerable<ImageCacheInfo>> GetExpiredAsync(CancellationToken cancellationToken = default)
+    {
+        var filter = Builders<ImageCacheInfo>.Filter.Lt(x => x.ExpiresAt, DateTime.UtcNow);
+        return await _collection.Find(filter).ToListAsync(cancellationToken);
+    }
+
+    public async Task<IEnumerable<ImageCacheInfo>> GetOlderThanAsync(DateTime cutoffDate, CancellationToken cancellationToken = default)
+    {
+        var filter = Builders<ImageCacheInfo>.Filter.Lt(x => x.CachedAt, cutoffDate);
+        return await _collection.Find(filter).ToListAsync(cancellationToken);
+    }
+
+    public async Task<CacheStatistics> GetCacheStatisticsAsync(CancellationToken cancellationToken = default)
+    {
+        var pipeline = new[]
+        {
+            new BsonDocument("$group", new BsonDocument
+            {
+                { "_id", BsonNull.Value },
+                { "totalEntries", new BsonDocument("$sum", 1) },
+                { "totalSize", new BsonDocument("$sum", "$FileSizeBytes") },
+                { "expiredEntries", new BsonDocument("$sum", new BsonDocument("$cond", new BsonArray
+                {
+                    new BsonDocument("$lt", new BsonArray { "$ExpiresAt", DateTime.UtcNow }),
+                    1, 0
+                })) },
+                { "activeEntries", new BsonDocument("$sum", new BsonDocument("$cond", new BsonArray
+                {
+                    new BsonDocument("$gte", new BsonArray { "$ExpiresAt", DateTime.UtcNow }),
+                    1, 0
+                })) }
+            })
+        };
+        
+        var result = await _collection.Aggregate<BsonDocument>(pipeline).FirstOrDefaultAsync(cancellationToken);
+        
+        if (result == null)
+        {
+            return new CacheStatistics
+            {
+                TotalCacheEntries = 0,
+                TotalCacheSize = 0,
+                ExpiredCacheEntries = 0,
+                ValidCacheEntries = 0,
+                AverageCacheSize = 0
+            };
+        }
+        
+        return new CacheStatistics
+        {
+            TotalCacheEntries = result.GetValue("totalEntries", 0).ToInt32(),
+            TotalCacheSize = result.GetValue("totalSize", 0L).ToInt64(),
+            ExpiredCacheEntries = result.GetValue("expiredEntries", 0).ToInt32(),
+            ValidCacheEntries = result.GetValue("activeEntries", 0).ToInt32(),
+            AverageCacheSize = result.GetValue("totalEntries", 0).ToInt32() > 0 ? 
+                (double)result.GetValue("totalSize", 0L).ToInt64() / result.GetValue("totalEntries", 0).ToInt32() : 0
+        };
+    }
+
+    public async Task<CacheStatistics> GetStatisticsAsync(CancellationToken cancellationToken = default)
+    {
+        return await GetCacheStatisticsAsync(cancellationToken);
+    }
 }
