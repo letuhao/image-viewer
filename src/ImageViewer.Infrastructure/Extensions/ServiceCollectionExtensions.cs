@@ -61,6 +61,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IUserPreferencesService, UserPreferencesService>();
         services.AddScoped<IPerformanceService, PerformanceService>();
         services.AddScoped<ISecurityService, SecurityService>();
+        services.AddScoped<IWindowsDriveService, WindowsDriveService>();
 
         // Register unit of work
         services.AddScoped<IUnitOfWork, MongoUnitOfWork>(provider =>
