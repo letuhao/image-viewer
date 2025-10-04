@@ -30,7 +30,7 @@ public class StatisticsService : IStatisticsService
         _logger = logger;
     }
 
-    public async Task<CollectionStatisticsDto> GetCollectionStatisticsAsync(Guid collectionId)
+    public async Task<CollectionStatisticsDto> GetCollectionStatisticsAsync(ObjectId collectionId)
     {
         _logger.LogInformation("Getting statistics for collection: {CollectionId}", collectionId);
 
@@ -111,7 +111,7 @@ public class StatisticsService : IStatisticsService
         };
     }
 
-    public async Task<ImageStatisticsDto> GetImageStatisticsAsync(Guid imageId)
+    public async Task<ImageStatisticsDto> GetImageStatisticsAsync(ObjectId imageId)
     {
         _logger.LogInformation("Getting image statistics for {ImageId}", imageId);
         var image = await _imageRepository.GetByIdAsync(imageId);
@@ -272,7 +272,7 @@ public class StatisticsService : IStatisticsService
         };
     }
 
-    public async Task<IEnumerable<PopularImageDto>> GetPopularImagesAsync(Guid collectionId, int limit = 10)
+    public async Task<IEnumerable<PopularImageDto>> GetPopularImagesAsync(ObjectId collectionId, int limit = 10)
     {
         _logger.LogInformation("Getting popular images for collection: {CollectionId}", collectionId);
 
@@ -311,7 +311,7 @@ public class StatisticsService : IStatisticsService
         _logger.LogInformation("Getting statistics summary");
 
         var systemStats = await GetSystemStatisticsAsync();
-        var imageStats = await GetImageStatisticsAsync(Guid.Empty);
+        var imageStats = await GetImageStatisticsAsync(ObjectId.Empty);
         var cacheStats = await GetCacheStatisticsAsync();
         var performanceStats = await GetPerformanceStatisticsAsync();
 
