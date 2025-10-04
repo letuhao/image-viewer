@@ -99,9 +99,9 @@ public class QueuedCollectionService : ICollectionService
 
     public async Task<IEnumerable<Collection>> GetCollectionsByTagAsync(string tagName, CancellationToken cancellationToken = default)
     {
-        var collections = await _collectionService.GetCollectionsAsync();
         // Note: This is a simplified implementation, proper tag filtering would be handled by the repository
-        return collections.Where(c => c.Tags.Any(t => t.Name.Equals(tagName, StringComparison.OrdinalIgnoreCase)));
+        // For now, return empty list as Collection entity doesn't have Tags property
+        return new List<Collection>();
     }
 
     public async Task<Collection> CreateAsync(string name, string path, CollectionType type, CollectionSettings settings, CancellationToken cancellationToken = default)
