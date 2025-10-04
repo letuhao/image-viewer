@@ -2,10 +2,12 @@ using MongoDB.Bson;
 using ImageViewer.Domain.Entities;
 using ImageViewer.Domain.Interfaces;
 using ImageViewer.Domain.Exceptions;
+using ImageViewer.Domain.ValueObjects; // Added for UserProfile
 using ImageViewer.Application.DTOs.Auth;
 using ImageViewer.Application.DTOs.Security;
 using ImageViewer.Domain.Enums;
 using Microsoft.Extensions.Logging;
+using System.Security.Authentication; // Added for AuthenticationException
 // IPasswordService is now in Application layer
 
 namespace ImageViewer.Application.Services;

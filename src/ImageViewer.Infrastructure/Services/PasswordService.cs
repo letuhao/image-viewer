@@ -1,50 +1,8 @@
 using BCrypt.Net;
 using ImageViewer.Application.Services;
+using System.Text;
 
 namespace ImageViewer.Infrastructure.Services;
-
-/// <summary>
-/// Password service implementation for secure password handling
-/// </summary>
-public interface IPasswordService
-{
-    /// <summary>
-    /// Hash password using BCrypt
-    /// </summary>
-    /// <param name="password">Plain text password</param>
-    /// <returns>Hashed password</returns>
-    string HashPassword(string password);
-
-    /// <summary>
-    /// Verify password against hash
-    /// </summary>
-    /// <param name="password">Plain text password</param>
-    /// <param name="hashedPassword">Hashed password to verify against</param>
-    /// <returns>True if password matches, false otherwise</returns>
-    bool VerifyPassword(string password, string hashedPassword);
-
-    /// <summary>
-    /// Check if password meets strength requirements
-    /// </summary>
-    /// <param name="password">Password to check</param>
-    /// <returns>True if password is strong, false otherwise</returns>
-    bool IsStrongPassword(string password);
-
-    /// <summary>
-    /// Get password strength score (0-100)
-    /// </summary>
-    /// <param name="password">Password to analyze</param>
-    /// <returns>Password strength score</returns>
-    int GetPasswordStrengthScore(string password);
-
-    /// <summary>
-    /// Generate random password
-    /// </summary>
-    /// <param name="length">Password length</param>
-    /// <param name="includeSpecialChars">Include special characters</param>
-    /// <returns>Generated password</returns>
-    string GenerateRandomPassword(int length = 12, bool includeSpecialChars = true);
-}
 
 /// <summary>
 /// Password service implementation using BCrypt
