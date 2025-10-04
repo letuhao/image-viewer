@@ -1,4 +1,5 @@
 using ImageViewer.Domain.Enums;
+using MongoDB.Bson;
 
 namespace ImageViewer.Domain.Entities;
 
@@ -7,7 +8,7 @@ namespace ImageViewer.Domain.Entities;
 /// </summary>
 public class BackgroundJob : BaseEntity
 {
-    public new Guid Id { get; private set; }
+    public new ObjectId Id { get; private set; }
     public string JobType { get; private set; }
     public string Status { get; private set; }
     public string? Parameters { get; private set; }
@@ -29,7 +30,7 @@ public class BackgroundJob : BaseEntity
 
     public BackgroundJob(string jobType, string? parameters = null)
     {
-        Id = Guid.NewGuid();
+        Id = ObjectId.GenerateNewId();
         JobType = jobType ?? throw new ArgumentNullException(nameof(jobType));
         Status = JobStatus.Pending.ToString();
         Parameters = parameters;
