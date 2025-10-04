@@ -1035,6 +1035,522 @@ var job = await client.Cache.GenerateAsync(new GenerateCacheRequest
 });
 ```
 
+## Missing Features API
+
+### Content Moderation API
+
+#### Flag Content
+```http
+POST /api/v1/moderation/flag
+Authorization: Bearer {token}
+Content-Type: application/json
+
+{
+  "contentId": "col_123",
+  "contentType": "collection",
+  "reason": "inappropriate_content",
+  "details": "Contains explicit material",
+  "category": "adult_content"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "moderationId": "mod_123",
+    "status": "flagged",
+    "flaggedAt": "2024-01-01T00:00:00Z",
+    "flaggedBy": "user_123"
+  }
+}
+```
+
+#### Moderate Content
+```http
+POST /api/v1/moderation/{moderationId}/moderate
+Authorization: Bearer {token}
+Content-Type: application/json
+
+{
+  "status": "approved",
+  "notes": "Content is appropriate",
+  "action": "approve"
+}
+```
+
+#### Get Moderation Queue
+```http
+GET /api/v1/moderation/queue?status=pending&page=1&limit=20
+Authorization: Bearer {token}
+```
+
+### Copyright Management API
+
+#### Claim Ownership
+```http
+POST /api/v1/copyright/claim
+Authorization: Bearer {token}
+Content-Type: application/json
+
+{
+  "contentId": "col_123",
+  "contentType": "collection",
+  "verificationMethod": "email_verification",
+  "ownershipProof": "proof_document_url"
+}
+```
+
+#### Report DMCA
+```http
+POST /api/v1/copyright/dmca
+Authorization: Bearer {token}
+Content-Type: application/json
+
+{
+  "contentId": "col_123",
+  "contentType": "collection",
+  "reportId": "dmca_123",
+  "reason": "copyright_infringement",
+  "description": "Unauthorized use of copyrighted material"
+}
+```
+
+#### Grant Permission
+```http
+POST /api/v1/copyright/permissions
+Authorization: Bearer {token}
+Content-Type: application/json
+
+{
+  "contentId": "col_123",
+  "userId": "user_456",
+  "permission": "read",
+  "expiresAt": "2024-12-31T23:59:59Z"
+}
+```
+
+### User Security API
+
+#### Enable Two-Factor Authentication
+```http
+POST /api/v1/security/2fa/enable
+Authorization: Bearer {token}
+Content-Type: application/json
+
+{
+  "method": "totp",
+  "phoneNumber": "+1234567890"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "qrCode": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA...",
+    "backupCodes": ["12345678", "87654321", "11223344"],
+    "secretKey": "JBSWY3DPEHPK3PXP"
+  }
+}
+```
+
+#### Verify Two-Factor Authentication
+```http
+POST /api/v1/security/2fa/verify
+Authorization: Bearer {token}
+Content-Type: application/json
+
+{
+  "code": "123456",
+  "method": "totp"
+}
+```
+
+#### Manage Devices
+```http
+GET /api/v1/security/devices
+Authorization: Bearer {token}
+```
+
+```http
+DELETE /api/v1/security/devices/{deviceId}
+Authorization: Bearer {token}
+```
+
+#### Get Security Events
+```http
+GET /api/v1/security/events?page=1&limit=20&type=login
+Authorization: Bearer {token}
+```
+
+### System Health API
+
+#### Get System Health
+```http
+GET /api/v1/health
+Authorization: Bearer {token}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "overallStatus": "healthy",
+    "components": [
+      {
+        "name": "database",
+        "status": "healthy",
+        "responseTime": 15,
+        "lastChecked": "2024-01-01T00:00:00Z"
+      },
+      {
+        "name": "storage",
+        "status": "warning",
+        "responseTime": 250,
+        "lastChecked": "2024-01-01T00:00:00Z",
+        "alerts": [
+          {
+            "id": "alert_123",
+            "severity": "warning",
+            "message": "High disk usage: 85%"
+          }
+        ]
+      }
+    ],
+    "metrics": {
+      "cpuUsage": 45.2,
+      "memoryUsage": 67.8,
+      "diskUsage": 85.1,
+      "activeUsers": 1250
+    }
+  }
+}
+```
+
+#### Get Component Health
+```http
+GET /api/v1/health/{component}
+Authorization: Bearer {token}
+```
+
+#### Resolve Health Alert
+```http
+POST /api/v1/health/alerts/{alertId}/resolve
+Authorization: Bearer {token}
+Content-Type: application/json
+
+{
+  "resolution": "Disk space freed up",
+  "notes": "Cleaned up temporary files"
+}
+```
+
+### Notification Templates API
+
+#### Get Notification Templates
+```http
+GET /api/v1/notifications/templates?type=email&category=system
+Authorization: Bearer {token}
+```
+
+#### Create Notification Template
+```http
+POST /api/v1/notifications/templates
+Authorization: Bearer {token}
+Content-Type: application/json
+
+{
+  "name": "Welcome Email",
+  "description": "Welcome email for new users",
+  "type": "email",
+  "category": "user",
+  "language": "en",
+  "subject": "Welcome to ImageViewer!",
+  "content": "Hello {{userName}}, welcome to ImageViewer!",
+  "htmlContent": "<h1>Welcome {{userName}}!</h1><p>Welcome to ImageViewer!</p>",
+  "variables": [
+    {
+      "name": "userName",
+      "type": "string",
+      "required": true,
+      "defaultValue": "User"
+    }
+  ]
+}
+```
+
+#### Update Notification Template
+```http
+PUT /api/v1/notifications/templates/{templateId}
+Authorization: Bearer {token}
+Content-Type: application/json
+
+{
+  "name": "Welcome Email Updated",
+  "content": "Hello {{userName}}, welcome to ImageViewer! We're excited to have you."
+}
+```
+
+#### Activate/Deactivate Template
+```http
+POST /api/v1/notifications/templates/{templateId}/activate
+Authorization: Bearer {token}
+```
+
+```http
+POST /api/v1/notifications/templates/{templateId}/deactivate
+Authorization: Bearer {token}
+```
+
+### File Versioning API
+
+#### Get File Versions
+```http
+GET /api/v1/files/{fileId}/versions
+Authorization: Bearer {token}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "fileId": "file_123",
+    "versions": [
+      {
+        "version": 3,
+        "versionName": "Latest",
+        "isActive": true,
+        "createdAt": "2024-01-01T00:00:00Z",
+        "createdBy": "user_123",
+        "fileSize": 2048576,
+        "changes": "Updated metadata"
+      },
+      {
+        "version": 2,
+        "versionName": "Previous",
+        "isActive": false,
+        "createdAt": "2023-12-31T00:00:00Z",
+        "createdBy": "user_123",
+        "fileSize": 2048000,
+        "changes": "Fixed image quality"
+      }
+    ]
+  }
+}
+```
+
+#### Create File Version
+```http
+POST /api/v1/files/{fileId}/versions
+Authorization: Bearer {token}
+Content-Type: multipart/form-data
+
+{
+  "file": "binary_file_data",
+  "versionName": "Updated Version",
+  "changes": "Updated image processing"
+}
+```
+
+#### Activate File Version
+```http
+POST /api/v1/files/{fileId}/versions/{version}/activate
+Authorization: Bearer {token}
+```
+
+#### Delete File Version
+```http
+DELETE /api/v1/files/{fileId}/versions/{version}
+Authorization: Bearer {token}
+```
+
+#### Download File Version
+```http
+GET /api/v1/files/{fileId}/versions/{version}/download
+Authorization: Bearer {token}
+```
+
+### User Groups API
+
+#### Get User Groups
+```http
+GET /api/v1/groups?type=public&category=interest&page=1&limit=20
+Authorization: Bearer {token}
+```
+
+#### Create User Group
+```http
+POST /api/v1/groups
+Authorization: Bearer {token}
+Content-Type: application/json
+
+{
+  "name": "Photography Enthusiasts",
+  "description": "A group for photography lovers",
+  "type": "public",
+  "category": "interest",
+  "permissions": ["read", "comment"],
+  "settings": {
+    "allowMemberInvites": true,
+    "requireApproval": false,
+    "maxMembers": 1000
+  }
+}
+```
+
+#### Join User Group
+```http
+POST /api/v1/groups/{groupId}/join
+Authorization: Bearer {token}
+```
+
+#### Leave User Group
+```http
+DELETE /api/v1/groups/{groupId}/leave
+Authorization: Bearer {token}
+```
+
+#### Update Member Role
+```http
+PUT /api/v1/groups/{groupId}/members/{userId}/role
+Authorization: Bearer {token}
+Content-Type: application/json
+
+{
+  "role": "moderator"
+}
+```
+
+#### Ban User from Group
+```http
+POST /api/v1/groups/{groupId}/ban
+Authorization: Bearer {token}
+Content-Type: application/json
+
+{
+  "userId": "user_456",
+  "reason": "Spam behavior"
+}
+```
+
+#### Get Group Members
+```http
+GET /api/v1/groups/{groupId}/members?role=admin&page=1&limit=20
+Authorization: Bearer {token}
+```
+
+### Advanced Search API
+
+#### Semantic Search
+```http
+POST /api/v1/search/semantic
+Authorization: Bearer {token}
+Content-Type: application/json
+
+{
+  "query": "sunset over mountains",
+  "type": "image",
+  "limit": 20,
+  "filters": {
+    "dateRange": {
+      "from": "2023-01-01",
+      "to": "2024-01-01"
+    },
+    "tags": ["nature", "landscape"]
+  }
+}
+```
+
+#### Visual Search
+```http
+POST /api/v1/search/visual
+Authorization: Bearer {token}
+Content-Type: multipart/form-data
+
+{
+  "image": "binary_image_data",
+  "limit": 20,
+  "similarityThreshold": 0.8
+}
+```
+
+#### Get Search Suggestions
+```http
+GET /api/v1/search/suggestions?q=sunset&limit=10
+Authorization: Bearer {token}
+```
+
+### Analytics API
+
+#### Get User Analytics
+```http
+GET /api/v1/analytics/user?userId=user_123&period=30d
+Authorization: Bearer {token}
+```
+
+#### Get Content Popularity
+```http
+GET /api/v1/analytics/popularity?contentId=col_123&period=7d
+Authorization: Bearer {token}
+```
+
+#### Get Search Analytics
+```http
+GET /api/v1/analytics/search?period=30d&groupBy=day
+Authorization: Bearer {token}
+```
+
+### Custom Reports API
+
+#### Create Custom Report
+```http
+POST /api/v1/reports/custom
+Authorization: Bearer {token}
+Content-Type: application/json
+
+{
+  "name": "Monthly User Activity",
+  "description": "Report on user activity for the month",
+  "type": "user_activity",
+  "category": "analytics",
+  "parameters": {
+    "dateRange": {
+      "from": "2024-01-01",
+      "to": "2024-01-31"
+    },
+    "groupBy": "day"
+  },
+  "schedule": {
+    "enabled": true,
+    "frequency": "monthly",
+    "dayOfMonth": 1
+  }
+}
+```
+
+#### Get Custom Reports
+```http
+GET /api/v1/reports/custom?type=user_activity&page=1&limit=20
+Authorization: Bearer {token}
+```
+
+#### Generate Report
+```http
+POST /api/v1/reports/custom/{reportId}/generate
+Authorization: Bearer {token}
+```
+
+#### Download Report
+```http
+GET /api/v1/reports/custom/{reportId}/download?format=pdf
+Authorization: Bearer {token}
+```
+
 ## Conclusion
 
 API này được thiết kế để:
@@ -1045,5 +1561,7 @@ API này được thiết kế để:
 4. **Developer Experience**: Clear documentation và easy-to-use SDKs
 5. **Reliability**: Comprehensive error handling và monitoring
 6. **Security**: Proper authentication, authorization, và rate limiting
+7. **Enterprise Features**: Content moderation, copyright management, security, analytics
+8. **Advanced Capabilities**: Semantic search, visual search, custom reports, system health
 
 API được thiết kế để có thể evolve theo thời gian mà không breaking existing clients thông qua versioning strategy.

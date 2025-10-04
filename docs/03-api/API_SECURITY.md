@@ -1069,15 +1069,391 @@ public enum SecurityEventType
 }
 ```
 
+## Advanced Security Features
+
+### 1. Two-Factor Authentication (2FA)
+
+#### TOTP Implementation
+```csharp
+public interface ITwoFactorService
+{
+    Task<TwoFactorSetupResult> SetupTwoFactorAsync(string userId, string method);
+    Task<bool> VerifyTwoFactorAsync(string userId, string code, string method);
+    Task<List<string>> GenerateBackupCodesAsync(string userId);
+    Task<bool> ValidateBackupCodeAsync(string userId, string code);
+}
+
+public class TwoFactorService : ITwoFactorService
+{
+    private readonly IUserSecurityRepository _userSecurityRepository;
+    private readonly IQRCodeGenerator _qrCodeGenerator;
+    
+    public async Task<TwoFactorSetupResult> SetupTwoFactorAsync(string userId, string method)
+    {
+        var secretKey = KeyGeneration.GenerateRandomKey(20);
+        var qrCodeData = $"otpauth://totp/ImageViewer:{userId}?secret={secretKey}&issuer=ImageViewer";
+        var qrCode = await _qrCodeGenerator.GenerateAsync(qrCodeData);
+        
+        var backupCodes = GenerateBackupCodes(10);
+        
+        var twoFactorInfo = new TwoFactorInfo
+        {
+            Enabled = false,
+            Method = method,
+            SecretKey = secretKey,
+            BackupCodes = backupCodes,
+            SetupDate = DateTime.UtcNow
+        };
+        
+        await _userSecurityRepository.UpdateTwoFactorAsync(userId, twoFactorInfo);
+        
+        return new TwoFactorSetupResult
+        {
+            QRCode = qrCode,
+            SecretKey = secretKey,
+            BackupCodes = backupCodes
+        };
+    }
+    
+    public async Task<bool> VerifyTwoFactorAsync(string userId, string code, string method)
+    {
+        var userSecurity = await _userSecurityRepository.GetByUserIdAsync(userId);
+        if (userSecurity?.TwoFactor?.Enabled != true)
+            return false;
+        
+        var totp = new Totp(Encoding.UTF8.GetBytes(userSecurity.TwoFactor.SecretKey));
+        var isValid = totp.VerifyTotp(code, out var timeStepMatched, new VerificationWindow(1, 1));
+        
+        if (isValid)
+        {
+            await RecordSecurityEventAsync(userId, "2fa_verified", "success");
+        }
+        else
+        {
+            await RecordSecurityEventAsync(userId, "2fa_failed", "failure");
+        }
+        
+        return isValid;
+    }
+}
+```
+
+### 2. Device Management
+
+#### Device Registration
+```csharp
+public interface IDeviceManagementService
+{
+    Task<Device> RegisterDeviceAsync(string userId, DeviceInfo deviceInfo);
+    Task<List<Device>> GetUserDevicesAsync(string userId);
+    Task<bool> TrustDeviceAsync(string userId, string deviceId);
+    Task<bool> RevokeDeviceAsync(string userId, string deviceId);
+    Task<bool> IsDeviceTrustedAsync(string userId, string deviceId);
+}
+
+public class DeviceManagementService : IDeviceManagementService
+{
+    private readonly IUserSecurityRepository _userSecurityRepository;
+    private readonly IDeviceFingerprintService _fingerprintService;
+    
+    public async Task<Device> RegisterDeviceAsync(string userId, DeviceInfo deviceInfo)
+    {
+        var fingerprint = await _fingerprintService.GenerateFingerprintAsync(deviceInfo);
+        
+        var device = new Device
+        {
+            DeviceId = Guid.NewGuid().ToString(),
+            Name = deviceInfo.Name,
+            Type = deviceInfo.Type,
+            OS = deviceInfo.OS,
+            Browser = deviceInfo.Browser,
+            IPAddress = deviceInfo.IPAddress,
+            Location = deviceInfo.Location,
+            Fingerprint = fingerprint,
+            IsTrusted = false,
+            FirstSeen = DateTime.UtcNow,
+            LastSeen = DateTime.UtcNow,
+            UserAgent = deviceInfo.UserAgent
+        };
+        
+        await _userSecurityRepository.AddDeviceAsync(userId, device);
+        await RecordSecurityEventAsync(userId, "device_registered", "info", device);
+        
+        return device;
+    }
+    
+    public async Task<bool> TrustDeviceAsync(string userId, string deviceId)
+    {
+        var device = await _userSecurityRepository.GetDeviceAsync(userId, deviceId);
+        if (device == null) return false;
+        
+        device.IsTrusted = true;
+        device.TrustedAt = DateTime.UtcNow;
+        
+        await _userSecurityRepository.UpdateDeviceAsync(userId, device);
+        await RecordSecurityEventAsync(userId, "device_trusted", "info", device);
+        
+        return true;
+    }
+}
+```
+
+### 3. Risk Assessment
+
+#### Risk Scoring Algorithm
+```csharp
+public interface IRiskAssessmentService
+{
+    Task<RiskScore> CalculateRiskScoreAsync(string userId, SecurityEvent securityEvent);
+    Task<List<RiskFactor>> AnalyzeRiskFactorsAsync(string userId);
+    Task<bool> IsHighRiskUserAsync(string userId);
+}
+
+public class RiskAssessmentService : IRiskAssessmentService
+{
+    private readonly IUserSecurityRepository _userSecurityRepository;
+    private readonly IGeolocationService _geolocationService;
+    
+    public async Task<RiskScore> CalculateRiskScoreAsync(string userId, SecurityEvent securityEvent)
+    {
+        var riskFactors = new List<RiskFactor>();
+        var userSecurity = await _userSecurityRepository.GetByUserIdAsync(userId);
+        
+        // Analyze login location
+        if (securityEvent.Type == "login")
+        {
+            var locationRisk = await AnalyzeLocationRiskAsync(userId, securityEvent.Location);
+            if (locationRisk > 0)
+            {
+                riskFactors.Add(new RiskFactor("unusual_location", locationRisk, 0.3, "Login from unusual location"));
+            }
+        }
+        
+        // Analyze device
+        if (securityEvent.Device != null)
+        {
+            var deviceRisk = AnalyzeDeviceRiskAsync(userSecurity, securityEvent.Device);
+            if (deviceRisk > 0)
+            {
+                riskFactors.Add(new RiskFactor("untrusted_device", deviceRisk, 0.4, "Login from untrusted device"));
+            }
+        }
+        
+        // Analyze time patterns
+        var timeRisk = AnalyzeTimeRiskAsync(userSecurity, securityEvent.Timestamp);
+        if (timeRisk > 0)
+        {
+            riskFactors.Add(new RiskFactor("unusual_time", timeRisk, 0.2, "Login at unusual time"));
+        }
+        
+        // Analyze frequency
+        var frequencyRisk = await AnalyzeFrequencyRiskAsync(userId, securityEvent);
+        if (frequencyRisk > 0)
+        {
+            riskFactors.Add(new RiskFactor("high_frequency", frequencyRisk, 0.3, "High frequency of security events"));
+        }
+        
+        var totalScore = (int)riskFactors.Sum(f => f.Score * f.Weight);
+        
+        return new RiskScore(totalScore, riskFactors, DateTime.UtcNow);
+    }
+    
+    private async Task<int> AnalyzeLocationRiskAsync(string userId, string location)
+    {
+        var userSecurity = await _userSecurityRepository.GetByUserIdAsync(userId);
+        var recentLocations = userSecurity.LoginHistory
+            .Where(h => h.Timestamp > DateTime.UtcNow.AddDays(-30))
+            .Select(h => h.Location)
+            .Distinct()
+            .ToList();
+        
+        if (!recentLocations.Contains(location))
+        {
+            return 30; // New location
+        }
+        
+        return 0;
+    }
+    
+    private int AnalyzeDeviceRiskAsync(UserSecurity userSecurity, Device device)
+    {
+        if (!userSecurity.Devices.Any(d => d.DeviceId == device.DeviceId))
+        {
+            return 40; // New device
+        }
+        
+        var existingDevice = userSecurity.Devices.First(d => d.DeviceId == device.DeviceId);
+        if (!existingDevice.IsTrusted)
+        {
+            return 20; // Untrusted device
+        }
+        
+        return 0;
+    }
+}
+```
+
+### 4. Content Moderation Security
+
+#### AI-Powered Content Analysis
+```csharp
+public interface IContentModerationService
+{
+    Task<ModerationResult> AnalyzeContentAsync(ContentAnalysisRequest request);
+    Task<bool> IsContentAppropriateAsync(string content, string contentType);
+    Task<List<string>> ExtractInappropriateElementsAsync(string content);
+}
+
+public class ContentModerationService : IContentModerationService
+{
+    private readonly IAIAnalysisService _aiAnalysisService;
+    private readonly IContentPolicyService _policyService;
+    
+    public async Task<ModerationResult> AnalyzeContentAsync(ContentAnalysisRequest request)
+    {
+        var aiAnalysis = await _aiAnalysisService.AnalyzeAsync(request);
+        var policyCheck = await _policyService.CheckPoliciesAsync(request);
+        
+        var result = new ModerationResult
+        {
+            IsAppropriate = aiAnalysis.IsAppropriate && policyCheck.IsCompliant,
+            Confidence = aiAnalysis.Confidence,
+            Categories = aiAnalysis.Categories,
+            Violations = policyCheck.Violations,
+            Recommendations = GenerateRecommendations(aiAnalysis, policyCheck)
+        };
+        
+        return result;
+    }
+    
+    public async Task<bool> IsContentAppropriateAsync(string content, string contentType)
+    {
+        var request = new ContentAnalysisRequest
+        {
+            Content = content,
+            ContentType = contentType,
+            AnalysisTypes = new[] { "inappropriate_content", "spam", "hate_speech" }
+        };
+        
+        var result = await AnalyzeContentAsync(request);
+        return result.IsAppropriate;
+    }
+}
+```
+
+### 5. Copyright Protection
+
+#### DMCA Management
+```csharp
+public interface ICopyrightManagementService
+{
+    Task<DMCAReport> ProcessDMCAReportAsync(DMCAReportRequest request);
+    Task<bool> IsContentCopyrightedAsync(string contentId);
+    Task<List<CopyrightViolation>> CheckCopyrightViolationsAsync(string contentId);
+}
+
+public class CopyrightManagementService : ICopyrightManagementService
+{
+    private readonly ICopyrightDetectionService _detectionService;
+    private readonly IDMCAProcessor _dmcaProcessor;
+    
+    public async Task<DMCAReport> ProcessDMCAReportAsync(DMCAReportRequest request)
+    {
+        // Validate the DMCA report
+        var validation = await ValidateDMCAReportAsync(request);
+        if (!validation.IsValid)
+        {
+            throw new InvalidDMCAReportException(validation.Errors);
+        }
+        
+        // Process the report
+        var report = new DMCAReport
+        {
+            ReportId = Guid.NewGuid().ToString(),
+            ReporterId = request.ReporterId,
+            ContentId = request.ContentId,
+            Reason = request.Reason,
+            Description = request.Description,
+            Status = DMCAStatus.Pending,
+            ReportedAt = DateTime.UtcNow
+        };
+        
+        await _dmcaProcessor.ProcessReportAsync(report);
+        
+        return report;
+    }
+    
+    public async Task<bool> IsContentCopyrightedAsync(string contentId)
+    {
+        var copyrightInfo = await _detectionService.DetectCopyrightAsync(contentId);
+        return copyrightInfo.HasCopyright;
+    }
+}
+```
+
+### 6. Advanced Monitoring
+
+#### Real-time Security Monitoring
+```csharp
+public interface ISecurityMonitoringService
+{
+    Task MonitorSecurityEventsAsync();
+    Task<List<SecurityAlert>> GetActiveAlertsAsync();
+    Task<bool> IsSystemUnderAttackAsync();
+}
+
+public class SecurityMonitoringService : ISecurityMonitoringService
+{
+    private readonly ISecurityEventRepository _eventRepository;
+    private readonly IAlertService _alertService;
+    
+    public async Task MonitorSecurityEventsAsync()
+    {
+        var recentEvents = await _eventRepository.GetRecentEventsAsync(TimeSpan.FromMinutes(5));
+        
+        // Analyze patterns
+        var suspiciousPatterns = AnalyzeSuspiciousPatterns(recentEvents);
+        
+        foreach (var pattern in suspiciousPatterns)
+        {
+            await _alertService.CreateAlertAsync(new SecurityAlert
+            {
+                Type = pattern.Type,
+                Severity = pattern.Severity,
+                Description = pattern.Description,
+                AffectedUsers = pattern.AffectedUsers,
+                Timestamp = DateTime.UtcNow
+            });
+        }
+    }
+    
+    public async Task<bool> IsSystemUnderAttackAsync()
+    {
+        var recentEvents = await _eventRepository.GetRecentEventsAsync(TimeSpan.FromMinutes(10));
+        
+        var attackIndicators = new[]
+        {
+            recentEvents.Count(e => e.Type == "brute_force_attack") > 50,
+            recentEvents.Count(e => e.Type == "ddos_attack") > 1000,
+            recentEvents.Count(e => e.Type == "sql_injection_attempt") > 10
+        };
+        
+        return attackIndicators.Any(indicator => indicator);
+    }
+}
+```
+
 ## Conclusion
 
 Security implementation đảm bảo:
 
-1. **Authentication**: JWT tokens và API keys
+1. **Authentication**: JWT tokens, 2FA, và device management
 2. **Authorization**: Role-based và permission-based access control
 3. **Input Validation**: Comprehensive validation và sanitization
 4. **Rate Limiting**: Protection against abuse và DDoS
 5. **Security Headers**: Protection against common attacks
 6. **Logging & Monitoring**: Security event tracking và monitoring
+7. **Advanced Security**: Risk assessment, content moderation, copyright protection
+8. **Real-time Monitoring**: Threat detection và automated response
 
-Security strategy này đảm bảo hệ thống được bảo vệ khỏi các threats phổ biến và có thể detect suspicious activities.
+Security strategy này đảm bảo hệ thống được bảo vệ khỏi các threats phổ biến và có thể detect suspicious activities với advanced AI-powered analysis.

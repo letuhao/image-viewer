@@ -1,3 +1,4 @@
 ---
+description: each class/interface/enum must be seperate inside each file.
 alwaysApply: true
 ---
