@@ -1,5 +1,6 @@
 using ImageViewer.Domain.Entities;
 using ImageViewer.Domain.ValueObjects;
+using MongoDB.Bson;
 
 namespace ImageViewer.Domain.Interfaces;
 
@@ -11,12 +12,12 @@ public interface ICacheInfoRepository : IRepository<ImageCacheInfo>
     /// <summary>
     /// Get cache info by image ID
     /// </summary>
-    Task<ImageCacheInfo?> GetByImageIdAsync(Guid imageId);
+    Task<ImageCacheInfo?> GetByImageIdAsync(ObjectId imageId);
 
     /// <summary>
     /// Get cache info by cache folder ID
     /// </summary>
-    Task<IEnumerable<ImageCacheInfo>> GetByCacheFolderIdAsync(Guid cacheFolderId);
+    Task<IEnumerable<ImageCacheInfo>> GetByCacheFolderIdAsync(ObjectId cacheFolderId);
 
     /// <summary>
     /// Get expired cache entries
