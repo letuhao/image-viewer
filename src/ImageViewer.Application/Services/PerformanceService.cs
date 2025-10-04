@@ -238,7 +238,7 @@ public class PerformanceService : IPerformanceService
             // TODO: Implement when database performance repository is available
             _logger.LogInformation("Optimized database queries");
             
-            return new DatabasePerformanceInfo
+            return Task.FromResult(new DatabasePerformanceInfo
             {
                 Id = ObjectId.GenerateNewId(),
                 IsOptimized = true,
@@ -248,7 +248,7 @@ public class PerformanceService : IPerformanceService
                 LastOptimized = DateTime.UtcNow,
                 OptimizedQueries = new List<string>(),
                 Indexes = new List<string>()
-            };
+            });
         }
         catch (Exception ex)
         {
