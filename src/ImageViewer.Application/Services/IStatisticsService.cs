@@ -1,5 +1,6 @@
 using ImageViewer.Application.DTOs.Statistics;
 using ImageViewer.Application.DTOs.Cache;
+using MongoDB.Bson;
 
 namespace ImageViewer.Application.Services;
 
@@ -11,7 +12,7 @@ public interface IStatisticsService
     /// <summary>
     /// Get collection statistics
     /// </summary>
-    Task<CollectionStatisticsDto> GetCollectionStatisticsAsync(Guid collectionId);
+    Task<CollectionStatisticsDto> GetCollectionStatisticsAsync(ObjectId collectionId);
 
     /// <summary>
     /// Get system statistics
@@ -21,7 +22,7 @@ public interface IStatisticsService
     /// <summary>
     /// Get image statistics
     /// </summary>
-    Task<ImageStatisticsDto> GetImageStatisticsAsync(Guid imageId);
+    Task<ImageStatisticsDto> GetImageStatisticsAsync(ObjectId imageId);
 
     /// <summary>
     /// Get cache statistics
@@ -46,7 +47,7 @@ public interface IStatisticsService
     /// <summary>
     /// Get popular images for collection
     /// </summary>
-    Task<IEnumerable<PopularImageDto>> GetPopularImagesAsync(Guid collectionId, int limit = 10);
+    Task<IEnumerable<PopularImageDto>> GetPopularImagesAsync(ObjectId collectionId, int limit = 10);
 
     /// <summary>
     /// Get recent activity

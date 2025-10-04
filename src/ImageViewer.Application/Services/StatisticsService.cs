@@ -2,6 +2,7 @@ using ImageViewer.Application.DTOs.Statistics;
 using ImageViewer.Application.DTOs.Cache;
 using ImageViewer.Domain.Interfaces;
 using Microsoft.Extensions.Logging;
+using MongoDB.Bson;
 
 namespace ImageViewer.Application.Services;
 
