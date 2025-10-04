@@ -632,7 +632,7 @@ public class CacheService : ICacheService
                     }
 
                     // Remove from database
-                    await _cacheInfoRepository.DeleteAsync(entry);
+                    await _cacheInfoRepository.DeleteAsync(entry.Id);
                     deletedCount++;
                 }
                 catch (Exception ex)
@@ -679,7 +679,7 @@ public class CacheService : ICacheService
                     }
 
                     // Remove from database
-                    await _cacheInfoRepository.DeleteAsync(entry);
+                    await _cacheInfoRepository.DeleteAsync(entry.Id);
                     deletedCount++;
                 }
                 catch (Exception ex)
