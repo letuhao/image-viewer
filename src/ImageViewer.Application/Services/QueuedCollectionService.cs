@@ -99,7 +99,7 @@ public class QueuedCollectionService : ICollectionService
 
     public async Task<Collection> CreateAsync(string name, string path, CollectionType type, CollectionSettings settings, CancellationToken cancellationToken = default)
     {
-        var collection = await _collectionService.CreateAsync(name, path, type, settings, cancellationToken);
+        var collection = await _collectionService.CreateCollectionAsync(ObjectId.Empty, name, path, type);
         
         // Queue collection scan if auto-scan is enabled
         if (settings?.AutoGenerateCache == true)
@@ -121,7 +121,12 @@ public class QueuedCollectionService : ICollectionService
 
     public async Task<Collection> UpdateAsync(Guid id, string? name = null, string? path = null, CollectionSettings? settings = null, CancellationToken cancellationToken = default)
     {
-        var collection = await _collectionService.UpdateAsync(id, name, path, settings, cancellationToken);
+        var updateRequest = new UpdateCollectionRequest
+        {
+            Name = name,
+            Path = path
+        };
+        var collection = await _collectionService.UpdateCollectionAsync(id, updateRequest);
         
         // Queue collection scan if auto-scan is enabled
         if (settings?.AutoGenerateCache == true)
@@ -143,18 +148,19 @@ public class QueuedCollectionService : ICollectionService
 
     public async Task DeleteAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        await _collectionService.DeleteAsync(id, cancellationToken);
+        await _collectionService.DeleteCollectionAsync(id);
     }
 
     public async Task RestoreAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        await _collectionService.RestoreAsync(id, cancellationToken);
+        // TODO: Implement restore functionality
+        throw new NotImplementedException("Restore functionality not yet implemented");
     }
 
     public async Task ScanCollectionAsync(Guid id, CancellationToken cancellationToken = default)
     {
         // Queue the scan operation instead of doing it synchronously
-        var collection = await _collectionService.GetByIdAsync(id, cancellationToken);
+        var collection = await _collectionService.GetCollectionByIdAsync(id);
         if (collection == null)
         {
             throw new InvalidOperationException($"Collection with ID '{id}' not found");
@@ -174,32 +180,38 @@ public class QueuedCollectionService : ICollectionService
 
     public async Task<ImageViewer.Domain.ValueObjects.CollectionStatistics> GetStatisticsAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        return await _collectionService.GetStatisticsAsync(id, cancellationToken);
+        // TODO: Implement GetStatisticsAsync
+        throw new NotImplementedException("GetStatisticsAsync not yet implemented");
     }
 
     public async Task<long> GetTotalSizeAsync(CancellationToken cancellationToken = default)
     {
-        return await _collectionService.GetTotalSizeAsync(cancellationToken);
+        // TODO: Implement GetTotalSizeAsync
+        throw new NotImplementedException("GetTotalSizeAsync not yet implemented");
     }
 
     public async Task<int> GetTotalImageCountAsync(CancellationToken cancellationToken = default)
     {
-        return await _collectionService.GetTotalImageCountAsync(cancellationToken);
+        // TODO: Implement GetTotalImageCountAsync
+        throw new NotImplementedException("GetTotalImageCountAsync not yet implemented");
     }
 
     public async Task AddTagAsync(Guid collectionId, string tagName, string? description = null, TagColor? color = null, CancellationToken cancellationToken = default)
     {
-        await _collectionService.AddTagAsync(collectionId, tagName, description, color, cancellationToken);
+        // TODO: Implement AddTagAsync
+        throw new NotImplementedException("AddTagAsync not yet implemented");
     }
 
     public async Task RemoveTagAsync(Guid collectionId, string tagName, CancellationToken cancellationToken = default)
     {
-        await _collectionService.RemoveTagAsync(collectionId, tagName, cancellationToken);
+        // TODO: Implement RemoveTagAsync
+        throw new NotImplementedException("RemoveTagAsync not yet implemented");
     }
 
     public async Task<IEnumerable<Tag>> GetTagsAsync(Guid collectionId, CancellationToken cancellationToken = default)
     {
-        return await _collectionService.GetTagsAsync(collectionId, cancellationToken);
+        // TODO: Implement GetTagsAsync
+        throw new NotImplementedException("GetTagsAsync not yet implemented");
     }
 
     #region ICollectionService Implementation
