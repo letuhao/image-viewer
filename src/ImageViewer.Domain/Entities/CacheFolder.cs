@@ -1,4 +1,5 @@
 using ImageViewer.Domain.Enums;
+using MongoDB.Bson;
 
 namespace ImageViewer.Domain.Entities;
 
@@ -7,7 +8,7 @@ namespace ImageViewer.Domain.Entities;
 /// </summary>
 public class CacheFolder : BaseEntity
 {
-    public new Guid Id { get; private set; }
+    public new ObjectId Id { get; private set; }
     public string Name { get; private set; }
     public string Path { get; private set; }
     public long MaxSizeBytes { get; private set; }
@@ -30,7 +31,7 @@ public class CacheFolder : BaseEntity
 
     public CacheFolder(string name, string path, long maxSizeBytes, int priority = 0)
     {
-        Id = Guid.NewGuid();
+        Id = ObjectId.GenerateNewId();
         Name = name ?? throw new ArgumentNullException(nameof(name));
         Path = path ?? throw new ArgumentNullException(nameof(path));
         MaxSizeBytes = maxSizeBytes;
