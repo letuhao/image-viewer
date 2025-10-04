@@ -190,4 +190,39 @@ public class MongoCollectionRepository : MongoRepository<Collection>, ICollectio
             .Limit(limit)
             .ToListAsync(cancellationToken);
     }
+
+    public async Task<Collection> GetByPathAsync(string path, CancellationToken cancellationToken = default)
+    {
+        var filter = Builders<Collection>.Filter.Eq(x => x.Path, path) & 
+                    Builders<Collection>.Filter.Eq(x => x.IsDeleted, false);
+        var result = await _collection.Find(filter).FirstOrDefaultAsync(cancellationToken);
+        return result ?? throw new EntityNotFoundException($"Collection with path '{path}' not found");
+    }
+
+    public async Task<IEnumerable<Collection>> GetByLibraryIdAsync(ObjectId libraryId, CancellationToken cancellationToken = default)
+    {
+        var filter = Builders<Collection>.Filter.Eq(x => x.LibraryId, libraryId) & 
+                    Builders<Collection>.Filter.Eq(x => x.IsDeleted, false);
+        return await _collection.Find(filter).ToListAsync(cancellationToken);
+    }
+
+    public async Task<IEnumerable<Collection>> GetActiveCollectionsAsync(CancellationToken cancellationToken = default)
+    {
+        var filter = Builders<Collection>.Filter.Eq(x => x.IsActive, true) & 
+                    Builders<Collection>.Filter.Eq(x => x.IsDeleted, false);
+        return await _collection.Find(filter).ToListAsync(cancellationToken);
+    }
+
+    public async Task<IEnumerable<Collection>> GetCollectionsByTypeAsync(CollectionType type, CancellationToken cancellationToken = default)
+    {
+        var filter = Builders<Collection>.Filter.Eq(x => x.Type, type) & 
+                    Builders<Collection>.Filter.Eq(x => x.IsDeleted, false);
+        return await _collection.Find(filter).ToListAsync(cancellationToken);
+    }
+
+    public async Task<long> GetCollectionCountAsync(CancellationToken cancellationToken = default)
+    {
+        var filter = Builders<Collection>.Filter.Eq(x => x.IsDeleted, false);
+        return await _collection.CountDocumentsAsync(filter, cancellationToken: cancellationToken);
+    }
 }
