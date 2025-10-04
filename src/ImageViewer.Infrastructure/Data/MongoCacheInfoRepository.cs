@@ -175,4 +175,16 @@ public class MongoCacheInfoRepository : MongoRepository<ImageCacheInfo>, ICacheI
     {
         return await GetCacheStatisticsAsync(cancellationToken);
     }
+
+    public async Task<ImageCacheInfo?> GetByImageIdAsync(ObjectId imageId, CancellationToken cancellationToken = default)
+    {
+        var filter = Builders<ImageCacheInfo>.Filter.Eq(x => x.ImageId, imageId);
+        return await _collection.Find(filter).FirstOrDefaultAsync(cancellationToken);
+    }
+
+    public async Task<IEnumerable<ImageCacheInfo>> GetByCacheFolderIdAsync(ObjectId cacheFolderId, CancellationToken cancellationToken = default)
+    {
+        var filter = Builders<ImageCacheInfo>.Filter.Eq(x => x.CachePath, cacheFolderId.ToString());
+        return await _collection.Find(filter).ToListAsync(cancellationToken);
+    }
 }
