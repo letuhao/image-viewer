@@ -242,10 +242,10 @@ public class TagService : ITagService
         var collectionTags = await _collectionTagRepository.GetByTagIdAsync(tagId);
         foreach (var collectionTag in collectionTags)
         {
-            await _collectionTagRepository.DeleteAsync(collectionTag);
+            await _collectionTagRepository.DeleteAsync(collectionTag.Id);
         }
 
-        await _tagRepository.DeleteAsync(tag);
+        await _tagRepository.DeleteAsync(tag.Id);
         // Repository automatically saves changes in MongoDB
 
         _logger.LogInformation("Tag deleted: {TagId}", tagId);
