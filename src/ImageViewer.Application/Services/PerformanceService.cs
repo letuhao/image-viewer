@@ -46,14 +46,14 @@ public class PerformanceService : IPerformanceService
         }
     }
 
-    public async Task<CacheInfo> ClearCacheAsync(CacheType? cacheType = null)
+    public Task<CacheInfo> ClearCacheAsync(CacheType? cacheType = null)
     {
         try
         {
             // TODO: Implement when cache repository is available
             _logger.LogInformation("Cleared cache for type {CacheType}", cacheType?.ToString() ?? "All");
             
-            return new CacheInfo
+            var cacheInfo = new CacheInfo
             {
                 Id = ObjectId.GenerateNewId(),
                 Type = cacheType ?? CacheType.System,
@@ -64,6 +64,7 @@ public class PerformanceService : IPerformanceService
                 IsOptimized = true,
                 Status = "Cleared"
             };
+            return Task.FromResult(cacheInfo);
         }
         catch (Exception ex)
         {
@@ -72,14 +73,14 @@ public class PerformanceService : IPerformanceService
         }
     }
 
-    public async Task<CacheInfo> OptimizeCacheAsync()
+    public Task<CacheInfo> OptimizeCacheAsync()
     {
         try
         {
             // TODO: Implement when cache repository is available
             _logger.LogInformation("Optimized cache");
             
-            return new CacheInfo
+            var cacheInfo = new CacheInfo
             {
                 Id = ObjectId.GenerateNewId(),
                 Type = CacheType.System,
@@ -90,6 +91,7 @@ public class PerformanceService : IPerformanceService
                 IsOptimized = true,
                 Status = "Optimized"
             };
+            return Task.FromResult(cacheInfo);
         }
         catch (Exception ex)
         {
@@ -124,13 +126,13 @@ public class PerformanceService : IPerformanceService
         }
     }
 
-    public async Task<ImageProcessingInfo> GetImageProcessingInfoAsync()
+    public Task<ImageProcessingInfo> GetImageProcessingInfoAsync()
     {
         try
         {
             // TODO: Implement when image processing repository is available
             // For now, return placeholder info
-            return new ImageProcessingInfo
+            var info = new ImageProcessingInfo
             {
                 Id = ObjectId.GenerateNewId(),
                 IsOptimized = true,
@@ -141,6 +143,7 @@ public class PerformanceService : IPerformanceService
                 SupportedFormats = new List<string> { "jpg", "jpeg", "png", "gif", "bmp", "webp" },
                 OptimizationSettings = new List<string> { "resize", "compress", "format_conversion" }
             };
+            return Task.FromResult(info);
         }
         catch (Exception ex)
         {
@@ -149,14 +152,14 @@ public class PerformanceService : IPerformanceService
         }
     }
 
-    public async Task<ImageProcessingInfo> OptimizeImageProcessingAsync()
+    public Task<ImageProcessingInfo> OptimizeImageProcessingAsync()
     {
         try
         {
             // TODO: Implement when image processing repository is available
             _logger.LogInformation("Optimized image processing");
             
-            return new ImageProcessingInfo
+            var info = new ImageProcessingInfo
             {
                 Id = ObjectId.GenerateNewId(),
                 IsOptimized = true,
@@ -167,6 +170,7 @@ public class PerformanceService : IPerformanceService
                 SupportedFormats = new List<string> { "jpg", "jpeg", "png", "gif", "bmp", "webp" },
                 OptimizationSettings = new List<string> { "resize", "compress", "format_conversion" }
             };
+            return Task.FromResult(info);
         }
         catch (Exception ex)
         {
@@ -175,13 +179,13 @@ public class PerformanceService : IPerformanceService
         }
     }
 
-    public async Task<ImageProcessingStatistics> GetImageProcessingStatisticsAsync()
+    public Task<ImageProcessingStatistics> GetImageProcessingStatisticsAsync()
     {
         try
         {
             // TODO: Implement when image processing repository is available
             // For now, return placeholder statistics
-            return new ImageProcessingStatistics
+            var statistics = new ImageProcessingStatistics
             {
                 TotalProcessed = 0,
                 TotalFailed = 0,
@@ -192,6 +196,7 @@ public class PerformanceService : IPerformanceService
                 ProcessedByFormat = new Dictionary<string, long>(),
                 ProcessedBySize = new Dictionary<string, long>()
             };
+            return Task.FromResult(statistics);
         }
         catch (Exception ex)
         {
@@ -200,13 +205,13 @@ public class PerformanceService : IPerformanceService
         }
     }
 
-    public async Task<DatabasePerformanceInfo> GetDatabasePerformanceInfoAsync()
+    public Task<DatabasePerformanceInfo> GetDatabasePerformanceInfoAsync()
     {
         try
         {
             // TODO: Implement when database performance repository is available
             // For now, return placeholder info
-            return new DatabasePerformanceInfo
+            var info = new DatabasePerformanceInfo
             {
                 Id = ObjectId.GenerateNewId(),
                 IsOptimized = true,
@@ -217,6 +222,7 @@ public class PerformanceService : IPerformanceService
                 OptimizedQueries = new List<string>(),
                 Indexes = new List<string>()
             };
+            return Task.FromResult(info);
         }
         catch (Exception ex)
         {
@@ -225,7 +231,7 @@ public class PerformanceService : IPerformanceService
         }
     }
 
-    public async Task<DatabasePerformanceInfo> OptimizeDatabaseQueriesAsync()
+    public Task<DatabasePerformanceInfo> OptimizeDatabaseQueriesAsync()
     {
         try
         {

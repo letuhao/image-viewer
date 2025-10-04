@@ -130,6 +130,8 @@ public class CollectionService : ICollectionService
         try
         {
             var collection = await GetCollectionByIdAsync(collectionId);
+            if (collection == null)
+                throw new EntityNotFoundException($"Collection with ID {collectionId} not found");
             
             if (request.Name != null)
             {
@@ -179,6 +181,8 @@ public class CollectionService : ICollectionService
         try
         {
             var collection = await GetCollectionByIdAsync(collectionId);
+            if (collection == null)
+                throw new EntityNotFoundException($"Collection with ID {collectionId} not found");
             
             var newSettings = new CollectionSettings();
             
@@ -245,6 +249,8 @@ public class CollectionService : ICollectionService
         try
         {
             var collection = await GetCollectionByIdAsync(collectionId);
+            if (collection == null)
+                throw new EntityNotFoundException($"Collection with ID {collectionId} not found");
             
             var newMetadata = new CollectionMetadata();
             
