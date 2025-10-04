@@ -33,6 +33,9 @@ public class CollectionSettings
     
     [BsonElement("excludedPaths")]
     public List<string> ExcludedPaths { get; private set; }
+    
+    [BsonElement("autoGenerateCache")]
+    public bool AutoGenerateCache { get; private set; }
 
     public CollectionSettings()
     {
@@ -45,6 +48,7 @@ public class CollectionSettings
         MaxFileSize = 100 * 1024 * 1024; // 100MB
         AllowedFormats = new List<string> { "jpg", "jpeg", "png", "gif", "bmp", "webp", "mp4", "avi", "mov" };
         ExcludedPaths = new List<string>();
+        AutoGenerateCache = true;
     }
 
     public void Enable()

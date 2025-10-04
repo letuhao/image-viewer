@@ -27,6 +27,9 @@ public class LibraryMetadata
     
     [BsonElement("modifiedBy")]
     public string ModifiedBy { get; private set; }
+    
+    [BsonElement("description")]
+    public string Description { get; private set; }
 
     public LibraryMetadata()
     {
@@ -36,6 +39,7 @@ public class LibraryMetadata
         Version = "1.0";
         CreatedBy = string.Empty;
         ModifiedBy = string.Empty;
+        Description = string.Empty;
     }
 
     public void AddTag(string tag)
@@ -98,5 +102,10 @@ public class LibraryMetadata
     public void UpdateModifiedBy(string modifiedBy)
     {
         ModifiedBy = modifiedBy ?? string.Empty;
+    }
+
+    public void UpdateDescription(string description)
+    {
+        Description = description ?? string.Empty;
     }
 }

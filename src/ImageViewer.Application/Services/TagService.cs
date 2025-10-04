@@ -73,13 +73,13 @@ public class TagService : ITagService
                 dto.Description ?? string.Empty,
                 tagColor
             );
-            await _tagRepository.AddAsync(tag);
+            await _tagRepository.CreateAsync(tag);
         }
 
         // Create collection tag relationship
         var collectionTag = new CollectionTag(collectionId, tag.Id);
-        await _collectionTagRepository.AddAsync(collectionTag);
-        await _collectionTagRepository.SaveChangesAsync();
+        await _collectionTagRepository.CreateAsync(collectionTag);
+        // Repository automatically saves changes in MongoDB
 
         _logger.LogInformation("Tag {TagName} added to collection: {CollectionId}", dto.TagName, collectionId);
 
@@ -109,7 +109,7 @@ public class TagService : ITagService
         }
 
         await _collectionTagRepository.DeleteAsync(collectionTag);
-        await _collectionTagRepository.SaveChangesAsync();
+        // Repository automatically saves changes in MongoDB
 
         _logger.LogInformation("Tag {TagName} removed from collection: {CollectionId}", tagName, collectionId);
     }
@@ -171,8 +171,8 @@ public class TagService : ITagService
             new Domain.ValueObjects.TagColor(dto.Color.R, dto.Color.G, dto.Color.B)
         );
 
-        await _tagRepository.AddAsync(tag);
-        await _tagRepository.SaveChangesAsync();
+        await _tagRepository.CreateAsync(tag);
+        // Repository automatically saves changes in MongoDB
 
         _logger.LogInformation("Tag created with ID: {TagId}", tag.Id);
 
@@ -207,7 +207,7 @@ public class TagService : ITagService
         tag.UpdateColor(new Domain.ValueObjects.TagColor(dto.Color.R, dto.Color.G, dto.Color.B));
 
         await _tagRepository.UpdateAsync(tag);
-        await _tagRepository.SaveChangesAsync();
+        // Repository automatically saves changes in MongoDB
 
         _logger.LogInformation("Tag updated: {TagId}", tagId);
 
@@ -245,7 +245,7 @@ public class TagService : ITagService
         }
 
         await _tagRepository.DeleteAsync(tag);
-        await _tagRepository.SaveChangesAsync();
+        // Repository automatically saves changes in MongoDB
 
         _logger.LogInformation("Tag deleted: {TagId}", tagId);
     }

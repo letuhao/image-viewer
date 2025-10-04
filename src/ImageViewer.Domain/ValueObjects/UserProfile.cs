@@ -78,6 +78,18 @@ public class UserProfile
         UpdateDisplayName();
     }
 
+    public void UpdateFirstName(string firstName)
+    {
+        FirstName = firstName ?? string.Empty;
+        UpdateDisplayName();
+    }
+
+    public void UpdateLastName(string lastName)
+    {
+        LastName = lastName ?? string.Empty;
+        UpdateDisplayName();
+    }
+
     public void UpdateDisplayName(string displayName = "")
     {
         if (string.IsNullOrWhiteSpace(displayName))

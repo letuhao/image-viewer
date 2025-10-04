@@ -533,7 +533,7 @@ public class CacheService : ICacheService
                     imageData.Length,
                     DateTime.UtcNow.AddDays(30));
 
-                await _cacheInfoRepository.AddAsync(cacheInfo);
+                await _cacheInfoRepository.CreateAsync(cacheInfo);
             }
 
             // Update cache folder statistics

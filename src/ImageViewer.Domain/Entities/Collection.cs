@@ -79,95 +79,45 @@ public class Collection : BaseEntity
         UpdatedAt = DateTime.UtcNow;
     }
 
-    /*
-    public void SetSettings(CollectionSettingsEntity settings)
+    public void UpdateSettings(CollectionSettings settings)
     {
         Settings = settings ?? throw new ArgumentNullException(nameof(settings));
         UpdatedAt = DateTime.UtcNow;
     }
-    */
 
-    /*
-    public void AddImage(Image image)
+    public void UpdateMetadata(CollectionMetadata metadata)
     {
-        if (image == null)
-            throw new ArgumentNullException(nameof(image));
-
-        if (_images.Any(i => i.Filename == image.Filename))
-            throw new InvalidOperationException($"Image with filename '{image.Filename}' already exists in collection");
-
-        _images.Add(image);
-        UpdatedAt = DateTime.UtcNow;
-        
-        AddDomainEvent(new ImageAddedEvent(image, this));
-    }
-    */
-
-    /*
-    public void RemoveImage(Guid imageId)
-    {
-        var image = _images.FirstOrDefault(i => i.Id == imageId);
-        if (image == null)
-            throw new InvalidOperationException($"Image with ID '{imageId}' not found in collection");
-
-        _images.Remove(image);
+        Metadata = metadata ?? throw new ArgumentNullException(nameof(metadata));
         UpdatedAt = DateTime.UtcNow;
     }
 
-    public void AddTag(CollectionTag tag)
+    public void UpdateStatistics(CollectionStatistics statistics)
     {
-        if (tag == null)
-            throw new ArgumentNullException(nameof(tag));
-
-        if (_tags.Any(t => t.TagId == tag.TagId))
-            throw new InvalidOperationException($"Tag with ID '{tag.TagId}' already exists in collection");
-
-        _tags.Add(tag);
+        Statistics = statistics ?? throw new ArgumentNullException(nameof(statistics));
         UpdatedAt = DateTime.UtcNow;
     }
 
-    public void RemoveTag(Guid tagId)
+    public void Activate()
     {
-        var tag = _tags.FirstOrDefault(t => t.TagId == tagId);
-        if (tag == null)
-            throw new InvalidOperationException($"Tag with ID '{tagId}' not found in collection");
-
-        _tags.Remove(tag);
+        IsActive = true;
         UpdatedAt = DateTime.UtcNow;
     }
 
-    public void SoftDelete()
+    public void Deactivate()
     {
-        IsDeleted = true;
-        DeletedAt = DateTime.UtcNow;
+        IsActive = false;
         UpdatedAt = DateTime.UtcNow;
     }
 
-    public void Restore()
+    public void EnableWatching()
     {
-        IsDeleted = false;
-        DeletedAt = null;
+        WatchInfo.EnableWatching();
         UpdatedAt = DateTime.UtcNow;
     }
 
-    public int GetImageCount()
+    public void DisableWatching()
     {
-        return _images.Count;
+        WatchInfo.DisableWatching();
+        UpdatedAt = DateTime.UtcNow;
     }
-
-    public long GetTotalSize()
-    {
-        return _images.Sum(i => i.FileSize);
-    }
-
-    public IEnumerable<Image> GetImagesByFormat(string format)
-    {
-        return _images.Where(i => i.Format.Equals(format, StringComparison.OrdinalIgnoreCase));
-    }
-
-    public IEnumerable<Image> GetImagesBySizeRange(int minWidth, int minHeight)
-    {
-        return _images.Where(i => i.Width >= minWidth && i.Height >= minHeight);
-    }
-    */
 }
