@@ -36,10 +36,10 @@ public class QueuedCollectionService : ICollectionService
         var collections = await _collectionService.GetCollectionsAsync();
         return new SearchResponseDto<Collection>
         {
-            Data = collections,
-            TotalCount = collections.Count(),
-            Page = pagination.Page,
-            PageSize = pagination.PageSize
+            Results = collections,
+            TotalResults = collections.Count(),
+            Query = searchRequest.Query,
+            SearchTime = TimeSpan.Zero
         };
     }
 
@@ -94,7 +94,7 @@ public class QueuedCollectionService : ICollectionService
     {
         var collections = await _collectionService.GetCollectionsAsync();
         // Note: This is a simplified implementation, proper filtering would be handled by the repository
-        return collections.Where(c => c.Statistics.TotalImages > 0);
+        return collections.Where(c => c.Statistics.TotalItems > 0);
     }
 
     public async Task<IEnumerable<Collection>> GetCollectionsByTagAsync(string tagName, CancellationToken cancellationToken = default)
