@@ -44,11 +44,11 @@ public class MongoDbContext
     // Distribution Collections
     // public IMongoCollection<Torrent> Torrents => _database.GetCollection<Torrent>("torrents");
     // public IMongoCollection<DownloadLink> DownloadLinks => _database.GetCollection<DownloadLink>("downloadLinks");
-    public IMongoCollection<TorrentStatistics> TorrentStatistics => _database.GetCollection<TorrentStatistics>("torrentStatistics");
-    public IMongoCollection<LinkHealthChecker> LinkHealthCheckers => _database.GetCollection<LinkHealthChecker>("linkHealthCheckers");
-    public IMongoCollection<DownloadQualityOption> DownloadQualityOptions => _database.GetCollection<DownloadQualityOption>("downloadQualityOptions");
-    public IMongoCollection<DistributionNode> DistributionNodes => _database.GetCollection<DistributionNode>("distributionNodes");
-    public IMongoCollection<NodePerformanceMetrics> NodePerformanceMetrics => _database.GetCollection<NodePerformanceMetrics>("nodePerformanceMetrics");
+    // public IMongoCollection<TorrentStatistics> TorrentStatistics => _database.GetCollection<TorrentStatistics>("torrentStatistics");
+    // public IMongoCollection<LinkHealthChecker> LinkHealthCheckers => _database.GetCollection<LinkHealthChecker>("linkHealthCheckers");
+    // public IMongoCollection<DownloadQualityOption> DownloadQualityOptions => _database.GetCollection<DownloadQualityOption>("downloadQualityOptions");
+    // public IMongoCollection<DistributionNode> DistributionNodes => _database.GetCollection<DistributionNode>("distributionNodes");
+    // public IMongoCollection<NodePerformanceMetrics> NodePerformanceMetrics => _database.GetCollection<NodePerformanceMetrics>("nodePerformanceMetrics");
 
     // Reward Collections
     public IMongoCollection<UserReward> UserRewards => _database.GetCollection<UserReward>("userRewards");
