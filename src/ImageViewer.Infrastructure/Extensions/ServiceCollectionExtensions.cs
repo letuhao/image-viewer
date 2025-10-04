@@ -58,6 +58,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IMediaItemService, MediaItemService>();
         services.AddScoped<ISearchService, SearchService>();
         services.AddScoped<INotificationService, NotificationService>();
+        services.AddScoped<IUserPreferencesService, UserPreferencesService>();
 
         // Register unit of work
         services.AddScoped<IUnitOfWork, MongoUnitOfWork>(provider =>
