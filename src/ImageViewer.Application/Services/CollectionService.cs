@@ -305,6 +305,8 @@ public class CollectionService : ICollectionService
         try
         {
             var collection = await GetCollectionByIdAsync(collectionId);
+            if (collection == null)
+                throw new EntityNotFoundException($"Collection with ID {collectionId} not found");
             
             var newStatistics = new ImageViewer.Domain.ValueObjects.CollectionStatistics();
             
@@ -350,6 +352,8 @@ public class CollectionService : ICollectionService
         try
         {
             var collection = await GetCollectionByIdAsync(collectionId);
+            if (collection == null)
+                throw new EntityNotFoundException($"Collection with ID {collectionId} not found");
             collection.Activate();
             return await _collectionRepository.UpdateAsync(collection);
         }
@@ -365,6 +369,8 @@ public class CollectionService : ICollectionService
         try
         {
             var collection = await GetCollectionByIdAsync(collectionId);
+            if (collection == null)
+                throw new EntityNotFoundException($"Collection with ID {collectionId} not found");
             collection.Deactivate();
             return await _collectionRepository.UpdateAsync(collection);
         }
@@ -380,6 +386,8 @@ public class CollectionService : ICollectionService
         try
         {
             var collection = await GetCollectionByIdAsync(collectionId);
+            if (collection == null)
+                throw new EntityNotFoundException($"Collection with ID {collectionId} not found");
             collection.EnableWatching();
             return await _collectionRepository.UpdateAsync(collection);
         }
@@ -395,6 +403,8 @@ public class CollectionService : ICollectionService
         try
         {
             var collection = await GetCollectionByIdAsync(collectionId);
+            if (collection == null)
+                throw new EntityNotFoundException($"Collection with ID {collectionId} not found");
             collection.DisableWatching();
             return await _collectionRepository.UpdateAsync(collection);
         }
@@ -410,6 +420,8 @@ public class CollectionService : ICollectionService
         try
         {
             var collection = await GetCollectionByIdAsync(collectionId);
+            if (collection == null)
+                throw new EntityNotFoundException($"Collection with ID {collectionId} not found");
             
             if (request.IsWatching.HasValue)
             {

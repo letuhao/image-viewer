@@ -216,7 +216,7 @@ public class SearchService : ISearchService
                     ["FileSize"] = m.FileSize,
                     ["Width"] = m.Width,
                     ["Height"] = m.Height,
-                    ["Duration"] = m.Duration?.TotalSeconds
+                    ["Duration"] = m.Duration?.TotalSeconds ?? 0
                 }
             }).ToList();
 
