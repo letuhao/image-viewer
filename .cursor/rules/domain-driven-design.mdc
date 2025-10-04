@@ -1,0 +1,785 @@
+---
+description: Domain-Driven Design principles and patterns for ImageViewer Platform
+alwaysApply: true
+---
+
+# Domain-Driven Design - ImageViewer Platform
+
+## Core DDD Concepts
+
+### Bounded Contexts
+- **Collection Management**: Managing collections, libraries, and media items
+- **User Management**: User accounts, authentication, and authorization
+- **Content Moderation**: Content review, flagging, and moderation
+- **Analytics**: User behavior tracking and content analytics
+- **Social Features**: User interactions, messaging, and groups
+- **System Administration**: System settings, health monitoring, and maintenance
+
+### Aggregates
+- **Collection Aggregate**: Collection, MediaItem, and related entities
+- **User Aggregate**: User, UserSettings, and UserSecurity
+- **Library Aggregate**: Library and its collections
+- **Content Moderation Aggregate**: ContentModeration and related entities
+- **System Health Aggregate**: SystemHealth and monitoring entities
+
+### Entities
+- Use `ObjectId` for identity
+- Implement domain logic in entities
+- Use value objects for complex types
+- Maintain invariants within entities
+- Use domain events for side effects
+
+### Value Objects
+- Immutable objects that represent concepts
+- No identity, equality based on values
+- Use for complex types like Money, Address, etc.
+- Implement proper equality and hash code
+
+## Entity Design Patterns
+
+### Base Entity
+```csharp
+public abstract class BaseEntity
+{
+    [BsonId]
+    public ObjectId Id { get; set; }
+    
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
+    
+    private readonly List<IDomainEvent> _domainEvents = new();
+    
+    public IReadOnlyCollection<IDomainEvent> DomainEvents => _domainEvents.AsReadOnly();
+    
+    protected void AddDomainEvent(IDomainEvent domainEvent)
+    {
+        _domainEvents.Add(domainEvent);
+    }
+    
+    public void ClearDomainEvents()
+    {
+        _domainEvents.Clear();
+    }
+    
+    protected void UpdateTimestamp()
+    {
+        UpdatedAt = DateTime.UtcNow;
+    }
+}
+```
+
+### Aggregate Root
+```csharp
+public class Collection : BaseEntity, IAggregateRoot
+{
+    public ObjectId LibraryId { get; private set; }
+    public string Name { get; private set; }
+    public string Path { get; private set; }
+    public CollectionType Type { get; private set; }
+    
+    public CollectionSettings Settings { get; private set; }
+    public CollectionMetadata Metadata { get; private set; }
+    public CollectionStatistics Statistics { get; private set; }
+    public WatchInfo WatchInfo { get; private set; }
+    public SearchIndex SearchIndex { get; private set; }
+    
+    // Private constructor for MongoDB
+    private Collection() { }
+    
+    public Collection(ObjectId libraryId, string name, string path, CollectionType type)
+    {
+        Id = ObjectId.GenerateNewId();
+        LibraryId = libraryId;
+        Name = name ?? throw new ArgumentNullException(nameof(name));
+        Path = path ?? throw new ArgumentNullException(nameof(path));
+        Type = type;
+        
+        Settings = new CollectionSettings();
+        Metadata = new CollectionMetadata();
+        Statistics = new CollectionStatistics();
+        WatchInfo = new WatchInfo();
+        SearchIndex = new SearchIndex();
+        
+        CreatedAt = DateTime.UtcNow;
+        UpdatedAt = DateTime.UtcNow;
+        
+        AddDomainEvent(new CollectionCreatedEvent(Id, Name, LibraryId));
+    }
+    
+    public void UpdateName(string newName)
+    {
+        if (string.IsNullOrWhiteSpace(newName))
+            throw new ArgumentException("Collection name cannot be null or empty", nameof(newName));
+        
+        Name = newName;
+        UpdateTimestamp();
+        
+        AddDomainEvent(new CollectionNameChangedEvent(Id, newName));
+    }
+    
+    public void UpdatePath(string newPath)
+    {
+        if (string.IsNullOrWhiteSpace(newPath))
+            throw new ArgumentException("Collection path cannot be null or empty", nameof(newPath));
+        
+        Path = newPath;
+        WatchInfo.UpdateWatchPath(newPath);
+        UpdateTimestamp();
+        
+        AddDomainEvent(new CollectionPathChangedEvent(Id, newPath));
+    }
+    
+    public void EnableWatching()
+    {
+        if (!WatchInfo.IsWatching)
+        {
+            WatchInfo.EnableWatching();
+            UpdateTimestamp();
+            
+            AddDomainEvent(new CollectionWatchingEnabledEvent(Id));
+        }
+    }
+    
+    public void DisableWatching()
+    {
+        if (WatchInfo.IsWatching)
+        {
+            WatchInfo.DisableWatching();
+            UpdateTimestamp();
+            
+            AddDomainEvent(new CollectionWatchingDisabledEvent(Id));
+        }
+    }
+    
+    public void UpdateStatistics(int totalItems, long totalSize)
+    {
+        Statistics.UpdateStats(totalItems, totalSize);
+        UpdateTimestamp();
+    }
+    
+    public void AddTag(string tag)
+    {
+        if (string.IsNullOrWhiteSpace(tag))
+            throw new ArgumentException("Tag cannot be null or empty", nameof(tag));
+        
+        if (!Metadata.Tags.Contains(tag))
+        {
+            Metadata.AddTag(tag);
+            SearchIndex.AddTag(tag);
+            UpdateTimestamp();
+            
+            AddDomainEvent(new CollectionTagAddedEvent(Id, tag));
+        }
+    }
+    
+    public void RemoveTag(string tag)
+    {
+        if (Metadata.Tags.Contains(tag))
+        {
+            Metadata.RemoveTag(tag);
+            SearchIndex.RemoveTag(tag);
+            UpdateTimestamp();
+            
+            AddDomainEvent(new CollectionTagRemovedEvent(Id, tag));
+        }
+    }
+}
+```
+
+### Value Objects
+```csharp
+public class CollectionSettings : ValueObject
+{
+    public bool Enabled { get; private set; }
+    public bool AutoScan { get; private set; }
+    public bool GenerateThumbnails { get; private set; }
+    public bool GenerateCache { get; private set; }
+    
+    public CollectionSettings(bool enabled = true, bool autoScan = true, 
+        bool generateThumbnails = true, bool generateCache = true)
+    {
+        Enabled = enabled;
+        AutoScan = autoScan;
+        GenerateThumbnails = generateThumbnails;
+        GenerateCache = generateCache;
+    }
+    
+    public void Enable()
+    {
+        Enabled = true;
+    }
+    
+    public void Disable()
+    {
+        Enabled = false;
+    }
+    
+    public void UpdateScanSettings(bool autoScan, bool generateThumbnails, bool generateCache)
+    {
+        AutoScan = autoScan;
+        GenerateThumbnails = generateThumbnails;
+        GenerateCache = generateCache;
+    }
+    
+    protected override IEnumerable<object> GetEqualityComponents()
+    {
+        yield return Enabled;
+        yield return AutoScan;
+        yield return GenerateThumbnails;
+        yield return GenerateCache;
+    }
+}
+
+public class CollectionMetadata : ValueObject
+{
+    public string Description { get; private set; }
+    public List<string> Tags { get; private set; }
+    public Dictionary<string, object> CustomFields { get; private set; }
+    
+    public CollectionMetadata(string description = "", List<string> tags = null, 
+        Dictionary<string, object> customFields = null)
+    {
+        Description = description ?? "";
+        Tags = tags ?? new List<string>();
+        CustomFields = customFields ?? new Dictionary<string, object>();
+    }
+    
+    public void UpdateDescription(string description)
+    {
+        Description = description ?? "";
+    }
+    
+    public void AddTag(string tag)
+    {
+        if (!string.IsNullOrWhiteSpace(tag) && !Tags.Contains(tag))
+        {
+            Tags.Add(tag);
+        }
+    }
+    
+    public void RemoveTag(string tag)
+    {
+        Tags.Remove(tag);
+    }
+    
+    public void AddCustomField(string key, object value)
+    {
+        if (!string.IsNullOrWhiteSpace(key))
+        {
+            CustomFields[key] = value;
+        }
+    }
+    
+    public void RemoveCustomField(string key)
+    {
+        CustomFields.Remove(key);
+    }
+    
+    protected override IEnumerable<object> GetEqualityComponents()
+    {
+        yield return Description;
+        foreach (var tag in Tags.OrderBy(t => t))
+        {
+            yield return tag;
+        }
+        foreach (var field in CustomFields.OrderBy(f => f.Key))
+        {
+            yield return field.Key;
+            yield return field.Value;
+        }
+    }
+}
+```
+
+## Domain Events
+
+### Domain Event Interface
+```csharp
+public interface IDomainEvent
+{
+    ObjectId Id { get; }
+    DateTime OccurredOn { get; }
+    string EventType { get; }
+}
+
+public abstract class DomainEvent : IDomainEvent
+{
+    public ObjectId Id { get; }
+    public DateTime OccurredOn { get; }
+    public string EventType { get; }
+    
+    protected DomainEvent(string eventType)
+    {
+        Id = ObjectId.GenerateNewId();
+        OccurredOn = DateTime.UtcNow;
+        EventType = eventType;
+    }
+}
+```
+
+### Domain Event Examples
+```csharp
+public class CollectionCreatedEvent : DomainEvent
+{
+    public ObjectId CollectionId { get; }
+    public string CollectionName { get; }
+    public ObjectId LibraryId { get; }
+    
+    public CollectionCreatedEvent(ObjectId collectionId, string collectionName, ObjectId libraryId)
+        : base("CollectionCreated")
+    {
+        CollectionId = collectionId;
+        CollectionName = collectionName;
+        LibraryId = libraryId;
+    }
+}
+
+public class CollectionNameChangedEvent : DomainEvent
+{
+    public ObjectId CollectionId { get; }
+    public string NewName { get; }
+    
+    public CollectionNameChangedEvent(ObjectId collectionId, string newName)
+        : base("CollectionNameChanged")
+    {
+        CollectionId = collectionId;
+        NewName = newName;
+    }
+}
+
+public class CollectionTagAddedEvent : DomainEvent
+{
+    public ObjectId CollectionId { get; }
+    public string Tag { get; }
+    
+    public CollectionTagAddedEvent(ObjectId collectionId, string tag)
+        : base("CollectionTagAdded")
+    {
+        CollectionId = collectionId;
+        Tag = tag;
+    }
+}
+```
+
+## Repository Pattern
+
+### Repository Interface
+```csharp
+public interface IRepository<T> where T : BaseEntity
+{
+    Task<T> GetByIdAsync(ObjectId id);
+    Task<IEnumerable<T>> GetAllAsync();
+    Task<T> CreateAsync(T entity);
+    Task<T> UpdateAsync(T entity);
+    Task DeleteAsync(ObjectId id);
+    Task<bool> ExistsAsync(ObjectId id);
+}
+
+public interface ICollectionRepository : IRepository<Collection>
+{
+    Task<IEnumerable<Collection>> GetByLibraryIdAsync(ObjectId libraryId);
+    Task<IEnumerable<Collection>> SearchAsync(string query);
+    Task<IEnumerable<Collection>> GetByTagAsync(string tag);
+    Task<IEnumerable<Collection>> GetByTypeAsync(CollectionType type);
+    Task<Collection> GetByNameAsync(string name);
+    Task<long> GetCountByLibraryIdAsync(ObjectId libraryId);
+}
+```
+
+### Repository Implementation
+```csharp
+public class MongoCollectionRepository : ICollectionRepository
+{
+    private readonly IMongoCollection<Collection> _collections;
+    private readonly ILogger<MongoCollectionRepository> _logger;
+    
+    public MongoCollectionRepository(MongoDbContext context, ILogger<MongoCollectionRepository> logger)
+    {
+        _collections = context.Collections;
+        _logger = logger;
+    }
+    
+    public async Task<Collection> GetByIdAsync(ObjectId id)
+    {
+        try
+        {
+            return await _collections.Find(c => c.Id == id).FirstOrDefaultAsync();
+        }
+        catch (MongoException ex)
+        {
+            _logger.LogError(ex, "Failed to get collection with ID {CollectionId}", id);
+            throw new RepositoryException($"Failed to get collection with ID {id}", ex);
+        }
+    }
+    
+    public async Task<IEnumerable<Collection>> GetByLibraryIdAsync(ObjectId libraryId)
+    {
+        try
+        {
+            return await _collections.Find(c => c.LibraryId == libraryId).ToListAsync();
+        }
+        catch (MongoException ex)
+        {
+            _logger.LogError(ex, "Failed to get collections for library {LibraryId}", libraryId);
+            throw new RepositoryException($"Failed to get collections for library {libraryId}", ex);
+        }
+    }
+    
+    public async Task<IEnumerable<Collection>> SearchAsync(string query)
+    {
+        try
+        {
+            var filter = Builders<Collection>.Filter.Text(query);
+            return await _collections.Find(filter).ToListAsync();
+        }
+        catch (MongoException ex)
+        {
+            _logger.LogError(ex, "Failed to search collections with query {Query}", query);
+            throw new RepositoryException($"Failed to search collections with query {query}", ex);
+        }
+    }
+    
+    public async Task<Collection> CreateAsync(Collection collection)
+    {
+        try
+        {
+            await _collections.InsertOneAsync(collection);
+            return collection;
+        }
+        catch (MongoWriteException ex) when (ex.WriteError.Category == ServerErrorCategory.DuplicateKey)
+        {
+            throw new DuplicateCollectionException($"Collection with name '{collection.Name}' already exists", ex);
+        }
+        catch (MongoException ex)
+        {
+            _logger.LogError(ex, "Failed to create collection {CollectionName}", collection.Name);
+            throw new RepositoryException($"Failed to create collection {collection.Name}", ex);
+        }
+    }
+    
+    public async Task<Collection> UpdateAsync(Collection collection)
+    {
+        try
+        {
+            var filter = Builders<Collection>.Filter.Eq(c => c.Id, collection.Id);
+            var result = await _collections.ReplaceOneAsync(filter, collection);
+            
+            if (result.MatchedCount == 0)
+            {
+                throw new CollectionNotFoundException($"Collection with ID {collection.Id} not found");
+            }
+            
+            return collection;
+        }
+        catch (MongoException ex)
+        {
+            _logger.LogError(ex, "Failed to update collection {CollectionId}", collection.Id);
+            throw new RepositoryException($"Failed to update collection {collection.Id}", ex);
+        }
+    }
+    
+    public async Task DeleteAsync(ObjectId id)
+    {
+        try
+        {
+            var result = await _collections.DeleteOneAsync(c => c.Id == id);
+            
+            if (result.DeletedCount == 0)
+            {
+                throw new CollectionNotFoundException($"Collection with ID {id} not found");
+            }
+        }
+        catch (MongoException ex)
+        {
+            _logger.LogError(ex, "Failed to delete collection {CollectionId}", id);
+            throw new RepositoryException($"Failed to delete collection {id}", ex);
+        }
+    }
+}
+```
+
+## Domain Services
+
+### Domain Service Interface
+```csharp
+public interface ICollectionDomainService
+{
+    Task<Collection> CreateCollectionAsync(ObjectId libraryId, string name, string path, CollectionType type);
+    Task<Collection> UpdateCollectionNameAsync(ObjectId collectionId, string newName);
+    Task<Collection> UpdateCollectionPathAsync(ObjectId collectionId, string newPath);
+    Task<Collection> AddTagToCollectionAsync(ObjectId collectionId, string tag);
+    Task<Collection> RemoveTagFromCollectionAsync(ObjectId collectionId, string tag);
+    Task<bool> IsCollectionNameUniqueAsync(string name, ObjectId? excludeId = null);
+    Task<bool> IsCollectionPathUniqueAsync(string path, ObjectId? excludeId = null);
+}
+```
+
+### Domain Service Implementation
+```csharp
+public class CollectionDomainService : ICollectionDomainService
+{
+    private readonly ICollectionRepository _collectionRepository;
+    private readonly ILogger<CollectionDomainService> _logger;
+    
+    public CollectionDomainService(ICollectionRepository collectionRepository, ILogger<CollectionDomainService> logger)
+    {
+        _collectionRepository = collectionRepository;
+        _logger = logger;
+    }
+    
+    public async Task<Collection> CreateCollectionAsync(ObjectId libraryId, string name, string path, CollectionType type)
+    {
+        // Validate business rules
+        if (!await IsCollectionNameUniqueAsync(name))
+        {
+            throw new DuplicateCollectionException($"Collection with name '{name}' already exists");
+        }
+        
+        if (!await IsCollectionPathUniqueAsync(path))
+        {
+            throw new DuplicateCollectionException($"Collection with path '{path}' already exists");
+        }
+        
+        // Create collection
+        var collection = new Collection(libraryId, name, path, type);
+        
+        // Save to repository
+        await _collectionRepository.CreateAsync(collection);
+        
+        _logger.LogInformation("Created collection {CollectionName} with ID {CollectionId}", name, collection.Id);
+        
+        return collection;
+    }
+    
+    public async Task<Collection> UpdateCollectionNameAsync(ObjectId collectionId, string newName)
+    {
+        var collection = await _collectionRepository.GetByIdAsync(collectionId);
+        if (collection == null)
+        {
+            throw new CollectionNotFoundException($"Collection with ID {collectionId} not found");
+        }
+        
+        if (!await IsCollectionNameUniqueAsync(newName, collectionId))
+        {
+            throw new DuplicateCollectionException($"Collection with name '{newName}' already exists");
+        }
+        
+        collection.UpdateName(newName);
+        await _collectionRepository.UpdateAsync(collection);
+        
+        _logger.LogInformation("Updated collection {CollectionId} name to {NewName}", collectionId, newName);
+        
+        return collection;
+    }
+    
+    public async Task<bool> IsCollectionNameUniqueAsync(string name, ObjectId? excludeId = null)
+    {
+        var existingCollection = await _collectionRepository.GetByNameAsync(name);
+        
+        if (existingCollection == null)
+        {
+            return true;
+        }
+        
+        if (excludeId.HasValue && existingCollection.Id == excludeId.Value)
+        {
+            return true;
+        }
+        
+        return false;
+    }
+    
+    public async Task<bool> IsCollectionPathUniqueAsync(string path, ObjectId? excludeId = null)
+    {
+        // Implementation to check path uniqueness
+        // This would require a method in the repository to find by path
+        return true; // Simplified for example
+    }
+}
+```
+
+## Application Services
+
+### Application Service Interface
+```csharp
+public interface ICollectionApplicationService
+{
+    Task<CollectionDto> CreateCollectionAsync(CreateCollectionRequest request);
+    Task<CollectionDto> UpdateCollectionAsync(ObjectId id, UpdateCollectionRequest request);
+    Task<CollectionDto> GetCollectionAsync(ObjectId id);
+    Task<IEnumerable<CollectionDto>> GetCollectionsAsync(GetCollectionsRequest request);
+    Task DeleteCollectionAsync(ObjectId id);
+    Task<CollectionDto> AddTagAsync(ObjectId id, string tag);
+    Task<CollectionDto> RemoveTagAsync(ObjectId id, string tag);
+}
+```
+
+### Application Service Implementation
+```csharp
+public class CollectionApplicationService : ICollectionApplicationService
+{
+    private readonly ICollectionDomainService _domainService;
+    private readonly ICollectionRepository _repository;
+    private readonly IMessageQueueService _messageQueue;
+    private readonly ILogger<CollectionApplicationService> _logger;
+    
+    public CollectionApplicationService(
+        ICollectionDomainService domainService,
+        ICollectionRepository repository,
+        IMessageQueueService messageQueue,
+        ILogger<CollectionApplicationService> logger)
+    {
+        _domainService = domainService;
+        _repository = repository;
+        _messageQueue = messageQueue;
+        _logger = logger;
+    }
+    
+    public async Task<CollectionDto> CreateCollectionAsync(CreateCollectionRequest request)
+    {
+        try
+        {
+            // Create collection using domain service
+            var collection = await _domainService.CreateCollectionAsync(
+                request.LibraryId, 
+                request.Name, 
+                request.Path, 
+                request.Type);
+            
+            // Queue background job for collection scanning
+            await _messageQueue.PublishAsync(new CollectionScanMessage
+            {
+                CollectionId = collection.Id,
+                LibraryId = collection.LibraryId,
+                Path = collection.Path,
+                ScanType = "full",
+                Priority = 1
+            });
+            
+            // Map to DTO
+            var dto = MapToDto(collection);
+            
+            _logger.LogInformation("Created collection {CollectionName} with ID {CollectionId}", 
+                request.Name, collection.Id);
+            
+            return dto;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to create collection {CollectionName}", request.Name);
+            throw;
+        }
+    }
+    
+    public async Task<CollectionDto> UpdateCollectionAsync(ObjectId id, UpdateCollectionRequest request)
+    {
+        try
+        {
+            var collection = await _repository.GetByIdAsync(id);
+            if (collection == null)
+            {
+                throw new CollectionNotFoundException($"Collection with ID {id} not found");
+            }
+            
+            // Update using domain service
+            if (!string.IsNullOrEmpty(request.Name) && request.Name != collection.Name)
+            {
+                collection = await _domainService.UpdateCollectionNameAsync(id, request.Name);
+            }
+            
+            if (!string.IsNullOrEmpty(request.Path) && request.Path != collection.Path)
+            {
+                collection = await _domainService.UpdateCollectionPathAsync(id, request.Path);
+            }
+            
+            // Map to DTO
+            var dto = MapToDto(collection);
+            
+            _logger.LogInformation("Updated collection {CollectionId}", id);
+            
+            return dto;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to update collection {CollectionId}", id);
+            throw;
+        }
+    }
+    
+    private CollectionDto MapToDto(Collection collection)
+    {
+        return new CollectionDto
+        {
+            Id = collection.Id,
+            LibraryId = collection.LibraryId,
+            Name = collection.Name,
+            Path = collection.Path,
+            Type = collection.Type,
+            Settings = new CollectionSettingsDto
+            {
+                Enabled = collection.Settings.Enabled,
+                AutoScan = collection.Settings.AutoScan,
+                GenerateThumbnails = collection.Settings.GenerateThumbnails,
+                GenerateCache = collection.Settings.GenerateCache
+            },
+            Metadata = new CollectionMetadataDto
+            {
+                Description = collection.Metadata.Description,
+                Tags = collection.Metadata.Tags,
+                CustomFields = collection.Metadata.CustomFields
+            },
+            Statistics = new CollectionStatisticsDto
+            {
+                TotalItems = collection.Statistics.TotalItems,
+                TotalSize = collection.Statistics.TotalSize,
+                LastScanDate = collection.Statistics.LastScanDate,
+                ScanCount = collection.Statistics.ScanCount
+            },
+            CreatedAt = collection.CreatedAt,
+            UpdatedAt = collection.UpdatedAt
+        };
+    }
+}
+```
+
+## DDD Best Practices
+
+### 1. Keep Aggregates Small
+- Limit aggregate size to maintain consistency boundaries
+- Use references for related entities that don't need to be in the same aggregate
+- Focus on business invariants when designing aggregates
+
+### 2. Use Domain Events
+- Publish domain events for side effects
+- Keep domain events focused and specific
+- Use domain events for integration between bounded contexts
+
+### 3. Implement Proper Validation
+- Validate business rules in domain entities
+- Use value objects for complex validation
+- Throw domain exceptions for business rule violations
+
+### 4. Maintain Invariants
+- Ensure business invariants are maintained within aggregates
+- Use private setters and methods to control state changes
+- Validate invariants in domain methods
+
+### 5. Use Repository Pattern
+- Abstract data access behind repository interfaces
+- Keep repositories focused on aggregate roots
+- Use specifications for complex queries
+
+### 6. Separate Concerns
+- Keep domain logic in domain layer
+- Use application services for orchestration
+- Use infrastructure services for external concerns
+
+### 7. Test Domain Logic
+- Write unit tests for domain entities and services
+- Test business rules and invariants
+- Use domain events for testing side effects
+
+### 8. Document Domain Model
+- Use ubiquitous language consistently
+- Document business rules and invariants
+- Keep domain model aligned with business requirements

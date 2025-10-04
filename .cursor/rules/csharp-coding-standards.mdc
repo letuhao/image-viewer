@@ -1,0 +1,276 @@
+---
+description: C# coding standards and best practices for ImageViewer Platform
+alwaysApply: true
+---
+
+# C# Coding Standards - ImageViewer Platform
+
+## Naming Conventions
+
+### Classes and Interfaces
+- Use PascalCase for class names: `CollectionService`, `UserRepository`
+- Use PascalCase for interface names with "I" prefix: `ICollectionService`, `IUserRepository`
+- Use descriptive names that clearly indicate purpose
+- Avoid abbreviations unless they are widely understood
+
+### Methods and Properties
+- Use PascalCase for public methods and properties: `GetCollectionAsync()`, `IsEnabled`
+- Use camelCase for private fields with underscore prefix: `_logger`, `_repository`
+- Use descriptive names that clearly indicate functionality
+- Boolean properties should start with "Is", "Has", "Can", or "Should": `IsActive`, `HasPermission`
+
+### Variables and Parameters
+- Use camelCase for local variables and parameters: `collectionId`, `userName`
+- Use meaningful names that describe the variable's purpose
+- Avoid single-letter variable names except for loop counters
+
+### Constants and Enums
+- Use PascalCase for constants: `MaxRetryCount`, `DefaultTimeout`
+- Use PascalCase for enum values: `JobStatus.Pending`, `CollectionType.Image`
+
+## Code Organization
+
+### File Structure
+- One class/interface/enum per file
+- File name should match the class name exactly
+- Group related classes in appropriate namespaces
+- Use folder structure to organize by feature/domain
+
+### Namespace Organization
+```csharp
+namespace ImageViewer.Domain.Entities;
+namespace ImageViewer.Domain.Interfaces;
+namespace ImageViewer.Application.Services;
+namespace ImageViewer.Infrastructure.Data;
+namespace ImageViewer.Api.Controllers;
+```
+
+### Using Statements
+- Order using statements: System namespaces first, then third-party, then project namespaces
+- Remove unused using statements
+- Use global using statements in GlobalUsings.cs when appropriate
+
+## Async/Await Patterns
+
+### Method Signatures
+- Use `async Task` for fire-and-forget operations
+- Use `async Task<T>` for operations that return values
+- Use `async ValueTask<T>` for high-performance scenarios
+- Always suffix async methods with "Async": `GetCollectionAsync()`
+
+### Exception Handling
+```csharp
+public async Task<Collection> GetCollectionAsync(ObjectId id)
+{
+    try
+    {
+        return await _repository.GetByIdAsync(id);
+    }
+    catch (MongoException ex)
+    {
+        _logger.LogError(ex, "Failed to get collection with ID {CollectionId}", id);
+        throw new CollectionNotFoundException($"Collection with ID {id} not found", ex);
+    }
+}
+```
+
+### ConfigureAwait
+- Use `ConfigureAwait(false)` in library code
+- Omit `ConfigureAwait(false)` in application code (ASP.NET Core)
+
+## Error Handling
+
+### Exception Types
+- Create specific exception types for business logic errors
+- Use built-in exceptions for common scenarios (ArgumentNullException, InvalidOperationException)
+- Always include meaningful error messages
+- Include inner exceptions when wrapping exceptions
+
+### Logging
+- Use structured logging with parameters
+- Log at appropriate levels: Debug, Information, Warning, Error, Critical
+- Include correlation IDs for request tracking
+- Don't log sensitive information (passwords, tokens, PII)
+
+```csharp
+_logger.LogInformation("Creating collection {CollectionName} for user {UserId}", 
+    request.Name, userId);
+_logger.LogError(ex, "Failed to create collection {CollectionName}", request.Name);
+```
+
+## MongoDB Integration
+
+### Entity Design
+- Use `ObjectId` for primary keys
+- Use `[BsonId]` attribute for ID properties
+- Use `[BsonIgnore]` for navigation properties
+- Use embedded documents for related data
+- Use proper indexing strategies
+
+### Repository Pattern
+```csharp
+public interface ICollectionRepository
+{
+    Task<Collection> GetByIdAsync(ObjectId id);
+    Task<IEnumerable<Collection>> GetAllAsync();
+    Task<Collection> CreateAsync(Collection collection);
+    Task<Collection> UpdateAsync(Collection collection);
+    Task DeleteAsync(ObjectId id);
+    Task<IEnumerable<Collection>> SearchAsync(string query);
+}
+```
+
+### Query Optimization
+- Use projection to limit returned fields
+- Use appropriate indexes for queries
+- Use aggregation pipelines for complex queries
+- Implement pagination for large result sets
+
+## Dependency Injection
+
+### Service Registration
+- Register services with appropriate lifetime (Singleton, Scoped, Transient)
+- Use interfaces for all service dependencies
+- Register services in appropriate modules/extension methods
+
+### Constructor Injection
+```csharp
+public class CollectionService : ICollectionService
+{
+    private readonly ICollectionRepository _repository;
+    private readonly ILogger<CollectionService> _logger;
+    private readonly IMessageQueueService _messageQueue;
+    
+    public CollectionService(
+        ICollectionRepository repository,
+        ILogger<CollectionService> logger,
+        IMessageQueueService messageQueue)
+    {
+        _repository = repository ?? throw new ArgumentNullException(nameof(repository));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _messageQueue = messageQueue ?? throw new ArgumentNullException(nameof(messageQueue));
+    }
+}
+```
+
+## API Design
+
+### Controller Structure
+- Use attribute routing
+- Use appropriate HTTP verbs
+- Return appropriate status codes
+- Use DTOs for request/response models
+- Implement proper validation
+
+```csharp
+[ApiController]
+[Route("api/v1/[controller]")]
+public class CollectionsController : ControllerBase
+{
+    [HttpGet("{id}")]
+    [ProducesResponseType(typeof(CollectionDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<CollectionDto>> GetCollection(ObjectId id)
+    {
+        // Implementation
+    }
+}
+```
+
+### DTOs and Validation
+- Use separate DTOs for requests and responses
+- Use Data Annotations for validation
+- Use FluentValidation for complex validation rules
+- Map between entities and DTOs using AutoMapper
+
+## Performance Considerations
+
+### Memory Management
+- Use `IDisposable` for resources that need cleanup
+- Use `using` statements for disposable resources
+- Avoid memory leaks in event handlers
+- Use object pooling for frequently created objects
+
+### Database Performance
+- Use async methods for all database operations
+- Implement proper connection pooling
+- Use bulk operations for multiple records
+- Monitor query performance and optimize as needed
+
+### Caching
+- Use appropriate caching strategies
+- Implement cache invalidation
+- Use distributed caching for multi-instance scenarios
+- Monitor cache hit rates
+
+## Security
+
+### Input Validation
+- Validate all input parameters
+- Use parameterized queries to prevent injection
+- Sanitize user input
+- Implement rate limiting
+
+### Authentication and Authorization
+- Use JWT tokens for authentication
+- Implement proper authorization policies
+- Validate tokens on every request
+- Use secure password hashing
+
+### Data Protection
+- Encrypt sensitive data at rest
+- Use HTTPS for all communications
+- Implement proper CORS policies
+- Log security events
+
+## Testing
+
+### Unit Tests
+- Write tests for all public methods
+- Use descriptive test names
+- Follow AAA pattern (Arrange, Act, Assert)
+- Use mocking for dependencies
+- Aim for high code coverage
+
+### Integration Tests
+- Test database interactions
+- Test API endpoints
+- Use test databases
+- Clean up test data
+
+## Documentation
+
+### XML Documentation
+- Document all public APIs
+- Use proper XML documentation tags
+- Include examples for complex methods
+- Keep documentation up to date
+
+### Code Comments
+- Use comments to explain "why", not "what"
+- Keep comments concise and relevant
+- Update comments when code changes
+- Remove outdated comments
+
+## Code Quality
+
+### SOLID Principles
+- Single Responsibility Principle
+- Open/Closed Principle
+- Liskov Substitution Principle
+- Interface Segregation Principle
+- Dependency Inversion Principle
+
+### Clean Code
+- Write self-documenting code
+- Keep methods small and focused
+- Avoid deep nesting
+- Use meaningful variable names
+- Refactor regularly
+
+### Performance
+- Profile code for bottlenecks
+- Use appropriate data structures
+- Avoid unnecessary allocations
+- Use StringBuilder for string concatenation
+- Implement proper caching strategies
