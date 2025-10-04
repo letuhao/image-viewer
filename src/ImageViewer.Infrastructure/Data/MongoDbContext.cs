@@ -20,7 +20,7 @@ public class MongoDbContext
     public IMongoCollection<Library> Libraries => _database.GetCollection<Library>("libraries");
     public IMongoCollection<Collection> Collections => _database.GetCollection<Collection>("collections");
     public IMongoCollection<MediaItem> MediaItems => _database.GetCollection<MediaItem>("mediaItems");
-    public IMongoCollection<Tag> Tags => _database.GetCollection<Tag>("tags");
+    public IMongoCollection<ImageViewer.Domain.Entities.Tag> Tags => _database.GetCollection<ImageViewer.Domain.Entities.Tag>("tags");
 
     // System Collections
     public IMongoCollection<BackgroundJob> BackgroundJobs => _database.GetCollection<BackgroundJob>("backgroundJobs");
@@ -35,15 +35,15 @@ public class MongoDbContext
 
     // Social Collections
     public IMongoCollection<UserCollection> UserCollections => _database.GetCollection<UserCollection>("userCollections");
-    public IMongoCollection<CollectionRating> CollectionRatings => _database.GetCollection<CollectionRating>("collectionRatings");
+    // public IMongoCollection<CollectionRating> CollectionRatings => _database.GetCollection<CollectionRating>("collectionRatings");
     public IMongoCollection<UserFollow> UserFollows => _database.GetCollection<UserFollow>("userFollows");
     public IMongoCollection<CollectionComment> CollectionComments => _database.GetCollection<CollectionComment>("collectionComments");
     public IMongoCollection<UserMessage> UserMessages => _database.GetCollection<UserMessage>("userMessages");
-    public IMongoCollection<Conversation> Conversations => _database.GetCollection<Conversation>("conversations");
+    // public IMongoCollection<Conversation> Conversations => _database.GetCollection<Conversation>("conversations");
 
     // Distribution Collections
-    public IMongoCollection<Torrent> Torrents => _database.GetCollection<Torrent>("torrents");
-    public IMongoCollection<DownloadLink> DownloadLinks => _database.GetCollection<DownloadLink>("downloadLinks");
+    // public IMongoCollection<Torrent> Torrents => _database.GetCollection<Torrent>("torrents");
+    // public IMongoCollection<DownloadLink> DownloadLinks => _database.GetCollection<DownloadLink>("downloadLinks");
     public IMongoCollection<TorrentStatistics> TorrentStatistics => _database.GetCollection<TorrentStatistics>("torrentStatistics");
     public IMongoCollection<LinkHealthChecker> LinkHealthCheckers => _database.GetCollection<LinkHealthChecker>("linkHealthCheckers");
     public IMongoCollection<DownloadQualityOption> DownloadQualityOptions => _database.GetCollection<DownloadQualityOption>("downloadQualityOptions");
