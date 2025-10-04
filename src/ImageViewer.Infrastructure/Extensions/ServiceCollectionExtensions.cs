@@ -60,6 +60,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<INotificationService, NotificationService>();
         services.AddScoped<IUserPreferencesService, UserPreferencesService>();
         services.AddScoped<IPerformanceService, PerformanceService>();
+        services.AddScoped<ISecurityService, SecurityService>();
 
         // Register unit of work
         services.AddScoped<IUnitOfWork, MongoUnitOfWork>(provider =>
