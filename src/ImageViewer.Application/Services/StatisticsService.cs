@@ -224,13 +224,13 @@ public class StatisticsService : IStatisticsService
         };
     }
 
-    public async Task<PerformanceStatisticsDto> GetPerformanceStatisticsAsync()
+    public Task<PerformanceStatisticsDto> GetPerformanceStatisticsAsync()
     {
         _logger.LogInformation("Getting performance statistics");
 
         // This would typically involve querying performance metrics
         // For now, we'll return mock data
-        return new PerformanceStatisticsDto
+        var statistics = new PerformanceStatisticsDto
         {
             AverageResponseTime = 150, // ms
             AverageImageLoadTime = 300, // ms
@@ -241,6 +241,7 @@ public class StatisticsService : IStatisticsService
             FailedRequests = 200,
             SuccessRate = 98.0
         };
+        return Task.FromResult(statistics);
     }
 
     public async Task<StorageStatisticsDto> GetStorageStatisticsAsync()

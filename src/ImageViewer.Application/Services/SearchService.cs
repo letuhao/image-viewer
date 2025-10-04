@@ -284,7 +284,7 @@ public class SearchService : ISearchService
         }
     }
 
-    public async Task<SearchResult> VisualSearchAsync(VisualSearchRequest request)
+    public Task<SearchResult> VisualSearchAsync(VisualSearchRequest request)
     {
         var stopwatch = Stopwatch.StartNew();
         try
@@ -301,7 +301,7 @@ public class SearchService : ISearchService
 
             stopwatch.Stop();
 
-            return new SearchResult
+            var result = new SearchResult
             {
                 Items = results,
                 TotalCount = results.Count,
@@ -317,6 +317,7 @@ public class SearchService : ISearchService
                     SearchTime = stopwatch.Elapsed
                 }
             };
+            return Task.FromResult(result);
         }
         catch (Exception ex)
         {
@@ -460,12 +461,12 @@ public class SearchService : ISearchService
         }
     }
 
-    public async Task<IEnumerable<string>> GetSearchSuggestionsAsync(string query, int limit = 10)
+    public Task<IEnumerable<string>> GetSearchSuggestionsAsync(string query, int limit = 10)
     {
         try
         {
             if (string.IsNullOrWhiteSpace(query))
-                return new List<string>();
+                return Task.FromResult<IEnumerable<string>>(new List<string>());
 
             // This is a simplified implementation
             // Real implementation would use search analytics and popular queries
@@ -486,12 +487,12 @@ public class SearchService : ISearchService
         }
     }
 
-    public async Task<IEnumerable<string>> GetAutoCompleteAsync(string partialQuery, int limit = 10)
+    public Task<IEnumerable<string>> GetAutoCompleteAsync(string partialQuery, int limit = 10)
     {
         try
         {
             if (string.IsNullOrWhiteSpace(partialQuery))
-                return new List<string>();
+                return Task.FromResult<IEnumerable<string>>(new List<string>());
 
             // This is a simplified implementation
             // Real implementation would use indexed search terms
@@ -511,7 +512,7 @@ public class SearchService : ISearchService
         }
     }
 
-    public async Task<IEnumerable<SearchSuggestion>> GetSmartSuggestionsAsync(string query, ObjectId? userId = null)
+    public Task<IEnumerable<SearchSuggestion>> GetSmartSuggestionsAsync(string query, ObjectId? userId = null)
     {
         try
         {
@@ -536,7 +537,7 @@ public class SearchService : ISearchService
         }
     }
 
-    public async Task<SearchAnalytics> GetSearchAnalyticsAsync(ObjectId? userId = null, DateTime? fromDate = null, DateTime? toDate = null)
+    public Task<SearchAnalytics> GetSearchAnalyticsAsync(ObjectId? userId = null, DateTime? fromDate = null, DateTime? toDate = null)
     {
         try
         {
@@ -563,7 +564,7 @@ public class SearchService : ISearchService
         }
     }
 
-    public async Task<IEnumerable<SearchRecommendation>> GetPersonalizedRecommendationsAsync(ObjectId userId, int limit = 10)
+    public Task<IEnumerable<SearchRecommendation>> GetPersonalizedRecommendationsAsync(ObjectId userId, int limit = 10)
     {
         try
         {
@@ -588,13 +589,13 @@ public class SearchService : ISearchService
         }
     }
 
-    public async Task<IEnumerable<SearchTrend>> GetSearchTrendsAsync(DateTime? fromDate = null, DateTime? toDate = null)
+    public Task<IEnumerable<SearchTrend>> GetSearchTrendsAsync(DateTime? fromDate = null, DateTime? toDate = null)
     {
         try
         {
             // This is a simplified implementation
             // Real implementation would analyze search patterns over time
-            return new List<SearchTrend>();
+            return Task.FromResult<IEnumerable<SearchTrend>>(new List<SearchTrend>());
         }
         catch (Exception ex)
         {
@@ -603,13 +604,13 @@ public class SearchService : ISearchService
         }
     }
 
-    public async Task<IEnumerable<SearchHistory>> GetSearchHistoryAsync(ObjectId userId, int page = 1, int pageSize = 20)
+    public Task<IEnumerable<SearchHistory>> GetSearchHistoryAsync(ObjectId userId, int page = 1, int pageSize = 20)
     {
         try
         {
             // This is a simplified implementation
             // Real implementation would query search history collection
-            return new List<SearchHistory>();
+            return Task.FromResult<IEnumerable<SearchHistory>>(new List<SearchHistory>());
         }
         catch (Exception ex)
         {
@@ -618,13 +619,14 @@ public class SearchService : ISearchService
         }
     }
 
-    public async Task SaveSearchHistoryAsync(ObjectId userId, string query, SearchResult result)
+    public Task SaveSearchHistoryAsync(ObjectId userId, string query, SearchResult result)
     {
         try
         {
             // This is a simplified implementation
             // Real implementation would save to search history collection
             _logger.LogInformation("Saving search history for user {UserId} with query {Query}", userId, query);
+            return Task.CompletedTask;
         }
         catch (Exception ex)
         {
@@ -633,13 +635,14 @@ public class SearchService : ISearchService
         }
     }
 
-    public async Task ClearSearchHistoryAsync(ObjectId userId)
+    public Task ClearSearchHistoryAsync(ObjectId userId)
     {
         try
         {
             // This is a simplified implementation
             // Real implementation would clear search history collection
             _logger.LogInformation("Clearing search history for user {UserId}", userId);
+            return Task.CompletedTask;
         }
         catch (Exception ex)
         {
@@ -648,13 +651,14 @@ public class SearchService : ISearchService
         }
     }
 
-    public async Task DeleteSearchHistoryItemAsync(ObjectId userId, ObjectId historyId)
+    public Task DeleteSearchHistoryItemAsync(ObjectId userId, ObjectId historyId)
     {
         try
         {
             // This is a simplified implementation
             // Real implementation would delete from search history collection
             _logger.LogInformation("Deleting search history item {HistoryId} for user {UserId}", historyId, userId);
+            return Task.CompletedTask;
         }
         catch (Exception ex)
         {
