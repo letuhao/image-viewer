@@ -580,7 +580,7 @@ public class SearchService : ISearchService
                 Reason = "Based on trending searches"
             });
 
-            return recommendations.Take(limit);
+            return Task.FromResult<IEnumerable<SearchRecommendation>>(recommendations.Take(limit));
         }
         catch (Exception ex)
         {
