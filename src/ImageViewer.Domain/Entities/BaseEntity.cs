@@ -1,21 +1,29 @@
+using MongoDB.Bson;
+using MongoDB.Bson.Serialization.Attributes;
 using ImageViewer.Domain.Events;
 
 namespace ImageViewer.Domain.Entities;
 
 /// <summary>
-/// Base entity class with domain events support
+/// Base entity class with domain events support for MongoDB
 /// </summary>
 public abstract class BaseEntity
 {
-    // Optional legacy column; ignored in EF mapping when using PostgreSQL xmin
-    public byte[]? RowVersion { get; set; }
+    [BsonId]
+    public ObjectId Id { get; set; }
+    
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
 
     private readonly List<IDomainEvent> _domainEvents = new();
 
     public IReadOnlyCollection<IDomainEvent> DomainEvents => _domainEvents.AsReadOnly();
 
-    public BaseEntity()
+    protected BaseEntity()
     {
+        Id = ObjectId.GenerateNewId();
+        CreatedAt = DateTime.UtcNow;
+        UpdatedAt = DateTime.UtcNow;
     }
 
     protected void AddDomainEvent(IDomainEvent domainEvent)
@@ -31,5 +39,10 @@ public abstract class BaseEntity
     public void ClearDomainEvents()
     {
         _domainEvents.Clear();
+    }
+
+    protected void UpdateTimestamp()
+    {
+        UpdatedAt = DateTime.UtcNow;
     }
 }
