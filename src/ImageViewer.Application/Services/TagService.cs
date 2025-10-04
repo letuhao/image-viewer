@@ -103,7 +103,7 @@ public class TagService : ITagService
             throw new ArgumentException($"Tag {tagName} not found");
         }
 
-        var collectionTag = await _collectionTagRepository.GetByCollectionAndTagAsync(collectionId, tag.Id);
+        var collectionTag = await _collectionTagRepository.GetByCollectionIdAndTagIdAsync(collectionId, tag.Id);
         if (collectionTag == null)
         {
             throw new ArgumentException($"Tag {tagName} not found in collection {collectionId}");
@@ -136,7 +136,7 @@ public class TagService : ITagService
         });
     }
 
-    public async Task<TagDto> GetTagAsync(Guid tagId)
+    public async Task<TagDto> GetTagAsync(ObjectId tagId)
     {
         _logger.LogInformation("Getting tag: {TagId}", tagId);
 
@@ -193,7 +193,7 @@ public class TagService : ITagService
         };
     }
 
-    public async Task<TagDto> UpdateTagAsync(Guid tagId, UpdateTagDto dto)
+    public async Task<TagDto> UpdateTagAsync(ObjectId tagId, UpdateTagDto dto)
     {
         _logger.LogInformation("Updating tag: {TagId}", tagId);
 
@@ -228,7 +228,7 @@ public class TagService : ITagService
         };
     }
 
-    public async Task DeleteTagAsync(Guid tagId)
+    public async Task DeleteTagAsync(ObjectId tagId)
     {
         _logger.LogInformation("Deleting tag: {TagId}", tagId);
 

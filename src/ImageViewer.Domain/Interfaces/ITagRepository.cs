@@ -1,4 +1,5 @@
 using ImageViewer.Domain.Entities;
+using MongoDB.Bson;
 
 namespace ImageViewer.Domain.Interfaces;
 
@@ -25,10 +26,10 @@ public interface ITagRepository : IRepository<Tag>
     /// <summary>
     /// Get tags by collection ID
     /// </summary>
-    Task<IEnumerable<Tag>> GetByCollectionIdAsync(Guid collectionId);
+    Task<IEnumerable<Tag>> GetByCollectionIdAsync(ObjectId collectionId);
 
     /// <summary>
     /// Get tag usage count
     /// </summary>
-    Task<int> GetUsageCountAsync(Guid tagId);
+    Task<int> GetUsageCountAsync(ObjectId tagId);
 }
