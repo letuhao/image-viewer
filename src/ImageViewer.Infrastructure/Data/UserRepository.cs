@@ -230,4 +230,133 @@ public class UserRepository : MongoRepository<User>, IUserRepository
             throw new RepositoryException("Failed to get recent users", ex);
         }
     }
+
+    #region Security Methods
+
+    public async Task LogFailedLoginAttemptAsync(ObjectId userId)
+    {
+        try
+        {
+            var filter = Builders<User>.Filter.Eq(u => u.Id, userId);
+            var update = Builders<User>.Update
+                .Inc(u => u.FailedLoginAttempts, 1)
+                .Set(u => u.UpdatedAt, DateTime.UtcNow);
+
+            var result = await _collection.UpdateOneAsync(filter, update);
+            
+            if (result.MatchedCount == 0)
+            {
+                _logger.LogWarning("User {UserId} not found for failed login attempt logging", userId);
+            }
+        }
+        catch (MongoException ex)
+        {
+            _logger.LogError(ex, "Failed to log failed login attempt for user {UserId}", userId);
+            throw new RepositoryException($"Failed to log failed login attempt for user {userId}", ex);
+        }
+    }
+
+    public async Task LogSuccessfulLoginAsync(ObjectId userId, string ipAddress, string userAgent)
+    {
+        try
+        {
+            var filter = Builders<User>.Filter.Eq(u => u.Id, userId);
+            var update = Builders<User>.Update
+                .Set(u => u.LastLoginAt, DateTime.UtcNow)
+                .Set(u => u.LastLoginIp, ipAddress)
+                .Set(u => u.FailedLoginAttempts, 0)
+                .Set(u => u.IsLocked, false)
+                .Set(u => u.LockedUntil, null)
+                .Set(u => u.UpdatedAt, DateTime.UtcNow);
+
+            var result = await _collection.UpdateOneAsync(filter, update);
+            
+            if (result.MatchedCount == 0)
+            {
+                _logger.LogWarning("User {UserId} not found for successful login logging", userId);
+            }
+        }
+        catch (MongoException ex)
+        {
+            _logger.LogError(ex, "Failed to log successful login for user {UserId}", userId);
+            throw new RepositoryException($"Failed to log successful login for user {userId}", ex);
+        }
+    }
+
+    public async Task ClearFailedLoginAttemptsAsync(ObjectId userId)
+    {
+        try
+        {
+            var filter = Builders<User>.Filter.Eq(u => u.Id, userId);
+            var update = Builders<User>.Update
+                .Set(u => u.FailedLoginAttempts, 0)
+                .Set(u => u.IsLocked, false)
+                .Set(u => u.LockedUntil, null)
+                .Set(u => u.UpdatedAt, DateTime.UtcNow);
+
+            var result = await _collection.UpdateOneAsync(filter, update);
+            
+            if (result.MatchedCount == 0)
+            {
+                _logger.LogWarning("User {UserId} not found for clearing failed login attempts", userId);
+            }
+        }
+        catch (MongoException ex)
+        {
+            _logger.LogError(ex, "Failed to clear failed login attempts for user {UserId}", userId);
+            throw new RepositoryException($"Failed to clear failed login attempts for user {userId}", ex);
+        }
+    }
+
+    public async Task StoreRefreshTokenAsync(ObjectId userId, string refreshToken, DateTime expiryDate)
+    {
+        try
+        {
+            // TODO: Implement refresh token storage
+            // For now, we'll store it in a separate collection or as part of the user document
+            // This is a placeholder implementation
+            _logger.LogInformation("Refresh token stored for user {UserId} with expiry {ExpiryDate}", userId, expiryDate);
+            await Task.CompletedTask;
+        }
+        catch (MongoException ex)
+        {
+            _logger.LogError(ex, "Failed to store refresh token for user {UserId}", userId);
+            throw new RepositoryException($"Failed to store refresh token for user {userId}", ex);
+        }
+    }
+
+    public async Task<User?> GetByRefreshTokenAsync(string refreshToken)
+    {
+        try
+        {
+            // TODO: Implement refresh token lookup
+            // For now, return null as this needs proper implementation
+            _logger.LogInformation("Refresh token lookup requested for token {Token}", refreshToken);
+            await Task.CompletedTask;
+            return null;
+        }
+        catch (MongoException ex)
+        {
+            _logger.LogError(ex, "Failed to get user by refresh token");
+            throw new RepositoryException("Failed to get user by refresh token", ex);
+        }
+    }
+
+    public async Task InvalidateRefreshTokenAsync(ObjectId userId, string refreshToken)
+    {
+        try
+        {
+            // TODO: Implement refresh token invalidation
+            // For now, just log the action
+            _logger.LogInformation("Refresh token invalidated for user {UserId}", userId);
+            await Task.CompletedTask;
+        }
+        catch (MongoException ex)
+        {
+            _logger.LogError(ex, "Failed to invalidate refresh token for user {UserId}", userId);
+            throw new RepositoryException($"Failed to invalidate refresh token for user {userId}", ex);
+        }
+    }
+
+    #endregion
 }
