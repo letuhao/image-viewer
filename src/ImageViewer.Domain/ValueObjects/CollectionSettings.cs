@@ -1,5 +1,4 @@
-using System.Text.Json;
-using System.Text.Json.Serialization;
+using MongoDB.Bson.Serialization.Attributes;
 
 namespace ImageViewer.Domain.ValueObjects;
 
@@ -8,165 +7,107 @@ namespace ImageViewer.Domain.ValueObjects;
 /// </summary>
 public class CollectionSettings
 {
-    [JsonPropertyName("totalImages")]
-    public int TotalImages { get; private set; }
+    [BsonElement("enabled")]
+    public bool Enabled { get; private set; }
     
-    [JsonPropertyName("totalSizeBytes")]
-    public long TotalSizeBytes { get; private set; }
+    [BsonElement("autoScan")]
+    public bool AutoScan { get; private set; }
     
-    [JsonPropertyName("thumbnailWidth")]
-    public int ThumbnailWidth { get; private set; }
+    [BsonElement("generateThumbnails")]
+    public bool GenerateThumbnails { get; private set; }
     
-    [JsonPropertyName("thumbnailHeight")]
-    public int ThumbnailHeight { get; private set; }
+    [BsonElement("generateCache")]
+    public bool GenerateCache { get; private set; }
     
-    [JsonPropertyName("cacheWidth")]
-    public int CacheWidth { get; private set; }
+    [BsonElement("enableWatching")]
+    public bool EnableWatching { get; private set; }
     
-    [JsonPropertyName("cacheHeight")]
-    public int CacheHeight { get; private set; }
+    [BsonElement("scanInterval")]
+    public int ScanInterval { get; private set; }
     
-    [JsonPropertyName("autoGenerateThumbnails")]
-    public bool AutoGenerateThumbnails { get; private set; }
+    [BsonElement("maxFileSize")]
+    public long MaxFileSize { get; private set; }
     
-    [JsonPropertyName("autoGenerateCache")]
-    public bool AutoGenerateCache { get; private set; }
+    [BsonElement("allowedFormats")]
+    public List<string> AllowedFormats { get; private set; }
     
-    [JsonPropertyName("cacheExpiration")]
-    public TimeSpan CacheExpiration { get; private set; }
-    
-    [JsonPropertyName("additionalSettings")]
-    public string AdditionalSettingsJson { get; private set; }
+    [BsonElement("excludedPaths")]
+    public List<string> ExcludedPaths { get; private set; }
 
     public CollectionSettings()
     {
-        TotalImages = 0;
-        TotalSizeBytes = 0;
-        ThumbnailWidth = 300;
-        ThumbnailHeight = 300;
-        CacheWidth = 1920;
-        CacheHeight = 1080;
-        AutoGenerateThumbnails = true;
-        AutoGenerateCache = true;
-        CacheExpiration = TimeSpan.FromDays(30);
-        AdditionalSettingsJson = "{}";
+        Enabled = true;
+        AutoScan = true;
+        GenerateThumbnails = true;
+        GenerateCache = true;
+        EnableWatching = false;
+        ScanInterval = 3600; // 1 hour
+        MaxFileSize = 100 * 1024 * 1024; // 100MB
+        AllowedFormats = new List<string> { "jpg", "jpeg", "png", "gif", "bmp", "webp", "mp4", "avi", "mov" };
+        ExcludedPaths = new List<string>();
     }
 
-    public CollectionSettings(
-        int totalImages,
-        long totalSizeBytes,
-        int thumbnailWidth,
-        int thumbnailHeight,
-        int cacheWidth,
-        int cacheHeight,
-        bool autoGenerateThumbnails,
-        bool autoGenerateCache,
-        TimeSpan cacheExpiration,
-        Dictionary<string, object> additionalSettings)
+    public void Enable()
     {
-        TotalImages = totalImages;
-        TotalSizeBytes = totalSizeBytes;
-        ThumbnailWidth = thumbnailWidth;
-        ThumbnailHeight = thumbnailHeight;
-        CacheWidth = cacheWidth;
-        CacheHeight = cacheHeight;
-        AutoGenerateThumbnails = autoGenerateThumbnails;
-        AutoGenerateCache = autoGenerateCache;
-        CacheExpiration = cacheExpiration;
-        AdditionalSettingsJson = JsonSerializer.Serialize(additionalSettings);
+        Enabled = true;
     }
 
-    public void UpdateTotalImages(int totalImages)
+    public void Disable()
     {
-        if (totalImages < 0)
-            throw new ArgumentException("Total images cannot be negative", nameof(totalImages));
-
-        TotalImages = totalImages;
+        Enabled = false;
     }
 
-    public void UpdateTotalSize(long totalSizeBytes)
+    public void UpdateScanSettings(bool autoScan, bool generateThumbnails, bool generateCache)
     {
-        if (totalSizeBytes < 0)
-            throw new ArgumentException("Total size cannot be negative", nameof(totalSizeBytes));
-
-        TotalSizeBytes = totalSizeBytes;
+        AutoScan = autoScan;
+        GenerateThumbnails = generateThumbnails;
+        GenerateCache = generateCache;
     }
 
-    public void UpdateThumbnailSize(int width, int height)
+    public void UpdateEnableWatching(bool enabled)
     {
-        if (width <= 0)
-            throw new ArgumentException("Thumbnail width must be greater than 0", nameof(width));
-        if (height <= 0)
-            throw new ArgumentException("Thumbnail height must be greater than 0", nameof(height));
-
-        ThumbnailWidth = width;
-        ThumbnailHeight = height;
+        EnableWatching = enabled;
     }
 
-    public void UpdateCacheSize(int width, int height)
+    public void UpdateScanInterval(int interval)
     {
-        if (width <= 0)
-            throw new ArgumentException("Cache width must be greater than 0", nameof(width));
-        if (height <= 0)
-            throw new ArgumentException("Cache height must be greater than 0", nameof(height));
-
-        CacheWidth = width;
-        CacheHeight = height;
+        if (interval <= 0)
+            throw new ArgumentException("Scan interval must be greater than 0", nameof(interval));
+        
+        ScanInterval = interval;
     }
 
-    public void SetAutoGenerateThumbnails(bool enabled)
+    public void UpdateMaxFileSize(long maxSize)
     {
-        AutoGenerateThumbnails = enabled;
+        if (maxSize <= 0)
+            throw new ArgumentException("Max file size must be greater than 0", nameof(maxSize));
+        
+        MaxFileSize = maxSize;
     }
 
-    public void SetAutoGenerateCache(bool enabled)
+    public void AddAllowedFormat(string format)
     {
-        AutoGenerateCache = enabled;
-    }
-
-    public void UpdateCacheExpiration(TimeSpan expiration)
-    {
-        if (expiration <= TimeSpan.Zero)
-            throw new ArgumentException("Cache expiration must be greater than zero", nameof(expiration));
-
-        CacheExpiration = expiration;
-    }
-
-    public void SetAdditionalSetting(string key, object value)
-    {
-        if (string.IsNullOrWhiteSpace(key))
-            throw new ArgumentException("Key cannot be null or empty", nameof(key));
-
-        var settings = JsonSerializer.Deserialize<Dictionary<string, object>>(AdditionalSettingsJson) ?? new Dictionary<string, object>();
-        settings[key] = value;
-        AdditionalSettingsJson = JsonSerializer.Serialize(settings);
-    }
-
-    public T? GetAdditionalSetting<T>(string key)
-    {
-        var settings = JsonSerializer.Deserialize<Dictionary<string, object>>(AdditionalSettingsJson);
-        if (settings != null && settings.TryGetValue(key, out var value))
+        if (!string.IsNullOrWhiteSpace(format) && !AllowedFormats.Contains(format.ToLower()))
         {
-            if (value is JsonElement jsonElement)
-            {
-                return JsonSerializer.Deserialize<T>(jsonElement.GetRawText());
-            }
-            return (T)value;
+            AllowedFormats.Add(format.ToLower());
         }
-        return default;
     }
 
-    public string ToJson()
+    public void RemoveAllowedFormat(string format)
     {
-        return JsonSerializer.Serialize(this, new JsonSerializerOptions
+        AllowedFormats.Remove(format.ToLower());
+    }
+
+    public void AddExcludedPath(string path)
+    {
+        if (!string.IsNullOrWhiteSpace(path) && !ExcludedPaths.Contains(path))
         {
-            WriteIndented = true
-        });
+            ExcludedPaths.Add(path);
+        }
     }
 
-    public static CollectionSettings FromJson(string json)
+    public void RemoveExcludedPath(string path)
     {
-        return JsonSerializer.Deserialize<CollectionSettings>(json) 
-            ?? throw new ArgumentException("Invalid JSON", nameof(json));
+        ExcludedPaths.Remove(path);
     }
 }

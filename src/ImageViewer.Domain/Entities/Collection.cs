@@ -1,57 +1,64 @@
 using ImageViewer.Domain.Enums;
 using ImageViewer.Domain.Events;
+using ImageViewer.Domain.ValueObjects;
+using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
 namespace ImageViewer.Domain.Entities;
 
 /// <summary>
-/// Collection aggregate root - represents a collection of images
+/// Collection aggregate root - represents a collection of media items
 /// </summary>
 public class Collection : BaseEntity
 {
-    [BsonId]
-    public Guid Id { get; private set; }
+    [BsonElement("libraryId")]
+    public ObjectId LibraryId { get; private set; }
+    
+    [BsonElement("name")]
     public string Name { get; private set; }
+    
+    [BsonElement("path")]
     public string Path { get; private set; }
+    
+    [BsonElement("type")]
     public CollectionType Type { get; private set; }
-    public DateTime CreatedAt { get; private set; }
-    public DateTime UpdatedAt { get; private set; }
-    public bool IsDeleted { get; private set; }
-    public DateTime? DeletedAt { get; private set; }
+    
+    [BsonElement("isActive")]
+    public bool IsActive { get; private set; }
+    
+    [BsonElement("settings")]
+    public CollectionSettings Settings { get; private set; }
+    
+    [BsonElement("metadata")]
+    public CollectionMetadata Metadata { get; private set; }
+    
+    [BsonElement("statistics")]
+    public CollectionStatistics Statistics { get; private set; }
+    
+    [BsonElement("watchInfo")]
+    public WatchInfo WatchInfo { get; private set; }
+    
+    [BsonElement("searchIndex")]
+    public SearchIndex SearchIndex { get; private set; }
 
-    // Navigation properties
-    [BsonIgnore]
-    private readonly List<Image> _images = new();
-    [BsonIgnore]
-    public IReadOnlyCollection<Image> Images => _images.AsReadOnly();
-
-    [BsonIgnore]
-    private readonly List<CollectionTag> _tags = new();
-    [BsonIgnore]
-    public IReadOnlyCollection<CollectionTag> Tags => _tags.AsReadOnly();
-
-    [BsonIgnore]
-    private readonly List<CollectionCacheBinding> _cacheBindings = new();
-    [BsonIgnore]
-    public IReadOnlyCollection<CollectionCacheBinding> CacheBindings => _cacheBindings.AsReadOnly();
-
-    public CollectionStatistics? Statistics { get; private set; }
-    public CollectionSettingsEntity? Settings { get; private set; }
-
-    // Private constructor for EF Core
+    // Private constructor for MongoDB
     private Collection() { }
 
-    public Collection(string name, string path, CollectionType type)
+    public Collection(ObjectId libraryId, string name, string path, CollectionType type)
     {
-        Id = Guid.NewGuid();
+        LibraryId = libraryId;
         Name = name ?? throw new ArgumentNullException(nameof(name));
         Path = path ?? throw new ArgumentNullException(nameof(path));
         Type = type;
-        CreatedAt = DateTime.UtcNow;
-        UpdatedAt = DateTime.UtcNow;
-        IsDeleted = false;
+        IsActive = true;
         
-        AddDomainEvent(new CollectionCreatedEvent(this));
+        Settings = new CollectionSettings();
+        Metadata = new CollectionMetadata();
+        Statistics = new CollectionStatistics();
+        WatchInfo = new WatchInfo();
+        SearchIndex = new SearchIndex();
+        
+        AddDomainEvent(new CollectionCreatedEvent(Id, Name, LibraryId));
     }
 
     public void UpdateName(string name)
