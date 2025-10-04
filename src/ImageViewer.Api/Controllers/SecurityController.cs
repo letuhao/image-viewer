@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using MongoDB.Bson;
 using ImageViewer.Application.Services;
+using ImageViewer.Application.DTOs.Auth;
 using ImageViewer.Domain.Exceptions;
 
 namespace ImageViewer.Api.Controllers;
@@ -24,15 +25,15 @@ public class SecurityController : ControllerBase
     /// <summary>
     /// Authenticate user
     /// </summary>
-    [HttpPost("authenticate")]
-    public async Task<IActionResult> Authenticate([FromBody] LoginRequest request)
+    [HttpPost("login")]
+    public async Task<IActionResult> Login([FromBody] LoginRequest request)
     {
         try
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            var result = await _securityService.AuthenticateAsync(request);
+            var result = await _securityService.LoginAsync(request);
             
             if (!result.Success)
                 return Unauthorized(new { message = result.ErrorMessage });
@@ -43,9 +44,132 @@ public class SecurityController : ControllerBase
         {
             return BadRequest(new { message = ex.Message });
         }
+        catch (AuthenticationException ex)
+        {
+            return Unauthorized(new { message = ex.Message });
+        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Authentication failed");
+            _logger.LogError(ex, "Login failed");
+            return StatusCode(500, new { message = "Internal server error" });
+        }
+    }
+
+    /// <summary>
+    /// Register new user
+    /// </summary>
+    [HttpPost("register")]
+    public async Task<IActionResult> Register([FromBody] RegisterRequest request)
+    {
+        try
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var result = await _securityService.RegisterAsync(request);
+            
+            if (!result.Success)
+                return BadRequest(new { message = result.ErrorMessage, validationErrors = result.ValidationErrors });
+
+            return Ok(result);
+        }
+        catch (ValidationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Registration failed");
+            return StatusCode(500, new { message = "Internal server error" });
+        }
+    }
+
+    /// <summary>
+    /// Refresh access token
+    /// </summary>
+    [HttpPost("refresh")]
+    public async Task<IActionResult> RefreshToken([FromBody] RefreshTokenRequest request)
+    {
+        try
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var result = await _securityService.RefreshTokenAsync(request.RefreshToken);
+            
+            if (!result.Success)
+                return Unauthorized(new { message = result.ErrorMessage });
+
+            return Ok(result);
+        }
+        catch (ValidationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (AuthenticationException ex)
+        {
+            return Unauthorized(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Token refresh failed");
+            return StatusCode(500, new { message = "Internal server error" });
+        }
+    }
+
+    /// <summary>
+    /// Logout user
+    /// </summary>
+    [HttpPost("logout")]
+    [Authorize]
+    public async Task<IActionResult> Logout([FromBody] LogoutRequest request)
+    {
+        try
+        {
+            // TODO: Extract user ID from token
+            var userId = ObjectId.Empty; // Placeholder
+            
+            await _securityService.LogoutAsync(userId, request.RefreshToken);
+            
+            return Ok(new { message = "Logged out successfully" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Logout failed");
+            return StatusCode(500, new { message = "Internal server error" });
+        }
+    }
+
+    /// <summary>
+    /// Change user password
+    /// </summary>
+    [HttpPost("change-password")]
+    [Authorize]
+    public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request)
+    {
+        try
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            // TODO: Extract user ID from token
+            var userId = ObjectId.Empty; // Placeholder
+            
+            await _securityService.ChangePasswordAsync(userId, request.CurrentPassword, request.NewPassword);
+            
+            return Ok(new { message = "Password changed successfully" });
+        }
+        catch (ValidationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (AuthenticationException ex)
+        {
+            return Unauthorized(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Password change failed");
             return StatusCode(500, new { message = "Internal server error" });
         }
     }

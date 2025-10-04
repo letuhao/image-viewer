@@ -36,18 +36,49 @@ public class User : BaseEntity
     
     [BsonElement("statistics")]
     public UserStatistics Statistics { get; private set; }
+    
+    [BsonElement("role")]
+    public string? Role { get; private set; }
+    
+    [BsonElement("twoFactorEnabled")]
+    public bool TwoFactorEnabled { get; private set; }
+    
+    [BsonElement("twoFactorSecret")]
+    public string? TwoFactorSecret { get; private set; }
+    
+    [BsonElement("backupCodes")]
+    public List<string> BackupCodes { get; private set; } = new();
+    
+    [BsonElement("failedLoginAttempts")]
+    public int FailedLoginAttempts { get; private set; }
+    
+    [BsonElement("isLocked")]
+    public bool IsLocked { get; private set; }
+    
+    [BsonElement("lockedUntil")]
+    public DateTime? LockedUntil { get; private set; }
+    
+    [BsonElement("lastLoginAt")]
+    public DateTime? LastLoginAt { get; private set; }
+    
+    [BsonElement("lastLoginIp")]
+    public string? LastLoginIp { get; private set; }
 
     // Private constructor for MongoDB
     private User() { }
 
-    public User(string username, string email, string passwordHash)
+    public User(string username, string email, string passwordHash, string? role = null)
     {
         Username = username ?? throw new ArgumentNullException(nameof(username));
         Email = email ?? throw new ArgumentNullException(nameof(email));
         PasswordHash = passwordHash ?? throw new ArgumentNullException(nameof(passwordHash));
+        Role = role ?? "User";
         
         IsActive = true;
         IsEmailVerified = false;
+        TwoFactorEnabled = false;
+        FailedLoginAttempts = 0;
+        IsLocked = false;
         
         Profile = new UserProfile();
         Settings = new UserSettings();
@@ -141,5 +172,128 @@ public class User : BaseEntity
     {
         Statistics = newStatistics ?? throw new ArgumentNullException(nameof(newStatistics));
         UpdateTimestamp();
+    }
+
+    /// <summary>
+    /// Update user password hash
+    /// </summary>
+    /// <param name="newPasswordHash">New password hash</param>
+    public void UpdatePasswordHash(string newPasswordHash)
+    {
+        PasswordHash = newPasswordHash ?? throw new ArgumentNullException(nameof(newPasswordHash));
+        UpdateTimestamp();
+        
+        AddDomainEvent(new UserPasswordChangedEvent(Id));
+    }
+
+    /// <summary>
+    /// Enable two-factor authentication
+    /// </summary>
+    /// <param name="secret">TOTP secret key</param>
+    /// <param name="backupCodes">Backup codes</param>
+    public void EnableTwoFactor(string secret, List<string> backupCodes)
+    {
+        if (string.IsNullOrWhiteSpace(secret))
+            throw new ArgumentException("Secret cannot be null or empty", nameof(secret));
+        
+        if (backupCodes == null || !backupCodes.Any())
+            throw new ArgumentException("Backup codes cannot be null or empty", nameof(backupCodes));
+
+        TwoFactorEnabled = true;
+        TwoFactorSecret = secret;
+        BackupCodes = backupCodes;
+        UpdateTimestamp();
+        
+        AddDomainEvent(new UserTwoFactorEnabledEvent(Id));
+    }
+
+    /// <summary>
+    /// Disable two-factor authentication
+    /// </summary>
+    public void DisableTwoFactor()
+    {
+        TwoFactorEnabled = false;
+        TwoFactorSecret = null;
+        BackupCodes.Clear();
+        UpdateTimestamp();
+        
+        AddDomainEvent(new UserTwoFactorDisabledEvent(Id));
+    }
+
+    /// <summary>
+    /// Increment failed login attempts and lock account if threshold reached
+    /// </summary>
+    public void IncrementFailedLoginAttempts()
+    {
+        FailedLoginAttempts++;
+        if (FailedLoginAttempts >= 5)
+        {
+            IsLocked = true;
+            LockedUntil = DateTime.UtcNow.AddMinutes(30);
+        }
+        UpdateTimestamp();
+        
+        AddDomainEvent(new UserLoginFailedEvent(Id, FailedLoginAttempts));
+    }
+
+    /// <summary>
+    /// Clear failed login attempts and unlock account
+    /// </summary>
+    public void ClearFailedLoginAttempts()
+    {
+        FailedLoginAttempts = 0;
+        IsLocked = false;
+        LockedUntil = null;
+        UpdateTimestamp();
+    }
+
+    /// <summary>
+    /// Record successful login
+    /// </summary>
+    /// <param name="ipAddress">IP address of the login</param>
+    public void RecordSuccessfulLogin(string ipAddress)
+    {
+        LastLoginAt = DateTime.UtcNow;
+        LastLoginIp = ipAddress;
+        ClearFailedLoginAttempts();
+        UpdateTimestamp();
+        
+        AddDomainEvent(new UserLoginSuccessfulEvent(Id, ipAddress));
+    }
+
+    /// <summary>
+    /// Update user role
+    /// </summary>
+    /// <param name="newRole">New role</param>
+    public void UpdateRole(string newRole)
+    {
+        Role = newRole ?? throw new ArgumentNullException(nameof(newRole));
+        UpdateTimestamp();
+        
+        AddDomainEvent(new UserRoleUpdatedEvent(Id, newRole));
+    }
+
+    /// <summary>
+    /// Check if account is locked due to failed login attempts
+    /// </summary>
+    /// <returns>True if account is locked</returns>
+    public bool IsAccountLocked()
+    {
+        return IsLocked && LockedUntil.HasValue && LockedUntil.Value > DateTime.UtcNow;
+    }
+
+    /// <summary>
+    /// Check if backup code is valid and remove it after use
+    /// </summary>
+    /// <param name="code">Backup code to check</param>
+    /// <returns>True if code is valid</returns>
+    public bool ValidateAndRemoveBackupCode(string code)
+    {
+        if (string.IsNullOrWhiteSpace(code) || !BackupCodes.Contains(code))
+            return false;
+
+        BackupCodes.Remove(code);
+        UpdateTimestamp();
+        return true;
     }
 }
