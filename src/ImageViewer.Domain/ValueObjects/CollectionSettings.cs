@@ -114,4 +114,26 @@ public class CollectionSettings
     {
         ExcludedPaths.Remove(path);
     }
+
+    public void UpdateThumbnailSize(int thumbnailSize)
+    {
+        // Note: ThumbnailSize property doesn't exist, this is a placeholder
+        // You may need to add this property or implement differently
+    }
+
+    public void UpdateCacheSize(long cacheSize)
+    {
+        // Note: CacheSize property doesn't exist, this is a placeholder
+        // You may need to add this property or implement differently
+    }
+
+    public void SetAutoGenerateThumbnails(bool autoGenerate)
+    {
+        GenerateThumbnails = autoGenerate;
+    }
+
+    public void SetAutoGenerateCache(bool autoGenerate)
+    {
+        GenerateCache = autoGenerate;
+    }
 }

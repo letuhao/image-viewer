@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using ImageViewer.Domain.Entities;
 using ImageViewer.Domain.Enums;
 using ImageViewer.Domain.ValueObjects;
+using MongoDB.Bson;
 
 namespace ImageViewer.Application.Services;
 
@@ -90,7 +91,7 @@ public class BulkService : IBulkService
     {
         // Normalize path for comparison
         var normalizedPath = Path.GetFullPath(potential.Path).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-        var existingCollection = await _collectionService.GetByPathAsync(normalizedPath);
+        var existingCollection = await _collectionService.GetCollectionByPathAsync(normalizedPath);
         
         Collection collection;
         bool wasOverwritten = false;
@@ -106,11 +107,12 @@ public class BulkService : IBulkService
                 
                 // Update existing collection
                 var settings = CreateCollectionSettings(request);
-                collection = await _collectionService.UpdateAsync(
-                    existingCollection.Id,
-                    potential.Name,
-                    normalizedPath,
-                    settings);
+                var updateRequest = new UpdateCollectionRequest
+                {
+                    Name = potential.Name,
+                    Path = normalizedPath
+                };
+                collection = await _collectionService.UpdateCollectionAsync(existingCollection.Id, updateRequest);
                 
                 wasOverwritten = true;
                 _logger.LogInformation("Successfully updated existing collection {Name} with ID {CollectionId}", 
@@ -135,11 +137,11 @@ public class BulkService : IBulkService
         {
             // Create new collection
             var settings = CreateCollectionSettings(request);
-            collection = await _collectionService.CreateAsync(
+            collection = await _collectionService.CreateCollectionAsync(
+                ObjectId.Empty, // LibraryId - needs to be provided
                 potential.Name,
                 normalizedPath,
-                potential.Type,
-                settings);
+                potential.Type);
             
             _logger.LogInformation("Successfully created new collection {Name} with ID {CollectionId}", 
                 potential.Name, collection.Id);

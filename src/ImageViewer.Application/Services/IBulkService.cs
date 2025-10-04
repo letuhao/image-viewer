@@ -1,6 +1,7 @@
 using System.Text.Json.Serialization;
 using ImageViewer.Domain.Entities;
 using ImageViewer.Domain.Enums;
+using MongoDB.Bson;
 using ImageViewer.Domain.ValueObjects;
 
 namespace ImageViewer.Application.Services;
@@ -81,7 +82,7 @@ public class BulkCollectionResult
     public CollectionType Type { get; set; }
     public string Status { get; set; } = string.Empty;
     public string Message { get; set; } = string.Empty;
-    public Guid? CollectionId { get; set; }
+    public ObjectId? CollectionId { get; set; }
 }
 
 /// <summary>
