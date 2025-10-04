@@ -1,4 +1,5 @@
 using ImageViewer.Application.DTOs.Cache;
+using MongoDB.Bson;
 
 namespace ImageViewer.Application.DTOs.Statistics;
 
@@ -7,7 +8,7 @@ namespace ImageViewer.Application.DTOs.Statistics;
 /// </summary>
 public class CollectionStatisticsDto
 {
-    public Guid CollectionId { get; set; }
+    public ObjectId CollectionId { get; set; }
     public int ViewCount { get; set; }
     public double TotalViewTime { get; set; }
     public int SearchCount { get; set; }
@@ -126,7 +127,7 @@ public class CacheFolderStorageDto
 /// </summary>
 public class PopularImageDto
 {
-    public Guid Id { get; set; }
+    public ObjectId Id { get; set; }
     public string Filename { get; set; } = string.Empty;
     public int ViewCount { get; set; }
 }
