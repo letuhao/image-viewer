@@ -1,0 +1,584 @@
+using Microsoft.AspNetCore.Mvc;
+using MongoDB.Bson;
+using ImageViewer.Application.Services;
+using ImageViewer.Domain.Exceptions;
+
+namespace ImageViewer.Api.Controllers;
+
+/// <summary>
+/// Controller for Library operations
+/// </summary>
+[ApiController]
+[Route("api/v1/[controller]")]
+public class LibrariesController : ControllerBase
+{
+    private readonly ILibraryService _libraryService;
+    private readonly ILogger<LibrariesController> _logger;
+
+    public LibrariesController(ILibraryService libraryService, ILogger<LibrariesController> logger)
+    {
+        _libraryService = libraryService ?? throw new ArgumentNullException(nameof(libraryService));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+    }
+
+    /// <summary>
+    /// Create a new library
+    /// </summary>
+    [HttpPost]
+    public async Task<IActionResult> CreateLibrary([FromBody] CreateLibraryRequest request)
+    {
+        try
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            if (!ObjectId.TryParse(request.OwnerId, out var ownerId))
+                return BadRequest(new { message = "Invalid owner ID format" });
+
+            var library = await _libraryService.CreateLibraryAsync(request.Name, request.Path, ownerId, request.Description);
+            return CreatedAtAction(nameof(GetLibrary), new { id = library.Id }, library);
+        }
+        catch (ValidationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (DuplicateEntityException ex)
+        {
+            return Conflict(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to create library");
+            return StatusCode(500, new { message = "Internal server error" });
+        }
+    }
+
+    /// <summary>
+    /// Get library by ID
+    /// </summary>
+    [HttpGet("{id}")]
+    public async Task<IActionResult> GetLibrary(string id)
+    {
+        try
+        {
+            if (!ObjectId.TryParse(id, out var libraryId))
+                return BadRequest(new { message = "Invalid library ID format" });
+
+            var library = await _libraryService.GetLibraryByIdAsync(libraryId);
+            return Ok(library);
+        }
+        catch (EntityNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get library with ID {LibraryId}", id);
+            return StatusCode(500, new { message = "Internal server error" });
+        }
+    }
+
+    /// <summary>
+    /// Get library by path
+    /// </summary>
+    [HttpGet("path/{path}")]
+    public async Task<IActionResult> GetLibraryByPath(string path)
+    {
+        try
+        {
+            var library = await _libraryService.GetLibraryByPathAsync(path);
+            return Ok(library);
+        }
+        catch (ValidationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (EntityNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get library at path {Path}", path);
+            return StatusCode(500, new { message = "Internal server error" });
+        }
+    }
+
+    /// <summary>
+    /// Get libraries by owner ID
+    /// </summary>
+    [HttpGet("owner/{ownerId}")]
+    public async Task<IActionResult> GetLibrariesByOwner(string ownerId)
+    {
+        try
+        {
+            if (!ObjectId.TryParse(ownerId, out var ownerObjectId))
+                return BadRequest(new { message = "Invalid owner ID format" });
+
+            var libraries = await _libraryService.GetLibrariesByOwnerIdAsync(ownerObjectId);
+            return Ok(libraries);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get libraries for owner {OwnerId}", ownerId);
+            return StatusCode(500, new { message = "Internal server error" });
+        }
+    }
+
+    /// <summary>
+    /// Get public libraries
+    /// </summary>
+    [HttpGet("public")]
+    public async Task<IActionResult> GetPublicLibraries()
+    {
+        try
+        {
+            var libraries = await _libraryService.GetPublicLibrariesAsync();
+            return Ok(libraries);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get public libraries");
+            return StatusCode(500, new { message = "Internal server error" });
+        }
+    }
+
+    /// <summary>
+    /// Get all libraries with pagination
+    /// </summary>
+    [HttpGet]
+    public async Task<IActionResult> GetLibraries([FromQuery] int page = 1, [FromQuery] int pageSize = 20)
+    {
+        try
+        {
+            var libraries = await _libraryService.GetLibrariesAsync(page, pageSize);
+            return Ok(libraries);
+        }
+        catch (ValidationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get libraries for page {Page} with page size {PageSize}", page, pageSize);
+            return StatusCode(500, new { message = "Internal server error" });
+        }
+    }
+
+    /// <summary>
+    /// Update library information
+    /// </summary>
+    [HttpPut("{id}")]
+    public async Task<IActionResult> UpdateLibrary(string id, [FromBody] UpdateLibraryRequest request)
+    {
+        try
+        {
+            if (!ObjectId.TryParse(id, out var libraryId))
+                return BadRequest(new { message = "Invalid library ID format" });
+
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var library = await _libraryService.UpdateLibraryAsync(libraryId, request);
+            return Ok(library);
+        }
+        catch (ValidationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (EntityNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (DuplicateEntityException ex)
+        {
+            return Conflict(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to update library with ID {LibraryId}", id);
+            return StatusCode(500, new { message = "Internal server error" });
+        }
+    }
+
+    /// <summary>
+    /// Delete library
+    /// </summary>
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> DeleteLibrary(string id)
+    {
+        try
+        {
+            if (!ObjectId.TryParse(id, out var libraryId))
+                return BadRequest(new { message = "Invalid library ID format" });
+
+            await _libraryService.DeleteLibraryAsync(libraryId);
+            return NoContent();
+        }
+        catch (EntityNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to delete library with ID {LibraryId}", id);
+            return StatusCode(500, new { message = "Internal server error" });
+        }
+    }
+
+    /// <summary>
+    /// Update library settings
+    /// </summary>
+    [HttpPut("{id}/settings")]
+    public async Task<IActionResult> UpdateSettings(string id, [FromBody] UpdateLibrarySettingsRequest request)
+    {
+        try
+        {
+            if (!ObjectId.TryParse(id, out var libraryId))
+                return BadRequest(new { message = "Invalid library ID format" });
+
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var library = await _libraryService.UpdateSettingsAsync(libraryId, request);
+            return Ok(library);
+        }
+        catch (ValidationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (EntityNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to update settings for library with ID {LibraryId}", id);
+            return StatusCode(500, new { message = "Internal server error" });
+        }
+    }
+
+    /// <summary>
+    /// Update library metadata
+    /// </summary>
+    [HttpPut("{id}/metadata")]
+    public async Task<IActionResult> UpdateMetadata(string id, [FromBody] UpdateLibraryMetadataRequest request)
+    {
+        try
+        {
+            if (!ObjectId.TryParse(id, out var libraryId))
+                return BadRequest(new { message = "Invalid library ID format" });
+
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var library = await _libraryService.UpdateMetadataAsync(libraryId, request);
+            return Ok(library);
+        }
+        catch (ValidationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (EntityNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to update metadata for library with ID {LibraryId}", id);
+            return StatusCode(500, new { message = "Internal server error" });
+        }
+    }
+
+    /// <summary>
+    /// Update library statistics
+    /// </summary>
+    [HttpPut("{id}/statistics")]
+    public async Task<IActionResult> UpdateStatistics(string id, [FromBody] UpdateLibraryStatisticsRequest request)
+    {
+        try
+        {
+            if (!ObjectId.TryParse(id, out var libraryId))
+                return BadRequest(new { message = "Invalid library ID format" });
+
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var library = await _libraryService.UpdateStatisticsAsync(libraryId, request);
+            return Ok(library);
+        }
+        catch (ValidationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (EntityNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to update statistics for library with ID {LibraryId}", id);
+            return StatusCode(500, new { message = "Internal server error" });
+        }
+    }
+
+    /// <summary>
+    /// Activate library
+    /// </summary>
+    [HttpPost("{id}/activate")]
+    public async Task<IActionResult> ActivateLibrary(string id)
+    {
+        try
+        {
+            if (!ObjectId.TryParse(id, out var libraryId))
+                return BadRequest(new { message = "Invalid library ID format" });
+
+            var library = await _libraryService.ActivateLibraryAsync(libraryId);
+            return Ok(library);
+        }
+        catch (EntityNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to activate library with ID {LibraryId}", id);
+            return StatusCode(500, new { message = "Internal server error" });
+        }
+    }
+
+    /// <summary>
+    /// Deactivate library
+    /// </summary>
+    [HttpPost("{id}/deactivate")]
+    public async Task<IActionResult> DeactivateLibrary(string id)
+    {
+        try
+        {
+            if (!ObjectId.TryParse(id, out var libraryId))
+                return BadRequest(new { message = "Invalid library ID format" });
+
+            var library = await _libraryService.DeactivateLibraryAsync(libraryId);
+            return Ok(library);
+        }
+        catch (EntityNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to deactivate library with ID {LibraryId}", id);
+            return StatusCode(500, new { message = "Internal server error" });
+        }
+    }
+
+    /// <summary>
+    /// Set library public/private
+    /// </summary>
+    [HttpPost("{id}/set-public")]
+    public async Task<IActionResult> SetPublic(string id, [FromBody] SetPublicRequest request)
+    {
+        try
+        {
+            if (!ObjectId.TryParse(id, out var libraryId))
+                return BadRequest(new { message = "Invalid library ID format" });
+
+            var library = await _libraryService.SetPublicAsync(libraryId, request.IsPublic);
+            return Ok(library);
+        }
+        catch (EntityNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to set library visibility for library with ID {LibraryId}", id);
+            return StatusCode(500, new { message = "Internal server error" });
+        }
+    }
+
+    /// <summary>
+    /// Enable library watching
+    /// </summary>
+    [HttpPost("{id}/enable-watching")]
+    public async Task<IActionResult> EnableWatching(string id)
+    {
+        try
+        {
+            if (!ObjectId.TryParse(id, out var libraryId))
+                return BadRequest(new { message = "Invalid library ID format" });
+
+            var library = await _libraryService.EnableWatchingAsync(libraryId);
+            return Ok(library);
+        }
+        catch (EntityNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to enable watching for library with ID {LibraryId}", id);
+            return StatusCode(500, new { message = "Internal server error" });
+        }
+    }
+
+    /// <summary>
+    /// Disable library watching
+    /// </summary>
+    [HttpPost("{id}/disable-watching")]
+    public async Task<IActionResult> DisableWatching(string id)
+    {
+        try
+        {
+            if (!ObjectId.TryParse(id, out var libraryId))
+                return BadRequest(new { message = "Invalid library ID format" });
+
+            var library = await _libraryService.DisableWatchingAsync(libraryId);
+            return Ok(library);
+        }
+        catch (EntityNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to disable watching for library with ID {LibraryId}", id);
+            return StatusCode(500, new { message = "Internal server error" });
+        }
+    }
+
+    /// <summary>
+    /// Update watch settings
+    /// </summary>
+    [HttpPut("{id}/watch-settings")]
+    public async Task<IActionResult> UpdateWatchSettings(string id, [FromBody] UpdateWatchSettingsRequest request)
+    {
+        try
+        {
+            if (!ObjectId.TryParse(id, out var libraryId))
+                return BadRequest(new { message = "Invalid library ID format" });
+
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var library = await _libraryService.UpdateWatchSettingsAsync(libraryId, request);
+            return Ok(library);
+        }
+        catch (ValidationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (EntityNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to update watch settings for library with ID {LibraryId}", id);
+            return StatusCode(500, new { message = "Internal server error" });
+        }
+    }
+
+    /// <summary>
+    /// Search libraries
+    /// </summary>
+    [HttpGet("search")]
+    public async Task<IActionResult> SearchLibraries([FromQuery] string query, [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
+    {
+        try
+        {
+            var libraries = await _libraryService.SearchLibrariesAsync(query, page, pageSize);
+            return Ok(libraries);
+        }
+        catch (ValidationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to search libraries with query {Query}", query);
+            return StatusCode(500, new { message = "Internal server error" });
+        }
+    }
+
+    /// <summary>
+    /// Get library statistics
+    /// </summary>
+    [HttpGet("statistics")]
+    public async Task<IActionResult> GetLibraryStatistics()
+    {
+        try
+        {
+            var statistics = await _libraryService.GetLibraryStatisticsAsync();
+            return Ok(statistics);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get library statistics");
+            return StatusCode(500, new { message = "Internal server error" });
+        }
+    }
+
+    /// <summary>
+    /// Get top libraries by activity
+    /// </summary>
+    [HttpGet("top-activity")]
+    public async Task<IActionResult> GetTopLibrariesByActivity([FromQuery] int limit = 10)
+    {
+        try
+        {
+            var libraries = await _libraryService.GetTopLibrariesByActivityAsync(limit);
+            return Ok(libraries);
+        }
+        catch (ValidationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get top libraries by activity");
+            return StatusCode(500, new { message = "Internal server error" });
+        }
+    }
+
+    /// <summary>
+    /// Get recent libraries
+    /// </summary>
+    [HttpGet("recent")]
+    public async Task<IActionResult> GetRecentLibraries([FromQuery] int limit = 10)
+    {
+        try
+        {
+            var libraries = await _libraryService.GetRecentLibrariesAsync(limit);
+            return Ok(libraries);
+        }
+        catch (ValidationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get recent libraries");
+            return StatusCode(500, new { message = "Internal server error" });
+        }
+    }
+}
+
+/// <summary>
+/// Request model for creating a library
+/// </summary>
+public class CreateLibraryRequest
+{
+    public string Name { get; set; } = string.Empty;
+    public string Path { get; set; } = string.Empty;
+    public string OwnerId { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// Request model for setting library public/private
+/// </summary>
+public class SetPublicRequest
+{
+    public bool IsPublic { get; set; }
+}
