@@ -265,7 +265,7 @@ public class UserService : IUserService
         {
             var user = await GetUserByIdAsync(userId);
             
-            var newSecurity = new UserSecurity();
+            var newSecurity = UserSecuritySettings.Create(userId);
             
             if (request.TwoFactorEnabled.HasValue && request.TwoFactorEnabled.Value)
             {

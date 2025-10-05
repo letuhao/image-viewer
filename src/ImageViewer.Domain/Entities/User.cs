@@ -32,7 +32,7 @@ public class User : BaseEntity
     public UserSettings Settings { get; private set; }
     
     [BsonElement("security")]
-    public UserSecurity Security { get; private set; }
+    public UserSecuritySettings Security { get; private set; }
     
     [BsonElement("statistics")]
     public UserStatistics Statistics { get; private set; }
@@ -82,7 +82,7 @@ public class User : BaseEntity
         
         Profile = new UserProfile();
         Settings = new UserSettings();
-        Security = new UserSecurity();
+        Security = UserSecuritySettings.Create(Id);
         Statistics = new UserStatistics();
         
         AddDomainEvent(new UserCreatedEvent(Id, Username, Email));
@@ -160,7 +160,7 @@ public class User : BaseEntity
         AddDomainEvent(new UserSettingsUpdatedEvent(Id));
     }
 
-    public void UpdateSecurity(UserSecurity newSecurity)
+    public void UpdateSecurity(UserSecuritySettings newSecurity)
     {
         Security = newSecurity ?? throw new ArgumentNullException(nameof(newSecurity));
         UpdateTimestamp();
