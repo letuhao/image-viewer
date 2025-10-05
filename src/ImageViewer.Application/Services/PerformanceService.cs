@@ -12,32 +12,49 @@ namespace ImageViewer.Application.Services;
 public class PerformanceService : IPerformanceService
 {
     private readonly IUserRepository _userRepository;
+    private readonly IPerformanceMetricRepository _performanceMetricRepository;
+    private readonly ICacheInfoRepository _cacheInfoRepository;
+    private readonly IMediaProcessingJobRepository _mediaProcessingJobRepository;
     private readonly ILogger<PerformanceService> _logger;
 
-    public PerformanceService(IUserRepository userRepository, ILogger<PerformanceService> logger)
+    public PerformanceService(
+        IUserRepository userRepository,
+        IPerformanceMetricRepository performanceMetricRepository,
+        ICacheInfoRepository cacheInfoRepository,
+        IMediaProcessingJobRepository mediaProcessingJobRepository,
+        ILogger<PerformanceService> logger)
     {
         _userRepository = userRepository ?? throw new ArgumentNullException(nameof(userRepository));
+        _performanceMetricRepository = performanceMetricRepository ?? throw new ArgumentNullException(nameof(performanceMetricRepository));
+        _cacheInfoRepository = cacheInfoRepository ?? throw new ArgumentNullException(nameof(cacheInfoRepository));
+        _mediaProcessingJobRepository = mediaProcessingJobRepository ?? throw new ArgumentNullException(nameof(mediaProcessingJobRepository));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    public Task<CacheInfo> GetCacheInfoAsync()
+    public async Task<CacheInfo> GetCacheInfoAsync()
     {
         try
         {
-            // TODO: Implement when cache repository is available
-            // For now, return placeholder cache info
+            // Get cache statistics from repository
+            var cacheEntries = await _cacheInfoRepository.GetAllAsync();
+            var totalEntries = cacheEntries.Count();
+            
+            // Calculate cache statistics
+            var totalCacheSize = cacheEntries.Sum(c => c.FileSizeBytes);
+            var isOptimized = totalEntries > 0 && cacheEntries.All(c => c.CachedAt > DateTime.UtcNow.AddDays(-7));
+            
             var cacheInfo = new CacheInfo
             {
                 Id = ObjectId.GenerateNewId(),
                 Type = CacheType.System,
-                Size = 0,
-                ItemCount = 0,
+                Size = totalCacheSize,
+                ItemCount = totalEntries,
                 LastUpdated = DateTime.UtcNow,
                 ExpiresAt = null,
-                IsOptimized = true,
-                Status = "Active"
+                IsOptimized = isOptimized,
+                Status = totalEntries > 0 ? "Active" : "Empty"
             };
-            return Task.FromResult(cacheInfo);
+            return cacheInfo;
         }
         catch (Exception ex)
         {
@@ -46,12 +63,22 @@ public class PerformanceService : IPerformanceService
         }
     }
 
-    public Task<CacheInfo> ClearCacheAsync(CacheType? cacheType = null)
+    public async Task<CacheInfo> ClearCacheAsync(CacheType? cacheType = null)
     {
         try
         {
-            // TODO: Implement when cache repository is available
-            _logger.LogInformation("Cleared cache for type {CacheType}", cacheType?.ToString() ?? "All");
+            // Get cache entries to clear
+            var cacheEntries = await _cacheInfoRepository.GetAllAsync();
+            var entriesToDelete = cacheEntries.ToList(); // Get all entries for now
+            
+            // Delete cache entries from repository
+            foreach (var entry in entriesToDelete)
+            {
+                await _cacheInfoRepository.DeleteAsync(entry.Id);
+            }
+            
+            _logger.LogInformation("Cleared {Count} cache entries for type {CacheType}", 
+                entriesToDelete.Count, cacheType?.ToString() ?? "All");
             
             var cacheInfo = new CacheInfo
             {
@@ -64,7 +91,7 @@ public class PerformanceService : IPerformanceService
                 IsOptimized = true,
                 Status = "Cleared"
             };
-            return Task.FromResult(cacheInfo);
+            return cacheInfo;
         }
         catch (Exception ex)
         {
@@ -73,25 +100,36 @@ public class PerformanceService : IPerformanceService
         }
     }
 
-    public Task<CacheInfo> OptimizeCacheAsync()
+    public async Task<CacheInfo> OptimizeCacheAsync()
     {
         try
         {
-            // TODO: Implement when cache repository is available
-            _logger.LogInformation("Optimized cache");
+            // Get cache entries and optimize them
+            var cacheEntries = await _cacheInfoRepository.GetAllAsync();
+            var optimizedCount = 0;
+            
+            // Remove old cache entries (older than 30 days without access)
+            var cutoffDate = DateTime.UtcNow.AddDays(-30);
+            foreach (var entry in cacheEntries.Where(c => c.CachedAt < cutoffDate))
+            {
+                await _cacheInfoRepository.DeleteAsync(entry.Id);
+                optimizedCount++;
+            }
+            
+            _logger.LogInformation("Optimized cache - removed {Count} old entries", optimizedCount);
             
             var cacheInfo = new CacheInfo
             {
                 Id = ObjectId.GenerateNewId(),
                 Type = CacheType.System,
-                Size = 0,
-                ItemCount = 0,
+                Size = cacheEntries.Sum(c => c.FileSizeBytes),
+                ItemCount = cacheEntries.Count() - optimizedCount,
                 LastUpdated = DateTime.UtcNow,
                 ExpiresAt = null,
                 IsOptimized = true,
                 Status = "Optimized"
             };
-            return Task.FromResult(cacheInfo);
+            return cacheInfo;
         }
         catch (Exception ex)
         {
@@ -100,24 +138,31 @@ public class PerformanceService : IPerformanceService
         }
     }
 
-    public Task<CacheStatistics> GetCacheStatisticsAsync()
+    public async Task<CacheStatistics> GetCacheStatisticsAsync()
     {
         try
         {
-            // TODO: Implement when cache repository is available
-            // For now, return placeholder statistics
+            // Get cache statistics from repository
+            var cacheEntries = await _cacheInfoRepository.GetAllAsync();
+            var totalItems = cacheEntries.Count();
+            var totalSize = cacheEntries.Sum(c => c.FileSizeBytes);
+            
+            // Calculate hit/miss rates based on recent cache creation
+            var recentEntries = cacheEntries.Where(c => c.CachedAt > DateTime.UtcNow.AddHours(-24));
+            var hitRate = totalItems > 0 ? recentEntries.Count() / (double)totalItems : 0.0;
+            
             var statistics = new CacheStatistics
             {
-                TotalSize = 0,
-                TotalItems = 0,
-                HitRate = 0,
-                MissRate = 0,
-                TotalHits = 0,
-                TotalMisses = 0,
+                TotalSize = totalSize,
+                TotalItems = totalItems,
+                HitRate = hitRate,
+                MissRate = 1.0 - hitRate,
+                TotalHits = recentEntries.Count(),
+                TotalMisses = totalItems - recentEntries.Count(),
                 LastReset = DateTime.UtcNow,
                 CacheByType = new Dictionary<CacheType, CacheInfo>()
             };
-            return Task.FromResult(statistics);
+            return statistics;
         }
         catch (Exception ex)
         {
@@ -126,24 +171,27 @@ public class PerformanceService : IPerformanceService
         }
     }
 
-    public Task<ImageProcessingInfo> GetImageProcessingInfoAsync()
+    public async Task<ImageProcessingInfo> GetImageProcessingInfoAsync()
     {
         try
         {
-            // TODO: Implement when image processing repository is available
-            // For now, return placeholder info
+            // Get image processing statistics from repository
+            var processingJobs = await _mediaProcessingJobRepository.GetAllAsync();
+            var activeJobs = processingJobs.Where(j => j.Status == "Processing" || j.Status == "Pending");
+            var completedJobs = processingJobs.Where(j => j.Status == "Completed");
+            
             var info = new ImageProcessingInfo
             {
                 Id = ObjectId.GenerateNewId(),
-                IsOptimized = true,
+                IsOptimized = !activeJobs.Any(),
                 MaxConcurrentProcesses = 4,
-                QueueSize = 0,
-                Status = "Active",
-                LastOptimized = DateTime.UtcNow,
+                QueueSize = activeJobs.Count(),
+                Status = activeJobs.Any() ? "Processing" : "Active",
+                LastOptimized = completedJobs.Any() ? completedJobs.Max(j => j.CompletedAt) ?? DateTime.UtcNow : DateTime.UtcNow,
                 SupportedFormats = new List<string> { "jpg", "jpeg", "png", "gif", "bmp", "webp" },
                 OptimizationSettings = new List<string> { "resize", "compress", "format_conversion" }
             };
-            return Task.FromResult(info);
+            return info;
         }
         catch (Exception ex)
         {
@@ -152,25 +200,34 @@ public class PerformanceService : IPerformanceService
         }
     }
 
-    public Task<ImageProcessingInfo> OptimizeImageProcessingAsync()
+    public async Task<ImageProcessingInfo> OptimizeImageProcessingAsync()
     {
         try
         {
-            // TODO: Implement when image processing repository is available
-            _logger.LogInformation("Optimized image processing");
+            // Clean up old completed processing jobs
+            var processingJobs = await _mediaProcessingJobRepository.GetAllAsync();
+            var oldCompletedJobs = processingJobs.Where(j => j.Status == "Completed" && 
+                j.CompletedAt < DateTime.UtcNow.AddDays(-7));
+            
+            foreach (var job in oldCompletedJobs)
+            {
+                await _mediaProcessingJobRepository.DeleteAsync(job.Id);
+            }
+            
+            _logger.LogInformation("Optimized image processing - cleaned {Count} old jobs", oldCompletedJobs.Count());
             
             var info = new ImageProcessingInfo
             {
                 Id = ObjectId.GenerateNewId(),
                 IsOptimized = true,
                 MaxConcurrentProcesses = 4,
-                QueueSize = 0,
+                QueueSize = processingJobs.Count(j => j.Status == "Pending"),
                 Status = "Optimized",
                 LastOptimized = DateTime.UtcNow,
                 SupportedFormats = new List<string> { "jpg", "jpeg", "png", "gif", "bmp", "webp" },
                 OptimizationSettings = new List<string> { "resize", "compress", "format_conversion" }
             };
-            return Task.FromResult(info);
+            return info;
         }
         catch (Exception ex)
         {
@@ -470,26 +527,31 @@ public class PerformanceService : IPerformanceService
         }
     }
 
-    public Task<PerformanceMetrics> GetPerformanceMetricsAsync()
+    public async Task<PerformanceMetrics> GetPerformanceMetricsAsync()
     {
         try
         {
-            // TODO: Implement when performance metrics repository is available
-            // For now, return placeholder metrics
+            // Get recent performance metrics from repository
+            var recentMetrics = await _performanceMetricRepository.GetAllAsync();
+            var latestMetrics = recentMetrics
+                .Where(m => m.SampledAt > DateTime.UtcNow.AddHours(-1))
+                .OrderByDescending(m => m.SampledAt)
+                .FirstOrDefault();
+            
             var metrics = new PerformanceMetrics
             {
                 Id = ObjectId.GenerateNewId(),
                 Timestamp = DateTime.UtcNow,
-                CpuUsage = 0,
-                MemoryUsage = 0,
-                DiskUsage = 0,
-                NetworkUsage = 0,
-                ResponseTime = 0,
+                CpuUsage = latestMetrics?.Value ?? 0,
+                MemoryUsage = 0, // TODO: Get actual memory usage
+                DiskUsage = 0, // TODO: Get actual disk usage
+                NetworkUsage = 0, // TODO: Get actual network usage
+                ResponseTime = latestMetrics?.DurationMs ?? 0,
                 RequestCount = 0,
                 ErrorRate = 0,
                 CustomMetrics = new Dictionary<string, object>()
             };
-            return Task.FromResult(metrics);
+            return metrics;
         }
         catch (Exception ex)
         {

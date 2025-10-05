@@ -12,11 +12,16 @@ namespace ImageViewer.Application.Services;
 public class UserPreferencesService : IUserPreferencesService
 {
     private readonly IUserRepository _userRepository;
+    private readonly IUserSettingRepository _userSettingRepository;
     private readonly ILogger<UserPreferencesService> _logger;
 
-    public UserPreferencesService(IUserRepository userRepository, ILogger<UserPreferencesService> logger)
+    public UserPreferencesService(
+        IUserRepository userRepository, 
+        IUserSettingRepository userSettingRepository,
+        ILogger<UserPreferencesService> logger)
     {
         _userRepository = userRepository ?? throw new ArgumentNullException(nameof(userRepository));
+        _userSettingRepository = userSettingRepository ?? throw new ArgumentNullException(nameof(userSettingRepository));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -29,18 +34,36 @@ public class UserPreferencesService : IUserPreferencesService
             if (user == null)
                 throw new EntityNotFoundException($"User with ID '{userId}' not found");
 
-            // TODO: Implement when preferences repository is available
-            // For now, return default preferences
+            // Get user settings from repository
+            var userSettings = await _userSettingRepository.GetByUserIdAsync(userId);
+            
+            // If no settings exist, return default preferences
+            if (userSettings == null)
+            {
+                return new UserPreferences
+                {
+                    Id = ObjectId.GenerateNewId(),
+                    UserId = userId,
+                    Display = new DisplayPreferences(),
+                    Privacy = new PrivacyPreferences(),
+                    Performance = new PerformancePreferences(),
+                    Notifications = new NotificationPreferences(),
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+            }
+
+            // Map user settings to preferences (simplified mapping for now)
             return new UserPreferences
             {
-                Id = ObjectId.GenerateNewId(),
+                Id = userSettings.Id,
                 UserId = userId,
-                Display = new DisplayPreferences(),
-                Privacy = new PrivacyPreferences(),
-                Performance = new PerformancePreferences(),
-                Notifications = new NotificationPreferences(),
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow
+                Display = new DisplayPreferences(), // TODO: Map from user settings
+                Privacy = new PrivacyPreferences(), // TODO: Map from user settings
+                Performance = new PerformancePreferences(), // TODO: Map from user settings
+                Notifications = new NotificationPreferences(), // TODO: Map from user settings
+                CreatedAt = userSettings.CreatedAt,
+                UpdatedAt = userSettings.UpdatedAt
             };
         }
         catch (Exception ex) when (!(ex is EntityNotFoundException))
@@ -141,7 +164,29 @@ public class UserPreferencesService : IUserPreferencesService
 
             currentPreferences.UpdatedAt = DateTime.UtcNow;
 
-            // TODO: Save to database when preferences repository is implemented
+            // Save preferences to user settings repository
+            // For now, create a simple user setting entry for the preferences
+            var userSetting = UserSetting.Create(
+                userId,
+                "user_preferences",
+                System.Text.Json.JsonSerializer.Serialize(currentPreferences),
+                "JSON",
+                "General",
+                "User preferences and settings");
+
+            // Check if setting already exists and update or create accordingly
+            var existingSetting = await _userSettingRepository.GetByUserIdAsync(userId);
+            if (existingSetting != null)
+            {
+                // Update existing setting
+                await _userSettingRepository.UpdateAsync(userSetting);
+            }
+            else
+            {
+                // Create new setting
+                await _userSettingRepository.CreateAsync(userSetting);
+            }
+
             _logger.LogInformation("Updated user preferences for user {UserId}", userId);
 
             return currentPreferences;
@@ -175,7 +220,28 @@ public class UserPreferencesService : IUserPreferencesService
                 UpdatedAt = DateTime.UtcNow
             };
 
-            // TODO: Save to database when preferences repository is implemented
+            // Save default preferences to user settings repository
+            var userSetting = UserSetting.Create(
+                userId,
+                "user_preferences",
+                System.Text.Json.JsonSerializer.Serialize(defaultPreferences),
+                "JSON",
+                "General",
+                "User preferences and settings (reset to defaults)");
+
+            // Check if setting already exists and update or create accordingly
+            var existingSetting = await _userSettingRepository.GetByUserIdAsync(userId);
+            if (existingSetting != null)
+            {
+                // Update existing setting
+                await _userSettingRepository.UpdateAsync(userSetting);
+            }
+            else
+            {
+                // Create new setting
+                await _userSettingRepository.CreateAsync(userSetting);
+            }
+
             _logger.LogInformation("Reset user preferences for user {UserId}", userId);
 
             return defaultPreferences;
