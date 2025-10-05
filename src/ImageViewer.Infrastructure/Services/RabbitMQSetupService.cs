@@ -33,7 +33,7 @@ public class RabbitMQSetupService
         {
             _logger.LogInformation("Setting up RabbitMQ queues and exchanges...");
 
-            using var channel = _connection.CreateModel();
+            var channel = await _connection.CreateChannelAsync();
 
             // Declare exchanges
             await DeclareExchangesAsync(channel);
@@ -56,19 +56,19 @@ public class RabbitMQSetupService
     /// <summary>
     /// Declare all required exchanges
     /// </summary>
-    private async Task DeclareExchangesAsync(IModel channel)
+    private async Task DeclareExchangesAsync(IChannel channel)
     {
         _logger.LogDebug("Declaring exchanges...");
 
         // Main exchange
-        channel.ExchangeDeclare(
+        await channel.ExchangeDeclareAsync(
             exchange: _options.DefaultExchange,
             type: ExchangeType.Topic,
             durable: true,
             autoDelete: false);
 
         // Dead letter exchange
-        channel.ExchangeDeclare(
+        await channel.ExchangeDeclareAsync(
             exchange: _options.DeadLetterExchange,
             type: ExchangeType.Topic,
             durable: true,
@@ -81,7 +81,7 @@ public class RabbitMQSetupService
     /// <summary>
     /// Declare all required queues
     /// </summary>
-    private async Task DeclareQueuesAsync(IModel channel)
+    private async Task DeclareQueuesAsync(IChannel channel)
     {
         _logger.LogDebug("Declaring queues...");
 
@@ -102,7 +102,7 @@ public class RabbitMQSetupService
                 { "x-message-ttl", (int)_options.MessageTimeout.TotalMilliseconds }
             };
 
-            channel.QueueDeclare(
+            await channel.QueueDeclareAsync(
                 queue: queueName,
                 durable: true,
                 exclusive: false,
@@ -113,7 +113,7 @@ public class RabbitMQSetupService
         }
 
         // Declare dead letter queue
-        channel.QueueDeclare(
+        await channel.QueueDeclareAsync(
             queue: "imageviewer.dlq",
             durable: true,
             exclusive: false,
@@ -154,7 +154,7 @@ public class RabbitMQSetupService
     /// <summary>
     /// Bind queues to exchanges
     /// </summary>
-    private async Task BindQueuesAsync(IModel channel)
+    private async Task BindQueuesAsync(IChannel channel)
     {
         _logger.LogDebug("Binding queues to exchanges...");
 
@@ -171,7 +171,7 @@ public class RabbitMQSetupService
 
         foreach (var binding in queueBindings)
         {
-            channel.QueueBind(
+            await channel.QueueBindAsync(
                 queue: binding.Key,
                 exchange: _options.DefaultExchange,
                 routingKey: binding.Value);
@@ -181,7 +181,7 @@ public class RabbitMQSetupService
         }
 
         // Bind dead letter queue
-        channel.QueueBind(
+        await channel.QueueBindAsync(
             queue: "imageviewer.dlq",
             exchange: _options.DeadLetterExchange,
             routingKey: "#");
@@ -197,7 +197,7 @@ public class RabbitMQSetupService
     {
         try
         {
-            using var channel = _connection.CreateModel();
+            var channel = await _connection.CreateChannelAsync();
 
             var queues = GetConfiguredQueues();
 
@@ -208,7 +208,7 @@ public class RabbitMQSetupService
 
                 try
                 {
-                    channel.QueueDeclarePassive(queueName);
+                    await channel.QueueDeclarePassiveAsync(queueName);
                 }
                 catch (Exception)
                 {

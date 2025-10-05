@@ -16,7 +16,7 @@ namespace ImageViewer.Infrastructure.Services;
 public class RabbitMQMessageQueueService : IMessageQueueService, IDisposable
 {
     private readonly IConnection _connection;
-    private readonly IModel _channel;
+    private readonly IChannel _channel;
     private readonly RabbitMQOptions _options;
     private readonly ILogger<RabbitMQMessageQueueService> _logger;
     private bool _disposed = false;
@@ -37,8 +37,8 @@ public class RabbitMQMessageQueueService : IMessageQueueService, IDisposable
             RequestedHeartbeat = TimeSpan.FromSeconds(60)
         };
 
-        _connection = factory.CreateConnection();
-        _channel = _connection.CreateModel();
+        _connection = factory.CreateConnectionAsync().GetAwaiter().GetResult();
+        _channel = _connection.CreateChannelAsync().GetAwaiter().GetResult();
 
         SetupExchangesAndQueues();
     }
@@ -46,10 +46,10 @@ public class RabbitMQMessageQueueService : IMessageQueueService, IDisposable
     private void SetupExchangesAndQueues()
     {
         // Declare main exchange
-        _channel.ExchangeDeclare(_options.DefaultExchange, ExchangeType.Topic, true, false);
+        _channel.ExchangeDeclareAsync(_options.DefaultExchange, ExchangeType.Topic, true, false).GetAwaiter().GetResult();
 
         // Declare dead letter exchange
-        _channel.ExchangeDeclare(_options.DeadLetterExchange, ExchangeType.Topic, true, false);
+        _channel.ExchangeDeclareAsync(_options.DeadLetterExchange, ExchangeType.Topic, true, false).GetAwaiter().GetResult();
 
         // Declare queues with dead letter exchange
         var queueArgs = new Dictionary<string, object>
@@ -58,20 +58,20 @@ public class RabbitMQMessageQueueService : IMessageQueueService, IDisposable
             { "x-message-ttl", (int)_options.MessageTimeout.TotalMilliseconds }
         };
 
-        _channel.QueueDeclare(_options.CollectionScanQueue, true, false, false, queueArgs);
-        _channel.QueueDeclare(_options.ThumbnailGenerationQueue, true, false, false, queueArgs);
-        _channel.QueueDeclare(_options.CacheGenerationQueue, true, false, false, queueArgs);
-        _channel.QueueDeclare(_options.CollectionCreationQueue, true, false, false, queueArgs);
-        _channel.QueueDeclare(_options.BulkOperationQueue, true, false, false, queueArgs);
-        _channel.QueueDeclare(_options.ImageProcessingQueue, true, false, false, queueArgs);
+        _channel.QueueDeclareAsync(_options.CollectionScanQueue, true, false, false, queueArgs).GetAwaiter().GetResult();
+        _channel.QueueDeclareAsync(_options.ThumbnailGenerationQueue, true, false, false, queueArgs).GetAwaiter().GetResult();
+        _channel.QueueDeclareAsync(_options.CacheGenerationQueue, true, false, false, queueArgs).GetAwaiter().GetResult();
+        _channel.QueueDeclareAsync(_options.CollectionCreationQueue, true, false, false, queueArgs).GetAwaiter().GetResult();
+        _channel.QueueDeclareAsync(_options.BulkOperationQueue, true, false, false, queueArgs).GetAwaiter().GetResult();
+        _channel.QueueDeclareAsync(_options.ImageProcessingQueue, true, false, false, queueArgs).GetAwaiter().GetResult();
 
         // Bind queues to exchange
-        _channel.QueueBind(_options.CollectionScanQueue, _options.DefaultExchange, "collection.scan");
-        _channel.QueueBind(_options.ThumbnailGenerationQueue, _options.DefaultExchange, "thumbnail.generation");
-        _channel.QueueBind(_options.CacheGenerationQueue, _options.DefaultExchange, "cache.generation");
-        _channel.QueueBind(_options.CollectionCreationQueue, _options.DefaultExchange, "collection.creation");
-        _channel.QueueBind(_options.BulkOperationQueue, _options.DefaultExchange, "bulk.operation");
-        _channel.QueueBind(_options.ImageProcessingQueue, _options.DefaultExchange, "image.processing");
+        _channel.QueueBindAsync(_options.CollectionScanQueue, _options.DefaultExchange, "collection.scan").GetAwaiter().GetResult();
+        _channel.QueueBindAsync(_options.ThumbnailGenerationQueue, _options.DefaultExchange, "thumbnail.generation").GetAwaiter().GetResult();
+        _channel.QueueBindAsync(_options.CacheGenerationQueue, _options.DefaultExchange, "cache.generation").GetAwaiter().GetResult();
+        _channel.QueueBindAsync(_options.CollectionCreationQueue, _options.DefaultExchange, "collection.creation").GetAwaiter().GetResult();
+        _channel.QueueBindAsync(_options.BulkOperationQueue, _options.DefaultExchange, "bulk.operation").GetAwaiter().GetResult();
+        _channel.QueueBindAsync(_options.ImageProcessingQueue, _options.DefaultExchange, "image.processing").GetAwaiter().GetResult();
 
         _logger.LogInformation("RabbitMQ exchanges and queues configured successfully");
     }
@@ -82,7 +82,7 @@ public class RabbitMQMessageQueueService : IMessageQueueService, IDisposable
         {
             var queueName = GetQueueName<T>();
             var messageBody = JsonSerializer.SerializeToUtf8Bytes(message);
-            var properties = _channel.CreateBasicProperties();
+            var properties = new BasicProperties();
             
             properties.Persistent = true;
             properties.MessageId = message.Id.ToString();
@@ -94,11 +94,12 @@ public class RabbitMQMessageQueueService : IMessageQueueService, IDisposable
                 { "Timestamp", message.Timestamp.ToString("O") }
             };
 
-            _channel.BasicPublish(
+            _channel.BasicPublishAsync(
                 exchange: _options.DefaultExchange,
                 routingKey: routingKey ?? GetDefaultRoutingKey<T>(),
+                mandatory: false,
                 basicProperties: properties,
-                body: messageBody);
+                body: messageBody).GetAwaiter().GetResult();
 
             _logger.LogDebug("Published message {MessageType} with ID {MessageId}", message.MessageType, message.Id);
         }
@@ -154,9 +155,9 @@ public class RabbitMQMessageQueueService : IMessageQueueService, IDisposable
     {
         if (!_disposed)
         {
-            _channel?.Close();
+            _channel?.CloseAsync().GetAwaiter().GetResult();
             _channel?.Dispose();
-            _connection?.Close();
+            _connection?.CloseAsync().GetAwaiter().GetResult();
             _connection?.Dispose();
             _disposed = true;
         }

@@ -28,7 +28,7 @@ public class CollectionScanConsumer : BaseMessageConsumer
         _serviceProvider = serviceProvider;
     }
 
-    protected override async Task ProcessMessageAsync(string message, BasicDeliverEventArgs ea, CancellationToken cancellationToken)
+    protected override async Task ProcessMessageAsync(string message, CancellationToken cancellationToken)
     {
         try
         {

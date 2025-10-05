@@ -49,7 +49,7 @@ builder.Services.AddSingleton<IConnection>(provider =>
         RequestedConnectionTimeout = options.ConnectionTimeout,
         RequestedHeartbeat = TimeSpan.FromSeconds(60)
     };
-    return factory.CreateConnection();
+    return factory.CreateConnectionAsync().GetAwaiter().GetResult();
 });
 
 // Register message queue service
