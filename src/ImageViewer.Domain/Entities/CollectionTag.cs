@@ -7,10 +7,8 @@ namespace ImageViewer.Domain.Entities;
 /// </summary>
 public class CollectionTag : BaseEntity
 {
-    public new ObjectId Id { get; private set; }
     public ObjectId CollectionId { get; private set; }
     public ObjectId TagId { get; private set; }
-    public new DateTime CreatedAt { get; private set; }
 
     // Navigation properties
     public Collection Collection { get; private set; } = null!;

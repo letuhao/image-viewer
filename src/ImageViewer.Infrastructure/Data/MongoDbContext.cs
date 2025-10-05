@@ -76,19 +76,19 @@ public class MongoDbContext
     // public IMongoCollection<FavoriteList> FavoriteLists => _database.GetCollection<FavoriteList>("favoriteLists");
 
     // Missing Features Collections
-    // public IMongoCollection<ContentModeration> ContentModeration => _database.GetCollection<ContentModeration>("contentModeration");
-    // public IMongoCollection<CopyrightManagement> CopyrightManagement => _database.GetCollection<CopyrightManagement>("copyrightManagement");
+    public IMongoCollection<ContentModeration> ContentModeration => _database.GetCollection<ContentModeration>("contentModeration");
+    public IMongoCollection<CopyrightManagement> CopyrightManagement => _database.GetCollection<CopyrightManagement>("copyrightManagement");
     // public IMongoCollection<SearchHistory> SearchHistory => _database.GetCollection<SearchHistory>("searchHistory");
     // public IMongoCollection<ContentSimilarity> ContentSimilarity => _database.GetCollection<ContentSimilarity>("contentSimilarity");
     // public IMongoCollection<MediaProcessingJob> MediaProcessingJobs => _database.GetCollection<MediaProcessingJob>("mediaProcessingJobs");
     // public IMongoCollection<CustomReport> CustomReports => _database.GetCollection<CustomReport>("customReports");
-    // public IMongoCollection<UserSecurity> UserSecurity => _database.GetCollection<UserSecurity>("userSecurity");
-    // public IMongoCollection<NotificationTemplate> NotificationTemplates => _database.GetCollection<NotificationTemplate>("notificationTemplates");
+    public IMongoCollection<UserSecuritySettings> UserSecuritySettings => _database.GetCollection<UserSecuritySettings>("userSecuritySettings");
+    public IMongoCollection<NotificationTemplate> NotificationTemplates => _database.GetCollection<NotificationTemplate>("notificationTemplates");
     // public IMongoCollection<NotificationQueue> NotificationQueue => _database.GetCollection<NotificationQueue>("notificationQueue");
-    // public IMongoCollection<FileVersion> FileVersions => _database.GetCollection<FileVersion>("fileVersions");
+    public IMongoCollection<FileVersion> FileVersions => _database.GetCollection<FileVersion>("fileVersions");
     // public IMongoCollection<FilePermission> FilePermissions => _database.GetCollection<FilePermission>("filePermissions");
     // public IMongoCollection<UserGroup> UserGroups => _database.GetCollection<UserGroup>("userGroups");
     // public IMongoCollection<UserActivityLog> UserActivityLogs => _database.GetCollection<UserActivityLog>("userActivityLogs");
-    // public IMongoCollection<SystemHealth> SystemHealth => _database.GetCollection<SystemHealth>("systemHealth");
+    public IMongoCollection<SystemHealth> SystemHealth => _database.GetCollection<SystemHealth>("systemHealth");
     // public IMongoCollection<SystemMaintenance> SystemMaintenance => _database.GetCollection<SystemMaintenance>("systemMaintenance");
 }

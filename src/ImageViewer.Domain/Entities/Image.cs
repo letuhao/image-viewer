@@ -9,8 +9,6 @@ namespace ImageViewer.Domain.Entities;
 /// </summary>
 public class Image : BaseEntity
 {
-    [BsonId]
-    public new ObjectId Id { get; private set; }
     public ObjectId CollectionId { get; private set; }
     public string Filename { get; private set; }
     public string RelativePath { get; private set; }

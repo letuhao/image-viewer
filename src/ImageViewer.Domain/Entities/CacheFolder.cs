@@ -8,7 +8,6 @@ namespace ImageViewer.Domain.Entities;
 /// </summary>
 public class CacheFolder : BaseEntity
 {
-    public new ObjectId Id { get; private set; }
     public string Name { get; private set; }
     public string Path { get; private set; }
     public long MaxSizeBytes { get; private set; }

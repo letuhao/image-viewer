@@ -8,7 +8,6 @@ namespace ImageViewer.Domain.Entities;
 /// </summary>
 public class ImageCacheInfo : BaseEntity
 {
-    public new ObjectId Id { get; private set; }
     public ObjectId ImageId { get; private set; }
     public string CachePath { get; private set; }
     public string Dimensions { get; private set; }
