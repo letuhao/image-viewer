@@ -71,6 +71,7 @@ public class MongoDbContext
     public IMongoCollection<ErrorLog> ErrorLogs => _database.GetCollection<ErrorLog>("errorLogs");
     public IMongoCollection<BackupHistory> BackupHistories => _database.GetCollection<BackupHistory>("backupHistories");
     public IMongoCollection<PerformanceMetric> PerformanceMetrics => _database.GetCollection<PerformanceMetric>("performanceMetrics");
+    public IMongoCollection<SecurityAlert> SecurityAlerts => _database.GetCollection<SecurityAlert>("securityAlerts");
 
     // Favorite Lists
     public IMongoCollection<FavoriteList> FavoriteLists => _database.GetCollection<FavoriteList>("favoriteLists");

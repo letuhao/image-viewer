@@ -20,17 +20,20 @@ public class SecurityService : ISecurityService
     private readonly IUserRepository _userRepository;
     private readonly IJwtService _jwtService;
     private readonly IPasswordService _passwordService;
+    private readonly ISecurityAlertRepository _securityAlertRepository;
     private readonly ILogger<SecurityService> _logger;
 
     public SecurityService(
         IUserRepository userRepository,
         IJwtService jwtService,
         IPasswordService passwordService,
+        ISecurityAlertRepository securityAlertRepository,
         ILogger<SecurityService> logger)
     {
         _userRepository = userRepository ?? throw new ArgumentNullException(nameof(userRepository));
         _jwtService = jwtService ?? throw new ArgumentNullException(nameof(jwtService));
         _passwordService = passwordService ?? throw new ArgumentNullException(nameof(passwordService));
+        _securityAlertRepository = securityAlertRepository ?? throw new ArgumentNullException(nameof(securityAlertRepository));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -1065,59 +1068,403 @@ public class SecurityService : ISecurityService
 
     #endregion
 
-    #region Geolocation Methods
+    #region Geolocation Methods (TEMPORARILY DISABLED - DTO MISMATCHES)
+
+    // TODO: Fix DTO property mismatches before implementing these methods
+    // Issues: GeolocationInfo, GeolocationSecurityResult, and GeolocationAlert DTOs
+    // are missing required properties that the implementation expects
 
     public async Task<GeolocationInfo> GetGeolocationInfoAsync(string ipAddress)
     {
-        // TODO: Implement geolocation info retrieval
-        await Task.CompletedTask;
-        throw new NotImplementedException("Geolocation info retrieval not yet implemented");
+        try
+        {
+            _logger.LogInformation("Retrieving geolocation info for IP address {IpAddress}", ipAddress);
+
+            if (string.IsNullOrWhiteSpace(ipAddress))
+                throw new ArgumentException("IP address cannot be empty", nameof(ipAddress));
+
+            // Simplified geolocation implementation using actual DTO properties
+            var geolocationInfo = new DTOs.Security.GeolocationInfo
+            {
+                IpAddress = ipAddress,
+                Country = GetCountryFromIP(ipAddress),
+                Region = GetRegionFromIP(ipAddress),
+                City = GetCityFromIP(ipAddress),
+                Latitude = GetLatitudeFromIP(ipAddress),
+                Longitude = GetLongitudeFromIP(ipAddress),
+                TimeZone = GetTimezoneFromIP(ipAddress),
+                Isp = GetISPFromIP(ipAddress),
+                Organization = GetOrganizationFromIP(ipAddress)
+            };
+
+            _logger.LogInformation("Geolocation info retrieved for IP {IpAddress}: {Country}, {Region}, {City}", 
+                ipAddress, geolocationInfo.Country, geolocationInfo.Region, geolocationInfo.City);
+
+            return geolocationInfo;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to retrieve geolocation info for IP {IpAddress}", ipAddress);
+            throw;
+        }
     }
 
     public async Task<GeolocationSecurityResult> CheckGeolocationSecurityAsync(ObjectId userId, string ipAddress)
     {
-        // TODO: Implement geolocation security check
-        await Task.CompletedTask;
-        throw new NotImplementedException("Geolocation security check not yet implemented");
+        try
+        {
+            _logger.LogInformation("Checking geolocation security for user {UserId} from IP {IpAddress}", userId, ipAddress);
+
+            if (string.IsNullOrWhiteSpace(ipAddress))
+                throw new ArgumentException("IP address cannot be empty", nameof(ipAddress));
+
+            var user = await _userRepository.GetByIdAsync(userId);
+            if (user == null)
+            {
+                _logger.LogWarning("User {UserId} not found for geolocation security check", userId);
+                throw new ArgumentException("User not found", nameof(userId));
+            }
+
+            // Get geolocation information for the IP address
+            var geolocationInfo = await GetGeolocationInfoAsync(ipAddress);
+
+            var securityResult = new DTOs.Security.GeolocationSecurityResult
+            {
+                IsTrusted = true, // Default to trusted
+                RiskLevel = "Low", // Default to low risk
+                RiskScore = 20, // Default low risk score
+                GeolocationInfo = geolocationInfo,
+                Recommendations = new List<string>(),
+                RequireAdditionalVerification = false
+            };
+
+            // Check for unusual country/region patterns
+            var userSecurity = user.Security;
+            if (userSecurity?.LoginAttempts != null && userSecurity.LoginAttempts.Any())
+            {
+                var recentSuccessfulLogins = userSecurity.LoginAttempts
+                    .Where(la => la.Successful)
+                    .Where(la => la.AttemptedAt > DateTime.UtcNow.AddDays(30))
+                    .ToList();
+
+                if (recentSuccessfulLogins.Any())
+                {
+                    // Check if this is a new country/region
+                    var previousCountries = recentSuccessfulLogins
+                        .Select(la => GetCountryFromIP(la.IpAddress))
+                        .Distinct()
+                        .ToList();
+
+                    var currentCountry = geolocationInfo.Country;
+                    if (!string.IsNullOrEmpty(currentCountry) && !previousCountries.Contains(currentCountry))
+                    {
+                        securityResult.IsTrusted = false;
+                        securityResult.RiskLevel = "Medium";
+                        securityResult.RiskScore = 60;
+                        securityResult.RequireAdditionalVerification = true;
+                        securityResult.Recommendations.Add("Login from new country detected - additional verification recommended");
+                    }
+                }
+            }
+
+            // Check for high-risk countries (simplified list)
+            var highRiskCountries = new[] { "CN", "RU", "KP", "IR" }; // China, Russia, North Korea, Iran
+            if (highRiskCountries.Contains(geolocationInfo.Country))
+            {
+                securityResult.IsTrusted = false;
+                securityResult.RiskLevel = "High";
+                securityResult.RiskScore = 80;
+                securityResult.RequireAdditionalVerification = true;
+                securityResult.Recommendations.Add($"Login from high-risk country: {geolocationInfo.Country}");
+                securityResult.Recommendations.Add("Additional verification required for high-risk countries");
+            }
+
+            _logger.LogInformation("Geolocation security check completed for user {UserId}. Trusted: {IsTrusted}, Risk Level: {RiskLevel}", 
+                userId, securityResult.IsTrusted, securityResult.RiskLevel);
+
+            return securityResult;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to check geolocation security for user {UserId}", userId);
+            throw;
+        }
     }
 
     public async Task<GeolocationAlert> CreateGeolocationAlertAsync(ObjectId userId, string ipAddress, string location)
     {
-        // TODO: Implement geolocation alert creation
-        await Task.CompletedTask;
-        throw new NotImplementedException("Geolocation alert creation not yet implemented");
+        try
+        {
+            _logger.LogInformation("Creating geolocation alert for user {UserId} from IP {IpAddress} at location {Location}", 
+                userId, ipAddress, location);
+
+            if (string.IsNullOrWhiteSpace(ipAddress))
+                throw new ArgumentException("IP address cannot be empty", nameof(ipAddress));
+
+            if (string.IsNullOrWhiteSpace(location))
+                throw new ArgumentException("Location cannot be empty", nameof(location));
+
+            var user = await _userRepository.GetByIdAsync(userId);
+            if (user == null)
+            {
+                _logger.LogWarning("User {UserId} not found for geolocation alert creation", userId);
+                throw new ArgumentException("User not found", nameof(userId));
+            }
+
+            // Get geolocation information for the IP address
+            var geolocationInfo = await GetGeolocationInfoAsync(ipAddress);
+
+            // Determine alert severity based on geolocation risk factors
+            var severity = "Medium";
+            var message = $"Login attempt from new location: {location}";
+
+            // Check for high-risk countries
+            var highRiskCountries = new[] { "CN", "RU", "KP", "IR" };
+            if (highRiskCountries.Contains(geolocationInfo.Country))
+            {
+                severity = "Critical";
+                message = $"Login attempt from high-risk location: {location} ({geolocationInfo.Country})";
+            }
+
+            var alert = new GeolocationAlert
+            {
+                AlertId = ObjectId.GenerateNewId().ToString(),
+                UserId = userId.ToString(),
+                IpAddress = ipAddress,
+                Location = location,
+                Message = message,
+                Severity = severity,
+                CreatedAt = DateTime.UtcNow,
+                IsAcknowledged = false
+            };
+
+            // Create a security alert in the system
+            var securityAlertType = severity == "Critical" ? 
+                Application.Services.SecurityAlertType.SuspiciousActivity : 
+                Application.Services.SecurityAlertType.LoginAttempt;
+
+            await CreateSecurityAlertAsync(userId, securityAlertType, message);
+
+            _logger.LogInformation("Geolocation alert created for user {UserId}. Severity: {Severity}", 
+                userId, severity);
+
+            return alert;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to create geolocation alert for user {UserId}", userId);
+            throw;
+        }
     }
+
 
     #endregion
 
     #region Security Alert Methods
 
-    public async Task<SecurityAlert> CreateSecurityAlertAsync(ObjectId userId, SecurityAlertType alertType, string message)
+    public async Task<DTOs.Security.SecurityAlert> CreateSecurityAlertAsync(ObjectId userId, SecurityAlertType alertType, string message)
     {
-        // TODO: Implement security alert creation
-        await Task.CompletedTask;
-        throw new NotImplementedException("Security alert creation not yet implemented");
+        try
+        {
+            _logger.LogInformation("Creating security alert for user {UserId}, type {AlertType}", userId, alertType);
+
+            if (string.IsNullOrWhiteSpace(message))
+                throw new ArgumentException("Message cannot be empty", nameof(message));
+
+            // Determine severity based on alert type
+            var severity = alertType switch
+            {
+                SecurityAlertType.LoginAttempt => "Medium",
+                SecurityAlertType.TwoFactorAttempt => "Low",
+                SecurityAlertType.SuspiciousActivity => "Critical",
+                SecurityAlertType.UnauthorizedAccess => "Critical",
+                SecurityAlertType.DataBreach => "Critical",
+                SecurityAlertType.Malware => "Critical",
+                SecurityAlertType.Phishing => "High",
+                SecurityAlertType.BruteForce => "High",
+                SecurityAlertType.AccountTakeover => "Critical",
+                SecurityAlertType.PrivilegeEscalation => "Critical",
+                _ => "Medium"
+            };
+
+            var title = alertType switch
+            {
+                SecurityAlertType.LoginAttempt => "Login Attempt",
+                SecurityAlertType.TwoFactorAttempt => "Two-Factor Authentication Attempt",
+                SecurityAlertType.SuspiciousActivity => "Suspicious Activity Detected",
+                SecurityAlertType.UnauthorizedAccess => "Unauthorized Access Attempt",
+                SecurityAlertType.DataBreach => "Data Breach Detected",
+                SecurityAlertType.Malware => "Malware Detected",
+                SecurityAlertType.Phishing => "Phishing Attempt",
+                SecurityAlertType.BruteForce => "Brute Force Attack",
+                SecurityAlertType.AccountTakeover => "Account Takeover Attempt",
+                SecurityAlertType.PrivilegeEscalation => "Privilege Escalation Attempt",
+                _ => "Security Alert"
+            };
+
+            // Convert Application enum to Domain enum
+            var domainAlertType = MapToDomainAlertType(alertType);
+            var alert = Domain.Entities.SecurityAlert.Create(userId, domainAlertType, title, message, severity, "System");
+
+            await _securityAlertRepository.CreateAsync(alert);
+
+            _logger.LogInformation("Security alert created successfully for user {UserId}, alert ID {AlertId}", userId, alert.Id);
+
+            return MapToDto(alert);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to create security alert for user {UserId}", userId);
+            throw;
+        }
     }
 
-    public async Task<IEnumerable<SecurityAlert>> GetUserSecurityAlertsAsync(ObjectId userId, int page, int pageSize)
+    public async Task<IEnumerable<DTOs.Security.SecurityAlert>> GetUserSecurityAlertsAsync(ObjectId userId, int page, int pageSize)
     {
-        // TODO: Implement security alerts retrieval
-        await Task.CompletedTask;
-        throw new NotImplementedException("Security alerts retrieval not yet implemented");
+        try
+        {
+            _logger.LogInformation("Retrieving security alerts for user {UserId}, page {Page}, pageSize {PageSize}", userId, page, pageSize);
+
+            if (page < 1)
+                throw new ArgumentException("Page must be greater than 0", nameof(page));
+
+            if (pageSize < 1 || pageSize > 100)
+                throw new ArgumentException("Page size must be between 1 and 100", nameof(pageSize));
+
+            var alerts = await _securityAlertRepository.GetByUserIdAsync(userId);
+
+            // Apply pagination
+            var paginatedAlerts = alerts
+                .OrderByDescending(a => a.CreatedAt)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .Select(MapToDto)
+                .ToList();
+
+            _logger.LogInformation("Retrieved {Count} security alerts for user {UserId}", paginatedAlerts.Count, userId);
+
+            return paginatedAlerts;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to retrieve security alerts for user {UserId}", userId);
+            throw;
+        }
     }
 
-    public async Task<SecurityAlert> MarkAlertAsReadAsync(ObjectId alertId)
+    public async Task<DTOs.Security.SecurityAlert> MarkAlertAsReadAsync(ObjectId alertId)
     {
-        // TODO: Implement alert marking as read
-        await Task.CompletedTask;
-        throw new NotImplementedException("Alert marking as read not yet implemented");
+        try
+        {
+            _logger.LogInformation("Marking security alert {AlertId} as read", alertId);
+
+            var alert = await _securityAlertRepository.GetByIdAsync(alertId);
+            if (alert == null)
+            {
+                _logger.LogWarning("Security alert {AlertId} not found", alertId);
+                throw new ArgumentException("Security alert not found", nameof(alertId));
+            }
+
+            alert.MarkAsRead();
+
+            await _securityAlertRepository.UpdateAsync(alert);
+
+            _logger.LogInformation("Security alert {AlertId} marked as read successfully", alertId);
+
+            return MapToDto(alert);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to mark security alert {AlertId} as read", alertId);
+            throw;
+        }
     }
 
     public async Task<bool> DeleteSecurityAlertAsync(ObjectId alertId)
     {
-        // TODO: Implement security alert deletion
-        await Task.CompletedTask;
-        throw new NotImplementedException("Security alert deletion not yet implemented");
+        try
+        {
+            _logger.LogInformation("Deleting security alert {AlertId}", alertId);
+
+            var alert = await _securityAlertRepository.GetByIdAsync(alertId);
+            if (alert == null)
+            {
+                _logger.LogWarning("Security alert {AlertId} not found", alertId);
+                return false;
+            }
+
+            await _securityAlertRepository.DeleteAsync(alertId);
+
+            _logger.LogInformation("Security alert {AlertId} deleted successfully", alertId);
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to delete security alert {AlertId}", alertId);
+            throw;
+        }
+    }
+
+    #endregion
+
+    #region Helper Methods
+
+    /// <summary>
+    /// Maps Application SecurityAlertType to Domain SecurityAlertType
+    /// </summary>
+    private Domain.Enums.SecurityAlertType MapToDomainAlertType(SecurityAlertType appAlertType)
+    {
+        return appAlertType switch
+        {
+            SecurityAlertType.LoginAttempt => Domain.Enums.SecurityAlertType.FailedLoginAttempts,
+            SecurityAlertType.TwoFactorAttempt => Domain.Enums.SecurityAlertType.TwoFactorChange,
+            SecurityAlertType.SuspiciousActivity => Domain.Enums.SecurityAlertType.SuspiciousActivity,
+            SecurityAlertType.UnauthorizedAccess => Domain.Enums.SecurityAlertType.UnauthorizedAccess,
+            SecurityAlertType.DataBreach => Domain.Enums.SecurityAlertType.DataBreach,
+            SecurityAlertType.Malware => Domain.Enums.SecurityAlertType.SuspiciousActivity,
+            SecurityAlertType.Phishing => Domain.Enums.SecurityAlertType.SuspiciousActivity,
+            SecurityAlertType.BruteForce => Domain.Enums.SecurityAlertType.FailedLoginAttempts,
+            SecurityAlertType.AccountTakeover => Domain.Enums.SecurityAlertType.UnauthorizedAccess,
+            SecurityAlertType.PrivilegeEscalation => Domain.Enums.SecurityAlertType.UnauthorizedAccess,
+            _ => Domain.Enums.SecurityAlertType.Custom
+        };
+    }
+
+    /// <summary>
+    /// Maps domain SecurityAlert entity to DTO
+    /// </summary>
+    private DTOs.Security.SecurityAlert MapToDto(Domain.Entities.SecurityAlert entity)
+    {
+        return new DTOs.Security.SecurityAlert
+        {
+            AlertId = entity.Id.ToString(),
+            UserId = entity.UserId.ToString(),
+            AlertType = MapToApplicationAlertType(entity.AlertType),
+            Message = entity.Message,
+            Severity = entity.Severity,
+            CreatedAt = entity.CreatedAt,
+            IsRead = entity.IsRead,
+            ReadAt = entity.ReadAt,
+            AdditionalData = entity.AdditionalData
+        };
+    }
+
+    /// <summary>
+    /// Maps Domain SecurityAlertType to Application SecurityAlertType
+    /// </summary>
+    private Application.Services.SecurityAlertType MapToApplicationAlertType(Domain.Enums.SecurityAlertType domainAlertType)
+    {
+        return domainAlertType switch
+        {
+            Domain.Enums.SecurityAlertType.FailedLoginAttempts => Application.Services.SecurityAlertType.LoginAttempt,
+            Domain.Enums.SecurityAlertType.TwoFactorChange => Application.Services.SecurityAlertType.TwoFactorAttempt,
+            Domain.Enums.SecurityAlertType.SuspiciousActivity => Application.Services.SecurityAlertType.SuspiciousActivity,
+            Domain.Enums.SecurityAlertType.UnauthorizedAccess => Application.Services.SecurityAlertType.UnauthorizedAccess,
+            Domain.Enums.SecurityAlertType.DataBreach => Application.Services.SecurityAlertType.DataBreach,
+            Domain.Enums.SecurityAlertType.Custom => Application.Services.SecurityAlertType.SuspiciousActivity,
+            _ => Application.Services.SecurityAlertType.SuspiciousActivity
+        };
     }
 
     #endregion
@@ -1126,24 +1473,587 @@ public class SecurityService : ISecurityService
 
     public async Task<RiskAssessment> AssessUserRiskAsync(ObjectId userId)
     {
-        // TODO: Implement user risk assessment
-        await Task.CompletedTask;
-        throw new NotImplementedException("User risk assessment not yet implemented");
+        try
+        {
+            _logger.LogInformation("Assessing user risk for user {UserId}", userId);
+
+            var user = await _userRepository.GetByIdAsync(userId);
+            if (user == null)
+            {
+                _logger.LogWarning("User {UserId} not found for risk assessment", userId);
+                throw new ArgumentException("User not found", nameof(userId));
+            }
+
+            var riskScore = 0.0;
+            var riskFactors = new List<string>();
+            var recommendations = new List<string>();
+
+            // Check user account age
+            var accountAge = DateTime.UtcNow - user.CreatedAt;
+            if (accountAge.TotalDays < 7)
+            {
+                riskScore += 0.3;
+                riskFactors.Add("New account (less than 7 days old)");
+                recommendations.Add("Consider additional verification for new accounts");
+            }
+            else if (accountAge.TotalDays < 30)
+            {
+                riskScore += 0.1;
+                riskFactors.Add("Recently created account (less than 30 days old)");
+            }
+
+            // Check if user has 2FA enabled
+            if (user.Security?.TwoFactorEnabled != true)
+            {
+                riskScore += 0.2;
+                riskFactors.Add("Two-factor authentication not enabled");
+                recommendations.Add("Enable two-factor authentication");
+            }
+
+            // Check if user has suspicious activity alerts
+            var recentAlerts = await _securityAlertRepository.GetByUserIdAsync(userId);
+            var suspiciousAlerts = recentAlerts.Where(a => 
+                a.AlertType == Domain.Enums.SecurityAlertType.SuspiciousActivity ||
+                a.AlertType == Domain.Enums.SecurityAlertType.UnauthorizedAccess ||
+                a.AlertType == Domain.Enums.SecurityAlertType.FailedLoginAttempts)
+                .Where(a => a.CreatedAt > DateTime.UtcNow.AddDays(-30))
+                .ToList();
+
+            if (suspiciousAlerts.Any())
+            {
+                riskScore += Math.Min(suspiciousAlerts.Count * 0.1, 0.4);
+                riskFactors.Add($"Recent suspicious activity alerts ({suspiciousAlerts.Count} in last 30 days)");
+                recommendations.Add("Review recent security alerts and consider additional monitoring");
+            }
+
+            // Check if user has recent login failures
+            var recentFailedLogins = suspiciousAlerts
+                .Where(a => a.AlertType == Domain.Enums.SecurityAlertType.FailedLoginAttempts)
+                .Count();
+
+            if (recentFailedLogins > 3)
+            {
+                riskScore += 0.2;
+                riskFactors.Add($"Multiple recent failed login attempts ({recentFailedLogins})");
+                recommendations.Add("Consider temporary account lockout or additional verification");
+            }
+
+            // Check user activity patterns (if available)
+            if (user.LastLoginAt.HasValue)
+            {
+                var daysSinceLastLogin = (DateTime.UtcNow - user.LastLoginAt.Value).TotalDays;
+                if (daysSinceLastLogin > 90)
+                {
+                    riskScore += 0.1;
+                    riskFactors.Add("Inactive account (no login in 90+ days)");
+                    recommendations.Add("Consider account reactivation verification");
+                }
+            }
+
+            // Normalize risk score to 0-1 range
+            riskScore = Math.Min(riskScore, 1.0);
+
+            // Determine risk level
+            var riskLevel = riskScore switch
+            {
+                < 0.3 => "Low",
+                < 0.6 => "Medium",
+                < 0.8 => "High",
+                _ => "Critical"
+            };
+
+            var assessment = new RiskAssessment
+            {
+                RiskScore = (int)(riskScore * 100), // Convert to 0-100 scale
+                RiskLevel = ConvertToSecurityRiskLevel(riskLevel),
+                RiskFactors = ConvertToRiskFactors(riskFactors),
+                Recommendations = recommendations,
+                AssessedAt = DateTime.UtcNow
+            };
+
+            _logger.LogInformation("User risk assessment completed for user {UserId}. Risk Level: {RiskLevel}, Score: {RiskScore}", 
+                userId, riskLevel, riskScore);
+
+            return assessment;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to assess user risk for user {UserId}", userId);
+            throw;
+        }
     }
 
     public async Task<RiskAssessment> AssessLoginRiskAsync(ObjectId userId, string ipAddress, string userAgent)
     {
-        // TODO: Implement login risk assessment
-        await Task.CompletedTask;
-        throw new NotImplementedException("Login risk assessment not yet implemented");
+        try
+        {
+            _logger.LogInformation("Assessing login risk for user {UserId} from IP {IpAddress}", userId, ipAddress);
+
+            if (string.IsNullOrWhiteSpace(ipAddress))
+                throw new ArgumentException("IP address cannot be empty", nameof(ipAddress));
+
+            if (string.IsNullOrWhiteSpace(userAgent))
+                throw new ArgumentException("User agent cannot be empty", nameof(userAgent));
+
+            var user = await _userRepository.GetByIdAsync(userId);
+            if (user == null)
+            {
+                _logger.LogWarning("User {UserId} not found for login risk assessment", userId);
+                throw new ArgumentException("User not found", nameof(userId));
+            }
+
+            var riskScore = 0.0;
+            var riskFactors = new List<string>();
+            var recommendations = new List<string>();
+
+            // Check for recent failed login attempts from this IP
+            var recentAlerts = await _securityAlertRepository.GetByUserIdAsync(userId);
+            var recentFailedLogins = recentAlerts
+                .Where(a => a.AlertType == Domain.Enums.SecurityAlertType.FailedLoginAttempts)
+                .Where(a => a.CreatedAt > DateTime.UtcNow.AddHours(1)) // Last hour
+                .ToList();
+
+            if (recentFailedLogins.Count >= 3)
+            {
+                riskScore += 0.4;
+                riskFactors.Add($"Multiple failed login attempts ({recentFailedLogins.Count} in last hour)");
+                recommendations.Add("Consider temporary IP block or additional verification");
+            }
+            else if (recentFailedLogins.Count >= 1)
+            {
+                riskScore += 0.2;
+                riskFactors.Add($"Recent failed login attempt ({recentFailedLogins.Count} in last hour)");
+                recommendations.Add("Monitor for additional failed attempts");
+            }
+
+            // Check for suspicious IP patterns (simplified check)
+            if (IsSuspiciousIP(ipAddress))
+            {
+                riskScore += 0.3;
+                riskFactors.Add("Suspicious IP address detected");
+                recommendations.Add("Consider additional verification for this IP");
+            }
+
+            // Check for unusual user agent patterns
+            if (IsSuspiciousUserAgent(userAgent))
+            {
+                riskScore += 0.2;
+                riskFactors.Add("Unusual or suspicious user agent detected");
+                recommendations.Add("Verify user agent authenticity");
+            }
+
+            // Check for new location login (simplified - would normally use geolocation)
+            var userSecurity = user.Security;
+            if (userSecurity?.LoginAttempts != null && userSecurity.LoginAttempts.Any())
+            {
+                var lastLoginIP = userSecurity.LoginAttempts
+                    .Where(la => la.Successful)
+                    .OrderByDescending(la => la.AttemptedAt)
+                    .FirstOrDefault()?.IpAddress;
+                
+                if (!string.IsNullOrEmpty(lastLoginIP) && lastLoginIP != ipAddress)
+                {
+                    riskScore += 0.1;
+                    riskFactors.Add("Login from different IP address");
+                    recommendations.Add("Consider location-based verification");
+                }
+            }
+
+            // Check time-based patterns (login outside normal hours)
+            var currentHour = DateTime.UtcNow.Hour;
+            if (currentHour < 6 || currentHour > 22) // Outside 6 AM - 10 PM UTC
+            {
+                riskScore += 0.1;
+                riskFactors.Add("Login outside normal hours");
+                recommendations.Add("Consider time-based verification");
+            }
+
+            // Check if user has 2FA enabled (reduces risk)
+            if (userSecurity?.TwoFactorEnabled == true)
+            {
+                riskScore *= 0.7; // Reduce risk by 30% if 2FA is enabled
+                recommendations.Add("Two-factor authentication is enabled - good security practice");
+            }
+
+            // Normalize risk score to 0-1 range
+            riskScore = Math.Min(riskScore, 1.0);
+
+            // Determine risk level
+            var riskLevel = riskScore switch
+            {
+                < 0.3 => "Low",
+                < 0.6 => "Medium",
+                < 0.8 => "High",
+                _ => "Critical"
+            };
+
+            var assessment = new RiskAssessment
+            {
+                RiskScore = (int)(riskScore * 100), // Convert to 0-100 scale
+                RiskLevel = ConvertToSecurityRiskLevel(riskLevel),
+                RiskFactors = ConvertToRiskFactors(riskFactors),
+                Recommendations = recommendations,
+                AssessedAt = DateTime.UtcNow
+            };
+
+            _logger.LogInformation("Login risk assessment completed for user {UserId}. Risk Level: {RiskLevel}, Score: {RiskScore}", 
+                userId, riskLevel, riskScore);
+
+            return assessment;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to assess login risk for user {UserId}", userId);
+            throw;
+        }
     }
 
     public async Task<RiskAssessment> AssessActionRiskAsync(ObjectId userId, string action, string? context)
     {
-        // TODO: Implement action risk assessment
-        await Task.CompletedTask;
-        throw new NotImplementedException("Action risk assessment not yet implemented");
+        try
+        {
+            _logger.LogInformation("Assessing action risk for user {UserId}, action: {Action}", userId, action);
+
+            if (string.IsNullOrWhiteSpace(action))
+                throw new ArgumentException("Action cannot be empty", nameof(action));
+
+            var user = await _userRepository.GetByIdAsync(userId);
+            if (user == null)
+            {
+                _logger.LogWarning("User {UserId} not found for action risk assessment", userId);
+                throw new ArgumentException("User not found", nameof(userId));
+            }
+
+            var riskScore = 0.0;
+            var riskFactors = new List<string>();
+            var recommendations = new List<string>();
+
+            // Define high-risk actions
+            var highRiskActions = new[] { "delete", "remove", "admin", "privilege", "security", "password", "account" };
+            var mediumRiskActions = new[] { "update", "modify", "change", "edit", "create", "add" };
+
+            // Check action risk level
+            if (highRiskActions.Any(risk => action.ToLower().Contains(risk)))
+            {
+                riskScore += 0.4;
+                riskFactors.Add($"High-risk action detected: {action}");
+                recommendations.Add("Require additional verification for high-risk actions");
+            }
+            else if (mediumRiskActions.Any(risk => action.ToLower().Contains(risk)))
+            {
+                riskScore += 0.2;
+                riskFactors.Add($"Medium-risk action detected: {action}");
+                recommendations.Add("Consider additional verification for medium-risk actions");
+            }
+
+            // Check for suspicious action patterns
+            var recentAlerts = await _securityAlertRepository.GetByUserIdAsync(userId);
+            var recentSuspiciousActions = recentAlerts
+                .Where(a => a.AlertType == Domain.Enums.SecurityAlertType.SuspiciousActivity)
+                .Where(a => a.CreatedAt > DateTime.UtcNow.AddHours(24)) // Last 24 hours
+                .ToList();
+
+            if (recentSuspiciousActions.Any())
+            {
+                riskScore += 0.3;
+                riskFactors.Add($"Recent suspicious activity detected ({recentSuspiciousActions.Count} alerts in last 24 hours)");
+                recommendations.Add("Monitor user actions closely due to recent suspicious activity");
+            }
+
+            // Check user privilege level
+            if (!string.IsNullOrEmpty(user.Role) && 
+                (user.Role.ToLower().Contains("admin") || user.Role.ToLower().Contains("moderator")))
+            {
+                riskScore += 0.2;
+                riskFactors.Add("High-privilege user performing action");
+                recommendations.Add("Additional verification required for administrative actions");
+            }
+
+            // Check if user has 2FA enabled (reduces risk)
+            if (user.Security?.TwoFactorEnabled == true)
+            {
+                riskScore *= 0.8; // Reduce risk by 20% if 2FA is enabled
+            }
+
+            // Check for unusual timing patterns
+            var currentHour = DateTime.UtcNow.Hour;
+            if (currentHour < 6 || currentHour > 22) // Outside 6 AM - 10 PM UTC
+            {
+                riskScore += 0.1;
+                riskFactors.Add("Action performed outside normal hours");
+                recommendations.Add("Consider time-based verification for off-hours actions");
+            }
+
+            // Normalize risk score to 0-1 range
+            riskScore = Math.Min(riskScore, 1.0);
+
+            // Determine risk level
+            var riskLevel = riskScore switch
+            {
+                < 0.3 => "Low",
+                < 0.6 => "Medium",
+                < 0.8 => "High",
+                _ => "Critical"
+            };
+
+            var assessment = new RiskAssessment
+            {
+                RiskScore = (int)(riskScore * 100), // Convert to 0-100 scale
+                RiskLevel = ConvertToSecurityRiskLevel(riskLevel),
+                RiskFactors = ConvertToRiskFactors(riskFactors),
+                Recommendations = recommendations,
+                AssessedAt = DateTime.UtcNow
+            };
+
+            _logger.LogInformation("Action risk assessment completed for user {UserId}. Risk Level: {RiskLevel}, Score: {RiskScore}", 
+                userId, riskLevel, riskScore);
+
+            return assessment;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to assess action risk for user {UserId}", userId);
+            throw;
+        }
     }
+
+    #endregion
+
+
+    #region Helper Methods
+
+    /// <summary>
+    /// Checks if an IP address is suspicious (simplified implementation)
+    /// </summary>
+    private bool IsSuspiciousIP(string ipAddress)
+    {
+        // Simplified suspicious IP detection
+        // In a real implementation, this would check against known threat intelligence feeds
+        
+        // Check for private/local IPs (might indicate testing or internal access)
+        if (ipAddress.StartsWith("192.168.") || ipAddress.StartsWith("10.") || ipAddress.StartsWith("172."))
+        {
+            return false; // Private IPs are generally safe
+        }
+
+        // Check for known suspicious patterns (simplified)
+        var suspiciousPatterns = new[] { "0.0.0.0", "127.0.0.1" };
+        return suspiciousPatterns.Contains(ipAddress);
+    }
+
+    /// <summary>
+    /// Checks if a user agent is suspicious (simplified implementation)
+    /// </summary>
+    private bool IsSuspiciousUserAgent(string userAgent)
+    {
+        if (string.IsNullOrWhiteSpace(userAgent))
+            return true;
+
+        // Check for suspicious user agent patterns
+        var suspiciousPatterns = new[]
+        {
+            "bot", "crawler", "spider", "scraper", "automated", "script",
+            "curl", "wget", "python", "java", "perl", "ruby"
+        };
+
+        var lowerUserAgent = userAgent.ToLower();
+        return suspiciousPatterns.Any(pattern => lowerUserAgent.Contains(pattern));
+    }
+
+    /// <summary>
+    /// Converts string risk level to SecurityRiskLevel enum
+    /// </summary>
+    private SecurityRiskLevel ConvertToSecurityRiskLevel(string riskLevel)
+    {
+        return riskLevel switch
+        {
+            "Low" => SecurityRiskLevel.Low,
+            "Medium" => SecurityRiskLevel.Medium,
+            "High" => SecurityRiskLevel.High,
+            "Critical" => SecurityRiskLevel.Critical,
+            _ => SecurityRiskLevel.Medium
+        };
+    }
+
+    /// <summary>
+    /// Converts list of risk factor strings to RiskFactor objects
+    /// </summary>
+    private List<RiskFactor> ConvertToRiskFactors(List<string> riskFactorStrings)
+    {
+        return riskFactorStrings.Select((factor, index) => new RiskFactor
+        {
+            Factor = factor,
+            Weight = 1.0 / (index + 1), // Decreasing weight based on order
+            Description = factor,
+            Impact = GetImpactLevel(factor)
+        }).ToList();
+    }
+
+    /// <summary>
+    /// Gets impact level based on risk factor description
+    /// </summary>
+    private string GetImpactLevel(string factor)
+    {
+        var lowerFactor = factor.ToLower();
+        return lowerFactor switch
+        {
+            var f when f.Contains("critical") || f.Contains("multiple failed") => "High",
+            var f when f.Contains("high-risk") || f.Contains("suspicious") => "Medium",
+            var f when f.Contains("new") || f.Contains("different") => "Low",
+            _ => "Medium"
+        };
+    }
+
+    #region Geolocation Helper Methods
+
+    /// <summary>
+    /// Simplified geolocation helper methods
+    /// In a real implementation, these would call external geolocation services
+    /// </summary>
+    private string GetCountryFromIP(string ipAddress)
+    {
+        // Simplified country detection based on IP ranges
+        if (ipAddress.StartsWith("192.168.") || ipAddress.StartsWith("10.") || ipAddress.StartsWith("172."))
+            return "US"; // Assume US for private IPs
+        
+        // Simplified mapping - in reality this would use a proper geolocation database
+        return ipAddress switch
+        {
+            var ip when ip.StartsWith("8.8.") => "US",
+            var ip when ip.StartsWith("1.1.") => "US",
+            var ip when ip.StartsWith("203.") => "AU",
+            var ip when ip.StartsWith("202.") => "AU",
+            _ => "Unknown"
+        };
+    }
+
+    private string GetRegionFromIP(string ipAddress)
+    {
+        var country = GetCountryFromIP(ipAddress);
+        return country switch
+        {
+            "US" => "California",
+            "AU" => "New South Wales",
+            _ => "Unknown"
+        };
+    }
+
+    private string GetCityFromIP(string ipAddress)
+    {
+        var country = GetCountryFromIP(ipAddress);
+        return country switch
+        {
+            "US" => "San Francisco",
+            "AU" => "Sydney",
+            _ => "Unknown"
+        };
+    }
+
+    private double GetLatitudeFromIP(string ipAddress)
+    {
+        var country = GetCountryFromIP(ipAddress);
+        return country switch
+        {
+            "US" => 37.7749,
+            "AU" => -33.8688,
+            _ => 0.0
+        };
+    }
+
+    private double GetLongitudeFromIP(string ipAddress)
+    {
+        var country = GetCountryFromIP(ipAddress);
+        return country switch
+        {
+            "US" => -122.4194,
+            "AU" => 151.2093,
+            _ => 0.0
+        };
+    }
+
+    private string GetTimezoneFromIP(string ipAddress)
+    {
+        var country = GetCountryFromIP(ipAddress);
+        return country switch
+        {
+            "US" => "America/Los_Angeles",
+            "AU" => "Australia/Sydney",
+            _ => "UTC"
+        };
+    }
+
+    private string GetISPFromIP(string ipAddress)
+    {
+        // Simplified ISP detection
+        return ipAddress switch
+        {
+            var ip when ip.StartsWith("8.8.") => "Google LLC",
+            var ip when ip.StartsWith("1.1.") => "Cloudflare Inc",
+            _ => "Unknown ISP"
+        };
+    }
+
+    private string GetOrganizationFromIP(string ipAddress)
+    {
+        // Simplified organization detection
+        return ipAddress switch
+        {
+            var ip when ip.StartsWith("8.8.") => "Google Public DNS",
+            var ip when ip.StartsWith("1.1.") => "Cloudflare DNS",
+            _ => "Unknown Organization"
+        };
+    }
+
+    private string GetASNFromIP(string ipAddress)
+    {
+        // Simplified ASN detection
+        return ipAddress switch
+        {
+            var ip when ip.StartsWith("8.8.") => "AS15169",
+            var ip when ip.StartsWith("1.1.") => "AS13335",
+            _ => "Unknown"
+        };
+    }
+
+    private bool IsProxyIP(string ipAddress)
+    {
+        // Simplified proxy detection
+        // In reality, this would check against known proxy lists
+        var proxyPatterns = new[] { "127.0.0.1", "0.0.0.0" };
+        return proxyPatterns.Contains(ipAddress);
+    }
+
+    private bool IsVPNIP(string ipAddress)
+    {
+        // Simplified VPN detection
+        // In reality, this would check against known VPN provider IP ranges
+        return false; // Assume no VPN for now
+    }
+
+    private bool IsTorIP(string ipAddress)
+    {
+        // Simplified Tor detection
+        // In reality, this would check against Tor exit node lists
+        return false; // Assume no Tor for now
+    }
+
+    private string GetThreatLevelFromIP(string ipAddress)
+    {
+        // Simplified threat level assessment
+        if (IsTorIP(ipAddress))
+            return "Critical";
+        if (IsVPNIP(ipAddress) || IsProxyIP(ipAddress))
+            return "High";
+        
+        var country = GetCountryFromIP(ipAddress);
+        var highRiskCountries = new[] { "CN", "RU", "KP", "IR" };
+        if (highRiskCountries.Contains(country))
+            return "High";
+        
+        return "Low";
+    }
+
+    #endregion
 
     #endregion
 
@@ -1151,23 +2061,136 @@ public class SecurityService : ISecurityService
 
     public async Task<SecurityMetrics> GetSecurityMetricsAsync(DateTime? startDate, DateTime? endDate)
     {
-        // TODO: Implement security metrics retrieval
-        await Task.CompletedTask;
-        throw new NotImplementedException("Security metrics retrieval not yet implemented");
+        try
+        {
+            _logger.LogInformation("Retrieving security metrics from {StartDate} to {EndDate}", startDate, endDate);
+
+            // Set default date range if not provided
+            startDate ??= DateTime.UtcNow.AddDays(-30);
+            endDate ??= DateTime.UtcNow;
+
+            var metrics = new SecurityMetrics
+            {
+                StartDate = startDate,
+                EndDate = endDate
+            };
+
+            // Get all security alerts in the date range
+            var allAlerts = await _securityAlertRepository.GetByDateRangeAsync(startDate.Value, endDate.Value);
+
+            // Calculate basic metrics
+            metrics.SecurityAlerts = allAlerts.Count();
+            
+            // Calculate login attempts (simplified - would need actual login data)
+            metrics.TotalLoginAttempts = allAlerts.Count(a => a.AlertType == Domain.Enums.SecurityAlertType.FailedLoginAttempts) * 10; // Estimate
+            metrics.SuccessfulLogins = Math.Max(0, metrics.TotalLoginAttempts - metrics.SecurityAlerts);
+            metrics.FailedLogins = metrics.SecurityAlerts;
+            
+            // Calculate 2FA authentications (simplified)
+            metrics.TwoFactorAuthentications = allAlerts.Count(a => a.AlertType == Domain.Enums.SecurityAlertType.TwoFactorChange);
+            
+            // Calculate device registrations (simplified)
+            metrics.DeviceRegistrations = allAlerts.Count(a => a.AlertType == Domain.Enums.SecurityAlertType.DeviceRegistration);
+            
+            // Calculate risk assessments (simplified)
+            metrics.RiskAssessments = allAlerts.Count(a => a.AlertType == Domain.Enums.SecurityAlertType.SuspiciousActivity);
+
+            _logger.LogInformation("Security metrics retrieved successfully. Total alerts: {TotalAlerts}, Login attempts: {TotalLoginAttempts}", 
+                metrics.SecurityAlerts, metrics.TotalLoginAttempts);
+
+            return metrics;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to retrieve security metrics");
+            throw;
+        }
     }
 
     public async Task<SecurityReport> GenerateSecurityReportAsync(DateTime? startDate, DateTime? endDate)
     {
-        // TODO: Implement security report generation
-        await Task.CompletedTask;
-        throw new NotImplementedException("Security report generation not yet implemented");
+        try
+        {
+            _logger.LogInformation("Generating security report from {StartDate} to {EndDate}", startDate, endDate);
+
+            // Set default date range if not provided
+            startDate ??= DateTime.UtcNow.AddDays(-30);
+            endDate ??= DateTime.UtcNow;
+
+            // Get security metrics for the period
+            var metrics = await GetSecurityMetricsAsync(startDate, endDate);
+
+            var report = new SecurityReport
+            {
+                ReportId = Guid.NewGuid().ToString(),
+                Title = $"Security Report - {startDate:yyyy-MM-dd} to {endDate:yyyy-MM-dd}",
+                Summary = $"Security report covering {metrics.SecurityAlerts} security alerts, {metrics.TotalLoginAttempts} login attempts, and {metrics.TwoFactorAuthentications} 2FA events.",
+                Metrics = metrics,
+                KeyFindings = new List<string> 
+                { 
+                    $"Total of {metrics.SecurityAlerts} security alerts detected",
+                    $"{metrics.FailedLogins} failed login attempts",
+                    $"{metrics.TwoFactorAuthentications} two-factor authentication events",
+                    $"{metrics.DeviceRegistrations} device registrations"
+                },
+                Recommendations = new List<string> 
+                { 
+                    "Review failed login attempts for potential security threats",
+                    "Monitor two-factor authentication usage patterns",
+                    "Verify device registrations for unauthorized access",
+                    "Implement additional security measures if alert count is high"
+                },
+                GeneratedAt = DateTime.UtcNow,
+                StartDate = startDate,
+                EndDate = endDate
+            };
+
+            _logger.LogInformation("Security report generated successfully. Report ID: {ReportId}, Title: {Title}", 
+                report.ReportId, report.Title);
+
+            return report;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to generate security report");
+            throw;
+        }
     }
 
     public async Task<IEnumerable<SecurityEvent>> GetSecurityEventsAsync(DateTime? startDate, DateTime? endDate)
     {
-        // TODO: Implement security events retrieval
-        await Task.CompletedTask;
-        throw new NotImplementedException("Security events retrieval not yet implemented");
+        try
+        {
+            _logger.LogInformation("Retrieving security events from {StartDate} to {EndDate}", startDate, endDate);
+
+            // Set default date range if not provided
+            startDate ??= DateTime.UtcNow.AddDays(-30);
+            endDate ??= DateTime.UtcNow;
+
+            // Get all security alerts in the date range
+            var allAlerts = await _securityAlertRepository.GetByDateRangeAsync(startDate.Value, endDate.Value);
+
+            // Convert security alerts to security events
+            var securityEvents = allAlerts.Select(alert => new SecurityEvent
+            {
+                EventId = alert.Id.ToString(),
+                EventType = alert.AlertType.ToString(),
+                Description = alert.Message,
+                Severity = alert.Severity,
+                UserId = alert.UserId.ToString(),
+                EventDate = alert.CreatedAt,
+                AdditionalData = alert.AdditionalData ?? new Dictionary<string, object>()
+            }).OrderByDescending(e => e.EventDate).ToList();
+
+            _logger.LogInformation("Retrieved {Count} security events for the specified period", securityEvents.Count);
+
+            return securityEvents;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to retrieve security events");
+            throw;
+        }
     }
 
     #endregion

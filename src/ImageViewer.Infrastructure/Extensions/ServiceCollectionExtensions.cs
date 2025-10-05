@@ -73,6 +73,7 @@ public static class ServiceCollectionExtensions
         // Register Priority 2 (Advanced Features) repositories
         services.AddScoped<IConversationRepository, MongoConversationRepository>();
         services.AddScoped<INotificationQueueRepository, MongoNotificationQueueRepository>();
+        services.AddScoped<INotificationTemplateRepository, MongoNotificationTemplateRepository>();
         services.AddScoped<IUserGroupRepository, MongoUserGroupRepository>();
         services.AddScoped<IUserActivityLogRepository, MongoUserActivityLogRepository>();
         services.AddScoped<ISystemSettingRepository, MongoSystemSettingRepository>();
@@ -105,6 +106,9 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IContentSimilarityRepository, MongoContentSimilarityRepository>();
         services.AddScoped<IMediaProcessingJobRepository, MongoMediaProcessingJobRepository>();
         services.AddScoped<ICustomReportRepository, MongoCustomReportRepository>();
+
+        // Register Security repositories
+        services.AddScoped<ISecurityAlertRepository, MongoSecurityAlertRepository>();
 
         // Register application services
         services.AddScoped<IUserService, UserService>();

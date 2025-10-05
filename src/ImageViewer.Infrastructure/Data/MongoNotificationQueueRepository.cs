@@ -1,76 +1,47 @@
-using MongoDB.Driver;
 using MongoDB.Bson;
+using MongoDB.Driver;
 using ImageViewer.Domain.Entities;
 using ImageViewer.Domain.Interfaces;
+using ImageViewer.Infrastructure.Data;
 using Microsoft.Extensions.Logging;
 
 namespace ImageViewer.Infrastructure.Data;
 
+/// <summary>
+/// MongoDB implementation of NotificationQueue repository
+/// </summary>
 public class MongoNotificationQueueRepository : MongoRepository<NotificationQueue>, INotificationQueueRepository
 {
-    public MongoNotificationQueueRepository(IMongoDatabase database, ILogger<MongoNotificationQueueRepository> logger)
-        : base(database.GetCollection<NotificationQueue>("notificationQueue"), logger)
+    public MongoNotificationQueueRepository(MongoDbContext context, ILogger<MongoNotificationQueueRepository> logger) 
+        : base(context.NotificationQueue, logger)
     {
     }
 
     public async Task<IEnumerable<NotificationQueue>> GetPendingNotificationsAsync(CancellationToken cancellationToken = default)
     {
-        try
-        {
-            return await _collection.Find(notification => notification.Status == "Pending")
-                .SortBy(notification => notification.Priority)
-                .ThenBy(notification => notification.ScheduledFor)
-                .ToListAsync(cancellationToken);
-        }
-        catch (MongoException ex)
-        {
-            _logger.LogError(ex, "Failed to get pending notifications");
-            throw;
-        }
+        var filter = Builders<NotificationQueue>.Filter.Eq(n => n.Status, "Pending");
+        var cursor = await _collection.FindAsync(filter, cancellationToken: cancellationToken);
+        return await cursor.ToListAsync(cancellationToken);
     }
 
     public async Task<IEnumerable<NotificationQueue>> GetByUserIdAsync(ObjectId userId, CancellationToken cancellationToken = default)
     {
-        try
-        {
-            return await _collection.Find(notification => notification.UserId == userId)
-                .SortByDescending(notification => notification.CreatedAt)
-                .ToListAsync(cancellationToken);
-        }
-        catch (MongoException ex)
-        {
-            _logger.LogError(ex, "Failed to get notifications for user {UserId}", userId);
-            throw;
-        }
+        var filter = Builders<NotificationQueue>.Filter.Eq(n => n.UserId, userId);
+        var cursor = await _collection.FindAsync(filter, cancellationToken: cancellationToken);
+        return await cursor.ToListAsync(cancellationToken);
     }
 
     public async Task<IEnumerable<NotificationQueue>> GetByStatusAsync(string status, CancellationToken cancellationToken = default)
     {
-        try
-        {
-            return await _collection.Find(notification => notification.Status == status)
-                .SortByDescending(notification => notification.CreatedAt)
-                .ToListAsync(cancellationToken);
-        }
-        catch (MongoException ex)
-        {
-            _logger.LogError(ex, "Failed to get notifications for status {Status}", status);
-            throw;
-        }
+        var filter = Builders<NotificationQueue>.Filter.Eq(n => n.Status, status);
+        var cursor = await _collection.FindAsync(filter, cancellationToken: cancellationToken);
+        return await cursor.ToListAsync(cancellationToken);
     }
 
     public async Task<IEnumerable<NotificationQueue>> GetByChannelAsync(string channel, CancellationToken cancellationToken = default)
     {
-        try
-        {
-            return await _collection.Find(notification => notification.NotificationType == channel)
-                .SortByDescending(notification => notification.CreatedAt)
-                .ToListAsync(cancellationToken);
-        }
-        catch (MongoException ex)
-        {
-            _logger.LogError(ex, "Failed to get notifications for channel {Channel}", channel);
-            throw;
-        }
+        var filter = Builders<NotificationQueue>.Filter.Eq(n => n.NotificationType, channel);
+        var cursor = await _collection.FindAsync(filter, cancellationToken: cancellationToken);
+        return await cursor.ToListAsync(cancellationToken);
     }
 }

@@ -1,5 +1,3 @@
-using ImageViewer.Domain.Enums;
-
 namespace ImageViewer.Application.DTOs.Security;
 
 /// <summary>
@@ -20,7 +18,7 @@ public class SecurityAlert
     /// <summary>
     /// Alert type
     /// </summary>
-    public SecurityAlertType AlertType { get; set; }
+    public Application.Services.SecurityAlertType AlertType { get; set; }
 
     /// <summary>
     /// Alert message

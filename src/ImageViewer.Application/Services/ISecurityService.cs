@@ -1,6 +1,7 @@
 using MongoDB.Bson;
 using ImageViewer.Domain.Entities;
 using ImageViewer.Application.DTOs.Auth;
+using ImageViewer.Application.DTOs.Security;
 
 namespace ImageViewer.Application.Services;
 
@@ -104,9 +105,9 @@ public interface ISecurityService
     
     #region Security Alerts
     
-    Task<SecurityAlert> CreateSecurityAlertAsync(ObjectId userId, SecurityAlertType type, string description);
-    Task<IEnumerable<SecurityAlert>> GetUserSecurityAlertsAsync(ObjectId userId, int page = 1, int pageSize = 20);
-    Task<SecurityAlert> MarkAlertAsReadAsync(ObjectId alertId);
+    Task<DTOs.Security.SecurityAlert> CreateSecurityAlertAsync(ObjectId userId, SecurityAlertType type, string description);
+    Task<IEnumerable<DTOs.Security.SecurityAlert>> GetUserSecurityAlertsAsync(ObjectId userId, int page = 1, int pageSize = 20);
+    Task<DTOs.Security.SecurityAlert> MarkAlertAsReadAsync(ObjectId alertId);
     Task<bool> DeleteSecurityAlertAsync(ObjectId alertId);
     
     #endregion
@@ -291,48 +292,6 @@ public class IPWhitelistEntry
     public DateTime UpdatedAt { get; set; }
 }
 
-/// <summary>
-/// Geolocation information
-/// </summary>
-public class GeolocationInfo
-{
-    public string IpAddress { get; set; } = string.Empty;
-    public string Country { get; set; } = string.Empty;
-    public string Region { get; set; } = string.Empty;
-    public string City { get; set; } = string.Empty;
-    public double Latitude { get; set; }
-    public double Longitude { get; set; }
-    public string Timezone { get; set; } = string.Empty;
-    public string Isp { get; set; } = string.Empty;
-    public string Organization { get; set; } = string.Empty;
-}
-
-/// <summary>
-/// Geolocation security result
-/// </summary>
-public class GeolocationSecurityResult
-{
-    public bool IsAllowed { get; set; }
-    public SecurityRiskLevel RiskLevel { get; set; }
-    public string? Reason { get; set; }
-    public GeolocationInfo? Location { get; set; }
-    public List<string> Warnings { get; set; } = new();
-}
-
-/// <summary>
-/// Geolocation alert
-/// </summary>
-public class GeolocationAlert
-{
-    public ObjectId Id { get; set; }
-    public ObjectId UserId { get; set; }
-    public string IpAddress { get; set; } = string.Empty;
-    public string Location { get; set; } = string.Empty;
-    public string AlertType { get; set; } = string.Empty;
-    public string Message { get; set; } = string.Empty;
-    public bool IsRead { get; set; }
-    public DateTime CreatedAt { get; set; }
-}
 
 /// <summary>
 /// Security alert
@@ -380,83 +339,6 @@ public class RiskFactor
     public string Impact { get; set; } = string.Empty;
 }
 
-/// <summary>
-/// Security metrics
-/// </summary>
-public class SecurityMetrics
-{
-    public DateTime FromDate { get; set; }
-    public DateTime ToDate { get; set; }
-    public long TotalLogins { get; set; }
-    public long FailedLogins { get; set; }
-    public long TwoFactorAttempts { get; set; }
-    public long SecurityAlerts { get; set; }
-    public long BlockedIPs { get; set; }
-    public long SuspiciousActivities { get; set; }
-    public double LoginSuccessRate { get; set; }
-    public double TwoFactorSuccessRate { get; set; }
-    public Dictionary<SecurityAlertType, long> AlertsByType { get; set; } = new();
-    public Dictionary<SecurityRiskLevel, long> RisksByLevel { get; set; } = new();
-}
-
-/// <summary>
-/// Security report
-/// </summary>
-public class SecurityReport
-{
-    public ObjectId Id { get; set; }
-    public DateTime GeneratedAt { get; set; }
-    public DateTime FromDate { get; set; }
-    public DateTime ToDate { get; set; }
-    public SecuritySummary Summary { get; set; } = new();
-    public List<SecurityEvent> Events { get; set; } = new();
-    public List<SecurityRecommendation> Recommendations { get; set; } = new();
-}
-
-/// <summary>
-/// Security summary
-/// </summary>
-public class SecuritySummary
-{
-    public long TotalEvents { get; set; }
-    public long HighRiskEvents { get; set; }
-    public long MediumRiskEvents { get; set; }
-    public long LowRiskEvents { get; set; }
-    public double OverallRiskScore { get; set; }
-    public string OverallStatus { get; set; } = string.Empty;
-    public List<string> TopThreats { get; set; } = new();
-    public List<string> TopRecommendations { get; set; } = new();
-}
-
-/// <summary>
-/// Security event
-/// </summary>
-public class SecurityEvent
-{
-    public ObjectId Id { get; set; }
-    public ObjectId UserId { get; set; }
-    public string EventType { get; set; } = string.Empty;
-    public string Description { get; set; } = string.Empty;
-    public SecurityRiskLevel RiskLevel { get; set; }
-    public string? IpAddress { get; set; }
-    public string? UserAgent { get; set; }
-    public string? Location { get; set; }
-    public Dictionary<string, object> Metadata { get; set; } = new();
-    public DateTime OccurredAt { get; set; }
-}
-
-/// <summary>
-/// Security recommendation
-/// </summary>
-public class SecurityRecommendation
-{
-    public string Category { get; set; } = string.Empty;
-    public string Title { get; set; } = string.Empty;
-    public string Description { get; set; } = string.Empty;
-    public string Priority { get; set; } = string.Empty;
-    public string Impact { get; set; } = string.Empty;
-    public List<string> Actions { get; set; } = new();
-}
 
 /// <summary>
 /// Enums

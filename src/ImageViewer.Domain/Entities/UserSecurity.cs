@@ -38,8 +38,6 @@ public class UserSecuritySettings : BaseEntity
     [BsonElement("passwordHistory")]
     public List<string> PasswordHistory { get; private set; } = new();
 
-    [BsonElement("securityAlerts")]
-    public List<SecurityAlert> SecurityAlerts { get; private set; } = new();
 
     [BsonElement("riskScore")]
     public double RiskScore { get; private set; } // 0.0 to 1.0
@@ -74,7 +72,6 @@ public class UserSecuritySettings : BaseEntity
         TrustedDevices = new List<TrustedDevice>();
         IpWhitelist = new List<string>();
         PasswordHistory = new List<string>();
-        SecurityAlerts = new List<SecurityAlert>();
         BackupCodes = new List<string>();
     }
 
@@ -137,20 +134,6 @@ public class UserSecuritySettings : BaseEntity
         UpdatedAt = DateTime.UtcNow;
     }
 
-    public void AddSecurityAlert(string alertType, string description, string severity = "medium")
-    {
-        var alert = new SecurityAlert
-        {
-            AlertType = alertType,
-            Description = description,
-            Severity = severity,
-            TriggeredAt = DateTime.UtcNow,
-            Acknowledged = false
-        };
-
-        SecurityAlerts.Add(alert);
-        UpdatedAt = DateTime.UtcNow;
-    }
 
     public void UpdatePassword(string newPasswordHash)
     {
@@ -264,29 +247,6 @@ public class TrustedDevice
     public DateTime LastUsedAt { get; set; }
 }
 
-/// <summary>
-/// Security alert entity
-/// </summary>
-public class SecurityAlert
-{
-    [BsonElement("alertType")]
-    public string AlertType { get; set; } = string.Empty;
-
-    [BsonElement("description")]
-    public string Description { get; set; } = string.Empty;
-
-    [BsonElement("severity")]
-    public string Severity { get; set; } = string.Empty;
-
-    [BsonElement("triggeredAt")]
-    public DateTime TriggeredAt { get; set; }
-
-    [BsonElement("acknowledged")]
-    public bool Acknowledged { get; set; }
-
-    [BsonElement("acknowledgedAt")]
-    public DateTime? AcknowledgedAt { get; set; }
-}
 
 /// <summary>
 /// Security settings entity
