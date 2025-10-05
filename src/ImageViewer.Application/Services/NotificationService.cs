@@ -14,11 +14,19 @@ namespace ImageViewer.Application.Services;
 public class NotificationService : INotificationService
 {
     private readonly IUserRepository _userRepository;
+    private readonly INotificationQueueRepository _notificationQueueRepository;
+    private readonly INotificationTemplateRepository _notificationTemplateRepository;
     private readonly ILogger<NotificationService> _logger;
 
-    public NotificationService(IUserRepository userRepository, ILogger<NotificationService> logger)
+    public NotificationService(
+        IUserRepository userRepository, 
+        INotificationQueueRepository notificationQueueRepository,
+        INotificationTemplateRepository notificationTemplateRepository,
+        ILogger<NotificationService> logger)
     {
         _userRepository = userRepository ?? throw new ArgumentNullException(nameof(userRepository));
+        _notificationQueueRepository = notificationQueueRepository ?? throw new ArgumentNullException(nameof(notificationQueueRepository));
+        _notificationTemplateRepository = notificationTemplateRepository ?? throw new ArgumentNullException(nameof(notificationTemplateRepository));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -55,8 +63,24 @@ public class NotificationService : INotificationService
                 ExpiresAt = request.ExpiresAfter.HasValue ? DateTime.UtcNow.Add(request.ExpiresAfter.Value) : null
             };
 
-            // TODO: Save to database when notification repository is implemented
-            _logger.LogInformation("Created notification {NotificationId} for user {UserId}", notification.Id, request.UserId);
+            // Save to NotificationQueue using the repository
+            var domainNotification = Domain.Entities.NotificationQueue.Create(
+                request.UserId,
+                request.Type.ToString().ToLower(),
+                request.Title,
+                request.Message,
+                request.Priority.ToString().ToLower(),
+                null, // templateId
+                request.ScheduledFor,
+                request.ExpiresAfter.HasValue ? DateTime.UtcNow.Add(request.ExpiresAfter.Value) : null);
+
+            await _notificationQueueRepository.CreateAsync(domainNotification);
+            
+            _logger.LogInformation("Created notification {NotificationId} for user {UserId}", domainNotification.Id, request.UserId);
+
+            // Map domain entity back to interface DTO
+            notification.Id = domainNotification.Id;
+            notification.Status = NotificationStatus.Pending; // Default status
 
             return notification;
         }
@@ -82,13 +106,35 @@ public class NotificationService : INotificationService
         }
     }
 
-    public Task<IEnumerable<Notification>> GetNotificationsByUserIdAsync(ObjectId userId, int page = 1, int pageSize = 20)
+    public async Task<IEnumerable<Notification>> GetNotificationsByUserIdAsync(ObjectId userId, int page = 1, int pageSize = 20)
     {
         try
         {
-            // TODO: Implement when notification repository is available
-            // For now, return empty list
-            return Task.FromResult<IEnumerable<Notification>>(new List<Notification>());
+            // Get notifications by user from repository
+            var domainNotifications = await _notificationQueueRepository.GetByUserIdAsync(userId);
+            
+            // Map domain entities to interface DTOs and apply pagination
+            var notifications = domainNotifications
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .Select(domainNotification => new Notification
+                {
+                    Id = domainNotification.Id,
+                    UserId = domainNotification.UserId,
+                    Type = Enum.TryParse<NotificationType>(domainNotification.NotificationType, true, out var type) ? type : NotificationType.System,
+                    Title = domainNotification.Subject,
+                    Message = domainNotification.Content,
+                    ActionUrl = null, // Not available in domain entity
+                    Metadata = new Dictionary<string, object>(), // Not available in domain entity
+                    Priority = Enum.TryParse<NotificationPriority>(domainNotification.Priority, true, out var priority) ? priority : NotificationPriority.Normal,
+                    Status = Enum.TryParse<NotificationStatus>(domainNotification.Status, true, out var status) ? status : NotificationStatus.Pending,
+                    CreatedAt = domainNotification.CreatedAt,
+                    ReadAt = null, // Not available in domain entity
+                    ScheduledFor = null, // Not available in domain entity
+                    ExpiresAt = null // Not available in domain entity
+                }).ToList();
+
+            return notifications;
         }
         catch (Exception ex)
         {
@@ -227,7 +273,7 @@ public class NotificationService : INotificationService
         }
     }
 
-    public Task<NotificationTemplate> CreateTemplateAsync(CreateNotificationTemplateRequest request)
+    public async Task<NotificationTemplate> CreateTemplateAsync(CreateNotificationTemplateRequest request)
     {
         try
         {
@@ -255,10 +301,32 @@ public class NotificationService : INotificationService
                 CreatedBy = ObjectId.Empty // TODO: Get from current user context
             };
 
-            // TODO: Save to database when template repository is implemented
-            _logger.LogInformation("Created notification template {TemplateId}: {Name}", template.Id, template.Name);
+            // Save to database using the repository
+            var domainTemplate = new Domain.Entities.NotificationTemplate(
+                request.Name,
+                request.Type.ToString().ToLower(),
+                "system", // Default category
+                request.Subject,
+                request.Body);
 
-            return Task.FromResult(template);
+            await _notificationTemplateRepository.CreateAsync(domainTemplate);
+            
+            _logger.LogInformation("Created notification template {TemplateId}: {Name}", domainTemplate.Id, domainTemplate.TemplateName);
+
+            // Map domain entity back to interface DTO
+            template.Id = domainTemplate.Id;
+            template.Name = domainTemplate.TemplateName;
+            template.Type = request.Type;
+            template.Subject = domainTemplate.Subject;
+            template.Body = domainTemplate.Content;
+            template.ActionUrlTemplate = request.ActionUrlTemplate;
+            template.RequiredVariables = domainTemplate.Variables;
+            template.IsActive = domainTemplate.IsActive;
+            template.CreatedAt = domainTemplate.CreatedAt;
+            template.UpdatedAt = domainTemplate.UpdatedAt;
+            template.CreatedBy = ObjectId.Empty; // TODO: Get from current user context
+
+            return template;
         }
         catch (Exception ex) when (!(ex is ValidationException))
         {
@@ -267,26 +335,66 @@ public class NotificationService : INotificationService
         }
     }
 
-    public Task<NotificationTemplate> GetTemplateByIdAsync(ObjectId templateId)
+    public async Task<NotificationTemplate> GetTemplateByIdAsync(ObjectId templateId)
     {
         try
         {
-            // TODO: Implement when template repository is available
-            return Task.FromException<NotificationTemplate>(new NotImplementedException("Notification template repository not yet implemented"));
+            // Get template from repository
+            var domainTemplate = await _notificationTemplateRepository.GetByIdAsync(templateId);
+            if (domainTemplate == null)
+            {
+                throw new EntityNotFoundException($"Notification template with ID '{templateId}' not found");
+            }
+
+            // Map domain entity to interface DTO
+            var template = new NotificationTemplate
+            {
+                Id = domainTemplate.Id,
+                Name = domainTemplate.TemplateName,
+                Type = Enum.TryParse<NotificationType>(domainTemplate.TemplateType, true, out var type) ? type : NotificationType.System,
+                Subject = domainTemplate.Subject,
+                Body = domainTemplate.Content,
+                ActionUrlTemplate = null, // Not available in domain entity
+                RequiredVariables = domainTemplate.Variables,
+                IsActive = domainTemplate.IsActive,
+                CreatedAt = domainTemplate.CreatedAt,
+                UpdatedAt = domainTemplate.UpdatedAt,
+                CreatedBy = ObjectId.Empty // Not available in domain entity
+            };
+
+            return template;
         }
-        catch (Exception ex)
+        catch (Exception ex) when (!(ex is EntityNotFoundException))
         {
             _logger.LogError(ex, "Failed to get notification template {TemplateId}", templateId);
             throw new BusinessRuleException($"Failed to get notification template '{templateId}'", ex);
         }
     }
 
-    public Task<IEnumerable<NotificationTemplate>> GetTemplatesByTypeAsync(NotificationType type)
+    public async Task<IEnumerable<NotificationTemplate>> GetTemplatesByTypeAsync(NotificationType type)
     {
         try
         {
-            // TODO: Implement when template repository is available
-            return Task.FromResult<IEnumerable<NotificationTemplate>>(new List<NotificationTemplate>());
+            // Get templates by type from repository
+            var domainTemplates = await _notificationTemplateRepository.GetByTemplateTypeAsync(type.ToString().ToLower());
+            
+            // Map domain entities to interface DTOs
+            var templates = domainTemplates.Select(domainTemplate => new NotificationTemplate
+            {
+                Id = domainTemplate.Id,
+                Name = domainTemplate.TemplateName,
+                Type = Enum.TryParse<NotificationType>(domainTemplate.TemplateType, true, out var parsedType) ? parsedType : NotificationType.System,
+                Subject = domainTemplate.Subject,
+                Body = domainTemplate.Content,
+                ActionUrlTemplate = null, // Not available in domain entity
+                RequiredVariables = domainTemplate.Variables,
+                IsActive = domainTemplate.IsActive,
+                CreatedAt = domainTemplate.CreatedAt,
+                UpdatedAt = domainTemplate.UpdatedAt,
+                CreatedBy = ObjectId.Empty // Not available in domain entity
+            }).ToList();
+
+            return templates;
         }
         catch (Exception ex)
         {
@@ -295,12 +403,48 @@ public class NotificationService : INotificationService
         }
     }
 
-    public Task<NotificationTemplate> UpdateTemplateAsync(ObjectId templateId, UpdateNotificationTemplateRequest request)
+    public async Task<NotificationTemplate> UpdateTemplateAsync(ObjectId templateId, UpdateNotificationTemplateRequest request)
     {
         try
         {
-            // TODO: Implement when template repository is available
-            return Task.FromException<NotificationTemplate>(new NotImplementedException("Notification template repository not yet implemented"));
+            // Get existing template
+            var domainTemplate = await _notificationTemplateRepository.GetByIdAsync(templateId);
+            if (domainTemplate == null)
+            {
+                throw new EntityNotFoundException($"Notification template with ID '{templateId}' not found");
+            }
+
+            // Update template properties
+            domainTemplate.UpdateContent(request.Subject ?? string.Empty, request.Body ?? string.Empty);
+            if (request.IsActive.HasValue)
+            {
+                if (request.IsActive.Value)
+                    domainTemplate.Activate();
+                else
+                    domainTemplate.Deactivate();
+            }
+            
+            await _notificationTemplateRepository.UpdateAsync(domainTemplate);
+            
+            _logger.LogInformation("Updated notification template {TemplateId}: {Name}", domainTemplate.Id, domainTemplate.TemplateName);
+
+            // Map updated domain entity back to interface DTO
+            var updatedTemplate = new NotificationTemplate
+            {
+                Id = domainTemplate.Id,
+                Name = domainTemplate.TemplateName,
+                Type = Enum.TryParse<NotificationType>(domainTemplate.TemplateType, true, out var type) ? type : NotificationType.System,
+                Subject = domainTemplate.Subject,
+                Body = domainTemplate.Content,
+                ActionUrlTemplate = request.ActionUrlTemplate,
+                RequiredVariables = domainTemplate.Variables,
+                IsActive = domainTemplate.IsActive,
+                CreatedAt = domainTemplate.CreatedAt,
+                UpdatedAt = domainTemplate.UpdatedAt,
+                CreatedBy = ObjectId.Empty // Not available in domain entity
+            };
+
+            return updatedTemplate;
         }
         catch (Exception ex)
         {
@@ -309,13 +453,21 @@ public class NotificationService : INotificationService
         }
     }
 
-    public Task DeleteTemplateAsync(ObjectId templateId)
+    public async Task DeleteTemplateAsync(ObjectId templateId)
     {
         try
         {
-            // TODO: Implement when template repository is available
+            // Check if template exists
+            var domainTemplate = await _notificationTemplateRepository.GetByIdAsync(templateId);
+            if (domainTemplate == null)
+            {
+                throw new EntityNotFoundException($"Notification template with ID '{templateId}' not found");
+            }
+
+            // Delete template from repository
+            await _notificationTemplateRepository.DeleteAsync(templateId);
+            
             _logger.LogInformation("Deleted notification template {TemplateId}", templateId);
-            return Task.CompletedTask;
         }
         catch (Exception ex)
         {

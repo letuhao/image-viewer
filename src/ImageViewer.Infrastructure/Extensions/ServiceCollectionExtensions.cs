@@ -78,6 +78,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IUserActivityLogRepository, MongoUserActivityLogRepository>();
         services.AddScoped<ISystemSettingRepository, MongoSystemSettingRepository>();
         services.AddScoped<ISystemMaintenanceRepository, MongoSystemMaintenanceRepository>();
+        services.AddScoped<ISystemHealthRepository, MongoSystemHealthRepository>();
 
         // Register Priority 3 (Storage & File Management) repositories
         services.AddScoped<IStorageLocationRepository, MongoStorageLocationRepository>();
