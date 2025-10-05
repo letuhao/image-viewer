@@ -19,9 +19,7 @@ public class MongoViewSessionRepository : MongoRepository<ViewSession>, IViewSes
     /// </summary>
     public async Task<IEnumerable<ViewSession>> GetByCollectionIdAsync(ObjectId collectionId)
     {
-        // Convert ObjectId to Guid for ViewSession entity
-        var collectionIdGuid = new Guid(collectionId.ToByteArray());
-        var filter = Builders<ViewSession>.Filter.Eq(x => x.CollectionId, collectionIdGuid);
+        var filter = Builders<ViewSession>.Filter.Eq(x => x.CollectionId, collectionId);
         var sort = Builders<ViewSession>.Sort.Descending(x => x.StartedAt);
         return await _collection.Find(filter).Sort(sort).ToListAsync();
     }

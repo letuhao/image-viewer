@@ -26,9 +26,6 @@ public class CollectionComment : BaseEntity
     [BsonElement("editedAt")]
     public DateTime? EditedAt { get; private set; }
 
-    [BsonElement("isDeleted")]
-    public bool IsDeleted { get; private set; }
-
     [BsonElement("deletedAt")]
     public DateTime? DeletedAt { get; private set; }
 

@@ -11,10 +11,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ImageViewer.Application", "
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ImageViewer.Infrastructure", "ImageViewer.Infrastructure\ImageViewer.Infrastructure.csproj", "{69F437DA-5443-4C06-B761-F2F9134B4EB9}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{0AB3BF05-4346-4AA6-1389-037BE0695223}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ImageViewer.Tests", "tests\ImageViewer.Tests\ImageViewer.Tests.csproj", "{02349959-E124-4C53-B304-7A2E35FCE741}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ImageViewer.Worker", "ImageViewer.Worker\ImageViewer.Worker.csproj", "{10FFE341-C077-C52D-983F-DD383A3E51E8}"
 EndProject
 Global
@@ -75,18 +71,6 @@ Global
 		{69F437DA-5443-4C06-B761-F2F9134B4EB9}.Release|x64.Build.0 = Release|Any CPU
 		{69F437DA-5443-4C06-B761-F2F9134B4EB9}.Release|x86.ActiveCfg = Release|Any CPU
 		{69F437DA-5443-4C06-B761-F2F9134B4EB9}.Release|x86.Build.0 = Release|Any CPU
-		{02349959-E124-4C53-B304-7A2E35FCE741}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{02349959-E124-4C53-B304-7A2E35FCE741}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{02349959-E124-4C53-B304-7A2E35FCE741}.Debug|x64.ActiveCfg = Debug|Any CPU
-		{02349959-E124-4C53-B304-7A2E35FCE741}.Debug|x64.Build.0 = Debug|Any CPU
-		{02349959-E124-4C53-B304-7A2E35FCE741}.Debug|x86.ActiveCfg = Debug|Any CPU
-		{02349959-E124-4C53-B304-7A2E35FCE741}.Debug|x86.Build.0 = Debug|Any CPU
-		{02349959-E124-4C53-B304-7A2E35FCE741}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{02349959-E124-4C53-B304-7A2E35FCE741}.Release|Any CPU.Build.0 = Release|Any CPU
-		{02349959-E124-4C53-B304-7A2E35FCE741}.Release|x64.ActiveCfg = Release|Any CPU
-		{02349959-E124-4C53-B304-7A2E35FCE741}.Release|x64.Build.0 = Release|Any CPU
-		{02349959-E124-4C53-B304-7A2E35FCE741}.Release|x86.ActiveCfg = Release|Any CPU
-		{02349959-E124-4C53-B304-7A2E35FCE741}.Release|x86.Build.0 = Release|Any CPU
 		{10FFE341-C077-C52D-983F-DD383A3E51E8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{10FFE341-C077-C52D-983F-DD383A3E51E8}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{10FFE341-C077-C52D-983F-DD383A3E51E8}.Debug|x64.ActiveCfg = Debug|Any CPU
@@ -102,8 +86,5 @@ Global
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
-	EndGlobalSection
-	GlobalSection(NestedProjects) = preSolution
-		{02349959-E124-4C53-B304-7A2E35FCE741} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 	EndGlobalSection
 EndGlobal

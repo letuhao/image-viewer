@@ -299,7 +299,7 @@ public class StatisticsService : IStatisticsService
             .Take(limit)
             .Select(vs => new RecentActivityDto
             {
-                Id = vs.Id,
+                Id = Guid.Parse(vs.Id.ToString()),
                 Type = "view",
                 Description = $"Viewed collection: {vs.CollectionId}",
                 Timestamp = vs.CreatedAt,

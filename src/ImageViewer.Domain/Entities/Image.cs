@@ -20,9 +20,6 @@ public class Image : BaseEntity
     public int Height { get; private set; }
     public string Format { get; private set; }
     public int ViewCount { get; private set; }
-    public new DateTime CreatedAt { get; private set; }
-    public new DateTime UpdatedAt { get; private set; }
-    public bool IsDeleted { get; private set; }
     public DateTime? DeletedAt { get; private set; }
 
     // Navigation properties

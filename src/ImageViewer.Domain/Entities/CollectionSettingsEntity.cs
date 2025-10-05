@@ -1,4 +1,4 @@
-using ImageViewer.Domain.Entities;
+using MongoDB.Bson;
 
 namespace ImageViewer.Domain.Entities;
 
@@ -7,8 +7,7 @@ namespace ImageViewer.Domain.Entities;
 /// </summary>
 public class CollectionSettingsEntity : BaseEntity
 {
-    public new Guid Id { get; private set; }
-    public Guid CollectionId { get; private set; }
+    public ObjectId CollectionId { get; private set; }
     public int TotalImages { get; private set; }
     public long TotalSizeBytes { get; private set; }
     public int ThumbnailWidth { get; private set; }
@@ -19,9 +18,6 @@ public class CollectionSettingsEntity : BaseEntity
     public bool AutoGenerateCache { get; private set; }
     public TimeSpan CacheExpiration { get; private set; }
     public string AdditionalSettingsJson { get; private set; } = "{}";
-    public new DateTime CreatedAt { get; private set; }
-    public new DateTime UpdatedAt { get; private set; }
-    public bool IsDeleted { get; private set; }
     public DateTime? DeletedAt { get; private set; }
 
     // Navigation property
@@ -31,7 +27,7 @@ public class CollectionSettingsEntity : BaseEntity
     private CollectionSettingsEntity() { }
 
     public CollectionSettingsEntity(
-        Guid collectionId,
+        ObjectId collectionId,
         int totalImages = 0,
         long totalSizeBytes = 0,
         int thumbnailWidth = 300,
@@ -43,7 +39,6 @@ public class CollectionSettingsEntity : BaseEntity
         TimeSpan? cacheExpiration = null,
         string? additionalSettingsJson = null)
     {
-        Id = Guid.NewGuid();
         CollectionId = collectionId;
         TotalImages = totalImages;
         TotalSizeBytes = totalSizeBytes;

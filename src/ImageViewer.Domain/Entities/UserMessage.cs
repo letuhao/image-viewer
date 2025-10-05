@@ -100,7 +100,7 @@ public class UserMessage : BaseEntity
         }
     }
 
-    public bool IsDeleted()
+    public bool IsDeletedForUser()
     {
         return IsDeletedBySender || IsDeletedByRecipient;
     }

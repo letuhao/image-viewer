@@ -8,7 +8,6 @@ namespace ImageViewer.Domain.Entities;
 /// </summary>
 public class ImageMetadataEntity : BaseEntity
 {
-    public new ObjectId Id { get; private set; }
     public ObjectId ImageId { get; private set; }
     public int Quality { get; private set; }
     public string? ColorSpace { get; private set; }
@@ -18,9 +17,6 @@ public class ImageMetadataEntity : BaseEntity
     public string? Camera { get; private set; }
     public string? Software { get; private set; }
     public string AdditionalMetadataJson { get; private set; } = "{}";
-    public new DateTime CreatedAt { get; private set; }
-    public new DateTime UpdatedAt { get; private set; }
-    public bool IsDeleted { get; private set; }
     public DateTime? DeletedAt { get; private set; }
 
     // Navigation property
@@ -40,7 +36,6 @@ public class ImageMetadataEntity : BaseEntity
         string? software = null,
         string? additionalMetadataJson = null)
     {
-        Id = ObjectId.GenerateNewId();
         ImageId = imageId;
         Quality = quality;
         ColorSpace = colorSpace;
@@ -50,9 +45,6 @@ public class ImageMetadataEntity : BaseEntity
         Camera = camera;
         Software = software;
         AdditionalMetadataJson = additionalMetadataJson ?? "{}";
-        CreatedAt = DateTime.UtcNow;
-        UpdatedAt = DateTime.UtcNow;
-        IsDeleted = false;
     }
 
     public void UpdateQuality(int quality)

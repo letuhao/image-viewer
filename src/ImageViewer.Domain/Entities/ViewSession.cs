@@ -1,4 +1,5 @@
 using ImageViewer.Domain.ValueObjects;
+using MongoDB.Bson;
 
 namespace ImageViewer.Domain.Entities;
 
@@ -7,16 +8,14 @@ namespace ImageViewer.Domain.Entities;
 /// </summary>
 public class ViewSession : BaseEntity
 {
-    public new Guid Id { get; private set; }
-    public Guid CollectionId { get; private set; }
-    public Guid? CurrentImageId { get; private set; }
+    public ObjectId CollectionId { get; private set; }
+    public ObjectId? CurrentImageId { get; private set; }
     public ViewSessionSettings Settings { get; private set; }
     public DateTime StartedAt { get; private set; }
     public DateTime? EndedAt { get; private set; }
     public int ImagesViewed { get; private set; }
     public TimeSpan TotalViewTime { get; private set; }
     public TimeSpan ViewDuration => TotalViewTime;
-    public DateTime CreatedAt => StartedAt;
 
     // Navigation properties
     public Collection Collection { get; private set; } = null!;
@@ -25,9 +24,8 @@ public class ViewSession : BaseEntity
     // Private constructor for EF Core
     private ViewSession() { }
 
-    public ViewSession(Guid collectionId, ViewSessionSettings settings)
+    public ViewSession(ObjectId collectionId, ViewSessionSettings settings)
     {
-        Id = Guid.NewGuid();
         CollectionId = collectionId;
         Settings = settings ?? throw new ArgumentNullException(nameof(settings));
         StartedAt = DateTime.UtcNow;
@@ -35,7 +33,7 @@ public class ViewSession : BaseEntity
         TotalViewTime = TimeSpan.Zero;
     }
 
-    public void SetCurrentImage(Guid imageId)
+    public void SetCurrentImage(ObjectId imageId)
     {
         CurrentImageId = imageId;
     }
