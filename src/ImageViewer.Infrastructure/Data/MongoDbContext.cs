@@ -63,13 +63,13 @@ public class MongoDbContext
     public IMongoCollection<SystemSetting> SystemSettings => _database.GetCollection<SystemSetting>("systemSettings");
     // TODO: Uncomment when entities are created
     public IMongoCollection<UserSetting> UserSettings => _database.GetCollection<UserSetting>("userSettings");
-    // public IMongoCollection<StorageLocation> StorageLocations => _database.GetCollection<StorageLocation>("storageLocations");
-    // public IMongoCollection<FileStorageMapping> FileStorageMappings => _database.GetCollection<FileStorageMapping>("fileStorageMappings");
+    public IMongoCollection<StorageLocation> StorageLocations => _database.GetCollection<StorageLocation>("storageLocations");
+    public IMongoCollection<FileStorageMapping> FileStorageMappings => _database.GetCollection<FileStorageMapping>("fileStorageMappings");
 
     // Audit & Logging Collections
     public IMongoCollection<AuditLog> AuditLogs => _database.GetCollection<AuditLog>("auditLogs");
     public IMongoCollection<ErrorLog> ErrorLogs => _database.GetCollection<ErrorLog>("errorLogs");
-    // public IMongoCollection<BackupHistory> BackupHistories => _database.GetCollection<BackupHistory>("backupHistories");
+    public IMongoCollection<BackupHistory> BackupHistories => _database.GetCollection<BackupHistory>("backupHistories");
     public IMongoCollection<PerformanceMetric> PerformanceMetrics => _database.GetCollection<PerformanceMetric>("performanceMetrics");
 
     // Favorite Lists
