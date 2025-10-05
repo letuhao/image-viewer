@@ -3,8 +3,8 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.9" />
     <PackageReference Include="Microsoft.Extensions.Options" Version="9.0.9" />
-    <PackageReference Include="SixLabors.ImageSharp" Version="3.1.7" />
-    <PackageReference Include="FFMpegCore" Version="5.1.0" />
+    <PackageReference Include="SixLabors.ImageSharp" Version="3.1.11" />
+    <PackageReference Include="FFMpegCore" Version="5.2.0" />
     <ProjectReference Include="..\ImageViewer.Domain\ImageViewer.Domain.csproj" />
   </ItemGroup>
 
