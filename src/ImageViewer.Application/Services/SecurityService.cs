@@ -933,30 +933,134 @@ public class SecurityService : ISecurityService
 
     public async Task<IPWhitelistEntry> AddIPToWhitelistAsync(ObjectId userId, string ipAddress)
     {
-        // TODO: Implement IP whitelist addition
-        await Task.CompletedTask;
-        throw new NotImplementedException("IP whitelist addition not yet implemented");
+        try
+        {
+            var user = await _userRepository.GetByIdAsync(userId);
+            if (user == null)
+                throw new EntityNotFoundException($"User with ID '{userId}' not found");
+
+            // Check if IP is already in whitelist
+            if (user.Security.IpWhitelist.Contains(ipAddress))
+            {
+                _logger.LogWarning("IP address {IpAddress} is already in whitelist for user {UserId}", ipAddress, userId);
+                return new IPWhitelistEntry
+                {
+                    Id = ObjectId.GenerateNewId(),
+                    UserId = userId,
+                    IpAddress = ipAddress,
+                    Description = "Already whitelisted",
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow,
+                    UpdatedAt = DateTime.UtcNow
+                };
+            }
+
+            // Add IP to whitelist
+            user.Security.AddIpToWhitelist(ipAddress);
+            await _userRepository.UpdateAsync(user);
+
+            _logger.LogInformation("IP address {IpAddress} added to whitelist for user {UserId}", ipAddress, userId);
+
+            return new IPWhitelistEntry
+            {
+                Id = ObjectId.GenerateNewId(),
+                UserId = userId,
+                IpAddress = ipAddress,
+                Description = "Whitelisted IP",
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+        }
+        catch (Exception ex) when (!(ex is EntityNotFoundException))
+        {
+            _logger.LogError(ex, "Failed to add IP {IpAddress} to whitelist for user {UserId}", ipAddress, userId);
+            throw new BusinessRuleException($"Failed to add IP '{ipAddress}' to whitelist for user '{userId}'", ex);
+        }
     }
 
     public async Task<IEnumerable<IPWhitelistEntry>> GetUserIPWhitelistAsync(ObjectId userId)
     {
-        // TODO: Implement IP whitelist retrieval
-        await Task.CompletedTask;
-        throw new NotImplementedException("IP whitelist retrieval not yet implemented");
+        try
+        {
+            var user = await _userRepository.GetByIdAsync(userId);
+            if (user == null)
+                throw new EntityNotFoundException($"User with ID '{userId}' not found");
+
+            var whitelistEntries = user.Security.IpWhitelist.Select(ip => new IPWhitelistEntry
+            {
+                Id = ObjectId.GenerateNewId(),
+                UserId = userId,
+                IpAddress = ip,
+                Description = "Whitelisted IP",
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            }).ToList();
+
+            _logger.LogInformation("Retrieved {Count} IP whitelist entries for user {UserId}", whitelistEntries.Count, userId);
+
+            return whitelistEntries;
+        }
+        catch (Exception ex) when (!(ex is EntityNotFoundException))
+        {
+            _logger.LogError(ex, "Failed to get IP whitelist for user {UserId}", userId);
+            throw new BusinessRuleException($"Failed to get IP whitelist for user '{userId}'", ex);
+        }
     }
 
     public async Task<bool> RemoveIPFromWhitelistAsync(ObjectId userId, string ipAddress)
     {
-        // TODO: Implement IP whitelist removal
-        await Task.CompletedTask;
-        throw new NotImplementedException("IP whitelist removal not yet implemented");
+        try
+        {
+            var user = await _userRepository.GetByIdAsync(userId);
+            if (user == null)
+                throw new EntityNotFoundException($"User with ID '{userId}' not found");
+
+            // Check if IP is in whitelist
+            if (!user.Security.IpWhitelist.Contains(ipAddress))
+            {
+                _logger.LogWarning("IP address {IpAddress} is not in whitelist for user {UserId}", ipAddress, userId);
+                return false;
+            }
+
+            // Remove IP from whitelist
+            var removed = user.Security.IpWhitelist.Remove(ipAddress);
+            if (removed)
+            {
+                await _userRepository.UpdateAsync(user);
+                _logger.LogInformation("IP address {IpAddress} removed from whitelist for user {UserId}", ipAddress, userId);
+            }
+
+            return removed;
+        }
+        catch (Exception ex) when (!(ex is EntityNotFoundException))
+        {
+            _logger.LogError(ex, "Failed to remove IP {IpAddress} from whitelist for user {UserId}", ipAddress, userId);
+            throw new BusinessRuleException($"Failed to remove IP '{ipAddress}' from whitelist for user '{userId}'", ex);
+        }
     }
 
     public async Task<bool> IsIPWhitelistedAsync(ObjectId userId, string ipAddress)
     {
-        // TODO: Implement IP whitelist check
-        await Task.CompletedTask;
-        throw new NotImplementedException("IP whitelist check not yet implemented");
+        try
+        {
+            var user = await _userRepository.GetByIdAsync(userId);
+            if (user == null)
+                throw new EntityNotFoundException($"User with ID '{userId}' not found");
+
+            var isWhitelisted = user.Security.IpWhitelist.Contains(ipAddress);
+            
+            _logger.LogInformation("IP whitelist check for user {UserId}, IP {IpAddress}: {IsWhitelisted}", 
+                userId, ipAddress, isWhitelisted);
+
+            return isWhitelisted;
+        }
+        catch (Exception ex) when (!(ex is EntityNotFoundException))
+        {
+            _logger.LogError(ex, "Failed to check IP whitelist for user {UserId}, IP {IpAddress}", userId, ipAddress);
+            throw new BusinessRuleException($"Failed to check IP whitelist for user '{userId}', IP '{ipAddress}'", ex);
+        }
     }
 
     #endregion
