@@ -39,7 +39,7 @@ public class MongoDbContext
     public IMongoCollection<UserFollow> UserFollows => _database.GetCollection<UserFollow>("userFollows");
     public IMongoCollection<CollectionComment> CollectionComments => _database.GetCollection<CollectionComment>("collectionComments");
     public IMongoCollection<UserMessage> UserMessages => _database.GetCollection<UserMessage>("userMessages");
-    // public IMongoCollection<Conversation> Conversations => _database.GetCollection<Conversation>("conversations");
+    public IMongoCollection<Conversation> Conversations => _database.GetCollection<Conversation>("conversations");
 
     // Distribution Collections
     // public IMongoCollection<Torrent> Torrents => _database.GetCollection<Torrent>("torrents");
@@ -60,7 +60,7 @@ public class MongoDbContext
     // public IMongoCollection<UserPremiumFeature> UserPremiumFeatures => _database.GetCollection<UserPremiumFeature>("userPremiumFeatures");
 
     // Settings Collections
-    // public IMongoCollection<SystemSetting> SystemSettings => _database.GetCollection<SystemSetting>("systemSettings");
+    public IMongoCollection<SystemSetting> SystemSettings => _database.GetCollection<SystemSetting>("systemSettings");
     // TODO: Uncomment when entities are created
     public IMongoCollection<UserSetting> UserSettings => _database.GetCollection<UserSetting>("userSettings");
     // public IMongoCollection<StorageLocation> StorageLocations => _database.GetCollection<StorageLocation>("storageLocations");
@@ -84,11 +84,11 @@ public class MongoDbContext
     // public IMongoCollection<CustomReport> CustomReports => _database.GetCollection<CustomReport>("customReports");
     public IMongoCollection<UserSecuritySettings> UserSecuritySettings => _database.GetCollection<UserSecuritySettings>("userSecuritySettings");
     public IMongoCollection<NotificationTemplate> NotificationTemplates => _database.GetCollection<NotificationTemplate>("notificationTemplates");
-    // public IMongoCollection<NotificationQueue> NotificationQueue => _database.GetCollection<NotificationQueue>("notificationQueue");
+    public IMongoCollection<NotificationQueue> NotificationQueue => _database.GetCollection<NotificationQueue>("notificationQueue");
     public IMongoCollection<FileVersion> FileVersions => _database.GetCollection<FileVersion>("fileVersions");
     // public IMongoCollection<FilePermission> FilePermissions => _database.GetCollection<FilePermission>("filePermissions");
-    // public IMongoCollection<UserGroup> UserGroups => _database.GetCollection<UserGroup>("userGroups");
-    // public IMongoCollection<UserActivityLog> UserActivityLogs => _database.GetCollection<UserActivityLog>("userActivityLogs");
+    public IMongoCollection<UserGroup> UserGroups => _database.GetCollection<UserGroup>("userGroups");
+    public IMongoCollection<UserActivityLog> UserActivityLogs => _database.GetCollection<UserActivityLog>("userActivityLogs");
     public IMongoCollection<SystemHealth> SystemHealth => _database.GetCollection<SystemHealth>("systemHealth");
-    // public IMongoCollection<SystemMaintenance> SystemMaintenance => _database.GetCollection<SystemMaintenance>("systemMaintenance");
+    public IMongoCollection<SystemMaintenance> SystemMaintenance => _database.GetCollection<SystemMaintenance>("systemMaintenance");
 }
