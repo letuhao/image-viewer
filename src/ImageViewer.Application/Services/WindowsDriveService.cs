@@ -7,6 +7,7 @@ using ImageViewer.Domain.Interfaces;
 using ImageViewer.Domain.Entities;
 using MongoDB.Bson;
 using SixLabors.ImageSharp;
+using FFMpegCore;
 
 namespace ImageViewer.Application.Services;
 
@@ -508,32 +509,37 @@ public class WindowsDriveService : IWindowsDriveService
     {
         try
         {
-            // Basic video information extraction
-            // For production use, consider integrating FFmpeg or MediaInfo libraries
-            
             if (!File.Exists(filePath))
                 return (TimeSpan.Zero, 0, 0);
 
             var extension = Path.GetExtension(filePath).ToLowerInvariant();
             
-            // For now, return placeholder video information
-            // TODO: Implement actual video information extraction using FFmpeg or MediaInfo
-            // This would involve reading video file metadata to extract duration, width, and height
+            // Check if it's a supported video format
+            var supportedExtensions = new[] { ".mp4", ".avi", ".mov", ".wmv", ".mkv", ".flv", ".webm", ".m4v", ".3gp", ".mpg", ".mpeg" };
+            if (!supportedExtensions.Contains(extension))
+                return (TimeSpan.Zero, 0, 0);
+
+            // Use FFMpegCore to get actual video information
+            var mediaInfo = FFProbe.Analyse(filePath);
+            var videoStream = mediaInfo.VideoStreams.FirstOrDefault();
             
-            switch (extension)
+            if (videoStream != null)
             {
-                case ".mp4":
-                case ".avi":
-                case ".mov":
-                case ".wmv":
-                    // Placeholder: return common video dimensions and duration
-                    return (TimeSpan.FromMinutes(5), 1920, 1080);
-                default:
-                    return (TimeSpan.Zero, 0, 0);
+                var duration = mediaInfo.Duration;
+                var width = videoStream.Width;
+                var height = videoStream.Height;
+                
+                return (duration, width, height);
+            }
+            else
+            {
+                _logger.LogWarning("No video stream found in file {FilePath}", filePath);
+                return (TimeSpan.Zero, 0, 0);
             }
         }
-        catch
+        catch (Exception ex)
         {
+            _logger.LogWarning(ex, "Failed to get video information for file {FilePath}", filePath);
             return (TimeSpan.Zero, 0, 0);
         }
     }
