@@ -63,6 +63,8 @@ public class MongoDbContext
     public IMongoCollection<SystemSetting> SystemSettings => _database.GetCollection<SystemSetting>("systemSettings");
     // TODO: Uncomment when entities are created
     public IMongoCollection<UserSetting> UserSettings => _database.GetCollection<UserSetting>("userSettings");
+    public IMongoCollection<RefreshToken> RefreshTokens => _database.GetCollection<RefreshToken>("refreshTokens");
+    public IMongoCollection<Session> Sessions => _database.GetCollection<Session>("sessions");
     public IMongoCollection<StorageLocation> StorageLocations => _database.GetCollection<StorageLocation>("storageLocations");
     public IMongoCollection<FileStorageMapping> FileStorageMappings => _database.GetCollection<FileStorageMapping>("fileStorageMappings");
 

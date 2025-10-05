@@ -16,11 +16,13 @@ namespace ImageViewer.Api.Controllers;
 public class SecurityController : ControllerBase
 {
     private readonly ISecurityService _securityService;
+    private readonly IJwtService _jwtService;
     private readonly ILogger<SecurityController> _logger;
 
-    public SecurityController(ISecurityService securityService, ILogger<SecurityController> logger)
+    public SecurityController(ISecurityService securityService, IJwtService jwtService, ILogger<SecurityController> logger)
     {
         _securityService = securityService ?? throw new ArgumentNullException(nameof(securityService));
+        _jwtService = jwtService ?? throw new ArgumentNullException(nameof(jwtService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -222,9 +224,16 @@ public class SecurityController : ControllerBase
             ObjectId userId = ObjectId.Empty;
             if (!string.IsNullOrEmpty(token))
             {
-                // TODO: Implement token parsing to extract user ID
-                // For now, use placeholder
-                userId = ObjectId.Empty;
+                var userIdString = _jwtService.GetUserIdFromToken(token);
+                if (!string.IsNullOrEmpty(userIdString) && ObjectId.TryParse(userIdString, out var parsedUserId))
+                {
+                    userId = parsedUserId;
+                }
+                else
+                {
+                    _logger.LogWarning("Invalid token provided for logout - could not extract user ID");
+                    return BadRequest(new { message = "Invalid token" });
+                }
             }
             
             await _securityService.LogoutAsync(userId, token);
@@ -248,9 +257,27 @@ public class SecurityController : ControllerBase
             if (string.IsNullOrWhiteSpace(request.Token))
                 return BadRequest(new { message = "Token cannot be null or empty" });
 
-            // Validate token using SecurityService
-            var isValid = _securityService.ValidateToken(request.Token);
-            return Ok(new { valid = isValid });
+            // Validate token using JWT service
+            var principal = _jwtService.ValidateToken(request.Token);
+            var isValid = principal != null;
+            
+            if (isValid)
+            {
+                var userId = _jwtService.GetUserIdFromToken(request.Token);
+                var username = _jwtService.GetUsernameFromToken(request.Token);
+                var role = _jwtService.GetRoleFromToken(request.Token);
+                
+                return Ok(new { 
+                    valid = true,
+                    userId = userId,
+                    username = username,
+                    role = role
+                });
+            }
+            else
+            {
+                return Ok(new { valid = false });
+            }
         }
         catch (Exception ex)
         {

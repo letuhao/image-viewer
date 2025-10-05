@@ -6,6 +6,7 @@ using ImageViewer.Application.DTOs.Files;
 using ImageViewer.Domain.Interfaces;
 using ImageViewer.Domain.Entities;
 using MongoDB.Bson;
+using SixLabors.ImageSharp;
 
 namespace ImageViewer.Application.Services;
 
@@ -482,34 +483,23 @@ public class WindowsDriveService : IWindowsDriveService
     {
         try
         {
-            // Basic image dimension extraction using file header analysis
-            // For production use, consider integrating ImageSharp or System.Drawing
-            
             if (!File.Exists(filePath))
                 return (0, 0);
 
             var extension = Path.GetExtension(filePath).ToLowerInvariant();
             
-            // For now, return placeholder dimensions
-            // TODO: Implement actual image dimension extraction using ImageSharp or System.Drawing
-            // This would involve reading the image file header to extract width and height
-            
-            switch (extension)
-            {
-                case ".jpg":
-                case ".jpeg":
-                case ".png":
-                case ".gif":
-                case ".bmp":
-                case ".webp":
-                    // Placeholder: return common dimensions
-                    return (1920, 1080);
-                default:
-                    return (0, 0);
-            }
+            // Check if it's a supported image format
+            var supportedExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".tiff", ".tif" };
+            if (!supportedExtensions.Contains(extension))
+                return (0, 0);
+
+            // Use ImageSharp to get actual image dimensions
+            using var image = SixLabors.ImageSharp.Image.Load(filePath);
+            return (image.Width, image.Height);
         }
-        catch
+        catch (Exception ex)
         {
+            _logger.LogWarning(ex, "Failed to get image dimensions for file {FilePath}", filePath);
             return (0, 0);
         }
     }

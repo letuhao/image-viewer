@@ -31,9 +31,8 @@ public class RandomController : ControllerBase
         {
             _logger.LogInformation("Getting random collection");
             
-            // TODO: Implement GetAllAsync method in ICollectionService
-            // var collections = await _collectionService.GetAllAsync();
-            var collections = new List<ImageViewer.Domain.Entities.Collection>();
+            // Get all collections using the available service method
+            var collections = await _collectionService.GetCollectionsAsync(1, 1000); // Get up to 1000 collections
             var activeCollections = collections.Where(c => !c.IsDeleted).ToList();
             
             if (!activeCollections.Any())

@@ -68,10 +68,6 @@ public class NotificationsController : ControllerBase
         {
             return NotFound(new { message = ex.Message });
         }
-        catch (NotImplementedException)
-        {
-            return StatusCode(501, new { message = "Feature not yet implemented" });
-        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to get notification with ID {NotificationId}", id);
@@ -138,10 +134,6 @@ public class NotificationsController : ControllerBase
         catch (EntityNotFoundException ex)
         {
             return NotFound(new { message = ex.Message });
-        }
-        catch (NotImplementedException)
-        {
-            return StatusCode(501, new { message = "Feature not yet implemented" });
         }
         catch (Exception ex)
         {
@@ -372,10 +364,6 @@ public class NotificationsController : ControllerBase
         {
             return NotFound(new { message = ex.Message });
         }
-        catch (NotImplementedException)
-        {
-            return StatusCode(501, new { message = "Feature not yet implemented" });
-        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to get notification template {TemplateId}", id);
@@ -428,10 +416,6 @@ public class NotificationsController : ControllerBase
         catch (EntityNotFoundException ex)
         {
             return NotFound(new { message = ex.Message });
-        }
-        catch (NotImplementedException)
-        {
-            return StatusCode(501, new { message = "Feature not yet implemented" });
         }
         catch (Exception ex)
         {

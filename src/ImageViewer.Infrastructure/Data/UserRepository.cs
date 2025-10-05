@@ -12,9 +12,12 @@ namespace ImageViewer.Infrastructure.Data;
 /// </summary>
 public class UserRepository : MongoRepository<User>, IUserRepository
 {
-    public UserRepository(IMongoCollection<User> collection, ILogger<UserRepository> logger)
+    private readonly IRefreshTokenRepository _refreshTokenRepository;
+
+    public UserRepository(IMongoCollection<User> collection, IRefreshTokenRepository refreshTokenRepository, ILogger<UserRepository> logger)
         : base(collection, logger)
     {
+        _refreshTokenRepository = refreshTokenRepository ?? throw new ArgumentNullException(nameof(refreshTokenRepository));
     }
 
     public async Task<User> GetByUsernameAsync(string username)
@@ -313,11 +316,13 @@ public class UserRepository : MongoRepository<User>, IUserRepository
     {
         try
         {
-            // TODO: Implement refresh token storage
-            // For now, we'll store it in a separate collection or as part of the user document
-            // This is a placeholder implementation
+            // Create new refresh token entity
+            var token = new RefreshToken(userId, refreshToken, expiryDate);
+            
+            // Store in refresh token repository
+            await _refreshTokenRepository.CreateAsync(token);
+            
             _logger.LogInformation("Refresh token stored for user {UserId} with expiry {ExpiryDate}", userId, expiryDate);
-            await Task.CompletedTask;
         }
         catch (MongoException ex)
         {
@@ -330,11 +335,17 @@ public class UserRepository : MongoRepository<User>, IUserRepository
     {
         try
         {
-            // TODO: Implement refresh token lookup
-            // For now, return null as this needs proper implementation
-            _logger.LogInformation("Refresh token lookup requested for token {Token}", refreshToken);
-            await Task.CompletedTask;
-            return null;
+            // Get refresh token from repository
+            var token = await _refreshTokenRepository.GetByTokenAsync(refreshToken);
+            if (token == null || !token.IsActive)
+            {
+                _logger.LogInformation("Invalid or expired refresh token");
+                return null;
+            }
+
+            // Get user by ID from the token
+            var user = await GetByIdAsync(token.UserId);
+            return user;
         }
         catch (MongoException ex)
         {
@@ -347,10 +358,20 @@ public class UserRepository : MongoRepository<User>, IUserRepository
     {
         try
         {
-            // TODO: Implement refresh token invalidation
-            // For now, just log the action
-            _logger.LogInformation("Refresh token invalidated for user {UserId}", userId);
-            await Task.CompletedTask;
+            // Get the refresh token
+            var token = await _refreshTokenRepository.GetByTokenAsync(refreshToken);
+            if (token != null && token.UserId == userId)
+            {
+                // Revoke the token
+                token.Revoke();
+                await _refreshTokenRepository.UpdateAsync(token);
+                
+                _logger.LogInformation("Refresh token invalidated for user {UserId}", userId);
+            }
+            else
+            {
+                _logger.LogWarning("Refresh token not found or does not belong to user {UserId}", userId);
+            }
         }
         catch (MongoException ex)
         {

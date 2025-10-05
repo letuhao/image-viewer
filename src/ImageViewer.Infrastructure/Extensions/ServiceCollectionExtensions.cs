@@ -49,6 +49,8 @@ public static class ServiceCollectionExtensions
 
         // Register core repositories
         services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<IRefreshTokenRepository, MongoRefreshTokenRepository>();
+        services.AddScoped<ISessionRepository, MongoSessionRepository>();
         services.AddScoped<ILibraryRepository, LibraryRepository>();
         services.AddScoped<ICollectionRepository, MongoCollectionRepository>();
         services.AddScoped<IMediaItemRepository, MediaItemRepository>();
