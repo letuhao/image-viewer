@@ -54,10 +54,10 @@ public class MongoDbContext
     public IMongoCollection<UserReward> UserRewards => _database.GetCollection<UserReward>("userRewards");
     public IMongoCollection<RewardTransaction> RewardTransactions => _database.GetCollection<RewardTransaction>("rewardTransactions");
     public IMongoCollection<RewardSetting> RewardSettings => _database.GetCollection<RewardSetting>("rewardSettings");
-    // public IMongoCollection<RewardAchievement> RewardAchievements => _database.GetCollection<RewardAchievement>("rewardAchievements");
-    // public IMongoCollection<RewardBadge> RewardBadges => _database.GetCollection<RewardBadge>("rewardBadges");
-    // public IMongoCollection<PremiumFeature> PremiumFeatures => _database.GetCollection<PremiumFeature>("premiumFeatures");
-    // public IMongoCollection<UserPremiumFeature> UserPremiumFeatures => _database.GetCollection<UserPremiumFeature>("userPremiumFeatures");
+    public IMongoCollection<RewardAchievement> RewardAchievements => _database.GetCollection<RewardAchievement>("rewardAchievements");
+    public IMongoCollection<RewardBadge> RewardBadges => _database.GetCollection<RewardBadge>("rewardBadges");
+    public IMongoCollection<PremiumFeature> PremiumFeatures => _database.GetCollection<PremiumFeature>("premiumFeatures");
+    public IMongoCollection<UserPremiumFeature> UserPremiumFeatures => _database.GetCollection<UserPremiumFeature>("userPremiumFeatures");
 
     // Settings Collections
     public IMongoCollection<SystemSetting> SystemSettings => _database.GetCollection<SystemSetting>("systemSettings");
