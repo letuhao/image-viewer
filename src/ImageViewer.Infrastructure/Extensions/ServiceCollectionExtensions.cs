@@ -47,11 +47,64 @@ public static class ServiceCollectionExtensions
             return new MongoDbContext(database);
         });
 
-        // Register new repositories
+        // Register core repositories
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<ILibraryRepository, LibraryRepository>();
         services.AddScoped<ICollectionRepository, MongoCollectionRepository>();
         services.AddScoped<IMediaItemRepository, MediaItemRepository>();
+        services.AddScoped<IImageRepository, MongoImageRepository>();
+        services.AddScoped<ITagRepository, MongoTagRepository>();
+        services.AddScoped<ICollectionTagRepository, MongoCollectionTagRepository>();
+        services.AddScoped<ICacheFolderRepository, MongoCacheFolderRepository>();
+        services.AddScoped<IImageCacheInfoRepository, MongoImageCacheInfoRepository>();
+        services.AddScoped<IViewSessionRepository, MongoViewSessionRepository>();
+        services.AddScoped<IBackgroundJobRepository, MongoBackgroundJobRepository>();
+        services.AddScoped<ICollectionStatisticsRepository, MongoCollectionStatisticsRepository>();
+
+        // Register Priority 1 (Core System) repositories
+        services.AddScoped<ICollectionRatingRepository, MongoCollectionRatingRepository>();
+        services.AddScoped<IFavoriteListRepository, MongoFavoriteListRepository>();
+        services.AddScoped<ISearchHistoryRepository, MongoSearchHistoryRepository>();
+        services.AddScoped<IUserSettingRepository, MongoUserSettingRepository>();
+        services.AddScoped<IAuditLogRepository, MongoAuditLogRepository>();
+        services.AddScoped<IErrorLogRepository, MongoErrorLogRepository>();
+        services.AddScoped<IPerformanceMetricRepository, MongoPerformanceMetricRepository>();
+
+        // Register Priority 2 (Advanced Features) repositories
+        services.AddScoped<IConversationRepository, MongoConversationRepository>();
+        services.AddScoped<INotificationQueueRepository, MongoNotificationQueueRepository>();
+        services.AddScoped<IUserGroupRepository, MongoUserGroupRepository>();
+        services.AddScoped<IUserActivityLogRepository, MongoUserActivityLogRepository>();
+        services.AddScoped<ISystemSettingRepository, MongoSystemSettingRepository>();
+        services.AddScoped<ISystemMaintenanceRepository, MongoSystemMaintenanceRepository>();
+
+        // Register Priority 3 (Storage & File Management) repositories
+        services.AddScoped<IStorageLocationRepository, MongoStorageLocationRepository>();
+        services.AddScoped<IFileStorageMappingRepository, MongoFileStorageMappingRepository>();
+        services.AddScoped<IBackupHistoryRepository, MongoBackupHistoryRepository>();
+
+        // Register Priority 3 (Distribution Features) repositories
+        services.AddScoped<ITorrentRepository, MongoTorrentRepository>();
+        services.AddScoped<IDownloadLinkRepository, MongoDownloadLinkRepository>();
+        services.AddScoped<ITorrentStatisticsRepository, MongoTorrentStatisticsRepository>();
+        services.AddScoped<ILinkHealthCheckerRepository, MongoLinkHealthCheckerRepository>();
+        services.AddScoped<IDownloadQualityOptionRepository, MongoDownloadQualityOptionRepository>();
+        services.AddScoped<IDistributionNodeRepository, MongoDistributionNodeRepository>();
+        services.AddScoped<INodePerformanceMetricsRepository, MongoNodePerformanceMetricsRepository>();
+
+        // Register Priority 4 (Premium Features) repositories
+        services.AddScoped<IRewardAchievementRepository, MongoRewardAchievementRepository>();
+        services.AddScoped<IRewardBadgeRepository, MongoRewardBadgeRepository>();
+        services.AddScoped<IPremiumFeatureRepository, MongoPremiumFeatureRepository>();
+        services.AddScoped<IUserPremiumFeatureRepository, MongoUserPremiumFeatureRepository>();
+
+        // Register Priority 5 (File Management) repositories
+        services.AddScoped<IFilePermissionRepository, MongoFilePermissionRepository>();
+
+        // Register Priority 6 (Advanced Analytics) repositories
+        services.AddScoped<IContentSimilarityRepository, MongoContentSimilarityRepository>();
+        services.AddScoped<IMediaProcessingJobRepository, MongoMediaProcessingJobRepository>();
+        services.AddScoped<ICustomReportRepository, MongoCustomReportRepository>();
 
         // Register application services
         services.AddScoped<IUserService, UserService>();
