@@ -35,7 +35,7 @@ public class MongoDbContext
 
     // Social Collections
     public IMongoCollection<UserCollection> UserCollections => _database.GetCollection<UserCollection>("userCollections");
-    // public IMongoCollection<CollectionRating> CollectionRatings => _database.GetCollection<CollectionRating>("collectionRatings");
+    public IMongoCollection<CollectionRating> CollectionRatings => _database.GetCollection<CollectionRating>("collectionRatings");
     public IMongoCollection<UserFollow> UserFollows => _database.GetCollection<UserFollow>("userFollows");
     public IMongoCollection<CollectionComment> CollectionComments => _database.GetCollection<CollectionComment>("collectionComments");
     public IMongoCollection<UserMessage> UserMessages => _database.GetCollection<UserMessage>("userMessages");
@@ -62,23 +62,23 @@ public class MongoDbContext
     // Settings Collections
     // public IMongoCollection<SystemSetting> SystemSettings => _database.GetCollection<SystemSetting>("systemSettings");
     // TODO: Uncomment when entities are created
-    // public IMongoCollection<UserSetting> UserSettings => _database.GetCollection<UserSetting>("userSettings");
+    public IMongoCollection<UserSetting> UserSettings => _database.GetCollection<UserSetting>("userSettings");
     // public IMongoCollection<StorageLocation> StorageLocations => _database.GetCollection<StorageLocation>("storageLocations");
     // public IMongoCollection<FileStorageMapping> FileStorageMappings => _database.GetCollection<FileStorageMapping>("fileStorageMappings");
 
     // Audit & Logging Collections
-    // public IMongoCollection<AuditLog> AuditLogs => _database.GetCollection<AuditLog>("auditLogs");
-    // public IMongoCollection<ErrorLog> ErrorLogs => _database.GetCollection<ErrorLog>("errorLogs");
+    public IMongoCollection<AuditLog> AuditLogs => _database.GetCollection<AuditLog>("auditLogs");
+    public IMongoCollection<ErrorLog> ErrorLogs => _database.GetCollection<ErrorLog>("errorLogs");
     // public IMongoCollection<BackupHistory> BackupHistories => _database.GetCollection<BackupHistory>("backupHistories");
-    // public IMongoCollection<PerformanceMetric> PerformanceMetrics => _database.GetCollection<PerformanceMetric>("performanceMetrics");
+    public IMongoCollection<PerformanceMetric> PerformanceMetrics => _database.GetCollection<PerformanceMetric>("performanceMetrics");
 
     // Favorite Lists
-    // public IMongoCollection<FavoriteList> FavoriteLists => _database.GetCollection<FavoriteList>("favoriteLists");
+    public IMongoCollection<FavoriteList> FavoriteLists => _database.GetCollection<FavoriteList>("favoriteLists");
 
     // Missing Features Collections
     public IMongoCollection<ContentModeration> ContentModeration => _database.GetCollection<ContentModeration>("contentModeration");
     public IMongoCollection<CopyrightManagement> CopyrightManagement => _database.GetCollection<CopyrightManagement>("copyrightManagement");
-    // public IMongoCollection<SearchHistory> SearchHistory => _database.GetCollection<SearchHistory>("searchHistory");
+    public IMongoCollection<SearchHistory> SearchHistory => _database.GetCollection<SearchHistory>("searchHistory");
     // public IMongoCollection<ContentSimilarity> ContentSimilarity => _database.GetCollection<ContentSimilarity>("contentSimilarity");
     // public IMongoCollection<MediaProcessingJob> MediaProcessingJobs => _database.GetCollection<MediaProcessingJob>("mediaProcessingJobs");
     // public IMongoCollection<CustomReport> CustomReports => _database.GetCollection<CustomReport>("customReports");
