@@ -35,8 +35,37 @@ public class SecurityController : ControllerBase
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            // TODO: Implement login functionality when service types are aligned
-            return Ok(new { message = "Login functionality not yet implemented", token = "placeholder_token" });
+            // Implement login functionality using SecurityService
+            var serviceRequest = new ImageViewer.Application.Services.LoginRequest
+            {
+                Username = request.Username,
+                Password = request.Password,
+                RememberMe = request.RememberMe
+            };
+            var result = await _securityService.LoginAsync(serviceRequest);
+            
+            if (result.Success)
+            {
+                return Ok(new { 
+                    message = "Login successful", 
+                    token = result.AccessToken,
+                    refreshToken = result.RefreshToken,
+                    expiresAt = result.ExpiresAt,
+                    user = result.User != null ? new { 
+                        id = result.User.Id,
+                        username = result.User.Username,
+                        email = result.User.Email
+                    } : new { 
+                        id = "",
+                        username = request.Username,
+                        email = ""
+                    }
+                });
+            }
+            else
+            {
+                return Unauthorized(new { message = result.ErrorMessage });
+            }
         }
         catch (ValidationException ex)
         {
@@ -124,8 +153,12 @@ public class SecurityController : ControllerBase
     {
         try
         {
-            // TODO: Extract user ID from token
-            var userId = ObjectId.Empty; // Placeholder
+            // Extract user ID from token claims
+            var userIdClaim = User.FindFirst("sub") ?? User.FindFirst("userId");
+            if (userIdClaim == null || !ObjectId.TryParse(userIdClaim.Value, out var userId))
+            {
+                return Unauthorized(new { message = "Invalid token" });
+            }
             
             await _securityService.LogoutAsync(userId, request.RefreshToken);
             
@@ -150,8 +183,12 @@ public class SecurityController : ControllerBase
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            // TODO: Extract user ID from token
-            var userId = ObjectId.Empty; // Placeholder
+            // Extract user ID from token claims
+            var userIdClaim = User.FindFirst("sub") ?? User.FindFirst("userId");
+            if (userIdClaim == null || !ObjectId.TryParse(userIdClaim.Value, out var userId))
+            {
+                return Unauthorized(new { message = "Invalid token" });
+            }
             
             await _securityService.ChangePasswordAsync(userId, request.CurrentPassword, request.NewPassword);
             
@@ -181,8 +218,14 @@ public class SecurityController : ControllerBase
     {
         try
         {
-            // TODO: Extract user ID from token
-            var userId = ObjectId.Empty; // Placeholder
+            // Extract user ID from token if provided
+            ObjectId userId = ObjectId.Empty;
+            if (!string.IsNullOrEmpty(token))
+            {
+                // TODO: Implement token parsing to extract user ID
+                // For now, use placeholder
+                userId = ObjectId.Empty;
+            }
             
             await _securityService.LogoutAsync(userId, token);
             return Ok(new { message = "Logout successful" });
@@ -205,9 +248,8 @@ public class SecurityController : ControllerBase
             if (string.IsNullOrWhiteSpace(request.Token))
                 return BadRequest(new { message = "Token cannot be null or empty" });
 
-            // TODO: Implement ValidateTokenAsync method in ISecurityService
-            // var isValid = await _securityService.ValidateTokenAsync(request.Token);
-            var isValid = true; // Temporary placeholder
+            // Validate token using SecurityService
+            var isValid = _securityService.ValidateToken(request.Token);
             return Ok(new { valid = isValid });
         }
         catch (Exception ex)

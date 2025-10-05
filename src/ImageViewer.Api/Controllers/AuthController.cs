@@ -2,6 +2,8 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
 using ImageViewer.Application.Services;
+using ImageViewer.Domain.Entities;
+using MongoDB.Bson;
 
 namespace ImageViewer.Api.Controllers;
 
@@ -38,18 +40,24 @@ public class AuthController : ControllerBase
             // For demo purposes, accept any username/password
             // In production, validate against user database
             var userId = Guid.NewGuid().ToString();
-            var roles = new[] { "User" };
+            
+            // Create a basic user entity for JWT token generation
+            var user = new User(
+                request.Username, 
+                $"{request.Username}@example.com", // Demo email
+                "demo_password_hash", // Demo password hash
+                "User" // Role
+            );
 
-            // TODO: Implement JWT token generation when GenerateToken method is available
-            // var token = _jwtService.GenerateToken(userId, request.Username, roles);
-            var token = "placeholder_token"; // Temporary placeholder
+            // Generate JWT token using the service
+            var token = _jwtService.GenerateAccessToken(user);
 
             var response = new LoginResponseDto
             {
                 Token = token,
-                UserId = userId,
+                UserId = user.Id.ToString(),
                 Username = request.Username,
-                Roles = roles,
+                Roles = new[] { user.Role },
                 ExpiresAt = DateTime.UtcNow.AddHours(24)
             };
 
