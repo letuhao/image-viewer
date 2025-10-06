@@ -257,13 +257,18 @@ public class CacheService : ICacheService
         var cachedImages = images.Count(i => i.CacheInfo != null);
         var cachePercentage = totalImages > 0 ? (double)cachedImages / totalImages * 100 : 0;
 
+        var cachedImagesList = images.Where(i => i.CacheInfo != null).ToList();
+        var lastCacheUpdate = cachedImagesList.Any() ? 
+            cachedImagesList.Max(i => i.UpdatedAt) : 
+            DateTime.UtcNow;
+
         return new CollectionCacheStatusDto
         {
             CollectionId = collectionId,
             TotalImages = totalImages,
             CachedImages = cachedImages,
             CachePercentage = cachePercentage,
-            LastCacheUpdate = images.Where(i => i.CacheInfo != null).Max(i => i.UpdatedAt)
+            LastCacheUpdate = lastCacheUpdate
         };
     }
 
