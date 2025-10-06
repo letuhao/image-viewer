@@ -36,13 +36,17 @@ public class IntegrationTestFixture : IAsyncLifetime
                services.AddSingleton(Mock.Of<ICacheInfoRepository>());
                services.AddSingleton(Mock.Of<IMediaProcessingJobRepository>());
                services.AddSingleton(Mock.Of<ICacheFolderRepository>());
-               services.AddSingleton(Mock.Of<IBackgroundJobRepository>());
-               services.AddSingleton(Mock.Of<IUnitOfWork>());
+            services.AddSingleton(Mock.Of<IBackgroundJobRepository>());
+            services.AddSingleton(Mock.Of<IUserSettingRepository>());
+            services.AddSingleton(Mock.Of<IUnitOfWork>());
 
         // Add application services
         services.AddScoped<ISystemHealthService, SystemHealthService>();
         services.AddScoped<IBulkOperationService, BulkOperationService>();
         services.AddScoped<IBackgroundJobService, ImageViewer.Application.Services.BackgroundJobService>();
+        services.AddScoped<IUserPreferencesService, UserPreferencesService>();
+        services.AddScoped<IUserProfileService, UserProfileService>();
+        services.AddScoped<IUserService, UserService>();
         services.AddScoped<IBulkService, BulkService>();
         services.AddScoped<IPerformanceService, PerformanceService>();
         services.AddScoped<ICacheService, CacheService>();
