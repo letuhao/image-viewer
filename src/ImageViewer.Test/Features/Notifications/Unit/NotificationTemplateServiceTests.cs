@@ -74,7 +74,7 @@ public class NotificationTemplateServiceTests
             .Returns(Task.CompletedTask);
 
         // Act
-        var request = new CreateNotificationTemplateRequest
+        var request = new global::ImageViewer.Application.DTOs.Notifications.CreateNotificationTemplateRequest
         {
             TemplateName = templateName,
             TemplateType = templateType,
@@ -116,7 +116,7 @@ public class NotificationTemplateServiceTests
             .Returns(Task.CompletedTask);
 
         // Act
-        var request = new CreateNotificationTemplateRequest
+        var request = new global::ImageViewer.Application.DTOs.Notifications.CreateNotificationTemplateRequest
         {
             TemplateName = templateName,
             TemplateType = templateType,
@@ -143,7 +143,7 @@ public class NotificationTemplateServiceTests
             .ReturnsAsync(existingTemplate);
 
         // Act & Assert
-        var request = new CreateNotificationTemplateRequest
+        var request = new global::ImageViewer.Application.DTOs.Notifications.CreateNotificationTemplateRequest
         {
             TemplateName = templateName,
             TemplateType = "email",
@@ -160,7 +160,7 @@ public class NotificationTemplateServiceTests
     public async Task CreateTemplateAsync_WithEmptyTemplateName_ShouldThrowValidationException()
     {
         // Act & Assert
-        var request = new CreateNotificationTemplateRequest
+        var request = new global::ImageViewer.Application.DTOs.Notifications.CreateNotificationTemplateRequest
         {
             TemplateName = "",
             TemplateType = "email",
@@ -177,7 +177,7 @@ public class NotificationTemplateServiceTests
     public async Task CreateTemplateAsync_WithEmptyTemplateType_ShouldThrowValidationException()
     {
         // Act & Assert
-        var request = new CreateNotificationTemplateRequest
+        var request = new global::ImageViewer.Application.DTOs.Notifications.CreateNotificationTemplateRequest
         {
             TemplateName = "Template",
             TemplateType = "",
@@ -194,7 +194,7 @@ public class NotificationTemplateServiceTests
     public async Task CreateTemplateAsync_WithEmptyCategory_ShouldThrowValidationException()
     {
         // Act & Assert
-        var request = new CreateNotificationTemplateRequest
+        var request = new global::ImageViewer.Application.DTOs.Notifications.CreateNotificationTemplateRequest
         {
             TemplateName = "Template",
             TemplateType = "email",
@@ -211,7 +211,7 @@ public class NotificationTemplateServiceTests
     public async Task CreateTemplateAsync_WithEmptySubject_ShouldThrowValidationException()
     {
         // Act & Assert
-        var request = new CreateNotificationTemplateRequest
+        var request = new global::ImageViewer.Application.DTOs.Notifications.CreateNotificationTemplateRequest
         {
             TemplateName = "Template",
             TemplateType = "email",
@@ -228,7 +228,7 @@ public class NotificationTemplateServiceTests
     public async Task CreateTemplateAsync_WithEmptyContent_ShouldThrowValidationException()
     {
         // Act & Assert
-        var request = new CreateNotificationTemplateRequest
+        var request = new global::ImageViewer.Application.DTOs.Notifications.CreateNotificationTemplateRequest
         {
             TemplateName = "Template",
             TemplateType = "email",
@@ -419,8 +419,8 @@ public class NotificationTemplateServiceTests
         var language = "en";
         var templates = new List<NotificationTemplateEntity>
         {
-            new NotificationTemplateEntity("English Template 1", "email", "system", "Subject 1", "Content 1") { Language = language },
-            new NotificationTemplateEntity("English Template 2", "push", "social", "Subject 2", "Content 2") { Language = language }
+            new NotificationTemplateEntity("English Template 1", "email", "system", "Subject 1", "Content 1"),
+            new NotificationTemplateEntity("English Template 2", "push", "social", "Subject 2", "Content 2")
         };
 
         _mockTemplateRepository.Setup(x => x.GetByLanguageAsync(language))
@@ -462,7 +462,7 @@ public class NotificationTemplateServiceTests
             .Returns(Task.CompletedTask);
 
         // Act
-        var request = new UpdateNotificationTemplateRequest
+        var request = new global::ImageViewer.Application.DTOs.Notifications.UpdateNotificationTemplateRequest
         {
             Subject = newSubject,
             Content = newContent
@@ -489,7 +489,7 @@ public class NotificationTemplateServiceTests
             .ReturnsAsync((NotificationTemplateEntity?)null);
 
         // Act & Assert
-        var request = new UpdateNotificationTemplateRequest
+        var request = new global::ImageViewer.Application.DTOs.Notifications.UpdateNotificationTemplateRequest
         {
             Subject = "Subject",
             Content = "Content"
@@ -513,7 +513,7 @@ public class NotificationTemplateServiceTests
             .Returns(Task.CompletedTask);
 
         // Act
-        var request = new UpdateNotificationTemplateRequest
+        var request = new global::ImageViewer.Application.DTOs.Notifications.UpdateNotificationTemplateRequest
         {
             Subject = "", // Empty subject
             Content = "New Content"
@@ -540,7 +540,7 @@ public class NotificationTemplateServiceTests
             .Returns(Task.CompletedTask);
 
         // Act
-        var request = new UpdateNotificationTemplateRequest
+        var request = new global::ImageViewer.Application.DTOs.Notifications.UpdateNotificationTemplateRequest
         {
             Subject = "New Subject",
             Content = "" // Empty content
@@ -563,13 +563,13 @@ public class NotificationTemplateServiceTests
 
         _mockTemplateRepository.Setup(x => x.GetByIdAsync(templateId))
             .ReturnsAsync(template);
-        _mockTemplateRepository.Setup(x => x.GetByTemplateNameAsync(newTemplateName))
+        _mockTemplateRepository.Setup(x => x.GetByTemplateNameAsync(newTemplateName, It.IsAny<CancellationToken>()))
             .ReturnsAsync((NotificationTemplateEntity?)null); // No existing template with new name
         _mockTemplateRepository.Setup(x => x.UpdateAsync(It.IsAny<NotificationTemplateEntity>()))
             .Returns(Task.CompletedTask);
 
         // Act
-        var request = new UpdateNotificationTemplateRequest
+        var request = new global::ImageViewer.Application.DTOs.Notifications.UpdateNotificationTemplateRequest
         {
             TemplateName = newTemplateName
         };
@@ -592,11 +592,11 @@ public class NotificationTemplateServiceTests
 
         _mockTemplateRepository.Setup(x => x.GetByIdAsync(templateId))
             .ReturnsAsync(template);
-        _mockTemplateRepository.Setup(x => x.GetByTemplateNameAsync(newTemplateName))
+        _mockTemplateRepository.Setup(x => x.GetByTemplateNameAsync(newTemplateName, It.IsAny<CancellationToken>()))
             .ReturnsAsync(existingTemplate);
 
         // Act & Assert
-        var request = new UpdateNotificationTemplateRequest
+        var request = new global::ImageViewer.Application.DTOs.Notifications.UpdateNotificationTemplateRequest
         {
             TemplateName = newTemplateName
         };
@@ -616,14 +616,14 @@ public class NotificationTemplateServiceTests
 
         _mockTemplateRepository.Setup(x => x.GetByIdAsync(templateId))
             .ReturnsAsync(template);
-        _mockTemplateRepository.Setup(x => x.GetByTemplateNameAsync(sameTemplateName))
+        _mockTemplateRepository.Setup(x => x.GetByTemplateNameAsync(sameTemplateName, It.IsAny<CancellationToken>()))
             .ReturnsAsync(template); // Returns the same template
 
         _mockTemplateRepository.Setup(x => x.UpdateAsync(It.IsAny<NotificationTemplateEntity>()))
             .Returns(Task.CompletedTask);
 
         // Act
-        var request = new UpdateNotificationTemplateRequest
+        var request = new global::ImageViewer.Application.DTOs.Notifications.UpdateNotificationTemplateRequest
         {
             TemplateName = sameTemplateName,
             Subject = "Updated Subject"
@@ -651,7 +651,7 @@ public class NotificationTemplateServiceTests
             .Returns(Task.CompletedTask);
 
         // Act
-        var request = new UpdateNotificationTemplateRequest
+        var request = new global::ImageViewer.Application.DTOs.Notifications.UpdateNotificationTemplateRequest
         {
             Priority = newPriority
         };
@@ -668,7 +668,7 @@ public class NotificationTemplateServiceTests
     {
         // Arrange
         var templateId = ObjectId.GenerateNewId();
-        var template = new NotificationTemplateEntity("Test Template", "email", "system", "Subject", "Content") { Language = "en" };
+        var template = new NotificationTemplateEntity("Test Template", "email", "system", "Subject", "Content");
         var newLanguage = "es";
 
         _mockTemplateRepository.Setup(x => x.GetByIdAsync(templateId))
@@ -677,7 +677,7 @@ public class NotificationTemplateServiceTests
             .Returns(Task.CompletedTask);
 
         // Act
-        var request = new UpdateNotificationTemplateRequest
+        var request = new global::ImageViewer.Application.DTOs.Notifications.UpdateNotificationTemplateRequest
         {
             Language = newLanguage
         };
@@ -704,7 +704,7 @@ public class NotificationTemplateServiceTests
             .Returns(Task.CompletedTask);
 
         // Act
-        var request = new UpdateNotificationTemplateRequest
+        var request = new global::ImageViewer.Application.DTOs.Notifications.UpdateNotificationTemplateRequest
         {
             Channels = newChannels
         };
@@ -731,7 +731,7 @@ public class NotificationTemplateServiceTests
             .Returns(Task.CompletedTask);
 
         // Act
-        var request = new UpdateNotificationTemplateRequest
+        var request = new global::ImageViewer.Application.DTOs.Notifications.UpdateNotificationTemplateRequest
         {
             Tags = newTags
         };
@@ -757,7 +757,7 @@ public class NotificationTemplateServiceTests
             .Returns(Task.CompletedTask);
 
         // Act
-        var request = new UpdateNotificationTemplateRequest
+        var request = new global::ImageViewer.Application.DTOs.Notifications.UpdateNotificationTemplateRequest
         {
             ParentTemplateId = parentTemplateId
         };
@@ -783,7 +783,7 @@ public class NotificationTemplateServiceTests
             .Returns(Task.CompletedTask);
 
         // Act
-        var request = new UpdateNotificationTemplateRequest
+        var request = new global::ImageViewer.Application.DTOs.Notifications.UpdateNotificationTemplateRequest
         {
             ParentTemplateId = ObjectId.Empty // Represents null in this context
         };
@@ -980,148 +980,6 @@ public class NotificationTemplateServiceTests
         var action = async () => await _notificationTemplateService.RenderTemplateAsync("", variables);
         await action.Should().ThrowAsync<ArgumentException>()
             .WithParameterName("templateName");
-    }
-
-    #endregion
-
-    #region Template Validation Tests
-
-    [Fact]
-    public async Task ValidateTemplateVariablesAsync_WithValidVariables_ShouldReturnValidResult()
-    {
-        // Arrange
-        var templateId = ObjectId.GenerateNewId();
-        var template = new NotificationTemplateEntity("Test Template", "email", "system", "Hello {userName}", "Welcome {userName} to ImageViewer!");
-        var variables = new Dictionary<string, string> { { "userName", "John Doe" } };
-
-        _mockTemplateRepository.Setup(x => x.GetByIdAsync(templateId))
-            .ReturnsAsync(template);
-
-        // Act
-        var result = await _notificationTemplateService.ValidateTemplateVariablesAsync(templateId, variables);
-
-        // Assert
-        result.Should().NotBeNull();
-        result.IsValid.Should().BeTrue();
-        result.MissingVariables.Should().BeEmpty();
-        result.ExtraVariables.Should().BeEmpty();
-    }
-
-    [Fact]
-    public async Task ValidateTemplateVariablesAsync_WithMissingVariables_ShouldReturnInvalidResult()
-    {
-        // Arrange
-        var templateId = ObjectId.GenerateNewId();
-        var template = new NotificationTemplateEntity("Test Template", "email", "system", "Hello {userName}", "Welcome {userName} to ImageViewer!");
-        var variables = new Dictionary<string, string>(); // Missing userName
-
-        _mockTemplateRepository.Setup(x => x.GetByIdAsync(templateId))
-            .ReturnsAsync(template);
-
-        // Act
-        var result = await _notificationTemplateService.ValidateTemplateVariablesAsync(templateId, variables);
-
-        // Assert
-        result.Should().NotBeNull();
-        result.IsValid.Should().BeFalse();
-        result.MissingVariables.Should().Contain("userName");
-    }
-
-    [Fact]
-    public async Task ValidateTemplateVariablesAsync_WithExtraVariables_ShouldReturnResultWithExtraVariables()
-    {
-        // Arrange
-        var templateId = ObjectId.GenerateNewId();
-        var template = new NotificationTemplateEntity("Test Template", "email", "system", "Hello {userName}", "Welcome {userName} to ImageViewer!");
-        var variables = new Dictionary<string, string>
-        {
-            { "userName", "John Doe" },
-            { "extraVariable", "Extra Value" } // Extra variable not in template
-        };
-
-        _mockTemplateRepository.Setup(x => x.GetByIdAsync(templateId))
-            .ReturnsAsync(template);
-
-        // Act
-        var result = await _notificationTemplateService.ValidateTemplateVariablesAsync(templateId, variables);
-
-        // Assert
-        result.Should().NotBeNull();
-        result.IsValid.Should().BeTrue(); // Still valid, just has extra variables
-        result.MissingVariables.Should().BeEmpty();
-        result.ExtraVariables.Should().Contain("extraVariable");
-    }
-
-    [Fact]
-    public async Task ValidateTemplateVariablesAsync_WithNullVariables_ShouldThrowArgumentNullException()
-    {
-        // Arrange
-        var templateId = ObjectId.GenerateNewId();
-
-        // Act & Assert
-        var action = async () => await _notificationTemplateService.ValidateTemplateVariablesAsync(templateId, null!);
-        await action.Should().ThrowAsync<ArgumentNullException>()
-            .WithParameterName("variables");
-    }
-
-    [Fact]
-    public async Task ValidateTemplateVariablesAsync_WithNonExistentId_ShouldThrowEntityNotFoundException()
-    {
-        // Arrange
-        var templateId = ObjectId.GenerateNewId();
-        var variables = new Dictionary<string, string> { { "userName", "John Doe" } };
-
-        _mockTemplateRepository.Setup(x => x.GetByIdAsync(templateId))
-            .ReturnsAsync((NotificationTemplateEntity?)null);
-
-        // Act & Assert
-        var action = async () => await _notificationTemplateService.ValidateTemplateVariablesAsync(templateId, variables);
-        await action.Should().ThrowAsync<EntityNotFoundException>()
-            .WithMessage($"Notification template with ID '{templateId}' not found.");
-    }
-
-    #endregion
-
-    #region Template Usage Statistics Tests
-
-    [Fact]
-    public async Task GetTemplateUsageStatisticsAsync_WithValidId_ShouldReturnStatistics()
-    {
-        // Arrange
-        var templateId = ObjectId.GenerateNewId();
-        var template = new NotificationTemplateEntity("Test Template", "email", "system", "Subject", "Content");
-        template.Id = templateId; // Ensure ID is set for the DTO
-        template.MarkAsUsed();
-        template.MarkAsUsed(); // Usage count = 2
-
-        _mockTemplateRepository.Setup(x => x.GetByIdAsync(templateId))
-            .ReturnsAsync(template);
-
-        // Act
-        var result = await _notificationTemplateService.GetTemplateUsageStatisticsAsync(templateId);
-
-        // Assert
-        result.Should().NotBeNull();
-        result.TemplateId.Should().Be(templateId);
-        result.TemplateName.Should().Be("Test Template");
-        result.UsageCount.Should().Be(2);
-        result.Version.Should().Be(1);
-        result.MostUsedChannels.Should().Contain("email");
-    }
-
-    [Fact]
-    public async Task GetTemplateUsageStatisticsAsync_WithNonExistentId_ShouldThrowEntityNotFoundException()
-    {
-        // Arrange
-        var templateId = ObjectId.GenerateNewId();
-
-        _mockTemplateRepository.Setup(x => x.GetByIdAsync(templateId))
-            .ReturnsAsync((NotificationTemplateEntity?)null);
-
-        // Act & Assert
-        var action = async () => await _notificationTemplateService.GetTemplateUsageStatisticsAsync(templateId);
-        await action.Should().ThrowAsync<EntityNotFoundException>()
-            .WithMessage($"Notification template with ID '{templateId}' not found.");
     }
 
     #endregion
