@@ -60,6 +60,9 @@ public class BackgroundJobService : IBackgroundJobService
 
     public async Task<BackgroundJobDto> CreateJobAsync(CreateBackgroundJobDto dto)
     {
+        if (dto == null)
+            throw new ArgumentNullException(nameof(dto));
+
         _logger.LogInformation("Creating job: {Type}", dto.Type);
 
         var job = new BackgroundJob(
@@ -237,6 +240,9 @@ public class BackgroundJobService : IBackgroundJobService
 
     public async Task<BackgroundJobDto> StartBulkOperationJobAsync(BulkOperationDto dto)
     {
+        if (dto == null)
+            throw new ArgumentNullException(nameof(dto));
+
         _logger.LogInformation("Starting bulk operation job: {OperationType}", dto.OperationType);
 
         var job = new BackgroundJob(
