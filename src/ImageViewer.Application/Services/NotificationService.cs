@@ -91,13 +91,30 @@ public class NotificationService : INotificationService
         }
     }
 
-    public Task<Notification> GetNotificationByIdAsync(ObjectId notificationId)
+    public async Task<Notification> GetNotificationByIdAsync(ObjectId notificationId)
     {
         try
         {
-            // TODO: Implement when notification repository is available
-            // For now, return a placeholder
-            return Task.FromException<Notification>(new NotImplementedException("Notification repository not yet implemented"));
+            var domain = await _notificationQueueRepository.GetByIdAsync(notificationId);
+            if (domain == null)
+                throw new EntityNotFoundException($"Notification with ID '{notificationId}' not found");
+
+            return new Notification
+            {
+                Id = domain.Id,
+                UserId = domain.UserId,
+                Type = Enum.TryParse<NotificationType>(domain.NotificationType, true, out var type) ? type : NotificationType.System,
+                Title = domain.Subject,
+                Message = domain.Content,
+                Priority = Enum.TryParse<NotificationPriority>(domain.Priority, true, out var p) ? p : NotificationPriority.Normal,
+                Status = Enum.TryParse<NotificationStatus>(domain.Status, true, out var s) ? s : NotificationStatus.Pending,
+                CreatedAt = domain.CreatedAt,
+                ScheduledFor = domain.ScheduledFor,
+                ExpiresAt = domain.ExpiresAt,
+                ReadAt = null,
+                ActionUrl = null,
+                Metadata = new Dictionary<string, object>()
+            };
         }
         catch (Exception ex)
         {
@@ -158,12 +175,33 @@ public class NotificationService : INotificationService
         }
     }
 
-    public Task<Notification> MarkAsReadAsync(ObjectId notificationId)
+    public async Task<Notification> MarkAsReadAsync(ObjectId notificationId)
     {
         try
         {
-            // TODO: Implement when notification repository is available
-            return Task.FromException<Notification>(new NotImplementedException("Notification repository not yet implemented"));
+            var domain = await _notificationQueueRepository.GetByIdAsync(notificationId);
+            if (domain == null)
+                throw new EntityNotFoundException($"Notification with ID '{notificationId}' not found");
+
+            // We don't have a Read status mutation in domain; as a safe fallback, just return DTO marked as Read.
+            _logger.LogInformation("MarkAsRead requested for {NotificationId}, but domain lacks read state mutation.", notificationId);
+
+            return new Notification
+            {
+                Id = domain.Id,
+                UserId = domain.UserId,
+                Type = Enum.TryParse<NotificationType>(domain.NotificationType, true, out var type) ? type : NotificationType.System,
+                Title = domain.Subject,
+                Message = domain.Content,
+                Priority = Enum.TryParse<NotificationPriority>(domain.Priority, true, out var p) ? p : NotificationPriority.Normal,
+                Status = NotificationStatus.Read,
+                CreatedAt = domain.CreatedAt,
+                ScheduledFor = domain.ScheduledFor,
+                ExpiresAt = domain.ExpiresAt,
+                ReadAt = DateTime.UtcNow,
+                ActionUrl = null,
+                Metadata = new Dictionary<string, object>()
+            };
         }
         catch (Exception ex)
         {

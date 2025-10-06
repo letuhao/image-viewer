@@ -187,3 +187,11 @@ src/tests/ImageViewer.IntegrationTests/bin/
 src/ImageViewer.Worker/bin/
 
 src/ImageViewer.Worker/obj/
+
+src/ImageViewer.Test/bin/
+
+src/ImageViewer.Test/obj/
+
+*.user
+
+src/src/ImageViewer.Test/obj/

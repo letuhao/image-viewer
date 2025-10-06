@@ -13,6 +13,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ImageViewer.Infrastructure"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ImageViewer.Worker", "ImageViewer.Worker\ImageViewer.Worker.csproj", "{10FFE341-C077-C52D-983F-DD383A3E51E8}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ImageViewer.Test", "ImageViewer.Test\ImageViewer.Test.csproj", "{71C7C80D-DC18-4294-9BA0-68E1CB48CBDF}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -83,6 +85,18 @@ Global
 		{10FFE341-C077-C52D-983F-DD383A3E51E8}.Release|x64.Build.0 = Release|Any CPU
 		{10FFE341-C077-C52D-983F-DD383A3E51E8}.Release|x86.ActiveCfg = Release|Any CPU
 		{10FFE341-C077-C52D-983F-DD383A3E51E8}.Release|x86.Build.0 = Release|Any CPU
+		{71C7C80D-DC18-4294-9BA0-68E1CB48CBDF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{71C7C80D-DC18-4294-9BA0-68E1CB48CBDF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{71C7C80D-DC18-4294-9BA0-68E1CB48CBDF}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{71C7C80D-DC18-4294-9BA0-68E1CB48CBDF}.Debug|x64.Build.0 = Debug|Any CPU
+		{71C7C80D-DC18-4294-9BA0-68E1CB48CBDF}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{71C7C80D-DC18-4294-9BA0-68E1CB48CBDF}.Debug|x86.Build.0 = Debug|Any CPU
+		{71C7C80D-DC18-4294-9BA0-68E1CB48CBDF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{71C7C80D-DC18-4294-9BA0-68E1CB48CBDF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{71C7C80D-DC18-4294-9BA0-68E1CB48CBDF}.Release|x64.ActiveCfg = Release|Any CPU
+		{71C7C80D-DC18-4294-9BA0-68E1CB48CBDF}.Release|x64.Build.0 = Release|Any CPU
+		{71C7C80D-DC18-4294-9BA0-68E1CB48CBDF}.Release|x86.ActiveCfg = Release|Any CPU
+		{71C7C80D-DC18-4294-9BA0-68E1CB48CBDF}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

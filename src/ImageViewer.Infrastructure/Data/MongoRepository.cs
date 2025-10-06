@@ -24,7 +24,7 @@ public class MongoRepository<T> : IRepository<T> where T : BaseEntity
     public MongoRepository(IMongoDatabase database, string collectionName)
     {
         _collection = database.GetCollection<T>(collectionName);
-        _logger = null!; // TODO: Inject logger properly
+        _logger = Microsoft.Extensions.Logging.Abstractions.NullLogger<MongoRepository<T>>.Instance;
     }
 
     public virtual async Task<T> GetByIdAsync(ObjectId id)
