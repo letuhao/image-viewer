@@ -23,7 +23,7 @@ public class NotificationTemplateService : INotificationTemplateService
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    public async Task<NotificationTemplateEntity> CreateTemplateAsync(CreateNotificationTemplateRequest request, CancellationToken cancellationToken = default)
+    public async Task<NotificationTemplateEntity> CreateTemplateAsync(global::ImageViewer.Application.DTOs.Notifications.CreateNotificationTemplateRequest request, CancellationToken cancellationToken = default)
     {
         if (request == null)
             throw new ArgumentNullException(nameof(request));
@@ -100,7 +100,7 @@ public class NotificationTemplateService : INotificationTemplateService
         return await _notificationTemplateRepository.GetAllAsync();
     }
 
-    public async Task<NotificationTemplateEntity> UpdateTemplateAsync(ObjectId templateId, UpdateNotificationTemplateRequest request, CancellationToken cancellationToken = default)
+    public async Task<NotificationTemplateEntity> UpdateTemplateAsync(ObjectId templateId, global::ImageViewer.Application.DTOs.Notifications.UpdateNotificationTemplateRequest request, CancellationToken cancellationToken = default)
     {
         if (request == null)
             throw new ArgumentNullException(nameof(request));

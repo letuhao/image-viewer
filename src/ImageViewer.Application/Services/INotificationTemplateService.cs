@@ -15,7 +15,7 @@ public interface INotificationTemplateService
     /// <param name="request">The request containing template details.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The created notification template.</returns>
-    Task<NotificationTemplateEntity> CreateTemplateAsync(CreateNotificationTemplateRequest request, CancellationToken cancellationToken = default);
+    Task<NotificationTemplateEntity> CreateTemplateAsync(global::ImageViewer.Application.DTOs.Notifications.CreateNotificationTemplateRequest request, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Retrieves a notification template by its ID.
@@ -47,7 +47,7 @@ public interface INotificationTemplateService
     /// <param name="request">The request containing updated template details.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The updated notification template.</returns>
-    Task<NotificationTemplateEntity> UpdateTemplateAsync(ObjectId templateId, UpdateNotificationTemplateRequest request, CancellationToken cancellationToken = default);
+    Task<NotificationTemplateEntity> UpdateTemplateAsync(ObjectId templateId, global::ImageViewer.Application.DTOs.Notifications.UpdateNotificationTemplateRequest request, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Deletes a notification template by its ID.
