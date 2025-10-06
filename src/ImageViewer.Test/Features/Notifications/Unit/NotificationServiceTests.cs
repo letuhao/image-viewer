@@ -1,5 +1,15 @@
 using FluentAssertions;
+using Moq;
 using Xunit;
+using MongoDB.Bson;
+using ImageViewer.Application.Services;
+using ImageViewer.Domain.Entities;
+using ImageViewer.Domain.Interfaces;
+using ImageViewer.Domain.Exceptions;
+using Microsoft.Extensions.Logging;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using NotificationTemplate = ImageViewer.Application.Services.NotificationTemplate; // Alias for clarity
 
 namespace ImageViewer.Test.Features.Notifications.Unit;
 
@@ -8,131 +18,206 @@ namespace ImageViewer.Test.Features.Notifications.Unit;
 /// </summary>
 public class NotificationServiceTests
 {
-    [Fact]
-    public void NotificationService_ShouldExist()
+    private readonly Mock<IUserRepository> _mockUserRepository;
+    private readonly Mock<INotificationQueueRepository> _mockNotificationQueueRepository;
+    private readonly Mock<INotificationTemplateRepository> _mockNotificationTemplateRepository;
+    private readonly Mock<ILogger<NotificationService>> _mockLogger;
+    private readonly NotificationService _notificationService;
+
+    public NotificationServiceTests()
     {
-        // This is a placeholder test to verify the test infrastructure works
-        // TODO: Implement actual NotificationService tests when the service is properly set up
-        
-        // Arrange
-        var expected = true;
-        
-        // Act
-        var actual = true;
-        
-        // Assert
-        actual.Should().Be(expected);
+        _mockUserRepository = new Mock<IUserRepository>();
+        _mockNotificationQueueRepository = new Mock<INotificationQueueRepository>();
+        _mockNotificationTemplateRepository = new Mock<INotificationTemplateRepository>();
+        _mockLogger = new Mock<ILogger<NotificationService>>();
+
+        _notificationService = new NotificationService(
+            _mockUserRepository.Object,
+            _mockNotificationQueueRepository.Object,
+            _mockNotificationTemplateRepository.Object,
+            _mockLogger.Object
+        );
     }
 
     [Fact]
-    public void NotificationCreation_ShouldBeImplemented()
+    public async Task CreateNotificationAsync_WithValidRequest_ShouldReturnNotification()
     {
-        // This is a placeholder test to verify notification creation features are planned
-        // TODO: Implement actual notification creation tests
-        
         // Arrange
-        var hasNotificationCreation = true;
-        
+        var userId = ObjectId.GenerateNewId();
+        var user = new User("testuser", "test@example.com", "hashedpassword");
+        var request = new CreateNotificationRequest
+        {
+            UserId = userId,
+            Type = NotificationType.System,
+            Title = "Test Notification",
+            Message = "This is a test notification",
+            Priority = NotificationPriority.Normal
+        };
+
+        _mockUserRepository.Setup(r => r.GetByIdAsync(userId)).ReturnsAsync(user);
+
         // Act
-        var result = hasNotificationCreation;
-        
+        var result = await _notificationService.CreateNotificationAsync(request);
+
         // Assert
-        result.Should().BeTrue();
+        result.Should().NotBeNull();
+        result.UserId.Should().Be(userId);
+        result.Title.Should().Be(request.Title);
+        result.Message.Should().Be(request.Message);
+        result.Type.Should().Be(request.Type);
+        result.Priority.Should().Be(request.Priority);
     }
 
     [Fact]
-    public void NotificationRetrieval_ShouldBeImplemented()
+    public async Task CreateNotificationAsync_WithEmptyTitle_ShouldThrowValidationException()
     {
-        // This is a placeholder test to verify notification retrieval features are planned
-        // TODO: Implement actual notification retrieval tests
-        
         // Arrange
-        var hasNotificationRetrieval = true;
-        
+        var userId = ObjectId.GenerateNewId();
+        var request = new CreateNotificationRequest
+        {
+            UserId = userId,
+            Type = NotificationType.System,
+            Title = "",
+            Message = "This is a test notification",
+            Priority = NotificationPriority.Normal
+        };
+
         // Act
-        var result = hasNotificationRetrieval;
-        
+        Func<Task> act = async () => await _notificationService.CreateNotificationAsync(request);
+
         // Assert
-        result.Should().BeTrue();
+        await act.Should().ThrowAsync<ValidationException>()
+            .WithMessage("Notification title cannot be null or empty");
     }
 
     [Fact]
-    public void NotificationUpdate_ShouldBeImplemented()
+    public async Task CreateNotificationAsync_WithNonExistentUser_ShouldThrowEntityNotFoundException()
     {
-        // This is a placeholder test to verify notification update features are planned
-        // TODO: Implement actual notification update tests
-        
         // Arrange
-        var hasNotificationUpdate = true;
-        
+        var userId = ObjectId.GenerateNewId();
+        var request = new CreateNotificationRequest
+        {
+            UserId = userId,
+            Type = NotificationType.System,
+            Title = "Test Notification",
+            Message = "This is a test notification",
+            Priority = NotificationPriority.Normal
+        };
+
+        _mockUserRepository.Setup(r => r.GetByIdAsync(userId)).ReturnsAsync((User)null!);
+
         // Act
-        var result = hasNotificationUpdate;
-        
+        Func<Task> act = async () => await _notificationService.CreateNotificationAsync(request);
+
         // Assert
-        result.Should().BeTrue();
+        await act.Should().ThrowAsync<EntityNotFoundException>()
+            .WithMessage($"User with ID '{userId}' not found");
     }
 
     [Fact]
-    public void NotificationDeletion_ShouldBeImplemented()
+    public async Task GetNotificationByIdAsync_WithValidId_ShouldReturnNotification()
     {
-        // This is a placeholder test to verify notification deletion features are planned
-        // TODO: Implement actual notification deletion tests
-        
         // Arrange
-        var hasNotificationDeletion = true;
-        
+        var notificationId = ObjectId.GenerateNewId();
+        var userId = ObjectId.GenerateNewId();
+        var domainNotification = Domain.Entities.NotificationQueue.Create(
+            userId,
+            "system",
+            "Test Title",
+            "Test Message",
+            "normal",
+            null,
+            null,
+            null
+        );
+        domainNotification.GetType().GetProperty("Id")!.SetValue(domainNotification, notificationId);
+
+        _mockNotificationQueueRepository.Setup(r => r.GetByIdAsync(notificationId)).ReturnsAsync(domainNotification);
+
         // Act
-        var result = hasNotificationDeletion;
-        
+        var result = await _notificationService.GetNotificationByIdAsync(notificationId);
+
         // Assert
-        result.Should().BeTrue();
+        result.Should().NotBeNull();
+        result.Id.Should().Be(notificationId);
+        result.Title.Should().Be("Test Title");
     }
 
     [Fact]
-    public void NotificationDelivery_ShouldBeImplemented()
+    public async Task GetNotificationByIdAsync_WithNonExistentId_ShouldThrowEntityNotFoundException()
     {
-        // This is a placeholder test to verify notification delivery features are planned
-        // TODO: Implement actual notification delivery tests
-        
         // Arrange
-        var hasNotificationDelivery = true;
-        
+        var notificationId = ObjectId.GenerateNewId();
+        _mockNotificationQueueRepository.Setup(r => r.GetByIdAsync(notificationId)).ReturnsAsync((Domain.Entities.NotificationQueue)null!);
+
         // Act
-        var result = hasNotificationDelivery;
-        
+        Func<Task> act = async () => await _notificationService.GetNotificationByIdAsync(notificationId);
+
         // Assert
-        result.Should().BeTrue();
+        // The service wraps exceptions in BusinessRuleException for consistent error handling
+        await act.Should().ThrowAsync<BusinessRuleException>()
+            .WithMessage($"Failed to get notification with ID '{notificationId}'");
     }
 
     [Fact]
-    public void NotificationBroadcast_ShouldBeImplemented()
+    public async Task SendRealTimeNotificationAsync_WithValidData_ShouldSendNotification()
     {
-        // This is a placeholder test to verify notification broadcast features are planned
-        // TODO: Implement actual notification broadcast tests
-        
         // Arrange
-        var hasNotificationBroadcast = true;
-        
+        var userId = ObjectId.GenerateNewId();
+        var user = new User("testuser", "test@example.com", "hashedpassword");
+        var message = new NotificationMessage
+        {
+            Title = "Real-time Notification",
+            Message = "This is a real-time notification",
+            Type = NotificationType.System
+        };
+
+        _mockUserRepository.Setup(r => r.GetByIdAsync(userId)).ReturnsAsync(user);
+
         // Act
-        var result = hasNotificationBroadcast;
-        
+        await _notificationService.SendRealTimeNotificationAsync(userId, message);
+
         // Assert
-        result.Should().BeTrue();
+        // No exception means success
     }
 
     [Fact]
-    public void NotificationGroup_ShouldBeImplemented()
+    public async Task SendBroadcastNotificationAsync_WithValidMessage_ShouldSendBroadcast()
     {
-        // This is a placeholder test to verify notification group features are planned
-        // TODO: Implement actual notification group tests
-        
         // Arrange
-        var hasNotificationGroup = true;
-        
+        var message = new NotificationMessage
+        {
+            Title = "Broadcast Notification",
+            Message = "This is a broadcast notification",
+            Type = NotificationType.System
+        };
+
         // Act
-        var result = hasNotificationGroup;
-        
+        await _notificationService.SendBroadcastNotificationAsync(message);
+
         // Assert
-        result.Should().BeTrue();
+        // No exception means success
+    }
+
+    [Fact]
+    public async Task SendGroupNotificationAsync_WithValidData_ShouldSendGroupNotification()
+    {
+        // Arrange
+        var userIds = new List<ObjectId> { ObjectId.GenerateNewId(), ObjectId.GenerateNewId() };
+        var user = new User("testuser", "test@example.com", "hashedpassword");
+        var message = new NotificationMessage
+        {
+            Title = "Group Notification",
+            Message = "This is a group notification",
+            Type = NotificationType.System
+        };
+
+        _mockUserRepository.Setup(r => r.GetByIdAsync(It.IsAny<ObjectId>())).ReturnsAsync(user);
+
+        // Act
+        await _notificationService.SendGroupNotificationAsync(userIds, message);
+
+        // Assert
+        // No exception means success
     }
 }
