@@ -6,6 +6,7 @@ using ImageViewer.Application.Services;
 using ImageViewer.Domain.Entities;
 using ImageViewer.Domain.Interfaces;
 using ImageViewer.Domain.Exceptions;
+using ImageViewer.Domain.ValueObjects;
 using Microsoft.Extensions.Logging;
 using System.Collections.Generic;
 using System.Linq;
@@ -67,6 +68,10 @@ public class CacheServiceTests
             new CacheFolder("Cache1", "/cache1", 1024000, 1),
             new CacheFolder("Cache2", "/cache2", 2048000, 2)
         };
+        
+        // Set current sizes for the cache folders
+        cacheFolders[0].UpdateStatistics(1024000, 100);
+        cacheFolders[1].UpdateStatistics(2048000, 200);
         
         var collections = new List<Collection>
         {
@@ -451,38 +456,40 @@ public class CacheServiceTests
         result.Should().BeNull();
     }
 
-    [Fact]
-    public async Task SaveCachedImageAsync_WithValidData_ShouldSaveCachedImage()
-    {
-        // Arrange
-        var imageId = ObjectId.GenerateNewId();
-        var collectionId = ObjectId.GenerateNewId();
-        var dimensions = "1280x720";
-        var imageData = new byte[] { 1, 2, 3, 4, 5 };
-        
-        var image = new Image(collectionId, "test.jpg", "/path", 1024L, 1920, 1080, "jpeg")
+        [Fact]
+        public async Task SaveCachedImageAsync_WithValidData_ShouldSaveCachedImage()
         {
-            Id = imageId
-        };
-        
-        var cacheFolder = new CacheFolder("Test Cache", "/test/cache", 1024000, 1);
+            // Arrange
+            var imageId = ObjectId.GenerateNewId();
+            var collectionId = ObjectId.GenerateNewId();
+            var dimensions = "1280x720";
+            var imageData = new byte[] { 1, 2, 3, 4, 5 };
+            
+            var image = new Image(collectionId, "test.jpg", "/path", 1024L, 1920, 1080, "jpeg");
+            
+            var collection = new Collection(collectionId, "Test Collection", "/test/path", Domain.Enums.CollectionType.Folder);
+            collection.CacheBindings.Add(new CacheBinding("/test/cache", "jpeg", 85, 1280, 720, "/test/cache"));
+            
+            var cacheFolder = new CacheFolder("Test Cache", "/test/cache", 1024000, 1);
 
-        _mockImageRepository.Setup(x => x.GetByIdAsync(imageId))
-            .ReturnsAsync(image);
-        _mockCacheFolderRepository.Setup(x => x.GetByPathAsync(It.IsAny<string>()))
-            .ReturnsAsync(cacheFolder);
-        _mockCacheInfoRepository.Setup(x => x.GetByImageIdAsync(imageId))
-            .ReturnsAsync((ImageCacheInfo)null!);
-        _mockCacheInfoRepository.Setup(x => x.CreateAsync(It.IsAny<ImageCacheInfo>()))
-            .ReturnsAsync((ImageCacheInfo ci) => ci);
+            _mockImageRepository.Setup(x => x.GetByIdAsync(imageId))
+                .ReturnsAsync(image);
+            _mockCollectionRepository.Setup(x => x.GetByIdAsync(collectionId))
+                .ReturnsAsync(collection);
+            _mockCacheFolderRepository.Setup(x => x.GetByPathAsync("/test/cache"))
+                .ReturnsAsync(cacheFolder);
+            _mockCacheInfoRepository.Setup(x => x.GetByImageIdAsync(imageId))
+                .ReturnsAsync((ImageCacheInfo)null!);
+            _mockCacheInfoRepository.Setup(x => x.CreateAsync(It.IsAny<ImageCacheInfo>()))
+                .ReturnsAsync((ImageCacheInfo ci) => ci);
 
-        // Act
-        await _cacheService.SaveCachedImageAsync(imageId, dimensions, imageData);
+            // Act
+            await _cacheService.SaveCachedImageAsync(imageId, dimensions, imageData);
 
-        // Assert
-        _mockImageRepository.Verify(x => x.GetByIdAsync(imageId), Times.Once);
-        _mockCacheInfoRepository.Verify(x => x.CreateAsync(It.IsAny<ImageCacheInfo>()), Times.Once);
-    }
+            // Assert
+            _mockImageRepository.Verify(x => x.GetByIdAsync(imageId), Times.Once);
+            _mockCacheInfoRepository.Verify(x => x.CreateAsync(It.IsAny<ImageCacheInfo>()), Times.Once);
+        }
 
     [Fact]
     public async Task SaveCachedImageAsync_WithNonExistentImage_ShouldThrowKeyNotFoundException()
