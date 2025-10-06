@@ -40,7 +40,7 @@ public class NotificationTemplateService : INotificationTemplateService
 
         _logger.LogInformation("Creating new notification template: {TemplateName}", request.TemplateName);
 
-        var existingTemplate = await _notificationTemplateRepository.GetByTemplateNameAsync(request.TemplateName);
+        var existingTemplate = await _notificationTemplateRepository.GetByTemplateNameAsync(request.TemplateName, cancellationToken);
         if (existingTemplate != null)
             throw new DuplicateEntityException($"Notification template with name '{request.TemplateName}' already exists.");
 
@@ -91,7 +91,7 @@ public class NotificationTemplateService : INotificationTemplateService
             throw new ArgumentException("Template name cannot be null or empty", nameof(templateName));
 
         _logger.LogDebug("Retrieving notification template by name: {TemplateName}", templateName);
-        return await _notificationTemplateRepository.GetByTemplateNameAsync(templateName);
+        return await _notificationTemplateRepository.GetByTemplateNameAsync(templateName, cancellationToken);
     }
 
     public async Task<IEnumerable<NotificationTemplateEntity>> GetAllTemplatesAsync(CancellationToken cancellationToken = default)
@@ -111,18 +111,34 @@ public class NotificationTemplateService : INotificationTemplateService
         if (template == null)
             throw new EntityNotFoundException($"Notification template with ID '{templateId}' not found.");
 
-        // Update content if provided
-        if (!string.IsNullOrWhiteSpace(request.Subject) || !string.IsNullOrWhiteSpace(request.Content))
+        // Update template name if provided and different
+        if (!string.IsNullOrWhiteSpace(request.TemplateName) && template.TemplateName != request.TemplateName)
         {
-            template.UpdateContent(
-                request.Subject ?? template.Subject,
-                request.Content ?? template.Content,
-                request.HtmlContent
-            );
+            var existingTemplate = await _notificationTemplateRepository.GetByTemplateNameAsync(request.TemplateName, cancellationToken);
+            if (existingTemplate != null && existingTemplate.Id != templateId)
+                throw new DuplicateEntityException($"Notification template with name '{request.TemplateName}' already exists.");
+            template.UpdateTemplateName(request.TemplateName);
         }
+
+        // Update template type if provided
+        if (!string.IsNullOrWhiteSpace(request.TemplateType))
+            template.UpdateTemplateType(request.TemplateType);
+
+        // Update category if provided
+        if (!string.IsNullOrWhiteSpace(request.Category))
+            template.UpdateCategory(request.Category);
+
+        // Update content - only update if not empty, otherwise preserve original
+        var newSubject = !string.IsNullOrWhiteSpace(request.Subject) ? request.Subject : template.Subject;
+        var newContent = !string.IsNullOrWhiteSpace(request.Content) ? request.Content : template.Content;
+        
+        template.UpdateContent(newSubject, newContent, request.HtmlContent);
 
         if (!string.IsNullOrWhiteSpace(request.Priority))
             template.UpdatePriority(request.Priority);
+
+        if (!string.IsNullOrWhiteSpace(request.Language))
+            template.UpdateLanguage(request.Language);
 
         if (request.IsActive.HasValue)
         {
@@ -148,10 +164,14 @@ public class NotificationTemplateService : INotificationTemplateService
             foreach (var tag in tagsToAdd) template.AddTag(tag);
         }
 
+        // Handle parent template ID
         if (request.ParentTemplateId.HasValue)
-            template.SetParentTemplate(request.ParentTemplateId.Value);
-        else if (request.ParentTemplateId == ObjectId.Empty) // Explicitly setting to null
-            template.SetParentTemplate(null);
+        {
+            if (request.ParentTemplateId.Value == ObjectId.Empty)
+                template.SetParentTemplate(null); // Clear parent template
+            else
+                template.SetParentTemplate(request.ParentTemplateId.Value);
+        }
 
         await _notificationTemplateRepository.UpdateAsync(template);
 
@@ -185,7 +205,7 @@ public class NotificationTemplateService : INotificationTemplateService
 
         _logger.LogDebug("Rendering template {TemplateName}", templateName);
 
-        var template = await _notificationTemplateRepository.GetByTemplateNameAsync(templateName);
+        var template = await _notificationTemplateRepository.GetByTemplateNameAsync(templateName, cancellationToken);
         if (template == null)
             throw new EntityNotFoundException($"Notification template with name '{templateName}' not found.");
 
@@ -231,7 +251,7 @@ public class NotificationTemplateService : INotificationTemplateService
             throw new ArgumentException("Template type cannot be null or empty", nameof(templateType));
 
         _logger.LogDebug("Retrieving notification templates by type: {TemplateType}", templateType);
-        return await _notificationTemplateRepository.GetByTemplateTypeAsync(templateType);
+        return await _notificationTemplateRepository.GetByTemplateTypeAsync(templateType, cancellationToken);
     }
 
     public async Task<IEnumerable<NotificationTemplateEntity>> GetTemplatesByCategoryAsync(string category, CancellationToken cancellationToken = default)
@@ -240,13 +260,13 @@ public class NotificationTemplateService : INotificationTemplateService
             throw new ArgumentException("Category cannot be null or empty", nameof(category));
 
         _logger.LogDebug("Retrieving notification templates by category: {Category}", category);
-        return await _notificationTemplateRepository.GetByCategoryAsync(category);
+        return await _notificationTemplateRepository.GetByCategoryAsync(category, cancellationToken);
     }
 
     public async Task<IEnumerable<NotificationTemplateEntity>> GetActiveTemplatesAsync(CancellationToken cancellationToken = default)
     {
         _logger.LogDebug("Retrieving active notification templates.");
-        return await _notificationTemplateRepository.GetActiveTemplatesAsync();
+        return await _notificationTemplateRepository.GetActiveTemplatesAsync(cancellationToken);
     }
 
     public async Task<IEnumerable<NotificationTemplateEntity>> GetTemplatesByLanguageAsync(string language, CancellationToken cancellationToken = default)
@@ -255,6 +275,6 @@ public class NotificationTemplateService : INotificationTemplateService
             throw new ArgumentException("Language cannot be null or empty", nameof(language));
 
         _logger.LogDebug("Retrieving notification templates by language: {Language}", language);
-        return await _notificationTemplateRepository.GetByLanguageAsync(language);
+        return await _notificationTemplateRepository.GetByLanguageAsync(language, cancellationToken);
     }
 }

@@ -68,10 +68,10 @@ public class NotificationTemplateServiceTests
         var subject = "Welcome to ImageViewer";
         var content = "Hello {userName}, welcome to ImageViewer!";
 
-        _mockTemplateRepository.Setup(x => x.GetByTemplateNameAsync(templateName))
+        _mockTemplateRepository.Setup(x => x.GetByTemplateNameAsync(templateName, It.IsAny<CancellationToken>()))
             .ReturnsAsync((NotificationTemplateEntity?)null);
         _mockTemplateRepository.Setup(x => x.CreateAsync(It.IsAny<NotificationTemplateEntity>()))
-            .Returns(Task.CompletedTask);
+            .ReturnsAsync(It.IsAny<NotificationTemplateEntity>());
 
         // Act
         var request = new global::ImageViewer.Application.DTOs.Notifications.CreateNotificationTemplateRequest
@@ -110,10 +110,10 @@ public class NotificationTemplateServiceTests
         var content = "Hello {userName}, welcome to ImageViewer!";
         var htmlContent = "<h1>Welcome {userName}!</h1><p>Welcome to ImageViewer!</p>";
 
-        _mockTemplateRepository.Setup(x => x.GetByTemplateNameAsync(templateName))
+        _mockTemplateRepository.Setup(x => x.GetByTemplateNameAsync(templateName, It.IsAny<CancellationToken>()))
             .ReturnsAsync((NotificationTemplateEntity?)null);
         _mockTemplateRepository.Setup(x => x.CreateAsync(It.IsAny<NotificationTemplateEntity>()))
-            .Returns(Task.CompletedTask);
+            .ReturnsAsync(It.IsAny<NotificationTemplateEntity>());
 
         // Act
         var request = new global::ImageViewer.Application.DTOs.Notifications.CreateNotificationTemplateRequest
@@ -139,7 +139,7 @@ public class NotificationTemplateServiceTests
         var templateName = "Existing Template";
         var existingTemplate = new NotificationTemplateEntity("Existing Template", "email", "system", "Subject", "Content");
 
-        _mockTemplateRepository.Setup(x => x.GetByTemplateNameAsync(templateName))
+        _mockTemplateRepository.Setup(x => x.GetByTemplateNameAsync(templateName, It.IsAny<CancellationToken>()))
             .ReturnsAsync(existingTemplate);
 
         // Act & Assert
@@ -286,7 +286,7 @@ public class NotificationTemplateServiceTests
         var templateName = "Test Template";
         var template = new NotificationTemplateEntity(templateName, "email", "system", "Subject", "Content");
 
-        _mockTemplateRepository.Setup(x => x.GetByTemplateNameAsync(templateName))
+        _mockTemplateRepository.Setup(x => x.GetByTemplateNameAsync(templateName, It.IsAny<CancellationToken>()))
             .ReturnsAsync(template);
 
         // Act
@@ -338,7 +338,7 @@ public class NotificationTemplateServiceTests
             new NotificationTemplateEntity("Email Template 2", templateType, "social", "Subject 2", "Content 2")
         };
 
-        _mockTemplateRepository.Setup(x => x.GetByTemplateTypeAsync(templateType))
+        _mockTemplateRepository.Setup(x => x.GetByTemplateTypeAsync(templateType, It.IsAny<CancellationToken>()))
             .ReturnsAsync(templates);
 
         // Act
@@ -369,7 +369,7 @@ public class NotificationTemplateServiceTests
             new NotificationTemplateEntity("System Template 2", "push", category, "Subject 2", "Content 2")
         };
 
-        _mockTemplateRepository.Setup(x => x.GetByCategoryAsync(category))
+        _mockTemplateRepository.Setup(x => x.GetByCategoryAsync(category, It.IsAny<CancellationToken>()))
             .ReturnsAsync(templates);
 
         // Act
@@ -401,7 +401,7 @@ public class NotificationTemplateServiceTests
         templates[0].Activate();
         templates[1].Activate();
 
-        _mockTemplateRepository.Setup(x => x.GetActiveTemplatesAsync())
+        _mockTemplateRepository.Setup(x => x.GetActiveTemplatesAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(templates);
 
         // Act
@@ -423,7 +423,7 @@ public class NotificationTemplateServiceTests
             new NotificationTemplateEntity("English Template 2", "push", "social", "Subject 2", "Content 2")
         };
 
-        _mockTemplateRepository.Setup(x => x.GetByLanguageAsync(language))
+        _mockTemplateRepository.Setup(x => x.GetByLanguageAsync(language, It.IsAny<CancellationToken>()))
             .ReturnsAsync(templates);
 
         // Act
@@ -459,7 +459,7 @@ public class NotificationTemplateServiceTests
         _mockTemplateRepository.Setup(x => x.GetByIdAsync(templateId))
             .ReturnsAsync(template);
         _mockTemplateRepository.Setup(x => x.UpdateAsync(It.IsAny<NotificationTemplateEntity>()))
-            .Returns(Task.CompletedTask);
+            .ReturnsAsync(It.IsAny<NotificationTemplateEntity>());
 
         // Act
         var request = new global::ImageViewer.Application.DTOs.Notifications.UpdateNotificationTemplateRequest
@@ -510,7 +510,7 @@ public class NotificationTemplateServiceTests
         _mockTemplateRepository.Setup(x => x.GetByIdAsync(templateId))
             .ReturnsAsync(template);
         _mockTemplateRepository.Setup(x => x.UpdateAsync(It.IsAny<NotificationTemplateEntity>()))
-            .Returns(Task.CompletedTask);
+            .ReturnsAsync(It.IsAny<NotificationTemplateEntity>());
 
         // Act
         var request = new global::ImageViewer.Application.DTOs.Notifications.UpdateNotificationTemplateRequest
@@ -537,7 +537,7 @@ public class NotificationTemplateServiceTests
         _mockTemplateRepository.Setup(x => x.GetByIdAsync(templateId))
             .ReturnsAsync(template);
         _mockTemplateRepository.Setup(x => x.UpdateAsync(It.IsAny<NotificationTemplateEntity>()))
-            .Returns(Task.CompletedTask);
+            .ReturnsAsync(It.IsAny<NotificationTemplateEntity>());
 
         // Act
         var request = new global::ImageViewer.Application.DTOs.Notifications.UpdateNotificationTemplateRequest
@@ -566,7 +566,7 @@ public class NotificationTemplateServiceTests
         _mockTemplateRepository.Setup(x => x.GetByTemplateNameAsync(newTemplateName, It.IsAny<CancellationToken>()))
             .ReturnsAsync((NotificationTemplateEntity?)null); // No existing template with new name
         _mockTemplateRepository.Setup(x => x.UpdateAsync(It.IsAny<NotificationTemplateEntity>()))
-            .Returns(Task.CompletedTask);
+            .ReturnsAsync(It.IsAny<NotificationTemplateEntity>());
 
         // Act
         var request = new global::ImageViewer.Application.DTOs.Notifications.UpdateNotificationTemplateRequest
@@ -620,7 +620,7 @@ public class NotificationTemplateServiceTests
             .ReturnsAsync(template); // Returns the same template
 
         _mockTemplateRepository.Setup(x => x.UpdateAsync(It.IsAny<NotificationTemplateEntity>()))
-            .Returns(Task.CompletedTask);
+            .ReturnsAsync(It.IsAny<NotificationTemplateEntity>());
 
         // Act
         var request = new global::ImageViewer.Application.DTOs.Notifications.UpdateNotificationTemplateRequest
@@ -648,7 +648,7 @@ public class NotificationTemplateServiceTests
         _mockTemplateRepository.Setup(x => x.GetByIdAsync(templateId))
             .ReturnsAsync(template);
         _mockTemplateRepository.Setup(x => x.UpdateAsync(It.IsAny<NotificationTemplateEntity>()))
-            .Returns(Task.CompletedTask);
+            .ReturnsAsync(It.IsAny<NotificationTemplateEntity>());
 
         // Act
         var request = new global::ImageViewer.Application.DTOs.Notifications.UpdateNotificationTemplateRequest
@@ -674,7 +674,7 @@ public class NotificationTemplateServiceTests
         _mockTemplateRepository.Setup(x => x.GetByIdAsync(templateId))
             .ReturnsAsync(template);
         _mockTemplateRepository.Setup(x => x.UpdateAsync(It.IsAny<NotificationTemplateEntity>()))
-            .Returns(Task.CompletedTask);
+            .ReturnsAsync(It.IsAny<NotificationTemplateEntity>());
 
         // Act
         var request = new global::ImageViewer.Application.DTOs.Notifications.UpdateNotificationTemplateRequest
@@ -701,7 +701,7 @@ public class NotificationTemplateServiceTests
         _mockTemplateRepository.Setup(x => x.GetByIdAsync(templateId))
             .ReturnsAsync(template);
         _mockTemplateRepository.Setup(x => x.UpdateAsync(It.IsAny<NotificationTemplateEntity>()))
-            .Returns(Task.CompletedTask);
+            .ReturnsAsync(It.IsAny<NotificationTemplateEntity>());
 
         // Act
         var request = new global::ImageViewer.Application.DTOs.Notifications.UpdateNotificationTemplateRequest
@@ -728,7 +728,7 @@ public class NotificationTemplateServiceTests
         _mockTemplateRepository.Setup(x => x.GetByIdAsync(templateId))
             .ReturnsAsync(template);
         _mockTemplateRepository.Setup(x => x.UpdateAsync(It.IsAny<NotificationTemplateEntity>()))
-            .Returns(Task.CompletedTask);
+            .ReturnsAsync(It.IsAny<NotificationTemplateEntity>());
 
         // Act
         var request = new global::ImageViewer.Application.DTOs.Notifications.UpdateNotificationTemplateRequest
@@ -754,7 +754,7 @@ public class NotificationTemplateServiceTests
         _mockTemplateRepository.Setup(x => x.GetByIdAsync(templateId))
             .ReturnsAsync(template);
         _mockTemplateRepository.Setup(x => x.UpdateAsync(It.IsAny<NotificationTemplateEntity>()))
-            .Returns(Task.CompletedTask);
+            .ReturnsAsync(It.IsAny<NotificationTemplateEntity>());
 
         // Act
         var request = new global::ImageViewer.Application.DTOs.Notifications.UpdateNotificationTemplateRequest
@@ -780,7 +780,7 @@ public class NotificationTemplateServiceTests
         _mockTemplateRepository.Setup(x => x.GetByIdAsync(templateId))
             .ReturnsAsync(template);
         _mockTemplateRepository.Setup(x => x.UpdateAsync(It.IsAny<NotificationTemplateEntity>()))
-            .Returns(Task.CompletedTask);
+            .ReturnsAsync(It.IsAny<NotificationTemplateEntity>());
 
         // Act
         var request = new global::ImageViewer.Application.DTOs.Notifications.UpdateNotificationTemplateRequest
@@ -810,7 +810,7 @@ public class NotificationTemplateServiceTests
         _mockTemplateRepository.Setup(x => x.GetByIdAsync(templateId))
             .ReturnsAsync(template);
         _mockTemplateRepository.Setup(x => x.UpdateAsync(It.IsAny<NotificationTemplateEntity>()))
-            .Returns(Task.CompletedTask);
+            .ReturnsAsync(It.IsAny<NotificationTemplateEntity>());
 
         // Act
         var result = await _notificationTemplateService.ActivateTemplateAsync(templateId);
@@ -847,7 +847,7 @@ public class NotificationTemplateServiceTests
         _mockTemplateRepository.Setup(x => x.GetByIdAsync(templateId))
             .ReturnsAsync(template);
         _mockTemplateRepository.Setup(x => x.UpdateAsync(It.IsAny<NotificationTemplateEntity>()))
-            .Returns(Task.CompletedTask);
+            .ReturnsAsync(It.IsAny<NotificationTemplateEntity>());
 
         // Act
         var result = await _notificationTemplateService.DeactivateTemplateAsync(templateId);
@@ -929,10 +929,10 @@ public class NotificationTemplateServiceTests
         var template = new NotificationTemplateEntity(templateName, "email", "system", "Hello {userName}", "Welcome {userName} to ImageViewer!");
         var variables = new Dictionary<string, string> { { "userName", "John Doe" } };
 
-        _mockTemplateRepository.Setup(x => x.GetByTemplateNameAsync(templateName))
+        _mockTemplateRepository.Setup(x => x.GetByTemplateNameAsync(templateName, It.IsAny<CancellationToken>()))
             .ReturnsAsync(template);
         _mockTemplateRepository.Setup(x => x.UpdateAsync(It.IsAny<NotificationTemplateEntity>()))
-            .Returns(Task.CompletedTask); // To verify MarkAsUsed updates
+            .ReturnsAsync(It.IsAny<NotificationTemplateEntity>()); // To verify MarkAsUsed updates
 
         // Act
         var result = await _notificationTemplateService.RenderTemplateAsync(templateName, variables);
@@ -949,7 +949,7 @@ public class NotificationTemplateServiceTests
         var templateName = "NonExistent Template";
         var variables = new Dictionary<string, string> { { "userName", "John Doe" } };
 
-        _mockTemplateRepository.Setup(x => x.GetByTemplateNameAsync(templateName))
+        _mockTemplateRepository.Setup(x => x.GetByTemplateNameAsync(templateName, It.IsAny<CancellationToken>()))
             .ReturnsAsync((NotificationTemplateEntity?)null);
 
         // Act & Assert

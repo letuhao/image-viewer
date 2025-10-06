@@ -175,6 +175,30 @@ public class NotificationTemplate : BaseEntity
         UpdatedAt = DateTime.UtcNow;
     }
 
+    public void UpdateTemplateName(string templateName)
+    {
+        TemplateName = templateName;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void UpdateTemplateType(string templateType)
+    {
+        TemplateType = templateType;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void UpdateCategory(string category)
+    {
+        Category = category;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void UpdateLanguage(string language)
+    {
+        Language = language;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
     public string RenderTemplate(Dictionary<string, string> variables)
     {
         var renderedContent = Content;
