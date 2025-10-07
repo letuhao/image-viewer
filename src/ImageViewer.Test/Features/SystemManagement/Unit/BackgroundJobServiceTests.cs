@@ -18,6 +18,8 @@ public class BackgroundJobServiceTests
 {
     private readonly Mock<IBackgroundJobRepository> _mockBackgroundJobRepository;
     private readonly Mock<ICollectionRepository> _mockCollectionRepository;
+    private readonly Mock<IBulkService> _mockBulkService;
+    private readonly Mock<IMessageQueueService> _mockMessageQueueService;
     private readonly Mock<ILogger<BackgroundJobService>> _mockLogger;
     private readonly BackgroundJobService _backgroundJobService;
 
@@ -25,10 +27,14 @@ public class BackgroundJobServiceTests
     {
         _mockBackgroundJobRepository = new Mock<IBackgroundJobRepository>();
         _mockCollectionRepository = new Mock<ICollectionRepository>();
+        _mockBulkService = new Mock<IBulkService>();
+        _mockMessageQueueService = new Mock<IMessageQueueService>();
         _mockLogger = new Mock<ILogger<BackgroundJobService>>();
         _backgroundJobService = new BackgroundJobService(
             _mockBackgroundJobRepository.Object,
             _mockCollectionRepository.Object,
+            _mockBulkService.Object,
+            _mockMessageQueueService.Object,
             _mockLogger.Object);
     }
 

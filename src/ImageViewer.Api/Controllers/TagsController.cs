@@ -9,7 +9,7 @@ namespace ImageViewer.Api.Controllers;
 /// Tag management controller
 /// </summary>
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/v1/[controller]")]
 public class TagsController : ControllerBase
 {
     private readonly ITagService _tagService;

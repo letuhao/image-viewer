@@ -8,7 +8,7 @@ namespace ImageViewer.Api.Controllers;
 /// Compressed files controller for archive operations
 /// </summary>
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/v1/[controller]")]
 public class CompressedFilesController : ControllerBase
 {
     private readonly ICompressedFileService _compressedFileService;

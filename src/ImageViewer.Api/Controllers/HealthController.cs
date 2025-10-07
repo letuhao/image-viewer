@@ -5,7 +5,7 @@ using MongoDB.Driver;
 namespace ImageViewer.Api.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/v1/[controller]")]
 public class HealthController : ControllerBase
 {
     private readonly IMongoDatabase _database;

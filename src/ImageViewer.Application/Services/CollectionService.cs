@@ -23,7 +23,7 @@ public class CollectionService : ICollectionService
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    public async Task<Collection> CreateCollectionAsync(ObjectId libraryId, string name, string path, CollectionType type)
+    public async Task<Collection> CreateCollectionAsync(ObjectId libraryId, string name, string path, CollectionType type, string? createdBy = null, string? createdBySystem = null)
     {
         try
         {
@@ -35,12 +35,22 @@ public class CollectionService : ICollectionService
                 throw new ValidationException("Collection path cannot be null or empty");
 
             // Check if collection already exists at this path
-            var existingCollection = await _collectionRepository.GetByPathAsync(path);
+            Collection? existingCollection = null;
+            try
+            {
+                existingCollection = await _collectionRepository.GetByPathAsync(path);
+            }
+            catch (EntityNotFoundException)
+            {
+                // Collection doesn't exist, which is fine - we'll create a new one
+                existingCollection = null;
+            }
+            
             if (existingCollection != null)
                 throw new DuplicateEntityException($"Collection at path '{path}' already exists");
 
-            // Create new collection
-            var collection = new Collection(libraryId, name, path, type);
+            // Create new collection with creator tracking
+            var collection = new Collection(libraryId, name, path, type, createdBy, createdBySystem);
             return await _collectionRepository.CreateAsync(collection);
         }
         catch (Exception ex) when (!(ex is ValidationException || ex is DuplicateEntityException))

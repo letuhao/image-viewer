@@ -9,7 +9,7 @@ namespace ImageViewer.Api.Controllers;
 /// Statistics controller
 /// </summary>
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/v1/[controller]")]
 public class StatisticsController : ControllerBase
 {
     private readonly IStatisticsService _statisticsService;

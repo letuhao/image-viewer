@@ -9,7 +9,7 @@ namespace ImageViewer.Api.Controllers;
 /// Random collection controller
 /// </summary>
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/v1/[controller]")]
 public class RandomController : ControllerBase
 {
     private readonly ICollectionService _collectionService;

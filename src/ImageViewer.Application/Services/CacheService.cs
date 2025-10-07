@@ -570,9 +570,25 @@ public class CacheService : ICacheService
                     return cacheFolder;
             }
 
-            // If no specific cache folder is bound, get the first available cache folder
+            // If no specific cache folder is bound, use hash-based distribution for equal load balancing
             var availableCacheFolders = await _cacheFolderRepository.GetAllAsync();
-            return availableCacheFolders.FirstOrDefault(cf => cf.IsActive);
+            var activeCacheFolders = availableCacheFolders.Where(cf => cf.IsActive).ToList();
+            
+            if (!activeCacheFolders.Any())
+            {
+                _logger.LogWarning("No active cache folders available for collection: {CollectionId}", collectionId);
+                return null;
+            }
+
+            // Use hash-based distribution to ensure equal distribution across cache folders
+            var hash = Math.Abs(collectionId.GetHashCode());
+            var selectedIndex = hash % activeCacheFolders.Count;
+            var selectedFolder = activeCacheFolders[selectedIndex];
+            
+            _logger.LogDebug("🎯 Hash-based cache folder selection for collection: CollectionId={CollectionId}, Hash={Hash}, Index={Index}, SelectedFolder={FolderName}", 
+                collectionId, hash, selectedIndex, selectedFolder.Name);
+            
+            return selectedFolder;
         }
         catch (Exception ex)
         {
@@ -700,6 +716,76 @@ public class CacheService : ICacheService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error during old cache cleanup");
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Get cache folder distribution statistics to monitor equal distribution
+    /// </summary>
+    public async Task<CacheDistributionStatisticsDto> GetCacheDistributionStatisticsAsync()
+    {
+        try
+        {
+            _logger.LogInformation("Getting cache folder distribution statistics");
+
+            var cacheFolders = await _cacheFolderRepository.GetAllAsync();
+            var activeCacheFolders = cacheFolders.Where(cf => cf.IsActive).ToList();
+            
+            var distributionStats = new List<CacheFolderDistributionDto>();
+            
+            foreach (var cacheFolder in activeCacheFolders)
+            {
+                var cacheInfos = await _cacheInfoRepository.GetByCacheFolderIdAsync(cacheFolder.Id);
+                var fileCount = cacheInfos.Count();
+                var totalSize = cacheInfos.Sum(ci => ci.FileSizeBytes);
+                
+                distributionStats.Add(new CacheFolderDistributionDto
+                {
+                    CacheFolderId = cacheFolder.Id,
+                    CacheFolderName = cacheFolder.Name,
+                    CacheFolderPath = cacheFolder.Path,
+                    FileCount = fileCount,
+                    TotalSizeBytes = totalSize,
+                    MaxSizeBytes = cacheFolder.MaxSize,
+                    UsagePercentage = cacheFolder.MaxSize > 0 ? (double)totalSize / cacheFolder.MaxSize * 100 : 0,
+                    IsActive = cacheFolder.IsActive
+                });
+            }
+
+            var totalFiles = distributionStats.Sum(ds => ds.FileCount);
+            var totalSizeBytes = distributionStats.Sum(ds => ds.TotalSizeBytes);
+            var averageFilesPerFolder = activeCacheFolders.Count > 0 ? (double)totalFiles / activeCacheFolders.Count : 0;
+            var averageSizePerFolder = activeCacheFolders.Count > 0 ? (double)totalSizeBytes / activeCacheFolders.Count : 0;
+
+            // Calculate distribution balance (lower is better, 0 is perfect balance)
+            var fileCountVariance = distributionStats.Select(ds => Math.Pow(ds.FileCount - averageFilesPerFolder, 2)).Average();
+            var sizeVariance = distributionStats.Select(ds => Math.Pow(ds.TotalSizeBytes - averageSizePerFolder, 2)).Average();
+            
+            var distributionBalance = new DistributionBalanceDto
+            {
+                FileCountVariance = fileCountVariance,
+                SizeVariance = sizeVariance,
+                FileCountStandardDeviation = Math.Sqrt(fileCountVariance),
+                SizeStandardDeviation = Math.Sqrt(sizeVariance),
+                IsWellBalanced = fileCountVariance < (averageFilesPerFolder * 0.1) && sizeVariance < (averageSizePerFolder * 0.1)
+            };
+
+            return new CacheDistributionStatisticsDto
+            {
+                TotalCacheFolders = activeCacheFolders.Count,
+                TotalFiles = totalFiles,
+                TotalSizeBytes = totalSizeBytes,
+                AverageFilesPerFolder = averageFilesPerFolder,
+                AverageSizePerFolder = averageSizePerFolder,
+                DistributionBalance = distributionBalance,
+                CacheFolderDistributions = distributionStats,
+                GeneratedAt = DateTime.UtcNow
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting cache distribution statistics");
             throw;
         }
     }

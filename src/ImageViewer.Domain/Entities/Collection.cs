@@ -47,7 +47,7 @@ public class Collection : BaseEntity
     // Private constructor for MongoDB
     private Collection() { }
 
-    public Collection(ObjectId libraryId, string name, string path, CollectionType type)
+    public Collection(ObjectId libraryId, string name, string path, CollectionType type, string? createdBy = null, string? createdBySystem = null)
     {
         LibraryId = libraryId;
         Name = name ?? throw new ArgumentNullException(nameof(name));
@@ -60,6 +60,9 @@ public class Collection : BaseEntity
         Statistics = new CollectionStatistics();
         WatchInfo = new WatchInfo();
         SearchIndex = new SearchIndex();
+        
+        // Set creator information
+        SetCreator(createdBy, createdBySystem);
         
         AddDomainEvent(new CollectionCreatedEvent(Id, Name, LibraryId));
     }

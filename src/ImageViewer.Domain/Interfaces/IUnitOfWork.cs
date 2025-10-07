@@ -13,6 +13,7 @@ public interface IUnitOfWork : IDisposable
     IRepository<Tag> Tags { get; }
     IRepository<CollectionTag> CollectionTags { get; }
     IRepository<ImageCacheInfo> ImageCacheInfos { get; }
+    IThumbnailInfoRepository ThumbnailInfo { get; }
     IRepository<CollectionCacheBinding> CollectionCacheBindings { get; }
     IRepository<CollectionStatisticsEntity> CollectionStatistics { get; }
     IRepository<ViewSession> ViewSessions { get; }

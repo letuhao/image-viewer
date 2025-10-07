@@ -83,10 +83,12 @@ builder.Services.AddScoped<IUserContextService, MockUserContextService>();
 // builder.Services.AddScoped<IJwtService, JwtService>(); // Not needed for Worker
 
 // Register RabbitMQ setup service (runs first to create queues)
-builder.Services.AddHostedService<RabbitMQStartupService>();
+builder.Services.AddScoped<RabbitMQSetupService>();
+builder.Services.AddHostedService<RabbitMQStartupHostedService>();
 
 // Register consumers
 builder.Services.AddHostedService<CollectionScanConsumer>();
+builder.Services.AddHostedService<ImageProcessingConsumer>();
 builder.Services.AddHostedService<ThumbnailGenerationConsumer>();
 builder.Services.AddHostedService<CacheGenerationConsumer>();
 builder.Services.AddHostedService<BulkOperationConsumer>();

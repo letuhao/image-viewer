@@ -9,7 +9,7 @@ using MongoDB.Bson;
 namespace ImageViewer.Api.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/v1/[controller]")]
 public class ImagesController : ControllerBase
 {
     private readonly IImageService _imageService;

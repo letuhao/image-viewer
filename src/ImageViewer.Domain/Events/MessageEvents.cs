@@ -16,22 +16,6 @@ public abstract class MessageEvent : IDomainEvent
     public Dictionary<string, object> Properties { get; set; } = new();
 }
 
-/// <summary>
-/// Collection scan message event
-/// </summary>
-public class CollectionScanMessage : MessageEvent
-{
-    public ObjectId CollectionId { get; set; }
-    public string CollectionPath { get; set; } = string.Empty;
-    public CollectionType CollectionType { get; set; }
-    public bool ForceRescan { get; set; } = false;
-    public string? UserId { get; set; }
-
-    public CollectionScanMessage()
-    {
-        MessageType = "CollectionScan";
-    }
-}
 
 /// <summary>
 /// Thumbnail generation message event
@@ -52,24 +36,6 @@ public class ThumbnailGenerationMessage : MessageEvent
     }
 }
 
-/// <summary>
-/// Cache generation message event
-/// </summary>
-public class CacheGenerationMessage : MessageEvent
-{
-    public Guid ImageId { get; set; }
-    public Guid CollectionId { get; set; }
-    public string ImagePath { get; set; } = string.Empty;
-    public string ImageFilename { get; set; } = string.Empty;
-    public int CacheWidth { get; set; }
-    public int CacheHeight { get; set; }
-    public string? UserId { get; set; }
-
-    public CacheGenerationMessage()
-    {
-        MessageType = "CacheGeneration";
-    }
-}
 
 /// <summary>
 /// Collection creation message event
@@ -89,14 +55,23 @@ public class CollectionCreationMessage : MessageEvent
 }
 
 /// <summary>
-/// Bulk operation message event
+/// Enhanced bulk operation message event with job tracking
 /// </summary>
 public class BulkOperationMessage : MessageEvent
 {
-    public string OperationType { get; set; } = string.Empty; // "ScanAll", "GenerateAllThumbnails", "GenerateAllCache"
+    public string OperationType { get; set; } = string.Empty; // "BulkAddCollections", "ScanAll", "GenerateAllThumbnails", "GenerateAllCache"
     public List<Guid> CollectionIds { get; set; } = new();
     public Dictionary<string, object> Parameters { get; set; } = new();
     public string? UserId { get; set; }
+    public ObjectId JobId { get; set; } = ObjectId.Empty; // Link to background job for tracking
+    public ObjectId? ParentJobId { get; set; } // For job hierarchy
+    public List<ObjectId> ChildJobIds { get; set; } = new(); // For tracking child jobs
+    public int Priority { get; set; } = 0; // Job priority (higher = more important)
+    public DateTime? ScheduledFor { get; set; } // For delayed execution
+    public int MaxRetries { get; set; } = 3;
+    public int RetryCount { get; set; } = 0;
+    public TimeSpan? Timeout { get; set; } // Job timeout
+    public Dictionary<string, object> Metadata { get; set; } = new(); // Additional tracking data
 
     public BulkOperationMessage()
     {
@@ -104,21 +79,3 @@ public class BulkOperationMessage : MessageEvent
     }
 }
 
-/// <summary>
-/// Image processing message event
-/// </summary>
-public class ImageProcessingMessage : MessageEvent
-{
-    public Guid ImageId { get; set; }
-    public Guid CollectionId { get; set; }
-    public string ImagePath { get; set; } = string.Empty;
-    public string ImageFilename { get; set; } = string.Empty;
-    public string ProcessingType { get; set; } = string.Empty; // "Thumbnail", "Cache", "Metadata"
-    public Dictionary<string, object> Parameters { get; set; } = new();
-    public string? UserId { get; set; }
-
-    public ImageProcessingMessage()
-    {
-        MessageType = "ImageProcessing";
-    }
-}

@@ -18,8 +18,6 @@ public class CacheFolder : BaseEntity
     public long CurrentSize => CurrentSizeBytes;
     public int Priority { get; private set; }
     public bool IsActive { get; private set; }
-    public new DateTime CreatedAt { get; private set; }
-    public new DateTime UpdatedAt { get; private set; }
 
     // Navigation properties
     private readonly List<CollectionCacheBinding> _bindings = new();
@@ -30,14 +28,11 @@ public class CacheFolder : BaseEntity
 
     public CacheFolder(string name, string path, long maxSizeBytes, int priority = 0)
     {
-        Id = ObjectId.GenerateNewId();
         Name = name ?? throw new ArgumentNullException(nameof(name));
         Path = path ?? throw new ArgumentNullException(nameof(path));
         MaxSizeBytes = maxSizeBytes;
         Priority = priority;
         IsActive = true;
-        CreatedAt = DateTime.UtcNow;
-        UpdatedAt = DateTime.UtcNow;
         CurrentSizeBytes = 0;
     }
 
@@ -47,7 +42,7 @@ public class CacheFolder : BaseEntity
             throw new ArgumentException("Name cannot be null or empty", nameof(name));
 
         Name = name;
-        UpdatedAt = DateTime.UtcNow;
+        UpdateTimestamp();
     }
 
     public void UpdatePath(string path)
@@ -56,7 +51,7 @@ public class CacheFolder : BaseEntity
             throw new ArgumentException("Path cannot be null or empty", nameof(path));
 
         Path = path;
-        UpdatedAt = DateTime.UtcNow;
+        UpdateTimestamp();
     }
 
     public void UpdateMaxSize(long maxSizeBytes)
@@ -65,31 +60,31 @@ public class CacheFolder : BaseEntity
             throw new ArgumentException("Max size cannot be negative", nameof(maxSizeBytes));
 
         MaxSizeBytes = maxSizeBytes;
-        UpdatedAt = DateTime.UtcNow;
+        UpdateTimestamp();
     }
 
     public void UpdatePriority(int priority)
     {
         Priority = priority;
-        UpdatedAt = DateTime.UtcNow;
+        UpdateTimestamp();
     }
 
     public void Activate()
     {
         IsActive = true;
-        UpdatedAt = DateTime.UtcNow;
+        UpdateTimestamp();
     }
 
     public void Deactivate()
     {
         IsActive = false;
-        UpdatedAt = DateTime.UtcNow;
+        UpdateTimestamp();
     }
 
     public void SetActive(bool isActive)
     {
         IsActive = isActive;
-        UpdatedAt = DateTime.UtcNow;
+        UpdateTimestamp();
     }
 
     public void AddSize(long sizeBytes)
@@ -98,7 +93,7 @@ public class CacheFolder : BaseEntity
             throw new ArgumentException("Size cannot be negative", nameof(sizeBytes));
 
         CurrentSizeBytes += sizeBytes;
-        UpdatedAt = DateTime.UtcNow;
+        UpdateTimestamp();
     }
 
     public void RemoveSize(long sizeBytes)
@@ -107,7 +102,7 @@ public class CacheFolder : BaseEntity
             throw new ArgumentException("Size cannot be negative", nameof(sizeBytes));
 
         CurrentSizeBytes = Math.Max(0, CurrentSizeBytes - sizeBytes);
-        UpdatedAt = DateTime.UtcNow;
+        UpdateTimestamp();
     }
 
     public void AddBinding(CollectionCacheBinding binding)
@@ -119,7 +114,7 @@ public class CacheFolder : BaseEntity
             throw new InvalidOperationException($"Collection '{binding.CollectionId}' is already bound to this cache folder");
 
         _bindings.Add(binding);
-        UpdatedAt = DateTime.UtcNow;
+        UpdateTimestamp();
     }
 
     public void RemoveBinding(Guid collectionId)
@@ -129,7 +124,7 @@ public class CacheFolder : BaseEntity
             throw new InvalidOperationException($"Collection '{collectionId}' is not bound to this cache folder");
 
         _bindings.Remove(binding);
-        UpdatedAt = DateTime.UtcNow;
+        UpdateTimestamp();
     }
 
     public bool HasSpace(long requiredBytes)
@@ -150,7 +145,7 @@ public class CacheFolder : BaseEntity
     public void UpdateStatistics(long currentSize, int fileCount)
     {
         CurrentSizeBytes = currentSize;
-        UpdatedAt = DateTime.UtcNow;
+        UpdateTimestamp();
     }
 
     public bool IsFull()

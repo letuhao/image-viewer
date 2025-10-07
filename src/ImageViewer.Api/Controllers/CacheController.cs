@@ -9,7 +9,7 @@ namespace ImageViewer.Api.Controllers;
 /// Cache management controller
 /// </summary>
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/v1/[controller]")]
 public class CacheController : ControllerBase
 {
     private readonly ICacheService _cacheService;
@@ -275,6 +275,26 @@ public class CacheController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error regenerating cache for collection: {CollectionId}", collectionId);
+            return StatusCode(500, "Internal server error");
+        }
+    }
+
+    /// <summary>
+    /// Get cache folder distribution statistics
+    /// </summary>
+    /// <returns>Cache distribution statistics</returns>
+    [HttpGet("distribution")]
+    public async Task<ActionResult<CacheDistributionStatisticsDto>> GetCacheDistributionStatistics()
+    {
+        try
+        {
+            _logger.LogInformation("Getting cache folder distribution statistics");
+            var statistics = await _cacheService.GetCacheDistributionStatisticsAsync();
+            return Ok(statistics);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting cache distribution statistics");
             return StatusCode(500, "Internal server error");
         }
     }

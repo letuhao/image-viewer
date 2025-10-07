@@ -23,6 +23,7 @@ public interface IImageService
     
     Task<byte[]?> GetImageFileAsync(ObjectId id, CancellationToken cancellationToken = default);
     Task<byte[]?> GetThumbnailAsync(ObjectId id, int? width = null, int? height = null, CancellationToken cancellationToken = default);
+    Task<ThumbnailInfo?> GetThumbnailInfoAsync(ObjectId id, int? width = null, int? height = null, CancellationToken cancellationToken = default);
     Task<byte[]?> GetCachedImageAsync(ObjectId id, int? width = null, int? height = null, CancellationToken cancellationToken = default);
     
     Task DeleteAsync(ObjectId id, CancellationToken cancellationToken = default);
@@ -33,5 +34,6 @@ public interface IImageService
     
     Task GenerateThumbnailAsync(ObjectId id, int width, int height, CancellationToken cancellationToken = default);
     Task GenerateCacheAsync(ObjectId id, int width, int height, CancellationToken cancellationToken = default);
+    Task CleanupExpiredThumbnailsAsync(CancellationToken cancellationToken = default);
 }
 

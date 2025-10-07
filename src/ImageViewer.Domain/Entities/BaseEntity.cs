@@ -15,6 +15,12 @@ public abstract class BaseEntity
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
     public bool IsDeleted { get; set; } = false;
+    
+    // Creator/Modifier tracking
+    public string? CreatedBy { get; set; }
+    public string? UpdatedBy { get; set; }
+    public string? CreatedBySystem { get; set; } // Track which system created the record
+    public string? UpdatedBySystem { get; set; } // Track which system updated the record
 
     private readonly List<IDomainEvent> _domainEvents = new();
 
@@ -44,6 +50,27 @@ public abstract class BaseEntity
 
     protected void UpdateTimestamp()
     {
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    /// <summary>
+    /// Set creator information when creating a new entity
+    /// </summary>
+    protected void SetCreator(string? createdBy = null, string? createdBySystem = null)
+    {
+        CreatedBy = createdBy;
+        CreatedBySystem = createdBySystem;
+        CreatedAt = DateTime.UtcNow;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    /// <summary>
+    /// Set modifier information when updating an entity
+    /// </summary>
+    protected void SetModifier(string? updatedBy = null, string? updatedBySystem = null)
+    {
+        UpdatedBy = updatedBy;
+        UpdatedBySystem = updatedBySystem;
         UpdatedAt = DateTime.UtcNow;
     }
 }

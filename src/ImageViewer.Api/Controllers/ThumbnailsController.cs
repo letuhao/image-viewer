@@ -9,7 +9,7 @@ namespace ImageViewer.Api.Controllers;
 /// Thumbnails controller for advanced thumbnail operations
 /// </summary>
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/v1/[controller]")]
 public class ThumbnailsController : ControllerBase
 {
     private readonly IAdvancedThumbnailService _thumbnailService;

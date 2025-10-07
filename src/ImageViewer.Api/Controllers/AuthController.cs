@@ -11,7 +11,7 @@ namespace ImageViewer.Api.Controllers;
 /// Authentication controller
 /// </summary>
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/v1/[controller]")]
 public class AuthController : ControllerBase
 {
     private readonly IJwtService _jwtService;

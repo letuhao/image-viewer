@@ -2,8 +2,10 @@ using ImageViewer.Application.DTOs.BackgroundJobs;
 using ImageViewer.Domain.Entities;
 using ImageViewer.Domain.Enums;
 using ImageViewer.Domain.Interfaces;
+using ImageViewer.Domain.Events;
 using Microsoft.Extensions.Logging;
 using MongoDB.Bson;
+using System.Text.Json;
 
 namespace ImageViewer.Application.Services;
 
@@ -14,15 +16,21 @@ public class BackgroundJobService : IBackgroundJobService
 {
     private readonly IBackgroundJobRepository _backgroundJobRepository;
     private readonly ICollectionRepository _collectionRepository;
+    private readonly IBulkService _bulkService;
+    private readonly IMessageQueueService _messageQueueService; // Added IMessageQueueService
     private readonly ILogger<BackgroundJobService> _logger;
 
     public BackgroundJobService(
         IBackgroundJobRepository backgroundJobRepository,
         ICollectionRepository collectionRepository,
+        IBulkService bulkService,
+        IMessageQueueService messageQueueService, // Added IMessageQueueService to constructor
         ILogger<BackgroundJobService> logger)
     {
         _backgroundJobRepository = backgroundJobRepository;
         _collectionRepository = collectionRepository;
+        _bulkService = bulkService;
+        _messageQueueService = messageQueueService;
         _logger = logger;
     }
 
@@ -260,11 +268,33 @@ public class BackgroundJobService : IBackgroundJobService
 
         _logger.LogInformation("Bulk operation job started: {JobId}", job.Id);
 
+        // Send message to RabbitMQ for background processing
+        var bulkMessage = new BulkOperationMessage
+        {
+            OperationType = dto.OperationType,
+            CollectionIds = dto.TargetIds?.Select(id => Guid.Parse(id.ToString())).ToList() ?? new List<Guid>(),
+            Parameters = dto.Parameters,
+            UserId = null, // TODO: Get from current user context
+            JobId = job.Id, // Link to background job for tracking
+            Priority = 0, // Default priority
+            MaxRetries = 3,
+            Timeout = TimeSpan.FromHours(2) // 2 hour timeout for bulk operations
+        };
+
+        await _messageQueueService.PublishAsync(bulkMessage, "bulk.operation");
+
+        _logger.LogInformation("Bulk operation message sent to RabbitMQ for job: {JobId}", job.Id);
+
         return MapToDto(job);
     }
 
+
     private static BackgroundJobDto MapToDto(BackgroundJob job)
     {
+        var now = DateTime.UtcNow;
+        var duration = job.StartedAt.HasValue ? now - job.StartedAt.Value : (TimeSpan?)null;
+        var estimatedTimeRemaining = CalculateEstimatedTimeRemaining(job, now);
+        
         return new BackgroundJobDto
         {
             JobId = job.Id,
@@ -274,16 +304,156 @@ public class BackgroundJobService : IBackgroundJobService
             {
                 Total = job.TotalItems,
                 Completed = job.CompletedItems,
+                Failed = job.Errors?.Count ?? 0,
+                Skipped = 0, // TODO: Add skipped count to BackgroundJob entity
+                Pending = Math.Max(0, job.TotalItems - job.CompletedItems - (job.Errors?.Count ?? 0)),
                 Percentage = job.TotalItems > 0 ? (double)job.CompletedItems / job.TotalItems * 100 : 0,
                 CurrentItem = job.CurrentItem,
-                Errors = job.Errors?.ToList() ?? new List<string>()
+                CurrentStep = GetCurrentStep(job),
+                Errors = job.Errors?.ToList() ?? new List<string>(),
+                Warnings = new List<string>(), // TODO: Add warnings to BackgroundJob entity
+                ItemCounts = new Dictionary<string, int>
+                {
+                    ["Total"] = job.TotalItems,
+                    ["Completed"] = job.CompletedItems,
+                    ["Failed"] = job.Errors?.Count ?? 0
+                },
+                ItemsPerSecond = CalculateItemsPerSecond(job, duration),
+                EstimatedTimeRemaining = estimatedTimeRemaining
+            },
+            Timing = new JobTimingDto
+            {
+                CreatedAt = job.CreatedAt,
+                StartedAt = job.StartedAt,
+                CompletedAt = job.Status.ToString() == "Completed" ? now : null,
+                Duration = duration,
+                EstimatedDuration = job.EstimatedCompletion.HasValue && job.StartedAt.HasValue 
+                    ? job.EstimatedCompletion.Value - job.StartedAt.Value 
+                    : (TimeSpan?)null,
+                EstimatedTimeRemaining = estimatedTimeRemaining,
+                AverageStepDuration = CalculateAverageStepDuration(job),
+                StepDurations = new Dictionary<string, TimeSpan>() // TODO: Add step tracking
+            },
+            Metrics = new JobMetricsDto
+            {
+                MemoryUsageBytes = GC.GetTotalMemory(false),
+                CpuUsagePercent = 0, // TODO: Add CPU monitoring
+                DiskReadBytes = 0, // TODO: Add disk monitoring
+                DiskWriteBytes = 0, // TODO: Add disk monitoring
+                NetworkRequests = 0, // TODO: Add network monitoring
+                ItemsPerSecond = CalculateItemsPerSecond(job, duration),
+                BytesPerSecond = 0, // TODO: Add byte rate monitoring
+                RetryCount = 0, // TODO: Add retry tracking
+                TimeoutCount = 0, // TODO: Add timeout tracking
+                CustomMetrics = new Dictionary<string, double>()
+            },
+            Health = new JobHealthDto
+            {
+                Status = GetHealthStatus(job),
+                ErrorCount = job.Errors?.Count ?? 0,
+                WarningCount = 0, // TODO: Add warning tracking
+                LastHeartbeat = now,
+                IsStuck = IsJobStuck(job, now),
+                IsTimedOut = IsJobTimedOut(job, now),
+                HealthIssues = GetHealthIssues(job),
+                HealthChecks = new Dictionary<string, object>()
             },
             StartedAt = job.StartedAt,
             EstimatedCompletion = job.EstimatedCompletion,
             Message = job.Message,
             Parameters = job.Parameters != null 
                 ? System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(job.Parameters) ?? new Dictionary<string, object>()
-                : new Dictionary<string, object>()
+                : new Dictionary<string, object>(),
+            Steps = new List<JobStepDto>(), // TODO: Add step tracking
+            Dependencies = new JobDependenciesDto
+            {
+                DependsOn = new List<ObjectId>(),
+                Blocks = new List<ObjectId>(),
+                ChildJobs = new List<ObjectId>(),
+                ParentJob = null,
+                DependencyLevel = 0,
+                CanStart = true,
+                BlockingReasons = new List<string>()
+            }
         };
+    }
+
+    private static TimeSpan CalculateEstimatedTimeRemaining(BackgroundJob job, DateTime now)
+    {
+        if (!job.StartedAt.HasValue || job.TotalItems <= 0 || job.CompletedItems <= 0)
+            return TimeSpan.Zero;
+
+        var elapsed = now - job.StartedAt.Value;
+        var itemsPerSecond = job.CompletedItems / elapsed.TotalSeconds;
+        var remainingItems = job.TotalItems - job.CompletedItems;
+        
+        return TimeSpan.FromSeconds(remainingItems / itemsPerSecond);
+    }
+
+    private static double CalculateItemsPerSecond(BackgroundJob job, TimeSpan? duration)
+    {
+        if (!duration.HasValue || duration.Value.TotalSeconds <= 0 || job.CompletedItems <= 0)
+            return 0;
+
+        return job.CompletedItems / duration.Value.TotalSeconds;
+    }
+
+    private static double CalculateAverageStepDuration(BackgroundJob job)
+    {
+        // TODO: Implement step duration calculation
+        return 0;
+    }
+
+    private static string GetCurrentStep(BackgroundJob job)
+    {
+        // TODO: Implement current step tracking
+        return "Processing";
+    }
+
+    private static string GetHealthStatus(BackgroundJob job)
+    {
+        if (job.Status.ToString() == "Failed")
+            return "Failed";
+        
+        if (job.Errors?.Count > 0)
+            return "Warning";
+        
+        return "Healthy";
+    }
+
+    private static bool IsJobStuck(BackgroundJob job, DateTime now)
+    {
+        if (!job.StartedAt.HasValue || job.Status.ToString() != "Running")
+            return false;
+
+        // Consider job stuck if it's been running for more than 1 hour without progress
+        var runningTime = now - job.StartedAt.Value;
+        return runningTime > TimeSpan.FromHours(1);
+    }
+
+    private static bool IsJobTimedOut(BackgroundJob job, DateTime now)
+    {
+        if (!job.StartedAt.HasValue)
+            return false;
+
+        // Consider job timed out if it's been running for more than 2 hours
+        var runningTime = now - job.StartedAt.Value;
+        return runningTime > TimeSpan.FromHours(2);
+    }
+
+    private static List<string> GetHealthIssues(BackgroundJob job)
+    {
+        var issues = new List<string>();
+        
+        if (job.Errors?.Count > 0)
+            issues.Add($"Has {job.Errors.Count} errors");
+        
+        if (IsJobStuck(job, DateTime.UtcNow))
+            issues.Add("Job appears to be stuck");
+        
+        if (IsJobTimedOut(job, DateTime.UtcNow))
+            issues.Add("Job has timed out");
+        
+        return issues;
     }
 }

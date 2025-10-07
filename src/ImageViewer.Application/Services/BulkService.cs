@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using ImageViewer.Domain.Entities;
 using ImageViewer.Domain.Enums;
+using ImageViewer.Domain.Exceptions;
 using ImageViewer.Domain.ValueObjects;
 using MongoDB.Bson;
 
@@ -91,7 +92,18 @@ public class BulkService : IBulkService
     {
         // Normalize path for comparison
         var normalizedPath = Path.GetFullPath(potential.Path).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-        var existingCollection = await _collectionService.GetCollectionByPathAsync(normalizedPath);
+        
+        // Try to get existing collection, but don't throw if not found
+        Collection? existingCollection = null;
+        try
+        {
+            existingCollection = await _collectionService.GetCollectionByPathAsync(normalizedPath);
+        }
+        catch (EntityNotFoundException)
+        {
+            // Collection doesn't exist, which is fine - we'll create a new one
+            existingCollection = null;
+        }
         
         Collection collection;
         bool wasOverwritten = false;
@@ -106,7 +118,6 @@ public class BulkService : IBulkService
                 _logger.LogInformation("Overwriting existing collection {Name} at {Path}", potential.Name, potential.Path);
                 
                 // Update existing collection
-                var settings = CreateCollectionSettings(request);
                 var updateRequest = new UpdateCollectionRequest
                 {
                     Name = potential.Name,
@@ -114,8 +125,23 @@ public class BulkService : IBulkService
                 };
                 collection = await _collectionService.UpdateCollectionAsync(existingCollection.Id, updateRequest);
                 
+                // Apply collection settings
+                var settings = CreateCollectionSettings(request);
+                var settingsRequest = new UpdateCollectionSettingsRequest
+                {
+                    AutoScan = settings.AutoScan,
+                    GenerateThumbnails = settings.GenerateThumbnails,
+                    GenerateCache = settings.GenerateCache,
+                    EnableWatching = settings.EnableWatching,
+                    ScanInterval = settings.ScanInterval,
+                    MaxFileSize = settings.MaxFileSize,
+                    AllowedFormats = settings.AllowedFormats?.ToList(),
+                    ExcludedPaths = settings.ExcludedPaths?.ToList()
+                };
+                collection = await _collectionService.UpdateSettingsAsync(collection.Id, settingsRequest);
+                
                 wasOverwritten = true;
-                _logger.LogInformation("Successfully updated existing collection {Name} with ID {CollectionId}", 
+                _logger.LogInformation("Successfully updated existing collection {Name} with ID {CollectionId} and applied settings", 
                     potential.Name, collection.Id);
             }
             else
@@ -135,15 +161,31 @@ public class BulkService : IBulkService
         }
         else
         {
-            // Create new collection
-            var settings = CreateCollectionSettings(request);
+            // Create new collection with creator tracking
             collection = await _collectionService.CreateCollectionAsync(
-                ObjectId.Empty, // LibraryId - needs to be provided
+                ObjectId.Empty, // LibraryId - using Empty for now, should be provided by caller
                 potential.Name,
                 normalizedPath,
-                potential.Type);
+                potential.Type,
+                createdBy: "BulkService",
+                createdBySystem: "ImageViewer.Worker");
             
-            _logger.LogInformation("Successfully created new collection {Name} with ID {CollectionId}", 
+            // Apply collection settings after creation
+            var settings = CreateCollectionSettings(request);
+            var settingsRequest = new UpdateCollectionSettingsRequest
+            {
+                AutoScan = settings.AutoScan,
+                GenerateThumbnails = settings.GenerateThumbnails,
+                GenerateCache = settings.GenerateCache,
+                EnableWatching = settings.EnableWatching,
+                ScanInterval = settings.ScanInterval,
+                MaxFileSize = settings.MaxFileSize,
+                AllowedFormats = settings.AllowedFormats?.ToList(),
+                ExcludedPaths = settings.ExcludedPaths?.ToList()
+            };
+            collection = await _collectionService.UpdateSettingsAsync(collection.Id, settingsRequest);
+            
+            _logger.LogInformation("Successfully created new collection {Name} with ID {CollectionId} and applied settings", 
                 potential.Name, collection.Id);
         }
         

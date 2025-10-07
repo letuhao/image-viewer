@@ -40,6 +40,79 @@ public static class ServiceCollectionExtensions
             return client.GetDatabase(options.DatabaseName);
         });
 
+        // Register MongoDB collections
+        services.AddScoped<IMongoCollection<Library>>(provider =>
+        {
+            var database = provider.GetRequiredService<IMongoDatabase>();
+            return database.GetCollection<Library>("libraries");
+        });
+        
+        services.AddScoped<IMongoCollection<Collection>>(provider =>
+        {
+            var database = provider.GetRequiredService<IMongoDatabase>();
+            return database.GetCollection<Collection>("collections");
+        });
+        
+        services.AddScoped<IMongoCollection<MediaItem>>(provider =>
+        {
+            var database = provider.GetRequiredService<IMongoDatabase>();
+            return database.GetCollection<MediaItem>("media_items");
+        });
+        
+        services.AddScoped<IMongoCollection<Image>>(provider =>
+        {
+            var database = provider.GetRequiredService<IMongoDatabase>();
+            return database.GetCollection<Image>("images");
+        });
+        
+        services.AddScoped<IMongoCollection<ImageCacheInfo>>(provider =>
+        {
+            var database = provider.GetRequiredService<IMongoDatabase>();
+            return database.GetCollection<ImageCacheInfo>("image_cache_info");
+        });
+        
+        services.AddScoped<IMongoCollection<User>>(provider =>
+        {
+            var database = provider.GetRequiredService<IMongoDatabase>();
+            return database.GetCollection<User>("users");
+        });
+        
+        services.AddScoped<IMongoCollection<RefreshToken>>(provider =>
+        {
+            var database = provider.GetRequiredService<IMongoDatabase>();
+            return database.GetCollection<RefreshToken>("refresh_tokens");
+        });
+        
+        services.AddScoped<IMongoCollection<Session>>(provider =>
+        {
+            var database = provider.GetRequiredService<IMongoDatabase>();
+            return database.GetCollection<Session>("sessions");
+        });
+        
+        services.AddScoped<IMongoCollection<ImageViewer.Domain.Entities.Tag>>(provider =>
+        {
+            var database = provider.GetRequiredService<IMongoDatabase>();
+            return database.GetCollection<ImageViewer.Domain.Entities.Tag>("tags");
+        });
+        
+        services.AddScoped<IMongoCollection<CacheFolder>>(provider =>
+        {
+            var database = provider.GetRequiredService<IMongoDatabase>();
+            return database.GetCollection<CacheFolder>("cache_folders");
+        });
+        
+        services.AddScoped<IMongoCollection<BackgroundJob>>(provider =>
+        {
+            var database = provider.GetRequiredService<IMongoDatabase>();
+            return database.GetCollection<BackgroundJob>("background_jobs");
+        });
+        
+        services.AddScoped<IMongoCollection<ViewSession>>(provider =>
+        {
+            var database = provider.GetRequiredService<IMongoDatabase>();
+            return database.GetCollection<ViewSession>("view_sessions");
+        });
+
         // Register MongoDB context
         services.AddScoped<MongoDbContext>(provider =>
         {
@@ -58,7 +131,9 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ITagRepository, MongoTagRepository>();
         services.AddScoped<ICollectionTagRepository, MongoCollectionTagRepository>();
         services.AddScoped<ICacheFolderRepository, MongoCacheFolderRepository>();
+        services.AddScoped<ICacheInfoRepository, MongoCacheInfoRepository>();
         services.AddScoped<IImageCacheInfoRepository, MongoImageCacheInfoRepository>();
+        services.AddScoped<IThumbnailInfoRepository, MongoThumbnailInfoRepository>();
         services.AddScoped<IViewSessionRepository, MongoViewSessionRepository>();
         services.AddScoped<IBackgroundJobRepository, MongoBackgroundJobRepository>();
         services.AddScoped<ICollectionStatisticsRepository, MongoCollectionStatisticsRepository>();

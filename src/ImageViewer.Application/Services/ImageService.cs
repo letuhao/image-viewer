@@ -267,6 +267,59 @@ public class ImageService : IImageService
         }
     }
 
+    public async Task<ThumbnailInfo?> GetThumbnailInfoAsync(ObjectId id, int? width = null, int? height = null, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            _logger.LogDebug("Getting thumbnail info for {ImageId} with size {Width}x{Height}", id, width, height);
+
+            var image = await _unitOfWork.Images.GetByIdAsync(id);
+            if (image == null)
+            {
+                _logger.LogWarning("Image {ImageId} not found", id);
+                return null;
+            }
+
+            var thumbnailWidth = width ?? _sizeOptions.ThumbnailWidth;
+            var thumbnailHeight = height ?? _sizeOptions.ThumbnailHeight;
+
+            // Try to get existing thumbnail info from database
+            var thumbnailInfo = await _unitOfWork.ThumbnailInfo.GetByImageIdAndDimensionsAsync(id, thumbnailWidth, thumbnailHeight, cancellationToken);
+            
+            if (thumbnailInfo != null && !thumbnailInfo.IsExpired())
+            {
+                try
+                {
+                    if (File.Exists(thumbnailInfo.ThumbnailPath))
+                    {
+                        _logger.LogDebug("Found existing thumbnail info for {ImageId}", id);
+                        return thumbnailInfo;
+                    }
+                    else
+                    {
+                        _logger.LogWarning("Thumbnail file not found at path {ThumbnailPath} for image {ImageId}", 
+                            thumbnailInfo.ThumbnailPath, id);
+                        // Mark as invalid since file doesn't exist
+                        thumbnailInfo.MarkAsInvalid();
+                        await _unitOfWork.ThumbnailInfo.UpdateAsync(thumbnailInfo);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error checking thumbnail file existence for {ImageId}", id);
+                }
+            }
+
+            _logger.LogDebug("No valid thumbnail info found for {ImageId}, thumbnail may need to be generated", id);
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting thumbnail info for {ImageId}", id);
+            throw;
+        }
+    }
+
     public async Task<byte[]?> GetCachedImageAsync(ObjectId id, int? width = null, int? height = null, CancellationToken cancellationToken = default)
     {
         try
@@ -472,6 +525,54 @@ public class ImageService : IImageService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error generating cache for image {ImageId}", id);
+            throw;
+        }
+    }
+
+    public async Task CleanupExpiredThumbnailsAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            _logger.LogInformation("Starting cleanup of expired thumbnails");
+
+            // Get expired thumbnails
+            var expiredThumbnails = await _unitOfWork.ThumbnailInfo.GetExpiredThumbnailsAsync(cancellationToken);
+            var expiredList = expiredThumbnails.ToList();
+            
+            _logger.LogInformation("Found {Count} expired thumbnails to cleanup", expiredList.Count);
+
+            int deletedCount = 0;
+            int errorCount = 0;
+
+            foreach (var thumbnail in expiredList)
+            {
+                try
+                {
+                    // Delete the physical file if it exists
+                    if (File.Exists(thumbnail.ThumbnailPath))
+                    {
+                        File.Delete(thumbnail.ThumbnailPath);
+                        _logger.LogDebug("Deleted thumbnail file: {ThumbnailPath}", thumbnail.ThumbnailPath);
+                    }
+
+                    // Mark as deleted in database
+                    await _unitOfWork.ThumbnailInfo.DeleteExpiredThumbnailsAsync(cancellationToken);
+                    deletedCount++;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error deleting expired thumbnail {ThumbnailId} at path {ThumbnailPath}", 
+                        thumbnail.Id, thumbnail.ThumbnailPath);
+                    errorCount++;
+                }
+            }
+
+            _logger.LogInformation("Thumbnail cleanup completed. Deleted: {DeletedCount}, Errors: {ErrorCount}", 
+                deletedCount, errorCount);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during thumbnail cleanup");
             throw;
         }
     }

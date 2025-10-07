@@ -78,4 +78,9 @@ public interface ICacheService
     /// Cleanup old cache entries
     /// </summary>
     Task CleanupOldCacheAsync(DateTime cutoffDate);
+
+    /// <summary>
+    /// Get cache folder distribution statistics to monitor equal distribution
+    /// </summary>
+    Task<CacheDistributionStatisticsDto> GetCacheDistributionStatisticsAsync();
 }

@@ -213,10 +213,10 @@ public class SecurityController : ControllerBase
 
 
     /// <summary>
-    /// Logout user
+    /// Logout user by token
     /// </summary>
-    [HttpPost("logout")]
-    public async Task<IActionResult> Logout([FromQuery] string? token = null)
+    [HttpPost("logout-by-token")]
+    public async Task<IActionResult> LogoutByToken([FromQuery] string? token = null)
     {
         try
         {

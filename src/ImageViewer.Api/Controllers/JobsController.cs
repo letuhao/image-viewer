@@ -9,7 +9,7 @@ namespace ImageViewer.Api.Controllers;
 /// Background jobs management controller
 /// </summary>
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/v1/[controller]")]
 public class JobsController : ControllerBase
 {
     private readonly IBackgroundJobService _backgroundJobService;

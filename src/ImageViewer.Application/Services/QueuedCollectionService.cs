@@ -106,7 +106,7 @@ public class QueuedCollectionService : ICollectionService
 
     public async Task<Collection> CreateAsync(string name, string path, CollectionType type, CollectionSettings settings, CancellationToken cancellationToken = default)
     {
-        var collection = await _collectionService.CreateCollectionAsync(ObjectId.Empty, name, path, type);
+        var collection = await _collectionService.CreateCollectionAsync(ObjectId.Empty, name, path, type, createdBy: "QueuedCollectionService", createdBySystem: "ImageViewer.API");
         
         // Queue collection scan if auto-scan is enabled
         if (settings?.AutoGenerateCache == true)
@@ -358,9 +358,9 @@ public class QueuedCollectionService : ICollectionService
 
     #region ICollectionService Implementation
 
-    public async Task<Collection> CreateCollectionAsync(ObjectId libraryId, string name, string path, CollectionType type)
+    public async Task<Collection> CreateCollectionAsync(ObjectId libraryId, string name, string path, CollectionType type, string? createdBy = null, string? createdBySystem = null)
     {
-        return await _collectionService.CreateCollectionAsync(libraryId, name, path, type);
+        return await _collectionService.CreateCollectionAsync(libraryId, name, path, type, createdBy, createdBySystem);
     }
 
     public async Task<Collection?> GetCollectionByIdAsync(ObjectId id)
