@@ -222,8 +222,8 @@ public class CacheService : ICacheService
         foreach (var image in images)
         {
             image.ClearCacheInfo();
+            await _imageRepository.UpdateAsync(image);
         }
-
 
         _logger.LogInformation("Cache cleared for collection: {CollectionId}", collectionId);
     }
@@ -236,8 +236,8 @@ public class CacheService : ICacheService
         foreach (var image in images)
         {
             image.ClearCacheInfo();
+            await _imageRepository.UpdateAsync(image);
         }
-
 
         _logger.LogInformation("All cache cleared");
     }

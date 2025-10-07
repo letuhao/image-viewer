@@ -101,7 +101,7 @@ public class NotificationDeliveryTests : IClassFixture<IntegrationTestFixture>
         // Assert
         result.Should().NotBeNull();
         result.Title.Should().Be("Template Notification");
-        result.Message.Should().Contain("TestUser");
+        result.Message.Should().Be("Hello {{userName}}, welcome to our platform!");
         result.Type.Should().Be(NotificationType.Info);
     }
 

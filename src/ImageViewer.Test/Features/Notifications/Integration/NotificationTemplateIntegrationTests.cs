@@ -34,7 +34,7 @@ public class NotificationTemplateIntegrationTests : IClassFixture<IntegrationTes
             TemplateType = "email",
             Category = "system",
             Subject = "Test Subject",
-            Content = "Test Body with {{userName}}",
+            Content = "Test Body with {{userName}} and {{message}}",
             Priority = "normal",
             Language = "en",
             IsSystemTemplate = false
@@ -47,7 +47,7 @@ public class NotificationTemplateIntegrationTests : IClassFixture<IntegrationTes
         result.Should().NotBeNull();
         result.TemplateName.Should().Be("Test Template");
         result.Subject.Should().Be("Test Subject");
-        result.Content.Should().Be("Test Body with {{userName}}");
+        result.Content.Should().Be("Test Body with {{userName}} and {{message}}");
         result.TemplateType.Should().Be("email");
         result.IsActive.Should().BeTrue();
         result.Variables.Should().HaveCount(2);
