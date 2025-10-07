@@ -27,7 +27,7 @@ public class UserPreferencesTests : IClassFixture<IntegrationTestFixture>
     {
         // Arrange
         await _fixture.CleanupTestDataAsync();
-        var userId = ObjectId.GenerateNewId();
+        var userId = _fixture.TestUserId;
         var request = new UpdateUserPreferencesRequest
         {
             Display = new DisplayPreferences
@@ -55,7 +55,7 @@ public class UserPreferencesTests : IClassFixture<IntegrationTestFixture>
     {
         // Arrange
         await _fixture.CleanupTestDataAsync();
-        var userId = ObjectId.GenerateNewId();
+        var userId = _fixture.TestUserId;
 
         // Act
         var result = await _userPreferencesService.GetUserPreferencesAsync(userId);
@@ -95,7 +95,7 @@ public class UserPreferencesTests : IClassFixture<IntegrationTestFixture>
     {
         // Arrange
         await _fixture.CleanupTestDataAsync();
-        var userId = ObjectId.GenerateNewId();
+        var userId = _fixture.TestUserId;
 
         // Act
         var result = await _userPreferencesService.GetUserPreferencesAsync(userId);
@@ -116,7 +116,7 @@ public class UserPreferencesTests : IClassFixture<IntegrationTestFixture>
     {
         // Arrange
         await _fixture.CleanupTestDataAsync();
-        var userId = ObjectId.GenerateNewId();
+        var userId = _fixture.TestUserId;
 
         // Act
         var result = await _userPreferencesService.ResetUserPreferencesAsync(userId);
@@ -134,7 +134,7 @@ public class UserPreferencesTests : IClassFixture<IntegrationTestFixture>
     {
         // Arrange
         await _fixture.CleanupTestDataAsync();
-        var userId = ObjectId.GenerateNewId();
+        var userId = _fixture.TestUserId;
         var request = new UpdateDisplayPreferencesRequest
         {
             DisplayMode = DisplayMode.Card,
@@ -161,7 +161,7 @@ public class UserPreferencesTests : IClassFixture<IntegrationTestFixture>
     {
         // Arrange
         await _fixture.CleanupTestDataAsync();
-        var userId = ObjectId.GenerateNewId();
+        var userId = _fixture.TestUserId;
         var request = new UpdatePrivacyPreferencesRequest
         {
             ProfilePublic = true,
@@ -186,7 +186,7 @@ public class UserPreferencesTests : IClassFixture<IntegrationTestFixture>
     {
         // Arrange
         await _fixture.CleanupTestDataAsync();
-        var userId = ObjectId.GenerateNewId();
+        var userId = _fixture.TestUserId;
         var request = new UpdatePerformancePreferencesRequest
         {
             CacheSize = 200,

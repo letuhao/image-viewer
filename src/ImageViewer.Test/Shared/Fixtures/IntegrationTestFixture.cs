@@ -15,11 +15,13 @@ namespace ImageViewer.Test.Shared.Fixtures;
 /// <summary>
 /// Base integration test fixture for setting up test environment without Docker
 /// </summary>
-public class IntegrationTestFixture : IAsyncLifetime
-{
-    private IServiceProvider _serviceProvider = null!;
+    public class IntegrationTestFixture : IAsyncLifetime
+    {
+        private IServiceProvider _serviceProvider = null!;
+        private readonly ObjectId _testUserId = ObjectId.Parse("507f1f77bcf86cd799439011");
 
-    public IServiceProvider ServiceProvider => _serviceProvider;
+        public IServiceProvider ServiceProvider => _serviceProvider;
+        public ObjectId TestUserId => _testUserId;
 
     public async Task InitializeAsync()
     {
@@ -333,8 +335,11 @@ public class IntegrationTestFixture : IAsyncLifetime
            {
                var users = new List<User>();
                
-               // Create a test user
+               // Create a test user with a fixed ID for testing
                var testUser = new User("testuser", "test@example.com", "Test User", "hashedpassword");
+               // Use reflection to set the ID since it's read-only
+               var idProperty = typeof(User).GetProperty("Id");
+               idProperty?.SetValue(testUser, _testUserId);
                users.Add(testUser);
                
                return users;

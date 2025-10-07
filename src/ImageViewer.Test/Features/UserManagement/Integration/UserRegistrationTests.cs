@@ -49,7 +49,7 @@ public class UserRegistrationTests : IClassFixture<IntegrationTestFixture>
     {
         // Arrange
         await _fixture.CleanupTestDataAsync();
-        var userId = ObjectId.GenerateNewId();
+        var userId = _fixture.TestUserId;
 
         // Act
         var result = await _userService.GetUserByIdAsync(userId);
@@ -98,7 +98,7 @@ public class UserRegistrationTests : IClassFixture<IntegrationTestFixture>
     {
         // Arrange
         await _fixture.CleanupTestDataAsync();
-        var userId = ObjectId.GenerateNewId();
+        var userId = _fixture.TestUserId;
         var request = new UpdateUserRequest
         {
             Username = "updateduser",
@@ -121,7 +121,7 @@ public class UserRegistrationTests : IClassFixture<IntegrationTestFixture>
     {
         // Arrange
         await _fixture.CleanupTestDataAsync();
-        var userId = ObjectId.GenerateNewId();
+        var userId = _fixture.TestUserId;
         var request = new UpdateProfileRequest
         {
             FirstName = "John",
@@ -156,7 +156,7 @@ public class UserRegistrationTests : IClassFixture<IntegrationTestFixture>
     {
         // Arrange
         await _fixture.CleanupTestDataAsync();
-        var userId = ObjectId.GenerateNewId();
+        var userId = _fixture.TestUserId;
         var request = new UpdateSettingsRequest
         {
             DisplayMode = "grid",
@@ -185,7 +185,7 @@ public class UserRegistrationTests : IClassFixture<IntegrationTestFixture>
     {
         // Arrange
         await _fixture.CleanupTestDataAsync();
-        var userId = ObjectId.GenerateNewId();
+        var userId = _fixture.TestUserId;
         var request = new UpdateSecurityRequest
         {
             TwoFactorEnabled = true,
@@ -213,7 +213,7 @@ public class UserRegistrationTests : IClassFixture<IntegrationTestFixture>
     {
         // Arrange
         await _fixture.CleanupTestDataAsync();
-        var userId = ObjectId.GenerateNewId();
+        var userId = _fixture.TestUserId;
 
         // Act
         var result = await _userService.ActivateUserAsync(userId);
@@ -230,7 +230,7 @@ public class UserRegistrationTests : IClassFixture<IntegrationTestFixture>
     {
         // Arrange
         await _fixture.CleanupTestDataAsync();
-        var userId = ObjectId.GenerateNewId();
+        var userId = _fixture.TestUserId;
 
         // Act
         var result = await _userService.DeactivateUserAsync(userId);
@@ -247,7 +247,7 @@ public class UserRegistrationTests : IClassFixture<IntegrationTestFixture>
     {
         // Arrange
         await _fixture.CleanupTestDataAsync();
-        var userId = ObjectId.GenerateNewId();
+        var userId = _fixture.TestUserId;
 
         // Act
         var result = await _userService.VerifyEmailAsync(userId);
@@ -355,7 +355,7 @@ public class UserRegistrationTests : IClassFixture<IntegrationTestFixture>
     {
         // Arrange
         await _fixture.CleanupTestDataAsync();
-        var userId = ObjectId.GenerateNewId();
+        var userId = _fixture.TestUserId;
 
         // Act
         await _userService.DeleteUserAsync(userId);

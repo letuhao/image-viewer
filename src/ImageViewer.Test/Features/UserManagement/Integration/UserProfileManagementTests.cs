@@ -30,7 +30,7 @@ public class UserProfileManagementTests : IClassFixture<IntegrationTestFixture>
         await _fixture.CleanupTestDataAsync();
         var request = new CreateUserProfileRequest
         {
-            UserId = ObjectId.GenerateNewId(),
+            UserId = _fixture.TestUserId,
             FirstName = "John",
             LastName = "Doe",
             DisplayName = "John Doe",
@@ -67,7 +67,7 @@ public class UserProfileManagementTests : IClassFixture<IntegrationTestFixture>
     {
         // Arrange
         await _fixture.CleanupTestDataAsync();
-        var userId = ObjectId.GenerateNewId();
+        var userId = _fixture.TestUserId;
 
         // Act
         var result = await _userProfileService.GetProfileAsync(userId);
@@ -84,7 +84,7 @@ public class UserProfileManagementTests : IClassFixture<IntegrationTestFixture>
     {
         // Arrange
         await _fixture.CleanupTestDataAsync();
-        var userId = ObjectId.GenerateNewId();
+        var userId = _fixture.TestUserId;
         var request = new UpdateUserProfileRequest
         {
             FirstName = "Jane",
@@ -123,7 +123,7 @@ public class UserProfileManagementTests : IClassFixture<IntegrationTestFixture>
     {
         // Arrange
         await _fixture.CleanupTestDataAsync();
-        var userId = ObjectId.GenerateNewId();
+        var userId = _fixture.TestUserId;
 
         // Act
         var result = await _userProfileService.DeleteProfileAsync(userId);
@@ -160,7 +160,7 @@ public class UserProfileManagementTests : IClassFixture<IntegrationTestFixture>
     {
         // Arrange
         await _fixture.CleanupTestDataAsync();
-        var userId = ObjectId.GenerateNewId();
+        var userId = _fixture.TestUserId;
         var settings = new UserProfilePrivacySettings
         {
             UserId = userId,
@@ -195,7 +195,7 @@ public class UserProfileManagementTests : IClassFixture<IntegrationTestFixture>
     {
         // Arrange
         await _fixture.CleanupTestDataAsync();
-        var userId = ObjectId.GenerateNewId();
+        var userId = _fixture.TestUserId;
         var settings = new UserProfileCustomizationSettings
         {
             UserId = userId,
@@ -234,7 +234,7 @@ public class UserProfileManagementTests : IClassFixture<IntegrationTestFixture>
     {
         // Arrange
         await _fixture.CleanupTestDataAsync();
-        var userId = ObjectId.GenerateNewId();
+        var userId = _fixture.TestUserId;
 
         // Act
         var result = await _userProfileService.GetProfileStatisticsAsync(userId);
