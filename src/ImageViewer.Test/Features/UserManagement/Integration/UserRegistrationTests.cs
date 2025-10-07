@@ -28,8 +28,8 @@ public class UserRegistrationTests : IClassFixture<IntegrationTestFixture>
     {
         // Arrange
         await _fixture.CleanupTestDataAsync();
-        var username = "testuser";
-        var email = "test@example.com";
+        var username = "newuser"; // Use different username to avoid conflict with test user
+        var email = "newuser@example.com"; // Use different email to avoid conflict
         var passwordHash = "hashedpassword123";
 
         // Act

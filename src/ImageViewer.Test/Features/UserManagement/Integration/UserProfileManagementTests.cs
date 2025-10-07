@@ -85,6 +85,25 @@ public class UserProfileManagementTests : IClassFixture<IntegrationTestFixture>
         // Arrange
         await _fixture.CleanupTestDataAsync();
         var userId = _fixture.TestUserId;
+        
+        // First create a profile
+        var createRequest = new CreateUserProfileRequest
+        {
+            UserId = userId,
+            FirstName = "John",
+            LastName = "Doe",
+            DisplayName = "John Doe",
+            Bio = "Original bio",
+            Location = "New York, NY",
+            Website = "https://johndoe.com",
+            Language = "en",
+            Timezone = "America/New_York",
+            IsPublic = true,
+            Tags = new List<string> { "photography", "travel" }
+        };
+        await _userProfileService.CreateProfileAsync(createRequest);
+        
+        // Now update the profile
         var request = new UpdateUserProfileRequest
         {
             FirstName = "Jane",
@@ -124,6 +143,23 @@ public class UserProfileManagementTests : IClassFixture<IntegrationTestFixture>
         // Arrange
         await _fixture.CleanupTestDataAsync();
         var userId = _fixture.TestUserId;
+        
+        // First create a profile
+        var createRequest = new CreateUserProfileRequest
+        {
+            UserId = userId,
+            FirstName = "John",
+            LastName = "Doe",
+            DisplayName = "John Doe",
+            Bio = "Test bio",
+            Location = "New York, NY",
+            Website = "https://johndoe.com",
+            Language = "en",
+            Timezone = "America/New_York",
+            IsPublic = true,
+            Tags = new List<string> { "photography", "travel" }
+        };
+        await _userProfileService.CreateProfileAsync(createRequest);
 
         // Act
         var result = await _userProfileService.DeleteProfileAsync(userId);

@@ -163,6 +163,12 @@ public class User : BaseEntity
     public void UpdateSecurity(UserSecuritySettings newSecurity)
     {
         Security = newSecurity ?? throw new ArgumentNullException(nameof(newSecurity));
+        
+        // Update the user's security properties to match the security settings
+        TwoFactorEnabled = newSecurity.TwoFactorEnabled;
+        TwoFactorSecret = newSecurity.TwoFactorSecret;
+        BackupCodes = newSecurity.BackupCodes;
+        
         UpdateTimestamp();
         
         AddDomainEvent(new UserSecurityUpdatedEvent(Id));
