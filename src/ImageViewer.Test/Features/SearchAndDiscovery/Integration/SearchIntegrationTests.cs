@@ -28,7 +28,7 @@ public class SearchIntegrationTests : IClassFixture<IntegrationTestFixture>
         await _fixture.CleanupTestDataAsync();
         var request = new CreateNotificationRequest
         {
-            UserId = ObjectId.GenerateNewId(),
+            UserId = _fixture.TestUserId,
             Title = "Search Notification",
             Message = "Search completed successfully",
             Type = NotificationType.Info,
@@ -53,7 +53,7 @@ public class SearchIntegrationTests : IClassFixture<IntegrationTestFixture>
         await _fixture.CleanupTestDataAsync();
         var request = new CreateNotificationRequest
         {
-            UserId = ObjectId.GenerateNewId(),
+            UserId = _fixture.TestUserId,
             Title = "Library Search Notification",
             Message = "Library search completed successfully",
             Type = NotificationType.Info,
@@ -76,7 +76,7 @@ public class SearchIntegrationTests : IClassFixture<IntegrationTestFixture>
         await _fixture.CleanupTestDataAsync();
         var request = new CreateNotificationRequest
         {
-            UserId = ObjectId.GenerateNewId(),
+            UserId = _fixture.TestUserId,
             Title = "Collection Search Notification",
             Message = "Collection search completed successfully",
             Type = NotificationType.Info,
@@ -99,7 +99,7 @@ public class SearchIntegrationTests : IClassFixture<IntegrationTestFixture>
         await _fixture.CleanupTestDataAsync();
         var request = new CreateNotificationRequest
         {
-            UserId = ObjectId.GenerateNewId(),
+            UserId = _fixture.TestUserId,
             Title = "Media Search Notification",
             Message = "Media search completed successfully",
             Type = NotificationType.Info,
@@ -122,7 +122,7 @@ public class SearchIntegrationTests : IClassFixture<IntegrationTestFixture>
         await _fixture.CleanupTestDataAsync();
         var request = new CreateNotificationRequest
         {
-            UserId = ObjectId.GenerateNewId(),
+            UserId = _fixture.TestUserId,
             Title = "Filtered Search Notification",
             Message = "Filtered search completed successfully",
             Type = NotificationType.Info,
@@ -145,7 +145,7 @@ public class SearchIntegrationTests : IClassFixture<IntegrationTestFixture>
         await _fixture.CleanupTestDataAsync();
         var request = new CreateNotificationRequest
         {
-            UserId = ObjectId.GenerateNewId(),
+            UserId = _fixture.TestUserId,
             Title = "Sorted Search Notification",
             Message = "Sorted search completed successfully",
             Type = NotificationType.Info,
@@ -168,7 +168,7 @@ public class SearchIntegrationTests : IClassFixture<IntegrationTestFixture>
         await _fixture.CleanupTestDataAsync();
         var request = new CreateNotificationRequest
         {
-            UserId = ObjectId.GenerateNewId(),
+            UserId = _fixture.TestUserId,
             Title = "Paginated Search Notification",
             Message = "Paginated search completed successfully",
             Type = NotificationType.Info,
@@ -191,7 +191,7 @@ public class SearchIntegrationTests : IClassFixture<IntegrationTestFixture>
         await _fixture.CleanupTestDataAsync();
         var request = new CreateNotificationRequest
         {
-            UserId = ObjectId.GenerateNewId(),
+            UserId = _fixture.TestUserId,
             Title = "Tag Search Notification",
             Message = "Tag search completed successfully",
             Type = NotificationType.Info,
@@ -214,7 +214,7 @@ public class SearchIntegrationTests : IClassFixture<IntegrationTestFixture>
         await _fixture.CleanupTestDataAsync();
         var request = new CreateNotificationRequest
         {
-            UserId = ObjectId.GenerateNewId(),
+            UserId = _fixture.TestUserId,
             Title = "Category Search Notification",
             Message = "Category search completed successfully",
             Type = NotificationType.Info,
@@ -237,7 +237,7 @@ public class SearchIntegrationTests : IClassFixture<IntegrationTestFixture>
         await _fixture.CleanupTestDataAsync();
         var request = new CreateNotificationRequest
         {
-            UserId = ObjectId.GenerateNewId(),
+            UserId = _fixture.TestUserId,
             Title = "Date Range Search Notification",
             Message = "Date range search completed successfully",
             Type = NotificationType.Info,
@@ -260,7 +260,7 @@ public class SearchIntegrationTests : IClassFixture<IntegrationTestFixture>
         await _fixture.CleanupTestDataAsync();
         var request = new CreateNotificationRequest
         {
-            UserId = ObjectId.GenerateNewId(),
+            UserId = _fixture.TestUserId,
             Title = "File Size Search Notification",
             Message = "File size search completed successfully",
             Type = NotificationType.Info,
@@ -283,7 +283,7 @@ public class SearchIntegrationTests : IClassFixture<IntegrationTestFixture>
         await _fixture.CleanupTestDataAsync();
         var request = new CreateNotificationRequest
         {
-            UserId = ObjectId.GenerateNewId(),
+            UserId = _fixture.TestUserId,
             Title = "File Type Search Notification",
             Message = "File type search completed successfully",
             Type = NotificationType.Info,
@@ -306,7 +306,7 @@ public class SearchIntegrationTests : IClassFixture<IntegrationTestFixture>
         await _fixture.CleanupTestDataAsync();
         var request = new CreateNotificationRequest
         {
-            UserId = ObjectId.GenerateNewId(),
+            UserId = _fixture.TestUserId,
             Title = "Advanced Filter Search Notification",
             Message = "Advanced filter search completed successfully",
             Type = NotificationType.Info,
@@ -329,7 +329,7 @@ public class SearchIntegrationTests : IClassFixture<IntegrationTestFixture>
         await _fixture.CleanupTestDataAsync();
         var request = new CreateNotificationRequest
         {
-            UserId = ObjectId.GenerateNewId(),
+            UserId = _fixture.TestUserId,
             Title = "Semantic Search Notification",
             Message = "Semantic search completed successfully",
             Type = NotificationType.Info,
@@ -352,7 +352,7 @@ public class SearchIntegrationTests : IClassFixture<IntegrationTestFixture>
         await _fixture.CleanupTestDataAsync();
         var request = new CreateNotificationRequest
         {
-            UserId = ObjectId.GenerateNewId(),
+            UserId = _fixture.TestUserId,
             Title = "Visual Search Notification",
             Message = "Visual search completed successfully",
             Type = NotificationType.Info,
@@ -375,7 +375,7 @@ public class SearchIntegrationTests : IClassFixture<IntegrationTestFixture>
         await _fixture.CleanupTestDataAsync();
         var request = new CreateNotificationRequest
         {
-            UserId = ObjectId.GenerateNewId(),
+            UserId = _fixture.TestUserId,
             Title = "Similar Content Search Notification",
             Message = "Similar content search completed successfully",
             Type = NotificationType.Info,

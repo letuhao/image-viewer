@@ -273,13 +273,43 @@ namespace ImageViewer.Test.Shared.Fixtures;
     private Mock<INotificationTemplateRepository> CreateMockNotificationTemplateRepository()
     {
         var mock = new Mock<INotificationTemplateRepository>();
-        var testTemplates = CreateTestNotificationTemplates();
+        var testTemplates = new List<Domain.Entities.NotificationTemplate>();
 
         mock.Setup(x => x.GetByIdAsync(It.IsAny<ObjectId>()))
             .ReturnsAsync((ObjectId id) => testTemplates.FirstOrDefault(t => t.Id == id));
 
         mock.Setup(x => x.GetAllAsync())
             .ReturnsAsync(testTemplates);
+
+        mock.Setup(x => x.GetByTemplateTypeAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((string templateType, CancellationToken ct) => testTemplates.Where(t => t.TemplateType == templateType));
+
+        mock.Setup(x => x.CreateAsync(It.IsAny<Domain.Entities.NotificationTemplate>()))
+            .ReturnsAsync((Domain.Entities.NotificationTemplate template) => {
+                testTemplates.Add(template);
+                return template;
+            });
+
+        mock.Setup(x => x.UpdateAsync(It.IsAny<Domain.Entities.NotificationTemplate>()))
+            .ReturnsAsync((Domain.Entities.NotificationTemplate template) => {
+                var existing = testTemplates.FirstOrDefault(t => t.Id == template.Id);
+                if (existing != null)
+                {
+                    var index = testTemplates.IndexOf(existing);
+                    testTemplates[index] = template;
+                }
+                return template;
+            });
+
+        mock.Setup(x => x.DeleteAsync(It.IsAny<ObjectId>()))
+            .Returns((ObjectId id) => {
+                var template = testTemplates.FirstOrDefault(t => t.Id == id);
+                if (template != null)
+                {
+                    testTemplates.Remove(template);
+                }
+                return Task.CompletedTask;
+            });
 
         return mock;
     }

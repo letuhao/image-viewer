@@ -28,7 +28,7 @@ public class MediaProcessingIntegrationTests : IClassFixture<IntegrationTestFixt
         await _fixture.CleanupTestDataAsync();
         var request = new CreateNotificationRequest
         {
-            UserId = ObjectId.GenerateNewId(),
+            UserId = _fixture.TestUserId,
             Title = "Image Processing Notification",
             Message = "Image processed successfully",
             Type = NotificationType.Info,
@@ -53,7 +53,7 @@ public class MediaProcessingIntegrationTests : IClassFixture<IntegrationTestFixt
         await _fixture.CleanupTestDataAsync();
         var request = new CreateNotificationRequest
         {
-            UserId = ObjectId.GenerateNewId(),
+            UserId = _fixture.TestUserId,
             Title = "Video Processing Notification",
             Message = "Video processed successfully",
             Type = NotificationType.Info,
@@ -76,7 +76,7 @@ public class MediaProcessingIntegrationTests : IClassFixture<IntegrationTestFixt
         await _fixture.CleanupTestDataAsync();
         var request = new CreateNotificationRequest
         {
-            UserId = ObjectId.GenerateNewId(),
+            UserId = _fixture.TestUserId,
             Title = "Audio Processing Notification",
             Message = "Audio processed successfully",
             Type = NotificationType.Info,
@@ -99,7 +99,7 @@ public class MediaProcessingIntegrationTests : IClassFixture<IntegrationTestFixt
         await _fixture.CleanupTestDataAsync();
         var request = new CreateNotificationRequest
         {
-            UserId = ObjectId.GenerateNewId(),
+            UserId = _fixture.TestUserId,
             Title = "Document Processing Notification",
             Message = "Document processed successfully",
             Type = NotificationType.Info,
@@ -122,7 +122,7 @@ public class MediaProcessingIntegrationTests : IClassFixture<IntegrationTestFixt
         await _fixture.CleanupTestDataAsync();
         var request = new CreateNotificationRequest
         {
-            UserId = ObjectId.GenerateNewId(),
+            UserId = _fixture.TestUserId,
             Title = "Batch Processing Notification",
             Message = "Batch processed successfully",
             Type = NotificationType.Info,
@@ -145,7 +145,7 @@ public class MediaProcessingIntegrationTests : IClassFixture<IntegrationTestFixt
         await _fixture.CleanupTestDataAsync();
         var request = new CreateNotificationRequest
         {
-            UserId = ObjectId.GenerateNewId(),
+            UserId = _fixture.TestUserId,
             Title = "Metadata Extraction Notification",
             Message = "Metadata extracted successfully",
             Type = NotificationType.Info,
@@ -168,7 +168,7 @@ public class MediaProcessingIntegrationTests : IClassFixture<IntegrationTestFixt
         await _fixture.CleanupTestDataAsync();
         var request = new CreateNotificationRequest
         {
-            UserId = ObjectId.GenerateNewId(),
+            UserId = _fixture.TestUserId,
             Title = "Thumbnail Generation Notification",
             Message = "Thumbnails generated successfully",
             Type = NotificationType.Info,
@@ -191,7 +191,7 @@ public class MediaProcessingIntegrationTests : IClassFixture<IntegrationTestFixt
         await _fixture.CleanupTestDataAsync();
         var request = new CreateNotificationRequest
         {
-            UserId = ObjectId.GenerateNewId(),
+            UserId = _fixture.TestUserId,
             Title = "Transcoding Notification",
             Message = "Media transcoded successfully",
             Type = NotificationType.Info,
@@ -214,7 +214,7 @@ public class MediaProcessingIntegrationTests : IClassFixture<IntegrationTestFixt
         await _fixture.CleanupTestDataAsync();
         var request = new CreateNotificationRequest
         {
-            UserId = ObjectId.GenerateNewId(),
+            UserId = _fixture.TestUserId,
             Title = "Compression Notification",
             Message = "Media compressed successfully",
             Type = NotificationType.Info,
@@ -237,7 +237,7 @@ public class MediaProcessingIntegrationTests : IClassFixture<IntegrationTestFixt
         await _fixture.CleanupTestDataAsync();
         var request = new CreateNotificationRequest
         {
-            UserId = ObjectId.GenerateNewId(),
+            UserId = _fixture.TestUserId,
             Title = "Watermark Notification",
             Message = "Watermark added successfully",
             Type = NotificationType.Info,
@@ -260,7 +260,7 @@ public class MediaProcessingIntegrationTests : IClassFixture<IntegrationTestFixt
         await _fixture.CleanupTestDataAsync();
         var request = new CreateNotificationRequest
         {
-            UserId = ObjectId.GenerateNewId(),
+            UserId = _fixture.TestUserId,
             Title = "Filter Application Notification",
             Message = "Filters applied successfully",
             Type = NotificationType.Info,
@@ -283,7 +283,7 @@ public class MediaProcessingIntegrationTests : IClassFixture<IntegrationTestFixt
         await _fixture.CleanupTestDataAsync();
         var request = new CreateNotificationRequest
         {
-            UserId = ObjectId.GenerateNewId(),
+            UserId = _fixture.TestUserId,
             Title = "Effect Application Notification",
             Message = "Effects applied successfully",
             Type = NotificationType.Info,
@@ -306,7 +306,7 @@ public class MediaProcessingIntegrationTests : IClassFixture<IntegrationTestFixt
         await _fixture.CleanupTestDataAsync();
         var request = new CreateNotificationRequest
         {
-            UserId = ObjectId.GenerateNewId(),
+            UserId = _fixture.TestUserId,
             Title = "Optimization Notification",
             Message = "Media optimized successfully",
             Type = NotificationType.Info,
@@ -329,7 +329,7 @@ public class MediaProcessingIntegrationTests : IClassFixture<IntegrationTestFixt
         await _fixture.CleanupTestDataAsync();
         var request = new CreateNotificationRequest
         {
-            UserId = ObjectId.GenerateNewId(),
+            UserId = _fixture.TestUserId,
             Title = "Validation Notification",
             Message = "Media validated successfully",
             Type = NotificationType.Info,
@@ -352,7 +352,7 @@ public class MediaProcessingIntegrationTests : IClassFixture<IntegrationTestFixt
         await _fixture.CleanupTestDataAsync();
         var request = new CreateNotificationRequest
         {
-            UserId = ObjectId.GenerateNewId(),
+            UserId = _fixture.TestUserId,
             Title = "Error Handling Notification",
             Message = "Error handled successfully",
             Type = NotificationType.Warning,

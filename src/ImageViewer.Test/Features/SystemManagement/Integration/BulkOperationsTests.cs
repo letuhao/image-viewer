@@ -30,7 +30,7 @@ public class BulkOperationsTests : IClassFixture<IntegrationTestFixture>
         await _fixture.CleanupTestDataAsync();
         var importRequest = new BulkImportRequest
         {
-            UserId = ObjectId.GenerateNewId(),
+            UserId = _fixture.TestUserId,
             SourcePath = "/test/path1",
             DestinationPath = "/test/destination",
             FileTypes = new List<string> { "jpg", "png", "gif" },
@@ -61,7 +61,7 @@ public class BulkOperationsTests : IClassFixture<IntegrationTestFixture>
         await _fixture.CleanupTestDataAsync();
         var exportRequest = new BulkExportRequest
         {
-            UserId = ObjectId.GenerateNewId(),
+            UserId = _fixture.TestUserId,
             CollectionIds = new List<ObjectId> { ObjectId.GenerateNewId(), ObjectId.GenerateNewId() },
             ExportPath = "/test/export",
             ExportFormat = "Original",
@@ -93,7 +93,7 @@ public class BulkOperationsTests : IClassFixture<IntegrationTestFixture>
         await _fixture.CleanupTestDataAsync();
         var updateRequest = new BulkUpdateRequest
         {
-            UserId = ObjectId.GenerateNewId(),
+            UserId = _fixture.TestUserId,
             CollectionIds = new List<ObjectId> { ObjectId.GenerateNewId(), ObjectId.GenerateNewId() },
             UpdateFields = new Dictionary<string, object>
             {
@@ -125,7 +125,7 @@ public class BulkOperationsTests : IClassFixture<IntegrationTestFixture>
         await _fixture.CleanupTestDataAsync();
         var deleteRequest = new BulkDeleteRequest
         {
-            UserId = ObjectId.GenerateNewId(),
+            UserId = _fixture.TestUserId,
             CollectionIds = new List<ObjectId> { ObjectId.GenerateNewId(), ObjectId.GenerateNewId() },
             SoftDelete = true,
             DeleteFiles = false,
@@ -153,7 +153,7 @@ public class BulkOperationsTests : IClassFixture<IntegrationTestFixture>
         await _fixture.CleanupTestDataAsync();
         var validationRequest = new BulkValidationRequest
         {
-            UserId = ObjectId.GenerateNewId(),
+            UserId = _fixture.TestUserId,
             CollectionIds = new List<ObjectId> { ObjectId.GenerateNewId(), ObjectId.GenerateNewId() },
             ValidationRules = new List<string> { "FileExists", "MetadataValid", "PermissionsCorrect" },
             ValidateFiles = true,
@@ -195,7 +195,7 @@ public class BulkOperationsTests : IClassFixture<IntegrationTestFixture>
         await _fixture.CleanupTestDataAsync();
         var invalidRequest = new BulkImportRequest
         {
-            UserId = ObjectId.GenerateNewId(),
+            UserId = _fixture.TestUserId,
             SourcePath = "/nonexistent/path",
             DestinationPath = "/test/destination",
             FileTypes = new List<string> { "jpg", "png" },

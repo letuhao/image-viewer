@@ -28,7 +28,7 @@ public class DiscoveryIntegrationTests : IClassFixture<IntegrationTestFixture>
         await _fixture.CleanupTestDataAsync();
         var request = new CreateNotificationRequest
         {
-            UserId = ObjectId.GenerateNewId(),
+            UserId = _fixture.TestUserId,
             Title = "Trending Content Notification",
             Message = "Trending content retrieved successfully",
             Type = NotificationType.Info,
@@ -53,7 +53,7 @@ public class DiscoveryIntegrationTests : IClassFixture<IntegrationTestFixture>
         await _fixture.CleanupTestDataAsync();
         var request = new CreateNotificationRequest
         {
-            UserId = ObjectId.GenerateNewId(),
+            UserId = _fixture.TestUserId,
             Title = "Popular Content Notification",
             Message = "Popular content retrieved successfully",
             Type = NotificationType.Info,
@@ -76,7 +76,7 @@ public class DiscoveryIntegrationTests : IClassFixture<IntegrationTestFixture>
         await _fixture.CleanupTestDataAsync();
         var request = new CreateNotificationRequest
         {
-            UserId = ObjectId.GenerateNewId(),
+            UserId = _fixture.TestUserId,
             Title = "Similar Content Notification",
             Message = "Similar content retrieved successfully",
             Type = NotificationType.Info,
@@ -99,7 +99,7 @@ public class DiscoveryIntegrationTests : IClassFixture<IntegrationTestFixture>
         await _fixture.CleanupTestDataAsync();
         var request = new CreateNotificationRequest
         {
-            UserId = ObjectId.GenerateNewId(),
+            UserId = _fixture.TestUserId,
             Title = "Personalized Recommendations Notification",
             Message = "Personalized recommendations retrieved successfully",
             Type = NotificationType.Info,
@@ -122,7 +122,7 @@ public class DiscoveryIntegrationTests : IClassFixture<IntegrationTestFixture>
         await _fixture.CleanupTestDataAsync();
         var request = new CreateNotificationRequest
         {
-            UserId = ObjectId.GenerateNewId(),
+            UserId = _fixture.TestUserId,
             Title = "Category Recommendations Notification",
             Message = "Category recommendations retrieved successfully",
             Type = NotificationType.Info,
@@ -145,7 +145,7 @@ public class DiscoveryIntegrationTests : IClassFixture<IntegrationTestFixture>
         await _fixture.CleanupTestDataAsync();
         var request = new CreateNotificationRequest
         {
-            UserId = ObjectId.GenerateNewId(),
+            UserId = _fixture.TestUserId,
             Title = "Tag Recommendations Notification",
             Message = "Tag recommendations retrieved successfully",
             Type = NotificationType.Info,
@@ -168,7 +168,7 @@ public class DiscoveryIntegrationTests : IClassFixture<IntegrationTestFixture>
         await _fixture.CleanupTestDataAsync();
         var request = new CreateNotificationRequest
         {
-            UserId = ObjectId.GenerateNewId(),
+            UserId = _fixture.TestUserId,
             Title = "History Recommendations Notification",
             Message = "History recommendations retrieved successfully",
             Type = NotificationType.Info,
@@ -191,7 +191,7 @@ public class DiscoveryIntegrationTests : IClassFixture<IntegrationTestFixture>
         await _fixture.CleanupTestDataAsync();
         var request = new CreateNotificationRequest
         {
-            UserId = ObjectId.GenerateNewId(),
+            UserId = _fixture.TestUserId,
             Title = "Content Analytics Notification",
             Message = "Content analytics retrieved successfully",
             Type = NotificationType.Info,
@@ -214,7 +214,7 @@ public class DiscoveryIntegrationTests : IClassFixture<IntegrationTestFixture>
         await _fixture.CleanupTestDataAsync();
         var request = new CreateNotificationRequest
         {
-            UserId = ObjectId.GenerateNewId(),
+            UserId = _fixture.TestUserId,
             Title = "Content Trends Notification",
             Message = "Content trends retrieved successfully",
             Type = NotificationType.Info,
@@ -237,7 +237,7 @@ public class DiscoveryIntegrationTests : IClassFixture<IntegrationTestFixture>
         await _fixture.CleanupTestDataAsync();
         var request = new CreateNotificationRequest
         {
-            UserId = ObjectId.GenerateNewId(),
+            UserId = _fixture.TestUserId,
             Title = "Content Insights Notification",
             Message = "Content insights retrieved successfully",
             Type = NotificationType.Info,
@@ -260,7 +260,7 @@ public class DiscoveryIntegrationTests : IClassFixture<IntegrationTestFixture>
         await _fixture.CleanupTestDataAsync();
         var request = new CreateNotificationRequest
         {
-            UserId = ObjectId.GenerateNewId(),
+            UserId = _fixture.TestUserId,
             Title = "User Preferences Update Notification",
             Message = "User preferences updated successfully",
             Type = NotificationType.Info,
@@ -283,7 +283,7 @@ public class DiscoveryIntegrationTests : IClassFixture<IntegrationTestFixture>
         await _fixture.CleanupTestDataAsync();
         var request = new CreateNotificationRequest
         {
-            UserId = ObjectId.GenerateNewId(),
+            UserId = _fixture.TestUserId,
             Title = "User Preferences Notification",
             Message = "User preferences retrieved successfully",
             Type = NotificationType.Info,
@@ -306,7 +306,7 @@ public class DiscoveryIntegrationTests : IClassFixture<IntegrationTestFixture>
         await _fixture.CleanupTestDataAsync();
         var request = new CreateNotificationRequest
         {
-            UserId = ObjectId.GenerateNewId(),
+            UserId = _fixture.TestUserId,
             Title = "User Interaction Notification",
             Message = "User interaction recorded successfully",
             Type = NotificationType.Info,
@@ -329,7 +329,7 @@ public class DiscoveryIntegrationTests : IClassFixture<IntegrationTestFixture>
         await _fixture.CleanupTestDataAsync();
         var request = new CreateNotificationRequest
         {
-            UserId = ObjectId.GenerateNewId(),
+            UserId = _fixture.TestUserId,
             Title = "User Interactions Notification",
             Message = "User interactions retrieved successfully",
             Type = NotificationType.Info,
@@ -352,7 +352,7 @@ public class DiscoveryIntegrationTests : IClassFixture<IntegrationTestFixture>
         await _fixture.CleanupTestDataAsync();
         var request = new CreateNotificationRequest
         {
-            UserId = ObjectId.GenerateNewId(),
+            UserId = _fixture.TestUserId,
             Title = "Content Categories Notification",
             Message = "Content categories retrieved successfully",
             Type = NotificationType.Info,
@@ -375,7 +375,7 @@ public class DiscoveryIntegrationTests : IClassFixture<IntegrationTestFixture>
         await _fixture.CleanupTestDataAsync();
         var request = new CreateNotificationRequest
         {
-            UserId = ObjectId.GenerateNewId(),
+            UserId = _fixture.TestUserId,
             Title = "Content Category Creation Notification",
             Message = "Content category created successfully",
             Type = NotificationType.Info,
@@ -398,7 +398,7 @@ public class DiscoveryIntegrationTests : IClassFixture<IntegrationTestFixture>
         await _fixture.CleanupTestDataAsync();
         var request = new CreateNotificationRequest
         {
-            UserId = ObjectId.GenerateNewId(),
+            UserId = _fixture.TestUserId,
             Title = "Content Category Update Notification",
             Message = "Content category updated successfully",
             Type = NotificationType.Info,
@@ -421,7 +421,7 @@ public class DiscoveryIntegrationTests : IClassFixture<IntegrationTestFixture>
         await _fixture.CleanupTestDataAsync();
         var request = new CreateNotificationRequest
         {
-            UserId = ObjectId.GenerateNewId(),
+            UserId = _fixture.TestUserId,
             Title = "Content Category Deletion Notification",
             Message = "Content category deleted successfully",
             Type = NotificationType.Warning,
@@ -446,7 +446,7 @@ public class DiscoveryIntegrationTests : IClassFixture<IntegrationTestFixture>
         await _fixture.CleanupTestDataAsync();
         var request = new CreateNotificationRequest
         {
-            UserId = ObjectId.GenerateNewId(),
+            UserId = _fixture.TestUserId,
             Title = "Category Content Notification",
             Message = "Category content retrieved successfully",
             Type = NotificationType.Info,
@@ -469,7 +469,7 @@ public class DiscoveryIntegrationTests : IClassFixture<IntegrationTestFixture>
         await _fixture.CleanupTestDataAsync();
         var request = new CreateNotificationRequest
         {
-            UserId = ObjectId.GenerateNewId(),
+            UserId = _fixture.TestUserId,
             Title = "Smart Suggestions Notification",
             Message = "Smart suggestions retrieved successfully",
             Type = NotificationType.Info,
@@ -492,7 +492,7 @@ public class DiscoveryIntegrationTests : IClassFixture<IntegrationTestFixture>
         await _fixture.CleanupTestDataAsync();
         var request = new CreateNotificationRequest
         {
-            UserId = ObjectId.GenerateNewId(),
+            UserId = _fixture.TestUserId,
             Title = "Contextual Suggestions Notification",
             Message = "Contextual suggestions retrieved successfully",
             Type = NotificationType.Info,
@@ -515,7 +515,7 @@ public class DiscoveryIntegrationTests : IClassFixture<IntegrationTestFixture>
         await _fixture.CleanupTestDataAsync();
         var request = new CreateNotificationRequest
         {
-            UserId = ObjectId.GenerateNewId(),
+            UserId = _fixture.TestUserId,
             Title = "Trending Suggestions Notification",
             Message = "Trending suggestions retrieved successfully",
             Type = NotificationType.Info,

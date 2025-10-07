@@ -26,7 +26,7 @@ public class NotificationDeliveryTests : IClassFixture<IntegrationTestFixture>
     {
         // Arrange
         await _fixture.CleanupTestDataAsync();
-        var userId = ObjectId.GenerateNewId();
+        var userId = _fixture.TestUserId;
         var request = new CreateNotificationRequest
         {
             UserId = userId,
@@ -53,7 +53,7 @@ public class NotificationDeliveryTests : IClassFixture<IntegrationTestFixture>
     {
         // Arrange
         await _fixture.CleanupTestDataAsync();
-        var userIds = new List<ObjectId> { ObjectId.GenerateNewId(), ObjectId.GenerateNewId() };
+        var userIds = new List<ObjectId> { _fixture.TestUserId, _fixture.TestUserId };
         var request = new CreateNotificationRequest
         {
             UserId = userIds.First(),
@@ -84,7 +84,7 @@ public class NotificationDeliveryTests : IClassFixture<IntegrationTestFixture>
     {
         // Arrange
         await _fixture.CleanupTestDataAsync();
-        var userId = ObjectId.GenerateNewId();
+        var userId = _fixture.TestUserId;
         var request = new CreateNotificationRequest
         {
             UserId = userId,
@@ -110,7 +110,7 @@ public class NotificationDeliveryTests : IClassFixture<IntegrationTestFixture>
     {
         // Arrange
         await _fixture.CleanupTestDataAsync();
-        var userId = ObjectId.GenerateNewId();
+        var userId = _fixture.TestUserId;
         var request = new CreateNotificationRequest
         {
             UserId = userId,
@@ -141,7 +141,7 @@ public class NotificationDeliveryTests : IClassFixture<IntegrationTestFixture>
     {
         // Arrange
         await _fixture.CleanupTestDataAsync();
-        var userId = ObjectId.GenerateNewId();
+        var userId = _fixture.TestUserId;
         var request = new CreateNotificationRequest
         {
             UserId = userId,
@@ -165,7 +165,7 @@ public class NotificationDeliveryTests : IClassFixture<IntegrationTestFixture>
     {
         // Arrange
         await _fixture.CleanupTestDataAsync();
-        var userId = ObjectId.GenerateNewId();
+        var userId = _fixture.TestUserId;
         var scheduledTime = DateTime.UtcNow.AddMinutes(5);
         var request = new CreateNotificationRequest
         {
@@ -192,7 +192,7 @@ public class NotificationDeliveryTests : IClassFixture<IntegrationTestFixture>
     {
         // Arrange
         await _fixture.CleanupTestDataAsync();
-        var userId = ObjectId.GenerateNewId();
+        var userId = _fixture.TestUserId;
         var expirationTime = DateTime.UtcNow.AddDays(7);
         var request = new CreateNotificationRequest
         {
@@ -218,7 +218,7 @@ public class NotificationDeliveryTests : IClassFixture<IntegrationTestFixture>
     {
         // Arrange
         await _fixture.CleanupTestDataAsync();
-        var userId = ObjectId.GenerateNewId();
+        var userId = _fixture.TestUserId;
         var request = new CreateNotificationRequest
         {
             UserId = userId,

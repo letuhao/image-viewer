@@ -28,7 +28,7 @@ public class AuthenticationIntegrationTests : IClassFixture<IntegrationTestFixtu
         await _fixture.CleanupTestDataAsync();
         var request = new CreateNotificationRequest
         {
-            UserId = ObjectId.GenerateNewId(),
+            UserId = _fixture.TestUserId,
             Title = "Login Notification",
             Message = "User logged in successfully",
             Type = NotificationType.Info,
@@ -53,7 +53,7 @@ public class AuthenticationIntegrationTests : IClassFixture<IntegrationTestFixtu
         await _fixture.CleanupTestDataAsync();
         var request = new CreateNotificationRequest
         {
-            UserId = ObjectId.GenerateNewId(),
+            UserId = _fixture.TestUserId,
             Title = "Logout Notification",
             Message = "User logged out successfully",
             Type = NotificationType.Info,
@@ -76,7 +76,7 @@ public class AuthenticationIntegrationTests : IClassFixture<IntegrationTestFixtu
         await _fixture.CleanupTestDataAsync();
         var request = new CreateNotificationRequest
         {
-            UserId = ObjectId.GenerateNewId(),
+            UserId = _fixture.TestUserId,
             Title = "Registration Notification",
             Message = "User registered successfully",
             Type = NotificationType.Info,
@@ -101,7 +101,7 @@ public class AuthenticationIntegrationTests : IClassFixture<IntegrationTestFixtu
         await _fixture.CleanupTestDataAsync();
         var request = new CreateNotificationRequest
         {
-            UserId = ObjectId.GenerateNewId(),
+            UserId = _fixture.TestUserId,
             Title = "Token Refresh Notification",
             Message = "Token refreshed successfully",
             Type = NotificationType.Info,
@@ -124,7 +124,7 @@ public class AuthenticationIntegrationTests : IClassFixture<IntegrationTestFixtu
         await _fixture.CleanupTestDataAsync();
         var request = new CreateNotificationRequest
         {
-            UserId = ObjectId.GenerateNewId(),
+            UserId = _fixture.TestUserId,
             Title = "Password Reset Notification",
             Message = "Password reset requested",
             Type = NotificationType.Warning,
@@ -149,7 +149,7 @@ public class AuthenticationIntegrationTests : IClassFixture<IntegrationTestFixtu
         await _fixture.CleanupTestDataAsync();
         var request = new CreateNotificationRequest
         {
-            UserId = ObjectId.GenerateNewId(),
+            UserId = _fixture.TestUserId,
             Title = "Password Change Notification",
             Message = "Password changed successfully",
             Type = NotificationType.Info,
@@ -172,7 +172,7 @@ public class AuthenticationIntegrationTests : IClassFixture<IntegrationTestFixtu
         await _fixture.CleanupTestDataAsync();
         var request = new CreateNotificationRequest
         {
-            UserId = ObjectId.GenerateNewId(),
+            UserId = _fixture.TestUserId,
             Title = "Email Verification Notification",
             Message = "Email verified successfully",
             Type = NotificationType.Info,
@@ -195,7 +195,7 @@ public class AuthenticationIntegrationTests : IClassFixture<IntegrationTestFixtu
         await _fixture.CleanupTestDataAsync();
         var request = new CreateNotificationRequest
         {
-            UserId = ObjectId.GenerateNewId(),
+            UserId = _fixture.TestUserId,
             Title = "2FA Enabled Notification",
             Message = "Two-factor authentication enabled",
             Type = NotificationType.Warning,
@@ -220,7 +220,7 @@ public class AuthenticationIntegrationTests : IClassFixture<IntegrationTestFixtu
         await _fixture.CleanupTestDataAsync();
         var request = new CreateNotificationRequest
         {
-            UserId = ObjectId.GenerateNewId(),
+            UserId = _fixture.TestUserId,
             Title = "2FA Disabled Notification",
             Message = "Two-factor authentication disabled",
             Type = NotificationType.Warning,
@@ -243,7 +243,7 @@ public class AuthenticationIntegrationTests : IClassFixture<IntegrationTestFixtu
         await _fixture.CleanupTestDataAsync();
         var request = new CreateNotificationRequest
         {
-            UserId = ObjectId.GenerateNewId(),
+            UserId = _fixture.TestUserId,
             Title = "2FA Verification Notification",
             Message = "Two-factor authentication verified",
             Type = NotificationType.Info,
@@ -266,7 +266,7 @@ public class AuthenticationIntegrationTests : IClassFixture<IntegrationTestFixtu
         await _fixture.CleanupTestDataAsync();
         var request = new CreateNotificationRequest
         {
-            UserId = ObjectId.GenerateNewId(),
+            UserId = _fixture.TestUserId,
             Title = "Profile Access Notification",
             Message = "User profile accessed",
             Type = NotificationType.Info,
@@ -289,7 +289,7 @@ public class AuthenticationIntegrationTests : IClassFixture<IntegrationTestFixtu
         await _fixture.CleanupTestDataAsync();
         var request = new CreateNotificationRequest
         {
-            UserId = ObjectId.GenerateNewId(),
+            UserId = _fixture.TestUserId,
             Title = "Profile Update Notification",
             Message = "User profile updated successfully",
             Type = NotificationType.Info,
@@ -312,7 +312,7 @@ public class AuthenticationIntegrationTests : IClassFixture<IntegrationTestFixtu
         await _fixture.CleanupTestDataAsync();
         var request = new CreateNotificationRequest
         {
-            UserId = ObjectId.GenerateNewId(),
+            UserId = _fixture.TestUserId,
             Title = "Session Access Notification",
             Message = "User sessions accessed",
             Type = NotificationType.Info,
@@ -335,7 +335,7 @@ public class AuthenticationIntegrationTests : IClassFixture<IntegrationTestFixtu
         await _fixture.CleanupTestDataAsync();
         var request = new CreateNotificationRequest
         {
-            UserId = ObjectId.GenerateNewId(),
+            UserId = _fixture.TestUserId,
             Title = "Session Revoke Notification",
             Message = "User session revoked",
             Type = NotificationType.Warning,
@@ -358,7 +358,7 @@ public class AuthenticationIntegrationTests : IClassFixture<IntegrationTestFixtu
         await _fixture.CleanupTestDataAsync();
         var request = new CreateNotificationRequest
         {
-            UserId = ObjectId.GenerateNewId(),
+            UserId = _fixture.TestUserId,
             Title = "All Sessions Revoke Notification",
             Message = "All user sessions revoked",
             Type = NotificationType.Warning,
