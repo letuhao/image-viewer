@@ -20,6 +20,7 @@ namespace ImageViewer.Test.Shared.Fixtures;
         private IServiceProvider _serviceProvider = null!;
         private readonly ObjectId _testUserId = ObjectId.Parse("507f1f77bcf86cd799439011");
         private List<User> _testUsers = null!;
+        private List<Domain.Entities.NotificationTemplate> _testTemplates = null!;
 
         public IServiceProvider ServiceProvider => _serviceProvider;
         public ObjectId TestUserId => _testUserId;
@@ -28,6 +29,7 @@ namespace ImageViewer.Test.Shared.Fixtures;
     {
         // Initialize test data
         _testUsers = CreateTestUsers();
+        _testTemplates = new List<Domain.Entities.NotificationTemplate>();
 
         // Create service collection for testing
         var services = new ServiceCollection();
@@ -116,6 +118,7 @@ namespace ImageViewer.Test.Shared.Fixtures;
                // This ensures each test starts with a clean slate
                _testUsers.Clear();
                _testUsers.AddRange(CreateTestUsers());
+               _testTemplates.Clear();
                await Task.CompletedTask;
            }
 
@@ -273,43 +276,43 @@ namespace ImageViewer.Test.Shared.Fixtures;
     private Mock<INotificationTemplateRepository> CreateMockNotificationTemplateRepository()
     {
         var mock = new Mock<INotificationTemplateRepository>();
-        var testTemplates = new List<Domain.Entities.NotificationTemplate>();
 
         mock.Setup(x => x.GetByIdAsync(It.IsAny<ObjectId>()))
-            .ReturnsAsync((ObjectId id) => testTemplates.FirstOrDefault(t => t.Id == id));
+            .ReturnsAsync((ObjectId id) => _testTemplates.FirstOrDefault(t => t.Id == id));
 
         mock.Setup(x => x.GetAllAsync())
-            .ReturnsAsync(testTemplates);
+            .ReturnsAsync(_testTemplates);
 
         mock.Setup(x => x.GetByTemplateTypeAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((string templateType, CancellationToken ct) => testTemplates.Where(t => t.TemplateType == templateType));
+            .ReturnsAsync((string templateType, CancellationToken ct) => _testTemplates.Where(t => t.TemplateType == templateType));
 
         mock.Setup(x => x.CreateAsync(It.IsAny<Domain.Entities.NotificationTemplate>()))
             .ReturnsAsync((Domain.Entities.NotificationTemplate template) => {
-                testTemplates.Add(template);
+                _testTemplates.Add(template);
                 return template;
             });
 
         mock.Setup(x => x.UpdateAsync(It.IsAny<Domain.Entities.NotificationTemplate>()))
             .ReturnsAsync((Domain.Entities.NotificationTemplate template) => {
-                var existing = testTemplates.FirstOrDefault(t => t.Id == template.Id);
+                var existing = _testTemplates.FirstOrDefault(t => t.Id == template.Id);
                 if (existing != null)
                 {
-                    var index = testTemplates.IndexOf(existing);
-                    testTemplates[index] = template;
+                    var index = _testTemplates.IndexOf(existing);
+                    _testTemplates[index] = template;
                 }
                 return template;
             });
 
         mock.Setup(x => x.DeleteAsync(It.IsAny<ObjectId>()))
             .Returns((ObjectId id) => {
-                var template = testTemplates.FirstOrDefault(t => t.Id == id);
+                var template = _testTemplates.FirstOrDefault(t => t.Id == id);
                 if (template != null)
                 {
-                    testTemplates.Remove(template);
+                    _testTemplates.Remove(template);
                 }
                 return Task.CompletedTask;
             });
+
 
         return mock;
     }
