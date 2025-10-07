@@ -11,6 +11,7 @@ public class BulkOperationService : IBulkOperationService
 {
     private readonly ILogger<BulkOperationService> _logger;
     private readonly Dictionary<ObjectId, BulkOperationProgress> _activeOperations = new();
+    private readonly Dictionary<ObjectId, BulkOperationResultDto> _operationResults = new();
 
     public BulkOperationService(ILogger<BulkOperationService> logger)
     {
@@ -74,14 +75,41 @@ public class BulkOperationService : IBulkOperationService
                 }
             };
 
-            // Keep completed operations in _activeOperations for tracking
+            // Store the result for later retrieval
+            _operationResults[operationId] = result;
+            
             _logger.LogInformation("Bulk import operation completed for user {UserId}", request.UserId);
             return result;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error during bulk import operation for user {UserId}", request.UserId);
-            // Keep completed operations in _activeOperations for tracking
+            
+            // Store error result
+            var errorResult = new BulkOperationResultDto
+            {
+                OperationId = operationId,
+                OperationType = "Import",
+                TotalItems = 0,
+                SuccessfulItems = 0,
+                FailedItems = 0,
+                SkippedItems = 0,
+                SuccessRate = 0,
+                Status = "Failed",
+                StartTime = startTime,
+                EndTime = DateTime.UtcNow,
+                Duration = DateTime.UtcNow - startTime,
+                Errors = new List<string> { ex.Message },
+                Warnings = new List<string>(),
+                Summary = new Dictionary<string, object>
+                {
+                    { "Error", ex.Message },
+                    { "SourcePath", request.SourcePath ?? string.Empty },
+                    { "DestinationPath", request.DestinationPath ?? string.Empty }
+                }
+            };
+            
+            _operationResults[operationId] = errorResult;
             throw;
         }
     }
@@ -142,14 +170,41 @@ public class BulkOperationService : IBulkOperationService
                 }
             };
 
-            // Keep completed operations in _activeOperations for tracking
+            // Store the result for later retrieval
+            _operationResults[operationId] = result;
+            
             _logger.LogInformation("Bulk export operation completed for user {UserId}", request.UserId);
             return result;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error during bulk export operation for user {UserId}", request.UserId);
-            // Keep completed operations in _activeOperations for tracking
+            
+            // Store error result
+            var errorResult = new BulkOperationResultDto
+            {
+                OperationId = operationId,
+                OperationType = "Export",
+                TotalItems = 0,
+                SuccessfulItems = 0,
+                FailedItems = 0,
+                SkippedItems = 0,
+                SuccessRate = 0,
+                Status = "Failed",
+                StartTime = startTime,
+                EndTime = DateTime.UtcNow,
+                Duration = DateTime.UtcNow - startTime,
+                Errors = new List<string> { ex.Message },
+                Warnings = new List<string>(),
+                Summary = new Dictionary<string, object>
+                {
+                    { "Error", ex.Message },
+                    { "ExportPath", request.ExportPath },
+                    { "ExportFormat", request.ExportFormat }
+                }
+            };
+            
+            _operationResults[operationId] = errorResult;
             throw;
         }
     }
@@ -206,14 +261,41 @@ public class BulkOperationService : IBulkOperationService
                 }
             };
 
-            // Keep completed operations in _activeOperations for tracking
+            // Store the result for later retrieval
+            _operationResults[operationId] = result;
+            
             _logger.LogInformation("Bulk update operation completed for user {UserId}", request.UserId);
             return result;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error during bulk update operation for user {UserId}", request.UserId);
-            // Keep completed operations in _activeOperations for tracking
+            
+            // Store error result
+            var errorResult = new BulkOperationResultDto
+            {
+                OperationId = operationId,
+                OperationType = "Update",
+                TotalItems = 0,
+                SuccessfulItems = 0,
+                FailedItems = 0,
+                SkippedItems = 0,
+                SuccessRate = 0,
+                Status = "Failed",
+                StartTime = startTime,
+                EndTime = DateTime.UtcNow,
+                Duration = DateTime.UtcNow - startTime,
+                Errors = new List<string> { ex.Message },
+                Warnings = new List<string>(),
+                Summary = new Dictionary<string, object>
+                {
+                    { "Error", ex.Message },
+                    { "UpdateFields", request.UpdateFields },
+                    { "ValidateUpdates", request.ValidateUpdates }
+                }
+            };
+            
+            _operationResults[operationId] = errorResult;
             throw;
         }
     }
@@ -270,14 +352,41 @@ public class BulkOperationService : IBulkOperationService
                 }
             };
 
-            // Keep completed operations in _activeOperations for tracking
+            // Store the result for later retrieval
+            _operationResults[operationId] = result;
+            
             _logger.LogInformation("Bulk delete operation completed for user {UserId}", request.UserId);
             return result;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error during bulk delete operation for user {UserId}", request.UserId);
-            // Keep completed operations in _activeOperations for tracking
+            
+            // Store error result
+            var errorResult = new BulkOperationResultDto
+            {
+                OperationId = operationId,
+                OperationType = "Delete",
+                TotalItems = 0,
+                SuccessfulItems = 0,
+                FailedItems = 0,
+                SkippedItems = 0,
+                SuccessRate = 0,
+                Status = "Failed",
+                StartTime = startTime,
+                EndTime = DateTime.UtcNow,
+                Duration = DateTime.UtcNow - startTime,
+                Errors = new List<string> { ex.Message },
+                Warnings = new List<string>(),
+                Summary = new Dictionary<string, object>
+                {
+                    { "Error", ex.Message },
+                    { "SoftDelete", request.SoftDelete },
+                    { "DeleteFiles", request.DeleteFiles }
+                }
+            };
+            
+            _operationResults[operationId] = errorResult;
             throw;
         }
     }
@@ -335,14 +444,41 @@ public class BulkOperationService : IBulkOperationService
                 }
             };
 
-            // Keep completed operations in _activeOperations for tracking
+            // Store the result for later retrieval
+            _operationResults[operationId] = result;
+            
             _logger.LogInformation("Bulk validation operation completed for user {UserId}", request.UserId);
             return result;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error during bulk validation operation for user {UserId}", request.UserId);
-            // Keep completed operations in _activeOperations for tracking
+            
+            // Store error result
+            var errorResult = new BulkOperationResultDto
+            {
+                OperationId = operationId,
+                OperationType = "Validation",
+                TotalItems = 0,
+                SuccessfulItems = 0,
+                FailedItems = 0,
+                SkippedItems = 0,
+                SuccessRate = 0,
+                Status = "Failed",
+                StartTime = startTime,
+                EndTime = DateTime.UtcNow,
+                Duration = DateTime.UtcNow - startTime,
+                Errors = new List<string> { ex.Message },
+                Warnings = new List<string>(),
+                Summary = new Dictionary<string, object>
+                {
+                    { "Error", ex.Message },
+                    { "ValidationRules", request.ValidationRules },
+                    { "ValidateFiles", request.ValidateFiles }
+                }
+            };
+            
+            _operationResults[operationId] = errorResult;
             throw;
         }
     }
@@ -367,7 +503,32 @@ public class BulkOperationService : IBulkOperationService
         {
             progress.Status = "Cancelled";
             progress.EndTime = DateTime.UtcNow;
-            // Keep completed operations in _activeOperations for tracking
+            
+            // Store cancellation result
+            var cancellationResult = new BulkOperationResultDto
+            {
+                OperationId = operationId,
+                OperationType = progress.OperationType,
+                TotalItems = progress.TotalItems,
+                SuccessfulItems = progress.SuccessfulItems,
+                FailedItems = progress.FailedItems,
+                SkippedItems = 0,
+                SuccessRate = progress.TotalItems > 0 ? (double)progress.SuccessfulItems / progress.TotalItems * 100 : 0,
+                Status = "Cancelled",
+                StartTime = progress.StartTime,
+                EndTime = DateTime.UtcNow,
+                Duration = DateTime.UtcNow - progress.StartTime,
+                Errors = progress.Errors,
+                Warnings = progress.Warnings,
+                Summary = new Dictionary<string, object>
+                {
+                    { "CancelledAt", DateTime.UtcNow },
+                    { "ProcessedItems", progress.ProcessedItems },
+                    { "ProgressPercentage", progress.ProgressPercentage }
+                }
+            };
+            
+            _operationResults[operationId] = cancellationResult;
             return true;
         }
 
@@ -378,8 +539,12 @@ public class BulkOperationService : IBulkOperationService
     {
         _logger.LogInformation("Getting result for operation {OperationId}", operationId);
 
-        // In a real implementation, this would retrieve from a persistent store
-        throw new NotImplementedException("Operation results are not persisted in this implementation");
+        if (_operationResults.TryGetValue(operationId, out var result))
+        {
+            return result;
+        }
+
+        throw new ArgumentException($"Operation result {operationId} not found. The operation may not have completed yet or may have failed.");
     }
 
     public async Task<List<BulkOperationProgress>> GetUserOperationsAsync(ObjectId userId, CancellationToken cancellationToken = default)
@@ -387,6 +552,7 @@ public class BulkOperationService : IBulkOperationService
         _logger.LogInformation("Getting operations for user {UserId}", userId);
 
         // In a real implementation, this would filter by user ID
+        // For now, return all active operations
         return _activeOperations.Values.ToList();
     }
 

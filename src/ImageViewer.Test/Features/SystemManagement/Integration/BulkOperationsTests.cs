@@ -224,8 +224,8 @@ public class BulkOperationsTests : IClassFixture<IntegrationTestFixture>
         var operationId = ObjectId.GenerateNewId();
 
         // Act & Assert
-        // Since the current implementation doesn't persist operation results, we expect an exception
-        await Assert.ThrowsAsync<NotImplementedException>(() => 
+        // Since the operation result doesn't exist, we expect an ArgumentException
+        await Assert.ThrowsAsync<ArgumentException>(() => 
             _bulkOperationService.GetOperationResultAsync(operationId));
     }
 }

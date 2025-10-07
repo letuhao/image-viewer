@@ -33,13 +33,13 @@ public class CacheService : ICacheService
         ILogger<CacheService> logger,
         IOptions<ImageSizeOptions> sizeOptions)
     {
-        _cacheFolderRepository = cacheFolderRepository;
-        _collectionRepository = collectionRepository;
-        _imageRepository = imageRepository;
-        _cacheInfoRepository = cacheInfoRepository;
-        _imageProcessingService = imageProcessingService;
-        _unitOfWork = unitOfWork;
-        _logger = logger;
+        _cacheFolderRepository = cacheFolderRepository ?? throw new ArgumentNullException(nameof(cacheFolderRepository));
+        _collectionRepository = collectionRepository ?? throw new ArgumentNullException(nameof(collectionRepository));
+        _imageRepository = imageRepository ?? throw new ArgumentNullException(nameof(imageRepository));
+        _cacheInfoRepository = cacheInfoRepository ?? throw new ArgumentNullException(nameof(cacheInfoRepository));
+        _imageProcessingService = imageProcessingService ?? throw new ArgumentNullException(nameof(imageProcessingService));
+        _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _sizeOptions = sizeOptions?.Value ?? new ImageSizeOptions();
     }
 

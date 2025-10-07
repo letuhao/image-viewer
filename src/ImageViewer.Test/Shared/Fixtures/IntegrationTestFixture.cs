@@ -49,6 +49,7 @@ namespace ImageViewer.Test.Shared.Fixtures;
                services.AddSingleton<ICacheFolderRepository>(CreateMockCacheFolderRepository().Object);
                services.AddSingleton<IBackgroundJobRepository>(CreateMockBackgroundJobRepository().Object);
                services.AddSingleton<IUserSettingRepository>(CreateMockUserSettingRepository().Object);
+               services.AddSingleton<INotificationQueueRepository>(CreateMockNotificationQueueRepository().Object);
                services.AddSingleton<IUnitOfWork>(CreateMockUnitOfWork().Object);
 
         // Add application services
@@ -367,6 +368,32 @@ namespace ImageViewer.Test.Shared.Fixtures;
         return mock;
     }
 
+    private Mock<INotificationQueueRepository> CreateMockNotificationQueueRepository()
+    {
+        var mock = new Mock<INotificationQueueRepository>();
+        var testQueues = CreateTestNotificationQueues();
+
+        mock.Setup(x => x.GetByIdAsync(It.IsAny<ObjectId>()))
+            .ReturnsAsync((ObjectId id) => testQueues.FirstOrDefault(q => q.Id == id));
+
+        mock.Setup(x => x.GetAllAsync())
+            .ReturnsAsync(testQueues);
+
+        mock.Setup(x => x.GetPendingNotificationsAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(testQueues.Where(q => q.Status == "Pending"));
+
+        mock.Setup(x => x.GetByUserIdAsync(It.IsAny<ObjectId>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((ObjectId userId, CancellationToken ct) => testQueues.Where(q => q.UserId == userId));
+
+        mock.Setup(x => x.GetByStatusAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((string status, CancellationToken ct) => testQueues.Where(q => q.Status == status));
+
+        mock.Setup(x => x.GetByChannelAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((string channel, CancellationToken ct) => testQueues.Where(q => q.NotificationType == channel));
+
+        return mock;
+    }
+
     private Mock<IUnitOfWork> CreateMockUnitOfWork()
     {
         var mock = new Mock<IUnitOfWork>();
@@ -451,6 +478,11 @@ namespace ImageViewer.Test.Shared.Fixtures;
     private List<UserSetting> CreateTestUserSettings()
     {
         return new List<UserSetting>();
+    }
+
+    private List<NotificationQueue> CreateTestNotificationQueues()
+    {
+        return new List<NotificationQueue>();
     }
 
     #endregion
