@@ -35,7 +35,12 @@ public class BulkOperationConsumer : BaseMessageConsumer
         {
             _logger.LogInformation("🔔 Received RabbitMQ message: {Message}", message);
             
-            var bulkMessage = JsonSerializer.Deserialize<BulkOperationMessage>(message);
+            var options = new JsonSerializerOptions
+            {
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                WriteIndented = false
+            };
+            var bulkMessage = JsonSerializer.Deserialize<BulkOperationMessage>(message, options);
             if (bulkMessage == null)
             {
                 _logger.LogWarning("❌ Failed to deserialize BulkOperationMessage from: {Message}", message);
@@ -50,11 +55,12 @@ public class BulkOperationConsumer : BaseMessageConsumer
             var backgroundJobService = scope.ServiceProvider.GetRequiredService<IBackgroundJobService>();
             var messageQueueService = scope.ServiceProvider.GetRequiredService<IMessageQueueService>();
 
-            // Update job status to Processing
-            if (bulkMessage.JobId != ObjectId.Empty)
+            // Update job status to Running
+            if (!string.IsNullOrEmpty(bulkMessage.JobId))
             {
-                await backgroundJobService.UpdateJobStatusAsync(bulkMessage.JobId, "Processing");
-                _logger.LogInformation("📊 Updated job {JobId} status to Processing", bulkMessage.JobId);
+                var jobId = ObjectId.Parse(bulkMessage.JobId);
+                await backgroundJobService.UpdateJobStatusAsync(jobId, "Running");
+                _logger.LogInformation("📊 Updated job {JobId} status to Running", bulkMessage.JobId);
             }
             
             switch (bulkMessage.OperationType.ToLowerInvariant())
@@ -86,9 +92,10 @@ public class BulkOperationConsumer : BaseMessageConsumer
             }
 
             // Update job status to Completed
-            if (bulkMessage.JobId != ObjectId.Empty)
+            if (!string.IsNullOrEmpty(bulkMessage.JobId))
             {
-                await backgroundJobService.UpdateJobStatusAsync(bulkMessage.JobId, "Completed");
+                var jobId = ObjectId.Parse(bulkMessage.JobId);
+                await backgroundJobService.UpdateJobStatusAsync(jobId, "Completed");
                 _logger.LogInformation("📊 Updated job {JobId} status to Completed", bulkMessage.JobId);
             }
 
@@ -101,12 +108,18 @@ public class BulkOperationConsumer : BaseMessageConsumer
             // Update job status to Failed
             try
             {
-                var bulkMessage = JsonSerializer.Deserialize<BulkOperationMessage>(message);
-                if (bulkMessage?.JobId != ObjectId.Empty)
+                var options = new JsonSerializerOptions
+                {
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                    WriteIndented = false
+                };
+                var bulkMessage = JsonSerializer.Deserialize<BulkOperationMessage>(message, options);
+                if (!string.IsNullOrEmpty(bulkMessage?.JobId))
                 {
                     using var scope = _serviceProvider.CreateScope();
                     var backgroundJobService = scope.ServiceProvider.GetRequiredService<IBackgroundJobService>();
-                    await backgroundJobService.UpdateJobStatusAsync(bulkMessage!.JobId, "Failed");
+                    var jobId = ObjectId.Parse(bulkMessage!.JobId);
+                    await backgroundJobService.UpdateJobStatusAsync(jobId, "Failed");
                     _logger.LogInformation("📊 Updated job {JobId} status to Failed", bulkMessage.JobId);
                 }
             }
@@ -183,7 +196,8 @@ public class BulkOperationConsumer : BaseMessageConsumer
             {
                 _logger.LogInformation("🔄 Creating collection scan jobs for {SuccessCount} collections", result.SuccessCount);
                 
-                var collectionService = _serviceProvider.GetRequiredService<ICollectionService>();
+                using var scope = _serviceProvider.CreateScope();
+                var collectionService = scope.ServiceProvider.GetRequiredService<ICollectionService>();
                 var createdCollections = result.Results?.Where(r => r.Status == "Success" && r.CollectionId.HasValue).ToList() ?? new List<BulkCollectionResult>();
                 
                 foreach (var collectionResult in createdCollections)
@@ -199,7 +213,7 @@ public class BulkOperationConsumer : BaseMessageConsumer
                                 // Create collection scan job
                                 var scanMessage = new CollectionScanMessage
                                 {
-                                    CollectionId = collection.Id,
+                                    CollectionId = collection.Id.ToString(), // Convert ObjectId to string
                                     CollectionPath = collection.Path,
                                     CollectionType = collection.Type,
                                     ForceRescan = false,
@@ -222,10 +236,18 @@ public class BulkOperationConsumer : BaseMessageConsumer
                 
                 _logger.LogInformation("✅ Created {ScanJobCount} collection scan jobs", createdCollections.Count);
             }
+            
+            // Update job status to completed
+            var jobId = ObjectId.Parse(bulkMessage.JobId);
+            await backgroundJobService.UpdateJobStatusAsync(jobId, "Completed", "Bulk operation completed successfully");
+            _logger.LogInformation("✅ Bulk operation job {JobId} marked as completed", bulkMessage.JobId);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "❌ Error processing bulk add collections operation");
+            // Update job status to failed
+            var jobId = ObjectId.Parse(bulkMessage.JobId);
+            await backgroundJobService.UpdateJobStatusAsync(jobId, "Failed", $"Bulk operation failed: {ex.Message}");
             throw;
         }
     }
@@ -248,7 +270,7 @@ public class BulkOperationConsumer : BaseMessageConsumer
             {
                 var scanMessage = new CollectionScanMessage
                 {
-                    CollectionId = collection.Id,
+                    CollectionId = collection.Id.ToString(), // Convert ObjectId to string
                     CollectionPath = collection.Path,
                     CollectionType = collection.Type,
                     ForceRescan = true, // Force rescan for bulk operations
@@ -293,8 +315,8 @@ public class BulkOperationConsumer : BaseMessageConsumer
             {
                 var thumbnailMessage = new ThumbnailGenerationMessage
                 {
-                    ImageId = Guid.Parse(image.Id.ToString()),
-                    CollectionId = Guid.Parse(image.CollectionId.ToString()),
+                    ImageId = image.Id.ToString(), // Convert ObjectId to string
+                    CollectionId = image.CollectionId.ToString(), // Convert ObjectId to string
                     ImagePath = image.RelativePath, // This should be the full path
                     ImageFilename = image.Filename,
                     ThumbnailWidth = 300, // Default thumbnail size
@@ -340,8 +362,8 @@ public class BulkOperationConsumer : BaseMessageConsumer
             {
                 var cacheMessage = new CacheGenerationMessage
                 {
-                    ImageId = image.Id,
-                    CollectionId = image.CollectionId,
+                    ImageId = image.Id.ToString(), // Convert ObjectId to string
+                    CollectionId = image.CollectionId.ToString(), // Convert ObjectId to string
                     ImagePath = image.RelativePath, // This should be the full path
                     CachePath = "", // Will be determined by cache service
                     CacheWidth = 1920, // Default cache size
@@ -382,7 +404,7 @@ public class BulkOperationConsumer : BaseMessageConsumer
                 {
                     var scanMessage = new CollectionScanMessage
                     {
-                        CollectionId = collection.Id,
+                        CollectionId = collection.Id.ToString(), // Convert ObjectId to string
                         CollectionPath = collection.Path,
                         CollectionType = collection.Type,
                         ForceRescan = true, // Force rescan for bulk operations
@@ -441,8 +463,8 @@ public class BulkOperationConsumer : BaseMessageConsumer
             {
                 var thumbnailMessage = new ThumbnailGenerationMessage
                 {
-                    ImageId = Guid.Parse(image.Id.ToString()),
-                    CollectionId = Guid.Parse(image.CollectionId.ToString()),
+                    ImageId = image.Id.ToString(), // Convert ObjectId to string
+                    CollectionId = image.CollectionId.ToString(), // Convert ObjectId to string
                     ImagePath = image.RelativePath, // This should be the full path
                     ImageFilename = image.Filename,
                     ThumbnailWidth = 300, // Default thumbnail size
@@ -495,8 +517,8 @@ public class BulkOperationConsumer : BaseMessageConsumer
             {
                 var cacheMessage = new CacheGenerationMessage
                 {
-                    ImageId = image.Id,
-                    CollectionId = image.CollectionId,
+                    ImageId = image.Id.ToString(), // Convert ObjectId to string
+                    CollectionId = image.CollectionId.ToString(), // Convert ObjectId to string
                     ImagePath = image.RelativePath, // This should be the full path
                     CachePath = "", // Will be determined by cache service
                     CacheWidth = 1920, // Default cache size

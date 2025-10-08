@@ -22,8 +22,8 @@ public abstract class MessageEvent : IDomainEvent
 /// </summary>
 public class ThumbnailGenerationMessage : MessageEvent
 {
-    public Guid ImageId { get; set; }
-    public Guid CollectionId { get; set; }
+    public string ImageId { get; set; } = string.Empty; // Changed from Guid to string for JSON serialization
+    public string CollectionId { get; set; } = string.Empty; // Changed from Guid to string for JSON serialization
     public string ImagePath { get; set; } = string.Empty;
     public string ImageFilename { get; set; } = string.Empty;
     public int ThumbnailWidth { get; set; }
@@ -63,9 +63,9 @@ public class BulkOperationMessage : MessageEvent
     public List<Guid> CollectionIds { get; set; } = new();
     public Dictionary<string, object> Parameters { get; set; } = new();
     public string? UserId { get; set; }
-    public ObjectId JobId { get; set; } = ObjectId.Empty; // Link to background job for tracking
-    public ObjectId? ParentJobId { get; set; } // For job hierarchy
-    public List<ObjectId> ChildJobIds { get; set; } = new(); // For tracking child jobs
+    public string JobId { get; set; } = string.Empty; // Link to background job for tracking (as string for JSON serialization)
+    public string? ParentJobId { get; set; } // For job hierarchy (as string for JSON serialization)
+    public List<string> ChildJobIds { get; set; } = new(); // For tracking child jobs (as strings for JSON serialization)
     public int Priority { get; set; } = 0; // Job priority (higher = more important)
     public DateTime? ScheduledFor { get; set; } // For delayed execution
     public int MaxRetries { get; set; } = 3;

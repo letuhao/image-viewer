@@ -145,4 +145,23 @@ public class CollectionStatistics
     {
         LastActivity = DateTime.UtcNow;
     }
+
+    public void UpdateItemCount(int count)
+    {
+        TotalItems = count;
+        TotalImages = count;
+        UpdateLastActivity();
+    }
+
+    public void UpdateTotalSize(long size)
+    {
+        TotalSize = size;
+        UpdateLastActivity();
+    }
+
+    public void IncrementViewCount()
+    {
+        TotalViews++;
+        UpdateLastActivity();
+    }
 }

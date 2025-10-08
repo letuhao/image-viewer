@@ -35,7 +35,12 @@ public class CacheGenerationConsumer : BaseMessageConsumer
     {
         try
         {
-            var cacheMessage = JsonSerializer.Deserialize<CacheGenerationMessage>(message);
+            var options = new JsonSerializerOptions
+            {
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                WriteIndented = false
+            };
+            var cacheMessage = JsonSerializer.Deserialize<CacheGenerationMessage>(message, options);
             if (cacheMessage == null)
             {
                 _logger.LogWarning("Failed to deserialize CacheGenerationMessage");
@@ -92,8 +97,13 @@ public class CacheGenerationConsumer : BaseMessageConsumer
         }
         catch (Exception ex)
         {
+            var options = new JsonSerializerOptions
+            {
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                WriteIndented = false
+            };
             _logger.LogError(ex, "Error processing cache generation message for image {ImageId}", 
-                JsonSerializer.Deserialize<CacheGenerationMessage>(message)?.ImageId);
+                JsonSerializer.Deserialize<CacheGenerationMessage>(message, options)?.ImageId);
             throw;
         }
     }
@@ -111,11 +121,17 @@ public class CacheGenerationConsumer : BaseMessageConsumer
             }
 
             // Select cache folder using hash-based distribution for equal load balancing
-            var cacheFolder = SelectCacheFolderForEqualDistribution(cacheFolders, cacheMessage.ImageId);
+            var collectionId = ObjectId.Parse(cacheMessage.CollectionId); // Convert string back to ObjectId
+            var cacheFolder = SelectCacheFolderForEqualDistribution(cacheFolders, collectionId);
+            
+            // Create proper folder structure: CacheFolder/cache/CollectionId/ImageId_CacheWidthxCacheHeight.jpg
+            var collectionIdStr = cacheMessage.CollectionId; // Already a string
+            var cacheDir = Path.Combine(cacheFolder.Path, "cache", collectionIdStr);
             var fileName = $"{cacheMessage.ImageId}_cache_{cacheMessage.CacheWidth}x{cacheMessage.CacheHeight}.jpg";
             
-            _logger.LogDebug("📁 Selected cache folder {CacheFolderName} for image {ImageId}", cacheFolder.Name, cacheMessage.ImageId);
-            return Path.Combine(cacheFolder.Path, fileName);
+            _logger.LogDebug("📁 Selected cache folder {CacheFolderName} for collection {CollectionId}, image {ImageId}", 
+                cacheFolder.Name, collectionIdStr, cacheMessage.ImageId);
+            return Path.Combine(cacheDir, fileName);
         }
         catch (Exception ex)
         {
@@ -124,7 +140,7 @@ public class CacheGenerationConsumer : BaseMessageConsumer
         }
     }
 
-    private CacheFolderDto SelectCacheFolderForEqualDistribution(IEnumerable<CacheFolderDto> cacheFolders, ObjectId imageId)
+    private CacheFolderDto SelectCacheFolderForEqualDistribution(IEnumerable<CacheFolderDto> cacheFolders, ObjectId collectionId)
     {
         // Filter to only active cache folders
         var activeCacheFolders = cacheFolders.Where(cf => cf.IsActive).ToList();
@@ -135,14 +151,14 @@ public class CacheGenerationConsumer : BaseMessageConsumer
         }
 
         // Use hash-based distribution to ensure equal distribution across cache folders
-        // This ensures the same image always goes to the same cache folder (for consistency)
-        // while distributing images evenly across all available cache folders
-        var hash = Math.Abs(imageId.GetHashCode());
+        // This ensures the same collection always goes to the same cache folder (for consistency)
+        // while distributing collections evenly across all available cache folders
+        var hash = Math.Abs(collectionId.GetHashCode());
         var selectedIndex = hash % activeCacheFolders.Count;
         var selectedFolder = activeCacheFolders[selectedIndex];
         
-        _logger.LogDebug("🎯 Hash-based cache folder selection: ImageId={ImageId}, Hash={Hash}, Index={Index}, SelectedFolder={FolderName}", 
-            imageId, hash, selectedIndex, selectedFolder.Name);
+        _logger.LogDebug("🎯 Hash-based cache folder selection: CollectionId={CollectionId}, Hash={Hash}, Index={Index}, SelectedFolder={FolderName}", 
+            collectionId, hash, selectedIndex, selectedFolder.Name);
         
         return selectedFolder;
     }
@@ -153,24 +169,19 @@ public class CacheGenerationConsumer : BaseMessageConsumer
         {
             _logger.LogInformation("📝 Updating cache info in database for image {ImageId}", cacheMessage.ImageId);
             
-            // Get file info for the cache file
-            var fileInfo = new FileInfo(cachePath);
-            var dimensions = $"{cacheMessage.CacheWidth}x{cacheMessage.CacheHeight}";
-            var expiresAt = DateTime.UtcNow.AddDays(30); // Cache expires in 30 days
+            // Convert string back to ObjectId for database operations
+            var collectionId = ObjectId.Parse(cacheMessage.CollectionId);
             
-            // Create cache info entity
-            var cacheInfo = new ImageCacheInfo(
-                cacheMessage.ImageId,
-                cachePath,
-                dimensions,
-                fileInfo.Length,
-                expiresAt
-            );
-            
-            // Persist the cache info to the database
+            // Generate cache using the new embedded service
             using var scope = _serviceProvider.CreateScope();
-            var cacheInfoRepository = scope.ServiceProvider.GetRequiredService<IImageCacheInfoRepository>();
-            await cacheInfoRepository.CreateAsync(cacheInfo);
+            var imageService = scope.ServiceProvider.GetRequiredService<IImageService>();
+            
+            var cacheInfoEmbedded = await imageService.GenerateCacheAsync(
+                cacheMessage.ImageId,
+                collectionId,
+                cacheMessage.CacheWidth,
+                cacheMessage.CacheHeight
+            );
             
             _logger.LogInformation("✅ Cache info created and persisted for image {ImageId}: {CachePath}", 
                 cacheMessage.ImageId, cachePath);
@@ -178,6 +189,7 @@ public class CacheGenerationConsumer : BaseMessageConsumer
         catch (Exception ex)
         {
             _logger.LogError(ex, "❌ Error updating cache info in database for image {ImageId}", cacheMessage.ImageId);
+            throw;
         }
     }
 }

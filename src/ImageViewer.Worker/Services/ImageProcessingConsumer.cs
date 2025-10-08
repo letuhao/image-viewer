@@ -35,7 +35,12 @@ public class ImageProcessingConsumer : BaseMessageConsumer
         {
             _logger.LogInformation("🖼️ Received image processing message: {Message}", message);
             
-            var imageMessage = JsonSerializer.Deserialize<ImageProcessingMessage>(message);
+            var options = new JsonSerializerOptions
+            {
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                WriteIndented = false
+            };
+            var imageMessage = JsonSerializer.Deserialize<ImageProcessingMessage>(message, options);
             if (imageMessage == null)
             {
                 _logger.LogWarning("❌ Failed to deserialize ImageProcessingMessage from: {Message}", message);
@@ -56,11 +61,11 @@ public class ImageProcessingConsumer : BaseMessageConsumer
                 return;
             }
 
-            // Create or update image entity
-            var image = await CreateOrUpdateImageEntity(imageMessage, imageService);
-            if (image == null)
+            // Create or update embedded image
+            var embeddedImage = await CreateOrUpdateEmbeddedImage(imageMessage, imageService, cancellationToken);
+            if (embeddedImage == null)
             {
-                _logger.LogWarning("❌ Failed to create/update image entity for {Path}", imageMessage.ImagePath);
+                _logger.LogWarning("❌ Failed to create/update embedded image for {Path}", imageMessage.ImagePath);
                 return;
             }
 
@@ -71,8 +76,8 @@ public class ImageProcessingConsumer : BaseMessageConsumer
                 {
                 var thumbnailMessage = new ThumbnailGenerationMessage
                 {
-                    ImageId = Guid.Parse(image.Id.ToString()),
-                    CollectionId = Guid.Parse(imageMessage.CollectionId.ToString()),
+                    ImageId = embeddedImage.Id, // Already a string
+                    CollectionId = imageMessage.CollectionId, // Already a string
                     ImagePath = imageMessage.ImagePath,
                     ImageFilename = Path.GetFileName(imageMessage.ImagePath),
                     ThumbnailWidth = 300, // Default thumbnail size
@@ -81,11 +86,11 @@ public class ImageProcessingConsumer : BaseMessageConsumer
 
                     // Queue the thumbnail generation job
                     await messageQueueService.PublishAsync(thumbnailMessage, "thumbnail.generation");
-                    _logger.LogInformation("📋 Queued thumbnail generation job for image {ImageId}", image.Id);
+                    _logger.LogInformation("📋 Queued thumbnail generation job for image {ImageId}", embeddedImage.Id);
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "❌ Failed to create thumbnail generation job for image {ImageId}", image.Id);
+                    _logger.LogError(ex, "❌ Failed to create thumbnail generation job for image {ImageId}", embeddedImage.Id);
                 }
             }
 
@@ -94,8 +99,8 @@ public class ImageProcessingConsumer : BaseMessageConsumer
             {
                 var cacheMessage = new CacheGenerationMessage
                 {
-                    ImageId = image.Id,
-                    CollectionId = imageMessage.CollectionId,
+                    ImageId = embeddedImage.Id, // Already a string
+                    CollectionId = imageMessage.CollectionId, // Already a string
                     ImagePath = imageMessage.ImagePath,
                     CachePath = "", // Will be determined by cache service
                     CacheWidth = 1920, // Default cache size
@@ -108,14 +113,14 @@ public class ImageProcessingConsumer : BaseMessageConsumer
 
                 // Queue the cache generation job
                 await messageQueueService.PublishAsync(cacheMessage, "cache.generation");
-                _logger.LogInformation("📋 Queued cache generation job for image {ImageId}", image.Id);
+                _logger.LogInformation("📋 Queued cache generation job for image {ImageId}", embeddedImage.Id);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "❌ Failed to create cache generation job for image {ImageId}", image.Id);
+                _logger.LogError(ex, "❌ Failed to create cache generation job for image {ImageId}", embeddedImage.Id);
             }
 
-            _logger.LogInformation("✅ Successfully processed image {ImageId}", image.Id);
+            _logger.LogInformation("✅ Successfully processed image {ImageId}", embeddedImage.Id);
         }
         catch (Exception ex)
         {
@@ -124,11 +129,11 @@ public class ImageProcessingConsumer : BaseMessageConsumer
         }
     }
 
-    private async Task<Domain.Entities.Image?> CreateOrUpdateImageEntity(ImageProcessingMessage imageMessage, IImageService imageService)
+    private async Task<Domain.ValueObjects.ImageEmbedded?> CreateOrUpdateEmbeddedImage(ImageProcessingMessage imageMessage, IImageService imageService, CancellationToken cancellationToken = default)
     {
         try
         {
-            _logger.LogInformation("➕ Creating/updating image entity for path {Path}", imageMessage.ImagePath);
+            _logger.LogInformation("➕ Creating/updating embedded image for path {Path}", imageMessage.ImagePath);
             
             // Extract actual image metadata if not provided
             var width = imageMessage.Width;
@@ -142,9 +147,12 @@ public class ImageProcessingConsumer : BaseMessageConsumer
                 
                 try
                 {
-                    var metadata = await imageProcessingService.ExtractMetadataAsync(imageMessage.ImagePath);
-                    if (metadata != null)
+                    var dimensions = await imageProcessingService.GetImageDimensionsAsync(imageMessage.ImagePath, cancellationToken);
+                    if (dimensions != null)
                     {
+                        width = dimensions.Width;
+                        height = dimensions.Height;
+                        
                         // Get file info for size if not provided
                         if (fileSize == 0 && File.Exists(imageMessage.ImagePath))
                         {
@@ -162,28 +170,27 @@ public class ImageProcessingConsumer : BaseMessageConsumer
                 }
             }
             
-            // Create image entity with proper metadata
-            var image = new Domain.Entities.Image(
-                imageMessage.CollectionId,
-                Path.GetFileName(imageMessage.ImagePath),
-                GetRelativePath(imageMessage.ImagePath, imageMessage.CollectionId),
+            // Create embedded image using the new service
+            var collectionId = ObjectId.Parse(imageMessage.CollectionId); // Convert string back to ObjectId
+            var filename = Path.GetFileName(imageMessage.ImagePath);
+            var relativePath = GetRelativePath(imageMessage.ImagePath, collectionId);
+            
+            var embeddedImage = await imageService.CreateEmbeddedImageAsync(
+                collectionId,
+                filename,
+                relativePath,
                 fileSize,
                 width,
                 height,
                 imageMessage.ImageFormat
             );
             
-            // Persist the image entity to the database
-            using var repositoryScope = _serviceProvider.CreateScope();
-            var imageRepository = repositoryScope.ServiceProvider.GetRequiredService<IImageRepository>();
-            var persistedImage = await imageRepository.CreateAsync(image);
-            
-            _logger.LogInformation("✅ Created and persisted image entity {ImageId} for {Path}", persistedImage.Id, imageMessage.ImagePath);
-            return persistedImage;
+            _logger.LogInformation("✅ Created embedded image {ImageId} for {Path}", embeddedImage.Id, imageMessage.ImagePath);
+            return embeddedImage;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "❌ Error creating/updating image entity for path {Path}", imageMessage.ImagePath);
+            _logger.LogError(ex, "❌ Error creating/updating embedded image for path {Path}", imageMessage.ImagePath);
             return null;
         }
     }

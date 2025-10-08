@@ -66,11 +66,18 @@ public class SkiaSharpImageProcessingService : IImageProcessingService
             using var thumbnailBitmap = new SKBitmap(thumbnailWidth, thumbnailHeight);
             using var canvas = new SKCanvas(thumbnailBitmap);
             
+            // Use high-quality interpolation for better thumbnail quality
+            using var paint = new SKPaint
+            {
+                FilterQuality = SKFilterQuality.High,
+                IsAntialias = true
+            };
+            
             canvas.Clear(SKColors.White);
-            canvas.DrawImage(originalImage, new SKRect(0, 0, thumbnailWidth, thumbnailHeight), new SKRect(0, 0, originalInfo.Width, originalInfo.Height));
+            canvas.DrawImage(originalImage, new SKRect(0, 0, thumbnailWidth, thumbnailHeight), new SKRect(0, 0, originalInfo.Width, originalInfo.Height), paint);
 
             using var thumbnailImage = SKImage.FromBitmap(thumbnailBitmap);
-            using var thumbnailStream = thumbnailImage.Encode(SKEncodedImageFormat.Jpeg, 90);
+            using var thumbnailStream = thumbnailImage.Encode(SKEncodedImageFormat.Jpeg, 95); // Higher quality for thumbnails
             
             var result = thumbnailStream.ToArray();
             

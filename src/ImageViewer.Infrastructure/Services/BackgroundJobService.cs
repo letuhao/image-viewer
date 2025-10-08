@@ -165,14 +165,14 @@ public class BackgroundJobService : BackgroundService
             throw new ArgumentException("Invalid collection ID in job parameters");
         }
 
-        var images = await imageService.GetByCollectionIdAsync(collectionId, cancellationToken);
+        var images = await imageService.GetEmbeddedImagesByCollectionAsync(collectionId, cancellationToken);
         var processedCount = 0;
 
         foreach (var image in images)
         {
             try
             {
-                await imageService.GenerateThumbnailAsync(image.Id, 300, 300, cancellationToken);
+                await imageService.GenerateThumbnailAsync(image.Id, collectionId, 300, 300, cancellationToken);
                 processedCount++;
                 
                 // Update job progress
@@ -196,14 +196,14 @@ public class BackgroundJobService : BackgroundService
             throw new ArgumentException("Invalid collection ID in job parameters");
         }
 
-        var images = await imageService.GetByCollectionIdAsync(collectionId, cancellationToken);
+        var images = await imageService.GetEmbeddedImagesByCollectionAsync(collectionId, cancellationToken);
         var processedCount = 0;
 
         foreach (var image in images)
         {
             try
             {
-                await imageService.GenerateCacheAsync(image.Id, 1920, 1080, cancellationToken);
+                await imageService.GenerateCacheAsync(image.Id, collectionId, 1920, 1080, cancellationToken);
                 processedCount++;
                 
                 // Update job progress

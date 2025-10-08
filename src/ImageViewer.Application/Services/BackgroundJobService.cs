@@ -275,7 +275,7 @@ public class BackgroundJobService : IBackgroundJobService
             CollectionIds = dto.TargetIds?.Select(id => Guid.Parse(id.ToString())).ToList() ?? new List<Guid>(),
             Parameters = dto.Parameters,
             UserId = null, // TODO: Get from current user context
-            JobId = job.Id, // Link to background job for tracking
+            JobId = job.Id.ToString(), // Link to background job for tracking (convert ObjectId to string)
             Priority = 0, // Default priority
             MaxRetries = 3,
             Timeout = TimeSpan.FromHours(2) // 2 hour timeout for bulk operations

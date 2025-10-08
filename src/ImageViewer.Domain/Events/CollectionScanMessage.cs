@@ -8,7 +8,7 @@ namespace ImageViewer.Domain.Events;
 /// </summary>
 public class CollectionScanMessage : MessageEvent
 {
-    public ObjectId CollectionId { get; set; }
+    public string CollectionId { get; set; } = string.Empty; // Collection ID as string for JSON serialization
     public string CollectionPath { get; set; } = string.Empty;
     public CollectionType CollectionType { get; set; }
     public bool ForceRescan { get; set; }

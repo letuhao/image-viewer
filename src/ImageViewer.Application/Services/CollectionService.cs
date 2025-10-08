@@ -5,7 +5,10 @@ using ImageViewer.Domain.Interfaces;
 using ImageViewer.Domain.ValueObjects;
 using ImageViewer.Domain.Enums;
 using ImageViewer.Domain.Exceptions;
+using ImageViewer.Domain.Events;
+using ImageViewer.Application.DTOs.BackgroundJobs;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace ImageViewer.Application.Services;
 
@@ -15,11 +18,15 @@ namespace ImageViewer.Application.Services;
 public class CollectionService : ICollectionService
 {
     private readonly ICollectionRepository _collectionRepository;
+    private readonly IMessageQueueService _messageQueueService;
+    private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<CollectionService> _logger;
 
-    public CollectionService(ICollectionRepository collectionRepository, ILogger<CollectionService> logger)
+    public CollectionService(ICollectionRepository collectionRepository, IMessageQueueService messageQueueService, IServiceProvider serviceProvider, ILogger<CollectionService> logger)
     {
         _collectionRepository = collectionRepository ?? throw new ArgumentNullException(nameof(collectionRepository));
+        _messageQueueService = messageQueueService ?? throw new ArgumentNullException(nameof(messageQueueService));
+        _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -51,7 +58,36 @@ public class CollectionService : ICollectionService
 
             // Create new collection with creator tracking
             var collection = new Collection(libraryId, name, path, type, createdBy, createdBySystem);
-            return await _collectionRepository.CreateAsync(collection);
+            var createdCollection = await _collectionRepository.CreateAsync(collection);
+            
+            // Trigger collection scan if AutoScan is enabled (default is true)
+            if (createdCollection.Settings.AutoScan)
+            {
+                // Create background job for collection scan tracking - MANDATORY
+                var backgroundJobService = _serviceProvider.GetRequiredService<IBackgroundJobService>();
+                var scanJob = await backgroundJobService.CreateJobAsync(new CreateBackgroundJobDto
+                {
+                    Type = "collection-scan",
+                    Description = $"Collection scan for {createdCollection.Name}",
+                    CollectionId = null // CollectionId is not used in BackgroundJob entity
+                });
+
+                var scanMessage = new CollectionScanMessage
+                {
+                    CollectionId = createdCollection.Id.ToString(), // Convert ObjectId to string
+                    CollectionPath = createdCollection.Path,
+                    CollectionType = createdCollection.Type,
+                    ForceRescan = false,
+                    CreatedBy = "CollectionService",
+                    CreatedBySystem = "ImageViewer.Application"
+                };
+                
+                await _messageQueueService.PublishAsync(scanMessage, "collection.scan");
+                _logger.LogInformation("✅ Queued collection scan for new collection {CollectionId}: {CollectionName} (Job: {JobId})", 
+                    createdCollection.Id, createdCollection.Name, scanJob.JobId);
+            }
+            
+            return createdCollection;
         }
         catch (Exception ex) when (!(ex is ValidationException || ex is DuplicateEntityException))
         {
@@ -245,7 +281,36 @@ public class CollectionService : ICollectionService
             }
             
             collection.UpdateSettings(newSettings);
-            return await _collectionRepository.UpdateAsync(collection);
+            var updatedCollection = await _collectionRepository.UpdateAsync(collection);
+            
+        // Trigger collection scan if AutoScan is enabled - MANDATORY
+        if (newSettings.AutoScan)
+        {
+            // Create background job for collection scan tracking - MANDATORY
+            var backgroundJobService = _serviceProvider.GetRequiredService<IBackgroundJobService>();
+            var scanJob = await backgroundJobService.CreateJobAsync(new CreateBackgroundJobDto
+            {
+                Type = "collection-scan",
+                Description = $"Collection scan for {collection.Name}",
+                CollectionId = null // CollectionId is not used in BackgroundJob entity
+            });
+
+            var scanMessage = new CollectionScanMessage
+            {
+                CollectionId = collection.Id.ToString(), // Convert ObjectId to string
+                CollectionPath = collection.Path,
+                CollectionType = collection.Type,
+                ForceRescan = false,
+                CreatedBy = "CollectionService",
+                CreatedBySystem = "ImageViewer.Application"
+            };
+            
+            await _messageQueueService.PublishAsync(scanMessage, "collection.scan");
+            _logger.LogInformation("✅ Queued collection scan for collection {CollectionId}: {CollectionName} (Job: {JobId})", 
+                collection.Id, collection.Name, scanJob.JobId);
+        }
+            
+            return updatedCollection;
         }
         catch (Exception ex) when (!(ex is EntityNotFoundException))
         {

@@ -16,7 +16,7 @@ Write-Host "Testing bulk collections with fixed logic..." -ForegroundColor Green
 Write-Host "Request body: $body" -ForegroundColor Cyan
 
 try {
-    $response = Invoke-RestMethod -Uri "https://localhost:11001/api/bulk/collections" -Method POST -ContentType "application/json" -Body $body
+    $response = Invoke-RestMethod -Uri "http://localhost:11000/api/v1/bulk/collections" -Method POST -ContentType "application/json" -Body $body
     Write-Host "Response:" -ForegroundColor Green
     $response | ConvertTo-Json -Depth 3
 } catch {

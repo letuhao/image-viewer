@@ -113,7 +113,7 @@ public class QueuedCollectionService : ICollectionService
         {
             var scanMessage = new CollectionScanMessage
             {
-                CollectionId = collection.Id,
+                CollectionId = collection.Id.ToString(), // Convert ObjectId to string
                 CollectionPath = collection.Path,
                 CollectionType = collection.Type,
                 ForceRescan = false
@@ -140,7 +140,7 @@ public class QueuedCollectionService : ICollectionService
         {
             var scanMessage = new CollectionScanMessage
             {
-                CollectionId = collection.Id,
+                CollectionId = collection.Id.ToString(), // Convert ObjectId to string
                 CollectionPath = collection.Path,
                 CollectionType = collection.Type,
                 ForceRescan = true
@@ -201,7 +201,7 @@ public class QueuedCollectionService : ICollectionService
 
         var scanMessage = new CollectionScanMessage
         {
-            CollectionId = collection.Id,
+            CollectionId = collection.Id.ToString(), // Convert ObjectId to string
             CollectionPath = collection.Path,
             CollectionType = collection.Type,
             ForceRescan = true

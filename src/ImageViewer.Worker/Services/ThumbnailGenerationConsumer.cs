@@ -36,7 +36,12 @@ public class ThumbnailGenerationConsumer : BaseMessageConsumer
         {
             _logger.LogInformation("🖼️ Received thumbnail generation message: {Message}", message);
             
-            var thumbnailMessage = JsonSerializer.Deserialize<ThumbnailGenerationMessage>(message);
+            var options = new JsonSerializerOptions
+            {
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                WriteIndented = false
+            };
+            var thumbnailMessage = JsonSerializer.Deserialize<ThumbnailGenerationMessage>(message, options);
             if (thumbnailMessage == null)
             {
                 _logger.LogWarning("❌ Failed to deserialize ThumbnailGenerationMessage from: {Message}", message);
@@ -60,11 +65,15 @@ public class ThumbnailGenerationConsumer : BaseMessageConsumer
             // Generate thumbnail
             try
             {
+                // Convert string CollectionId back to ObjectId for cache folder selection
+                var collectionId = ObjectId.Parse(thumbnailMessage.CollectionId);
+                
                 var thumbnailPath = await GenerateThumbnail(
                     thumbnailMessage.ImagePath, 
                     thumbnailMessage.ThumbnailWidth, 
                     thumbnailMessage.ThumbnailHeight,
                     imageProcessingService,
+                    collectionId,
                     cancellationToken);
 
                 if (!string.IsNullOrEmpty(thumbnailPath))
@@ -92,12 +101,12 @@ public class ThumbnailGenerationConsumer : BaseMessageConsumer
         }
     }
 
-    private async Task<string?> GenerateThumbnail(string imagePath, int width, int height, IImageProcessingService imageProcessingService, CancellationToken cancellationToken = default)
+    private async Task<string?> GenerateThumbnail(string imagePath, int width, int height, IImageProcessingService imageProcessingService, ObjectId collectionId, CancellationToken cancellationToken = default)
     {
         try
         {
             // Determine thumbnail path
-            var thumbnailPath = GetThumbnailPath(imagePath, width, height);
+            var thumbnailPath = await GetThumbnailPath(imagePath, width, height, collectionId);
             
             // Ensure thumbnail directory exists
             var thumbnailDir = Path.GetDirectoryName(thumbnailPath);
@@ -133,19 +142,32 @@ public class ThumbnailGenerationConsumer : BaseMessageConsumer
         }
     }
 
-    private static string GetThumbnailPath(string imagePath, int width, int height)
+    private async Task<string> GetThumbnailPath(string imagePath, int width, int height, ObjectId collectionId)
     {
         var fileName = Path.GetFileNameWithoutExtension(imagePath);
         var extension = Path.GetExtension(imagePath);
-        var directory = Path.GetDirectoryName(imagePath);
         
-        if (string.IsNullOrEmpty(directory))
+        // Use cache service to get the appropriate cache folder for thumbnails
+        using var scope = _serviceProvider.CreateScope();
+        var cacheService = scope.ServiceProvider.GetRequiredService<ICacheService>();
+        
+        // Get all cache folders and select one based on collection ID hash for even distribution
+        var cacheFolders = await cacheService.GetCacheFoldersAsync();
+        var cacheFoldersList = cacheFolders.ToList();
+        
+        if (cacheFoldersList.Count == 0)
         {
-            directory = ".";
+            throw new InvalidOperationException("No cache folders available");
         }
-
-        // Create thumbnail subdirectory
-        var thumbnailDir = Path.Combine(directory, "thumbnails");
+        
+        // Use hash-based distribution to select cache folder
+        var hash = collectionId.GetHashCode();
+        var selectedIndex = Math.Abs(hash) % cacheFoldersList.Count;
+        var selectedCacheFolder = cacheFoldersList[selectedIndex];
+        
+        // Create proper folder structure: CacheFolder/thumbnails/CollectionId/ImageFileName_WidthxHeight.ext
+        var collectionIdStr = collectionId.ToString();
+        var thumbnailDir = Path.Combine(selectedCacheFolder.Path, "thumbnails", collectionIdStr);
         var thumbnailFileName = $"{fileName}_{width}x{height}{extension}";
         
         return Path.Combine(thumbnailDir, thumbnailFileName);
@@ -155,62 +177,26 @@ public class ThumbnailGenerationConsumer : BaseMessageConsumer
     {
         try
         {
-            // Convert Guid back to ObjectId for database operations
-            var imageId = ObjectId.Parse(thumbnailMessage.ImageId.ToString());
+            _logger.LogInformation("📝 Updating thumbnail info in database for image {ImageId}", thumbnailMessage.ImageId);
             
-            _logger.LogInformation("📝 Updating thumbnail info in database for image {ImageId}", imageId);
+            // Convert string back to ObjectId for database operations
+            var collectionId = ObjectId.Parse(thumbnailMessage.CollectionId);
             
-            // Check if thumbnail info already exists for this image and dimensions
-            using var scope = _serviceProvider.CreateScope();
-            var thumbnailInfoRepository = scope.ServiceProvider.GetRequiredService<IThumbnailInfoRepository>();
+            // Generate thumbnail using the new embedded service
+            var thumbnailEmbedded = await imageService.GenerateThumbnailAsync(
+                thumbnailMessage.ImageId,
+                collectionId,
+                thumbnailMessage.ThumbnailWidth,
+                thumbnailMessage.ThumbnailHeight
+            );
             
-            var existingThumbnailInfo = await thumbnailInfoRepository.GetByImageIdAndDimensionsAsync(
-                imageId, 
-                thumbnailMessage.ThumbnailWidth, 
-                thumbnailMessage.ThumbnailHeight);
-            
-            if (existingThumbnailInfo != null)
-            {
-                _logger.LogInformation("📝 Updating existing thumbnail info for image {ImageId}", imageId);
-                
-                // Update existing thumbnail info
-                existingThumbnailInfo.UpdateThumbnailPath(thumbnailPath);
-                existingThumbnailInfo.UpdateFileSize(new FileInfo(thumbnailPath).Length);
-                existingThumbnailInfo.ExtendExpiration(DateTime.UtcNow.AddDays(30));
-                existingThumbnailInfo.MarkAsValid();
-                
-                await thumbnailInfoRepository.UpdateAsync(existingThumbnailInfo);
-                _logger.LogInformation("✅ Thumbnail info updated for image {ImageId}: {ThumbnailPath}", 
-                    imageId, thumbnailPath);
-            }
-            else
-            {
-                _logger.LogInformation("📝 Creating new thumbnail info for image {ImageId}", imageId);
-                
-                // Get file info for the thumbnail file
-                var fileInfo = new FileInfo(thumbnailPath);
-                var expiresAt = DateTime.UtcNow.AddDays(30); // Thumbnail expires in 30 days
-                
-                // Create new thumbnail info entity
-                var thumbnailInfo = new ThumbnailInfo(
-                    imageId,
-                    thumbnailPath,
-                    thumbnailMessage.ThumbnailWidth,
-                    thumbnailMessage.ThumbnailHeight,
-                    fileInfo.Length,
-                    expiresAt
-                );
-                
-                // Persist the thumbnail info to the database
-                await thumbnailInfoRepository.CreateAsync(thumbnailInfo);
-                
-                _logger.LogInformation("✅ Thumbnail info created and persisted for image {ImageId}: {ThumbnailPath}", 
-                    imageId, thumbnailPath);
-            }
+            _logger.LogInformation("✅ Thumbnail info created and persisted for image {ImageId}: {ThumbnailPath}", 
+                thumbnailMessage.ImageId, thumbnailPath);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "❌ Error updating thumbnail info in database for image {ImageId}", thumbnailMessage.ImageId);
+            throw;
         }
     }
 }

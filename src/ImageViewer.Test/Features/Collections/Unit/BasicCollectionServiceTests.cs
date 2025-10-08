@@ -8,6 +8,7 @@ using ImageViewer.Domain.Interfaces;
 using ImageViewer.Domain.Exceptions;
 using ImageViewer.Domain.Enums;
 using Microsoft.Extensions.Logging;
+using System;
 
 namespace ImageViewer.Test.Features.Collections.Unit;
 
@@ -17,16 +18,22 @@ namespace ImageViewer.Test.Features.Collections.Unit;
 public class BasicCollectionServiceTests
 {
     private readonly Mock<ICollectionRepository> _mockCollectionRepository;
+    private readonly Mock<IMessageQueueService> _mockMessageQueueService;
+    private readonly Mock<IServiceProvider> _mockServiceProvider;
     private readonly Mock<ILogger<CollectionService>> _mockLogger;
     private readonly CollectionService _collectionService;
 
     public BasicCollectionServiceTests()
     {
         _mockCollectionRepository = new Mock<ICollectionRepository>();
+        _mockMessageQueueService = new Mock<IMessageQueueService>();
+        _mockServiceProvider = new Mock<IServiceProvider>();
         _mockLogger = new Mock<ILogger<CollectionService>>();
 
         _collectionService = new CollectionService(
             _mockCollectionRepository.Object,
+            _mockMessageQueueService.Object,
+            _mockServiceProvider.Object,
             _mockLogger.Object);
     }
 

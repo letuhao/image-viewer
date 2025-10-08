@@ -37,7 +37,12 @@ public class CollectionScanConsumer : BaseMessageConsumer
         {
             _logger.LogInformation("🔍 Received collection scan message: {Message}", message);
             
-            var scanMessage = JsonSerializer.Deserialize<CollectionScanMessage>(message);
+            var options = new JsonSerializerOptions
+            {
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                WriteIndented = false
+            };
+            var scanMessage = JsonSerializer.Deserialize<CollectionScanMessage>(message, options);
             if (scanMessage == null)
             {
                 _logger.LogWarning("❌ Failed to deserialize CollectionScanMessage from: {Message}", message);
@@ -51,8 +56,9 @@ public class CollectionScanConsumer : BaseMessageConsumer
             var collectionService = scope.ServiceProvider.GetRequiredService<ICollectionService>();
             var messageQueueService = scope.ServiceProvider.GetRequiredService<IMessageQueueService>();
 
-            // Get the collection
-            var collection = await collectionService.GetCollectionByIdAsync(scanMessage.CollectionId);
+            // Get the collection (convert string CollectionId back to ObjectId)
+            var collectionId = ObjectId.Parse(scanMessage.CollectionId);
+            var collection = await collectionService.GetCollectionByIdAsync(collectionId);
             if (collection == null)
             {
                 _logger.LogWarning("❌ Collection {CollectionId} not found, skipping scan", scanMessage.CollectionId);
@@ -81,8 +87,8 @@ public class CollectionScanConsumer : BaseMessageConsumer
                     
                     var imageProcessingMessage = new ImageProcessingMessage
                     {
-                        ImageId = ObjectId.GenerateNewId(), // Will be set when image is created
-                        CollectionId = collection.Id,
+                        ImageId = ObjectId.GenerateNewId().ToString(), // Will be set when image is created, convert to string
+                        CollectionId = collection.Id.ToString(), // Convert ObjectId to string
                         ImagePath = mediaFile.FullPath,
                         ImageFormat = mediaFile.Extension,
                         Width = width,

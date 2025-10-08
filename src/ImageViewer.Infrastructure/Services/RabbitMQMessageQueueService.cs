@@ -81,7 +81,12 @@ public class RabbitMQMessageQueueService : IMessageQueueService, IDisposable
         try
         {
             var queueName = GetQueueName<T>();
-            var messageBody = JsonSerializer.SerializeToUtf8Bytes(message);
+            var options = new JsonSerializerOptions
+            {
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                WriteIndented = false
+            };
+            var messageBody = JsonSerializer.SerializeToUtf8Bytes(message, options);
             var properties = new BasicProperties();
             
             properties.Persistent = true;

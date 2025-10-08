@@ -5,342 +5,235 @@ using MongoDB.Bson;
 using ImageViewer.Application.Services;
 using ImageViewer.Domain.Entities;
 using ImageViewer.Domain.Interfaces;
-using ImageViewer.Application.Options;
+using ImageViewer.Domain.ValueObjects;
+using ImageViewer.Domain.Enums;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using System.Collections.Generic;
-using System.Threading.Tasks;
-using System.Threading;
+using ImageViewer.Application.Options;
 
 namespace ImageViewer.Test.Features.MediaManagement.Unit;
 
 /// <summary>
-/// Unit tests for ImageService - Image Management features
+/// Unit tests for ImageService with embedded design
 /// </summary>
 public class ImageServiceTests
 {
-    private readonly Mock<IUnitOfWork> _mockUnitOfWork;
+    private readonly Mock<ICollectionRepository> _mockCollectionRepository;
     private readonly Mock<IImageProcessingService> _mockImageProcessingService;
     private readonly Mock<ICacheService> _mockCacheService;
     private readonly Mock<ILogger<ImageService>> _mockLogger;
-    private readonly Mock<IOptions<ImageSizeOptions>> _mockSizeOptions;
+    private readonly Mock<IOptions<ImageSizeOptions>> _mockImageSizeOptions;
     private readonly ImageService _imageService;
 
     public ImageServiceTests()
     {
-        _mockUnitOfWork = new Mock<IUnitOfWork>();
+        _mockCollectionRepository = new Mock<ICollectionRepository>();
         _mockImageProcessingService = new Mock<IImageProcessingService>();
         _mockCacheService = new Mock<ICacheService>();
         _mockLogger = new Mock<ILogger<ImageService>>();
-        _mockSizeOptions = new Mock<IOptions<ImageSizeOptions>>();
-
-        _mockSizeOptions.Setup(x => x.Value).Returns(new ImageSizeOptions());
+        _mockImageSizeOptions = new Mock<IOptions<ImageSizeOptions>>();
+        
+        var imageSizeOptions = new ImageSizeOptions
+        {
+            ThumbnailWidth = 300,
+            ThumbnailHeight = 300,
+            CacheWidth = 1920,
+            CacheHeight = 1080,
+            JpegQuality = 95
+        };
+        
+        _mockImageSizeOptions.Setup(x => x.Value).Returns(imageSizeOptions);
 
         _imageService = new ImageService(
-            _mockUnitOfWork.Object,
+            _mockCollectionRepository.Object,
             _mockImageProcessingService.Object,
             _mockCacheService.Object,
             _mockLogger.Object,
-            _mockSizeOptions.Object
-        );
+            _mockImageSizeOptions.Object);
     }
 
     [Fact]
-    public async Task GetByIdAsync_WithValidId_ShouldReturnImage()
+    public async Task CreateEmbeddedImageAsync_WithValidData_ShouldCreateAndReturnImage()
     {
         // Arrange
-        var imageId = ObjectId.GenerateNewId();
         var collectionId = ObjectId.GenerateNewId();
-        var expectedImage = new Image(collectionId, "test.jpg", "/path/to/test.jpg", 1024L, 1920, 1080, "jpeg")
-        {
-            Id = imageId
-        };
+        var collection = new Collection(
+            ObjectId.Empty, // libraryId
+            "Test Collection", // name
+            "/path/to/collection", // path
+            CollectionType.Folder); // type
 
-        _mockUnitOfWork.Setup(x => x.Images.GetByIdAsync(imageId))
-            .ReturnsAsync(expectedImage);
+        _mockCollectionRepository
+            .Setup(x => x.GetByIdAsync(collectionId))
+            .ReturnsAsync(collection);
+
+        _mockCollectionRepository
+            .Setup(x => x.UpdateAsync(It.IsAny<Collection>()))
+            .ReturnsAsync((Collection c) => c);
 
         // Act
-        var result = await _imageService.GetByIdAsync(imageId);
+        var result = await _imageService.CreateEmbeddedImageAsync(
+            collectionId,
+            "test.jpg",
+            "/images/test.jpg",
+            1024000,
+            1920,
+            1080,
+            ".jpg");
 
         // Assert
         result.Should().NotBeNull();
-        result.Id.Should().Be(imageId);
-        result.Filename.Should().Be(expectedImage.Filename);
+        result!.Filename.Should().Be("test.jpg");
+        result.RelativePath.Should().Be("/images/test.jpg");
+        result.FileSize.Should().Be(1024000);
+        result.Width.Should().Be(1920);
+        result.Height.Should().Be(1080);
+        result.Format.Should().Be(".jpg");
+        
+        _mockCollectionRepository.Verify(x => x.UpdateAsync(It.IsAny<Collection>()), Times.Once);
     }
 
     [Fact]
-    public async Task GetByIdAsync_WithNonExistentId_ShouldReturnNull()
-    {
-        // Arrange
-        var imageId = ObjectId.GenerateNewId();
-        _mockUnitOfWork.Setup(x => x.Images.GetByIdAsync(imageId))
-            .ReturnsAsync((Image?)null);
-
-        // Act
-        var result = await _imageService.GetByIdAsync(imageId);
-
-        // Assert
-        result.Should().BeNull();
-    }
-
-    [Fact]
-    public async Task GetByCollectionIdAndFilenameAsync_WithValidData_ShouldReturnImage()
+    public async Task GetEmbeddedImageByIdAsync_WithExistingImage_ShouldReturnImage()
     {
         // Arrange
         var collectionId = ObjectId.GenerateNewId();
-        var filename = "test.jpg";
-        var expectedImage = new Image(collectionId, filename, "/path/to/test.jpg", 1024L, 1920, 1080, "jpeg");
+        var collection = new Collection(
+            ObjectId.Empty, // libraryId
+            "Test Collection", // name
+            "/path/to/collection", // path
+            CollectionType.Folder); // type
 
-        _mockUnitOfWork.Setup(x => x.Images.GetByCollectionIdAndFilenameAsync(collectionId, filename, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(expectedImage);
+        var embeddedImage = new ImageEmbedded("test.jpg", "/images/test.jpg", 1024000, 1920, 1080, ".jpg");
+        collection.AddImage(embeddedImage);
+
+        _mockCollectionRepository
+            .Setup(x => x.GetByIdAsync(collectionId))
+            .ReturnsAsync(collection);
 
         // Act
-        var result = await _imageService.GetByCollectionIdAndFilenameAsync(collectionId, filename);
+        var result = await _imageService.GetEmbeddedImageByIdAsync(embeddedImage.Id, collectionId);
 
         // Assert
         result.Should().NotBeNull();
-        result.Filename.Should().Be(filename);
-        result.CollectionId.Should().Be(collectionId);
+        result!.Id.Should().Be(embeddedImage.Id);
+        result.Filename.Should().Be("test.jpg");
     }
 
     [Fact]
-    public async Task GetByCollectionIdAndFilenameAsync_WithNonExistentData_ShouldReturnNull()
+    public async Task GetEmbeddedImagesByCollectionAsync_WithImages_ShouldReturnAllActiveImages()
     {
         // Arrange
         var collectionId = ObjectId.GenerateNewId();
-        var filename = "nonexistent.jpg";
-        _mockUnitOfWork.Setup(x => x.Images.GetByCollectionIdAndFilenameAsync(collectionId, filename, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((Image?)null);
+        var collection = new Collection(
+            ObjectId.Empty, // libraryId
+            "Test Collection", // name
+            "/path/to/collection", // path
+            CollectionType.Folder); // type
+
+        var image1 = new ImageEmbedded("test1.jpg", "/images/test1.jpg", 1024000, 1920, 1080, ".jpg");
+        var image2 = new ImageEmbedded("test2.jpg", "/images/test2.jpg", 2048000, 3840, 2160, ".jpg");
+        collection.AddImage(image1);
+        collection.AddImage(image2);
+
+        _mockCollectionRepository
+            .Setup(x => x.GetByIdAsync(collectionId))
+            .ReturnsAsync(collection);
 
         // Act
-        var result = await _imageService.GetByCollectionIdAndFilenameAsync(collectionId, filename);
+        var result = await _imageService.GetEmbeddedImagesByCollectionAsync(collectionId);
 
         // Assert
-        result.Should().BeNull();
-    }
-
-    [Fact]
-    public async Task GetByCollectionIdAsync_WithValidCollectionId_ShouldReturnImages()
-    {
-        // Arrange
-        var collectionId = ObjectId.GenerateNewId();
-        var images = new List<Image>
-        {
-            new Image(collectionId, "image1.jpg", "/path1", 1024L, 1920, 1080, "jpeg"),
-            new Image(collectionId, "image2.jpg", "/path2", 2048L, 1920, 1080, "jpeg")
-        };
-
-        _mockUnitOfWork.Setup(x => x.Images.GetByCollectionIdAsync(collectionId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(images);
-
-        // Act
-        var result = await _imageService.GetByCollectionIdAsync(collectionId);
-
-        // Assert
-        result.Should().NotBeNull();
         result.Should().HaveCount(2);
-        result.Should().Contain(i => i.Filename == "image1.jpg");
-        result.Should().Contain(i => i.Filename == "image2.jpg");
+        result.Should().Contain(img => img.Filename == "test1.jpg");
+        result.Should().Contain(img => img.Filename == "test2.jpg");
     }
 
     [Fact]
-    public async Task GetByFormatAsync_WithValidFormat_ShouldReturnImages()
+    public async Task DeleteEmbeddedImageAsync_WithExistingImage_ShouldMarkAsDeleted()
     {
         // Arrange
-        var format = "jpeg";
         var collectionId = ObjectId.GenerateNewId();
-        var images = new List<Image>
+        var collection = new Collection(
+            ObjectId.Empty, // libraryId
+            "Test Collection", // name
+            "/path/to/collection", // path
+            CollectionType.Folder); // type
+
+        var embeddedImage = new ImageEmbedded("test.jpg", "/images/test.jpg", 1024000, 1920, 1080, ".jpg");
+        collection.AddImage(embeddedImage);
+
+        _mockCollectionRepository
+            .Setup(x => x.GetByIdAsync(collectionId))
+            .ReturnsAsync(collection);
+
+        _mockCollectionRepository
+            .Setup(x => x.UpdateAsync(It.IsAny<Collection>()))
+            .ReturnsAsync((Collection c) => c);
+
+        // Act
+        await _imageService.DeleteEmbeddedImageAsync(embeddedImage.Id, collectionId);
+
+        // Assert
+        var deletedImages = collection.GetDeletedImages();
+        deletedImages.Should().HaveCount(1);
+        deletedImages.First().Id.Should().Be(embeddedImage.Id);
+        
+        _mockCollectionRepository.Verify(x => x.UpdateAsync(It.IsAny<Collection>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetCountByCollectionAsync_WithImages_ShouldReturnCorrectCount()
+    {
+        // Arrange
+        var collectionId = ObjectId.GenerateNewId();
+        var collection = new Collection(
+            ObjectId.Empty, // libraryId
+            "Test Collection", // name
+            "/path/to/collection", // path
+            CollectionType.Folder); // type
+
+        for (int i = 0; i < 10; i++)
         {
-            new Image(collectionId, "image1.jpg", "/path1", 1024L, 1920, 1080, format),
-            new Image(collectionId, "image2.jpg", "/path2", 2048L, 1920, 1080, format)
-        };
+            var image = new ImageEmbedded($"test{i}.jpg", $"/images/test{i}.jpg", 1024000, 1920, 1080, ".jpg");
+            collection.AddImage(image);
+        }
 
-        _mockUnitOfWork.Setup(x => x.Images.GetByFormatAsync(format, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(images);
+        _mockCollectionRepository
+            .Setup(x => x.GetByIdAsync(collectionId))
+            .ReturnsAsync(collection);
 
         // Act
-        var result = await _imageService.GetByFormatAsync(format);
+        var result = await _imageService.GetCountByCollectionAsync(collectionId);
 
         // Assert
-        result.Should().NotBeNull();
-        result.Should().HaveCount(2);
-        result.Should().AllSatisfy(i => i.Format.Should().Be(format));
+        result.Should().Be(10);
     }
 
     [Fact]
-    public async Task GetBySizeRangeAsync_WithValidRange_ShouldReturnImages()
-    {
-        // Arrange
-        var minWidth = 1920;
-        var minHeight = 1080;
-        var collectionId = ObjectId.GenerateNewId();
-        var images = new List<Image>
-        {
-            new Image(collectionId, "image1.jpg", "/path1", 1024L, 1920, 1080, "jpeg"),
-            new Image(collectionId, "image2.jpg", "/path2", 2048L, 2560, 1440, "jpeg")
-        };
-
-        _mockUnitOfWork.Setup(x => x.Images.GetBySizeRangeAsync(minWidth, minHeight, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(images);
-
-        // Act
-        var result = await _imageService.GetBySizeRangeAsync(minWidth, minHeight);
-
-        // Assert
-        result.Should().NotBeNull();
-        result.Should().HaveCount(2);
-        result.Should().AllSatisfy(i => i.Width.Should().BeGreaterOrEqualTo(minWidth));
-        result.Should().AllSatisfy(i => i.Height.Should().BeGreaterOrEqualTo(minHeight));
-    }
-
-    [Fact]
-    public async Task GetLargeImagesAsync_WithValidSize_ShouldReturnImages()
-    {
-        // Arrange
-        var minSizeBytes = 1024L;
-        var collectionId = ObjectId.GenerateNewId();
-        var images = new List<Image>
-        {
-            new Image(collectionId, "image1.jpg", "/path1", 2048L, 1920, 1080, "jpeg"),
-            new Image(collectionId, "image2.jpg", "/path2", 4096L, 1920, 1080, "jpeg")
-        };
-
-        _mockUnitOfWork.Setup(x => x.Images.GetLargeImagesAsync(minSizeBytes, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(images);
-
-        // Act
-        var result = await _imageService.GetLargeImagesAsync(minSizeBytes);
-
-        // Assert
-        result.Should().NotBeNull();
-        result.Should().HaveCount(2);
-        result.Should().AllSatisfy(i => i.FileSize.Should().BeGreaterOrEqualTo(minSizeBytes));
-    }
-
-    [Fact]
-    public async Task GetHighResolutionImagesAsync_WithValidResolution_ShouldReturnImages()
-    {
-        // Arrange
-        var minWidth = 1920;
-        var minHeight = 1080;
-        var collectionId = ObjectId.GenerateNewId();
-        var images = new List<Image>
-        {
-            new Image(collectionId, "image1.jpg", "/path1", 1024L, 1920, 1080, "jpeg"),
-            new Image(collectionId, "image2.jpg", "/path2", 2048L, 2560, 1440, "jpeg")
-        };
-
-        _mockUnitOfWork.Setup(x => x.Images.GetHighResolutionImagesAsync(minWidth, minHeight, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(images);
-
-        // Act
-        var result = await _imageService.GetHighResolutionImagesAsync(minWidth, minHeight);
-
-        // Assert
-        result.Should().NotBeNull();
-        result.Should().HaveCount(2);
-        result.Should().AllSatisfy(i => i.Width.Should().BeGreaterOrEqualTo(minWidth));
-        result.Should().AllSatisfy(i => i.Height.Should().BeGreaterOrEqualTo(minHeight));
-    }
-
-    [Fact]
-    public async Task GetRandomImageAsync_ShouldReturnRandomImage()
+    public async Task GetTotalSizeByCollectionAsync_WithImages_ShouldReturnCorrectSize()
     {
         // Arrange
         var collectionId = ObjectId.GenerateNewId();
-        var expectedImage = new Image(collectionId, "random.jpg", "/path", 1024L, 1920, 1080, "jpeg");
+        var collection = new Collection(
+            ObjectId.Empty, // libraryId
+            "Test Collection", // name
+            "/path/to/collection", // path
+            CollectionType.Folder); // type
 
-        _mockUnitOfWork.Setup(x => x.Images.GetRandomImageAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(expectedImage);
+        collection.AddImage(new ImageEmbedded("test1.jpg", "/images/test1.jpg", 1024000, 1920, 1080, ".jpg"));
+        collection.AddImage(new ImageEmbedded("test2.jpg", "/images/test2.jpg", 2048000, 1920, 1080, ".jpg"));
+        collection.AddImage(new ImageEmbedded("test3.jpg", "/images/test3.jpg", 3072000, 1920, 1080, ".jpg"));
 
-        // Act
-        var result = await _imageService.GetRandomImageAsync();
-
-        // Assert
-        result.Should().NotBeNull();
-        result.Filename.Should().Be("random.jpg");
-    }
-
-    [Fact]
-    public async Task GetRandomImageByCollectionAsync_WithValidCollectionId_ShouldReturnRandomImage()
-    {
-        // Arrange
-        var collectionId = ObjectId.GenerateNewId();
-        var expectedImage = new Image(collectionId, "random.jpg", "/path", 1024L, 1920, 1080, "jpeg");
-
-        _mockUnitOfWork.Setup(x => x.Images.GetRandomImageByCollectionAsync(collectionId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(expectedImage);
+        _mockCollectionRepository
+            .Setup(x => x.GetByIdAsync(collectionId))
+            .ReturnsAsync(collection);
 
         // Act
-        var result = await _imageService.GetRandomImageByCollectionAsync(collectionId);
+        var result = await _imageService.GetTotalSizeByCollectionAsync(collectionId);
 
         // Assert
-        result.Should().NotBeNull();
-        result.Filename.Should().Be("random.jpg");
-        result.CollectionId.Should().Be(collectionId);
-    }
-
-    [Fact]
-    public async Task GetNextImageAsync_WithValidCurrentImageId_ShouldReturnNextImage()
-    {
-        // Arrange
-        var currentImageId = ObjectId.GenerateNewId();
-        var collectionId = ObjectId.GenerateNewId();
-        var nextImage = new Image(collectionId, "next.jpg", "/path", 1024L, 1920, 1080, "jpeg");
-
-        _mockUnitOfWork.Setup(x => x.Images.GetNextImageAsync(currentImageId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(nextImage);
-
-        // Act
-        var result = await _imageService.GetNextImageAsync(currentImageId);
-
-        // Assert
-        result.Should().NotBeNull();
-        result.Filename.Should().Be("next.jpg");
-    }
-
-    [Fact]
-    public async Task GetPreviousImageAsync_WithValidCurrentImageId_ShouldReturnPreviousImage()
-    {
-        // Arrange
-        var currentImageId = ObjectId.GenerateNewId();
-        var collectionId = ObjectId.GenerateNewId();
-        var previousImage = new Image(collectionId, "previous.jpg", "/path", 1024L, 1920, 1080, "jpeg");
-
-        _mockUnitOfWork.Setup(x => x.Images.GetPreviousImageAsync(currentImageId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(previousImage);
-
-        // Act
-        var result = await _imageService.GetPreviousImageAsync(currentImageId);
-
-        // Assert
-        result.Should().NotBeNull();
-        result.Filename.Should().Be("previous.jpg");
-    }
-
-    [Fact]
-    public async Task DeleteAsync_WithValidId_ShouldDeleteImage()
-    {
-        // Arrange
-        var imageId = ObjectId.GenerateNewId();
-        var collectionId = ObjectId.GenerateNewId();
-        var image = new Image(collectionId, "test.jpg", "/path", 1024L, 1920, 1080, "jpeg")
-        {
-            Id = imageId
-        };
-
-        _mockUnitOfWork.Setup(x => x.Images.GetByIdAsync(imageId))
-            .ReturnsAsync(image);
-        _mockUnitOfWork.Setup(x => x.Images.UpdateAsync(It.IsAny<Image>()))
-            .ReturnsAsync((Image img) => img);
-        _mockUnitOfWork.Setup(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()))
-            .ReturnsAsync(1);
-
-        // Act
-        await _imageService.DeleteAsync(imageId);
-
-        // Assert
-        _mockUnitOfWork.Verify(x => x.Images.UpdateAsync(It.IsAny<Image>()), Times.Once);
-        _mockUnitOfWork.Verify(x => x.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        result.Should().Be(1024000 + 2048000 + 3072000);
     }
 }
+

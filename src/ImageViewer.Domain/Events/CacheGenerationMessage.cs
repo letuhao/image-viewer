@@ -7,8 +7,8 @@ namespace ImageViewer.Domain.Events;
 /// </summary>
 public class CacheGenerationMessage : MessageEvent
 {
-    public ObjectId ImageId { get; set; }
-    public ObjectId CollectionId { get; set; }
+    public string ImageId { get; set; } = string.Empty; // Changed from ObjectId to string for JSON serialization
+    public string CollectionId { get; set; } = string.Empty; // Changed from ObjectId to string for JSON serialization
     public string ImagePath { get; set; } = string.Empty;
     public string CachePath { get; set; } = string.Empty;
     public int CacheWidth { get; set; } = 1920;

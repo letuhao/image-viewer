@@ -1,39 +1,53 @@
 using ImageViewer.Domain.Entities;
+using ImageViewer.Domain.ValueObjects;
 using MongoDB.Bson;
 
 namespace ImageViewer.Application.Services;
 
 /// <summary>
-/// Image service interface
+/// Image service interface - Updated for embedded design
 /// </summary>
 public interface IImageService
 {
-    Task<Image?> GetByIdAsync(ObjectId id, CancellationToken cancellationToken = default);
-    Task<Image?> GetByCollectionIdAndFilenameAsync(ObjectId collectionId, string filename, CancellationToken cancellationToken = default);
-    Task<IEnumerable<Image>> GetByCollectionIdAsync(ObjectId collectionId, CancellationToken cancellationToken = default);
-    Task<IEnumerable<Image>> GetByFormatAsync(string format, CancellationToken cancellationToken = default);
-    Task<IEnumerable<Image>> GetBySizeRangeAsync(int minWidth, int minHeight, CancellationToken cancellationToken = default);
-    Task<IEnumerable<Image>> GetLargeImagesAsync(long minSizeBytes, CancellationToken cancellationToken = default);
-    Task<IEnumerable<Image>> GetHighResolutionImagesAsync(int minWidth, int minHeight, CancellationToken cancellationToken = default);
+    // Embedded image operations
+    Task<ImageEmbedded?> GetEmbeddedImageByIdAsync(string imageId, ObjectId collectionId, CancellationToken cancellationToken = default);
+    Task<ImageEmbedded?> GetEmbeddedImageByFilenameAsync(string filename, ObjectId collectionId, CancellationToken cancellationToken = default);
+    Task<IEnumerable<ImageEmbedded>> GetEmbeddedImagesByCollectionAsync(ObjectId collectionId, CancellationToken cancellationToken = default);
+    Task<IEnumerable<ImageEmbedded>> GetEmbeddedImagesByFormatAsync(string format, CancellationToken cancellationToken = default);
+    Task<IEnumerable<ImageEmbedded>> GetEmbeddedImagesBySizeRangeAsync(int minWidth, int minHeight, CancellationToken cancellationToken = default);
+    Task<IEnumerable<ImageEmbedded>> GetLargeEmbeddedImagesAsync(long minSizeBytes, CancellationToken cancellationToken = default);
+    Task<IEnumerable<ImageEmbedded>> GetHighResolutionEmbeddedImagesAsync(int minWidth, int minHeight, CancellationToken cancellationToken = default);
     
-    Task<Image?> GetRandomImageAsync(CancellationToken cancellationToken = default);
-    Task<Image?> GetRandomImageByCollectionAsync(ObjectId collectionId, CancellationToken cancellationToken = default);
-    Task<Image?> GetNextImageAsync(ObjectId currentImageId, CancellationToken cancellationToken = default);
-    Task<Image?> GetPreviousImageAsync(ObjectId currentImageId, CancellationToken cancellationToken = default);
+    // Random and navigation operations
+    Task<ImageEmbedded?> GetRandomEmbeddedImageAsync(CancellationToken cancellationToken = default);
+    Task<ImageEmbedded?> GetRandomEmbeddedImageByCollectionAsync(ObjectId collectionId, CancellationToken cancellationToken = default);
+    Task<ImageEmbedded?> GetNextEmbeddedImageAsync(string currentImageId, ObjectId collectionId, CancellationToken cancellationToken = default);
+    Task<ImageEmbedded?> GetPreviousEmbeddedImageAsync(string currentImageId, ObjectId collectionId, CancellationToken cancellationToken = default);
     
-    Task<byte[]?> GetImageFileAsync(ObjectId id, CancellationToken cancellationToken = default);
-    Task<byte[]?> GetThumbnailAsync(ObjectId id, int? width = null, int? height = null, CancellationToken cancellationToken = default);
-    Task<ThumbnailInfo?> GetThumbnailInfoAsync(ObjectId id, int? width = null, int? height = null, CancellationToken cancellationToken = default);
-    Task<byte[]?> GetCachedImageAsync(ObjectId id, int? width = null, int? height = null, CancellationToken cancellationToken = default);
+    // File operations
+    Task<byte[]?> GetImageFileAsync(string imageId, ObjectId collectionId, CancellationToken cancellationToken = default);
+    Task<byte[]?> GetThumbnailAsync(string imageId, ObjectId collectionId, int? width = null, int? height = null, CancellationToken cancellationToken = default);
+    Task<ThumbnailEmbedded?> GetThumbnailInfoAsync(string imageId, ObjectId collectionId, int? width = null, int? height = null, CancellationToken cancellationToken = default);
+    Task<byte[]?> GetCachedImageAsync(string imageId, ObjectId collectionId, int? width = null, int? height = null, CancellationToken cancellationToken = default);
     
-    Task DeleteAsync(ObjectId id, CancellationToken cancellationToken = default);
-    Task RestoreAsync(ObjectId id, CancellationToken cancellationToken = default);
+    // CRUD operations on embedded images
+    Task<ImageEmbedded> CreateEmbeddedImageAsync(ObjectId collectionId, string filename, string relativePath, long fileSize, int width, int height, string format, CancellationToken cancellationToken = default);
+    Task UpdateEmbeddedImageMetadataAsync(string imageId, ObjectId collectionId, int width, int height, long fileSize, CancellationToken cancellationToken = default);
+    Task DeleteEmbeddedImageAsync(string imageId, ObjectId collectionId, CancellationToken cancellationToken = default);
+    Task RestoreEmbeddedImageAsync(string imageId, ObjectId collectionId, CancellationToken cancellationToken = default);
     
+    // Statistics
     Task<long> GetTotalSizeByCollectionAsync(ObjectId collectionId, CancellationToken cancellationToken = default);
     Task<int> GetCountByCollectionAsync(ObjectId collectionId, CancellationToken cancellationToken = default);
     
-    Task GenerateThumbnailAsync(ObjectId id, int width, int height, CancellationToken cancellationToken = default);
-    Task GenerateCacheAsync(ObjectId id, int width, int height, CancellationToken cancellationToken = default);
+    // Thumbnail and cache operations
+    Task<ThumbnailEmbedded> GenerateThumbnailAsync(string imageId, ObjectId collectionId, int width, int height, CancellationToken cancellationToken = default);
+    Task<ImageCacheInfoEmbedded> GenerateCacheAsync(string imageId, ObjectId collectionId, int width, int height, CancellationToken cancellationToken = default);
     Task CleanupExpiredThumbnailsAsync(CancellationToken cancellationToken = default);
+    
+    // Legacy support (will be removed)
+    Task<Image?> GetByIdAsync(ObjectId id, CancellationToken cancellationToken = default);
+    Task<Image?> GetByCollectionIdAndFilenameAsync(ObjectId collectionId, string filename, CancellationToken cancellationToken = default);
+    Task<IEnumerable<Image>> GetByCollectionIdAsync(ObjectId collectionId, CancellationToken cancellationToken = default);
 }
 

@@ -10,208 +10,319 @@ using MongoDB.Bson;
 namespace ImageViewer.Application.Services;
 
 /// <summary>
-/// Image service implementation
+/// Image service implementation - Updated for embedded design
 /// </summary>
 public class ImageService : IImageService
 {
-    private readonly IUnitOfWork _unitOfWork;
+    private readonly ICollectionRepository _collectionRepository;
     private readonly IImageProcessingService _imageProcessingService;
     private readonly ICacheService _cacheService;
     private readonly ILogger<ImageService> _logger;
     private readonly ImageSizeOptions _sizeOptions;
 
     public ImageService(
-        IUnitOfWork unitOfWork,
+        ICollectionRepository collectionRepository,
         IImageProcessingService imageProcessingService,
         ICacheService cacheService,
         ILogger<ImageService> logger,
         IOptions<ImageSizeOptions> sizeOptions)
     {
-        _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
+        _collectionRepository = collectionRepository ?? throw new ArgumentNullException(nameof(collectionRepository));
         _imageProcessingService = imageProcessingService ?? throw new ArgumentNullException(nameof(imageProcessingService));
         _cacheService = cacheService ?? throw new ArgumentNullException(nameof(cacheService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _sizeOptions = sizeOptions?.Value ?? new ImageSizeOptions();
     }
 
-    public async Task<Image?> GetByIdAsync(ObjectId id, CancellationToken cancellationToken = default)
+    #region Embedded Image Operations
+
+    public async Task<ImageEmbedded?> GetEmbeddedImageByIdAsync(string imageId, ObjectId collectionId, CancellationToken cancellationToken = default)
     {
         try
         {
-            _logger.LogDebug("Getting image by ID {ImageId}", id);
-            return await _unitOfWork.Images.GetByIdAsync(id);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting image by ID {ImageId}", id);
-            throw;
-        }
-    }
-
-    public async Task<Image?> GetByCollectionIdAndFilenameAsync(ObjectId collectionId, string filename, CancellationToken cancellationToken = default)
-    {
-        try
-        {
-            _logger.LogDebug("Getting image by collection {CollectionId} and filename {Filename}", collectionId, filename);
-            return await _unitOfWork.Images.GetByCollectionIdAndFilenameAsync(collectionId, filename);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting image by collection {CollectionId} and filename {Filename}", collectionId, filename);
-            throw;
-        }
-    }
-
-    public async Task<IEnumerable<Image>> GetByCollectionIdAsync(ObjectId collectionId, CancellationToken cancellationToken = default)
-    {
-        try
-        {
-            _logger.LogDebug("Getting images by collection {CollectionId}", collectionId);
-            return await _unitOfWork.Images.GetByCollectionIdAsync(collectionId);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting images by collection {CollectionId}", collectionId);
-            throw;
-        }
-    }
-
-    public async Task<IEnumerable<Image>> GetByFormatAsync(string format, CancellationToken cancellationToken = default)
-    {
-        try
-        {
-            _logger.LogDebug("Getting images by format {Format}", format);
-            return await _unitOfWork.Images.GetByFormatAsync(format, cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting images by format {Format}", format);
-            throw;
-        }
-    }
-
-    public async Task<IEnumerable<Image>> GetBySizeRangeAsync(int minWidth, int minHeight, CancellationToken cancellationToken = default)
-    {
-        try
-        {
-            _logger.LogDebug("Getting images by size range {MinWidth}x{MinHeight}", minWidth, minHeight);
-            return await _unitOfWork.Images.GetBySizeRangeAsync(minWidth, minHeight, cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting images by size range {MinWidth}x{MinHeight}", minWidth, minHeight);
-            throw;
-        }
-    }
-
-    public async Task<IEnumerable<Image>> GetLargeImagesAsync(long minSizeBytes, CancellationToken cancellationToken = default)
-    {
-        try
-        {
-            _logger.LogDebug("Getting large images with minimum size {MinSizeBytes}", minSizeBytes);
-            return await _unitOfWork.Images.GetLargeImagesAsync(minSizeBytes, cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting large images with minimum size {MinSizeBytes}", minSizeBytes);
-            throw;
-        }
-    }
-
-    public async Task<IEnumerable<Image>> GetHighResolutionImagesAsync(int minWidth, int minHeight, CancellationToken cancellationToken = default)
-    {
-        try
-        {
-            _logger.LogDebug("Getting high resolution images {MinWidth}x{MinHeight}", minWidth, minHeight);
-            return await _unitOfWork.Images.GetHighResolutionImagesAsync(minWidth, minHeight, cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting high resolution images {MinWidth}x{MinHeight}", minWidth, minHeight);
-            throw;
-        }
-    }
-
-    public async Task<Image?> GetRandomImageAsync(CancellationToken cancellationToken = default)
-    {
-        try
-        {
-            _logger.LogDebug("Getting random image");
-            return await _unitOfWork.Images.GetRandomImageAsync(cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting random image");
-            throw;
-        }
-    }
-
-    public async Task<Image?> GetRandomImageByCollectionAsync(ObjectId collectionId, CancellationToken cancellationToken = default)
-    {
-        try
-        {
-            _logger.LogDebug("Getting random image by collection {CollectionId}", collectionId);
-            return await _unitOfWork.Images.GetRandomImageByCollectionAsync(collectionId);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting random image by collection {CollectionId}", collectionId);
-            throw;
-        }
-    }
-
-    public async Task<Image?> GetNextImageAsync(ObjectId currentImageId, CancellationToken cancellationToken = default)
-    {
-        try
-        {
-            _logger.LogDebug("Getting next image for {CurrentImageId}", currentImageId);
-            return await _unitOfWork.Images.GetNextImageAsync(currentImageId);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting next image for {CurrentImageId}", currentImageId);
-            throw;
-        }
-    }
-
-    public async Task<Image?> GetPreviousImageAsync(ObjectId currentImageId, CancellationToken cancellationToken = default)
-    {
-        try
-        {
-            _logger.LogDebug("Getting previous image for {CurrentImageId}", currentImageId);
-            return await _unitOfWork.Images.GetPreviousImageAsync(currentImageId);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting previous image for {CurrentImageId}", currentImageId);
-            throw;
-        }
-    }
-
-    public async Task<byte[]?> GetImageFileAsync(ObjectId id, CancellationToken cancellationToken = default)
-    {
-        try
-        {
-            _logger.LogDebug("Getting image file for {ImageId}", id);
-
-            var image = await _unitOfWork.Images.GetByIdAsync(id);
-            if (image == null)
+            _logger.LogDebug("Getting embedded image by ID {ImageId} from collection {CollectionId}", imageId, collectionId);
+            
+            var collection = await _collectionRepository.GetByIdAsync(collectionId);
+            if (collection == null)
             {
-                _logger.LogWarning("Image {ImageId} not found", id);
+                _logger.LogWarning("Collection {CollectionId} not found", collectionId);
                 return null;
             }
 
-            var collection = await _unitOfWork.Collections.GetByIdAsync(image.CollectionId);
+            return collection.GetImage(imageId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting embedded image by ID {ImageId} from collection {CollectionId}", imageId, collectionId);
+            throw;
+        }
+    }
+
+    public async Task<ImageEmbedded?> GetEmbeddedImageByFilenameAsync(string filename, ObjectId collectionId, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            _logger.LogDebug("Getting embedded image by filename {Filename} from collection {CollectionId}", filename, collectionId);
+            
+            var collection = await _collectionRepository.GetByIdAsync(collectionId);
             if (collection == null)
             {
-                _logger.LogWarning("Collection for image {ImageId} not found", id);
+                _logger.LogWarning("Collection {CollectionId} not found", collectionId);
+                return null;
+            }
+
+            return collection.GetActiveImages().FirstOrDefault(i => i.Filename.Equals(filename, StringComparison.OrdinalIgnoreCase));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting embedded image by filename {Filename} from collection {CollectionId}", filename, collectionId);
+            throw;
+        }
+    }
+
+    public async Task<IEnumerable<ImageEmbedded>> GetEmbeddedImagesByCollectionAsync(ObjectId collectionId, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            _logger.LogDebug("Getting embedded images from collection {CollectionId}", collectionId);
+            
+            var collection = await _collectionRepository.GetByIdAsync(collectionId);
+            if (collection == null)
+            {
+                _logger.LogWarning("Collection {CollectionId} not found", collectionId);
+                return Enumerable.Empty<ImageEmbedded>();
+            }
+
+            return collection.GetActiveImages();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting embedded images from collection {CollectionId}", collectionId);
+            throw;
+        }
+    }
+
+    public async Task<IEnumerable<ImageEmbedded>> GetEmbeddedImagesByFormatAsync(string format, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            _logger.LogDebug("Getting embedded images by format {Format}", format);
+            
+            var collections = await _collectionRepository.GetAllAsync();
+            var result = new List<ImageEmbedded>();
+
+            foreach (var collection in collections)
+            {
+                var images = collection.GetActiveImages().Where(i => i.Format.Equals(format, StringComparison.OrdinalIgnoreCase));
+                result.AddRange(images);
+            }
+
+            return result;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting embedded images by format {Format}", format);
+            throw;
+        }
+    }
+
+    public async Task<IEnumerable<ImageEmbedded>> GetEmbeddedImagesBySizeRangeAsync(int minWidth, int minHeight, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            _logger.LogDebug("Getting embedded images by size range {MinWidth}x{MinHeight}", minWidth, minHeight);
+            
+            var collections = await _collectionRepository.GetAllAsync();
+            var result = new List<ImageEmbedded>();
+
+            foreach (var collection in collections)
+            {
+                var images = collection.GetActiveImages().Where(i => i.Width >= minWidth && i.Height >= minHeight);
+                result.AddRange(images);
+            }
+
+            return result;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting embedded images by size range {MinWidth}x{MinHeight}", minWidth, minHeight);
+            throw;
+        }
+    }
+
+    public async Task<IEnumerable<ImageEmbedded>> GetLargeEmbeddedImagesAsync(long minSizeBytes, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            _logger.LogDebug("Getting large embedded images with minimum size {MinSizeBytes}", minSizeBytes);
+            
+            var collections = await _collectionRepository.GetAllAsync();
+            var result = new List<ImageEmbedded>();
+
+            foreach (var collection in collections)
+            {
+                var images = collection.GetActiveImages().Where(i => i.FileSize >= minSizeBytes);
+                result.AddRange(images);
+            }
+
+            return result;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting large embedded images with minimum size {MinSizeBytes}", minSizeBytes);
+            throw;
+        }
+    }
+
+    public async Task<IEnumerable<ImageEmbedded>> GetHighResolutionEmbeddedImagesAsync(int minWidth, int minHeight, CancellationToken cancellationToken = default)
+    {
+        return await GetEmbeddedImagesBySizeRangeAsync(minWidth, minHeight, cancellationToken);
+    }
+
+    #endregion
+
+    #region Random and Navigation Operations
+
+    public async Task<ImageEmbedded?> GetRandomEmbeddedImageAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            _logger.LogDebug("Getting random embedded image");
+            
+            var collections = await _collectionRepository.GetAllAsync();
+            var allImages = new List<ImageEmbedded>();
+
+            foreach (var collection in collections)
+            {
+                allImages.AddRange(collection.GetActiveImages());
+            }
+
+            if (!allImages.Any())
+                return null;
+
+            var random = new Random();
+            return allImages[random.Next(allImages.Count)];
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting random embedded image");
+            throw;
+        }
+    }
+
+    public async Task<ImageEmbedded?> GetRandomEmbeddedImageByCollectionAsync(ObjectId collectionId, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            _logger.LogDebug("Getting random embedded image from collection {CollectionId}", collectionId);
+            
+            var collection = await _collectionRepository.GetByIdAsync(collectionId);
+            if (collection == null)
+            {
+                _logger.LogWarning("Collection {CollectionId} not found", collectionId);
+                return null;
+            }
+
+            var images = collection.GetActiveImages().ToList();
+            if (!images.Any())
+                return null;
+
+            var random = new Random();
+            return images[random.Next(images.Count)];
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting random embedded image from collection {CollectionId}", collectionId);
+            throw;
+        }
+    }
+
+    public async Task<ImageEmbedded?> GetNextEmbeddedImageAsync(string currentImageId, ObjectId collectionId, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            _logger.LogDebug("Getting next embedded image after {ImageId} in collection {CollectionId}", currentImageId, collectionId);
+            
+            var collection = await _collectionRepository.GetByIdAsync(collectionId);
+            if (collection == null)
+            {
+                _logger.LogWarning("Collection {CollectionId} not found", collectionId);
+                return null;
+            }
+
+            var images = collection.GetActiveImages().ToList();
+            var currentIndex = images.FindIndex(i => i.Id == currentImageId);
+            
+            if (currentIndex == -1 || currentIndex >= images.Count - 1)
+                return null;
+
+            return images[currentIndex + 1];
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting next embedded image after {ImageId} in collection {CollectionId}", currentImageId, collectionId);
+            throw;
+        }
+    }
+
+    public async Task<ImageEmbedded?> GetPreviousEmbeddedImageAsync(string currentImageId, ObjectId collectionId, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            _logger.LogDebug("Getting previous embedded image before {ImageId} in collection {CollectionId}", currentImageId, collectionId);
+            
+            var collection = await _collectionRepository.GetByIdAsync(collectionId);
+            if (collection == null)
+            {
+                _logger.LogWarning("Collection {CollectionId} not found", collectionId);
+                return null;
+            }
+
+            var images = collection.GetActiveImages().ToList();
+            var currentIndex = images.FindIndex(i => i.Id == currentImageId);
+            
+            if (currentIndex <= 0)
+                return null;
+
+            return images[currentIndex - 1];
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting previous embedded image before {ImageId} in collection {CollectionId}", currentImageId, collectionId);
+            throw;
+        }
+    }
+
+    #endregion
+
+    #region File Operations
+
+    public async Task<byte[]?> GetImageFileAsync(string imageId, ObjectId collectionId, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            _logger.LogDebug("Getting image file for {ImageId} from collection {CollectionId}", imageId, collectionId);
+
+            var image = await GetEmbeddedImageByIdAsync(imageId, collectionId, cancellationToken);
+            if (image == null)
+            {
+                _logger.LogWarning("Image {ImageId} not found in collection {CollectionId}", imageId, collectionId);
+                return null;
+            }
+
+            // Get the collection to find the full path
+            var collection = await _collectionRepository.GetByIdAsync(collectionId);
+            if (collection == null)
+            {
+                _logger.LogWarning("Collection {CollectionId} not found", collectionId);
                 return null;
             }
 
             var fullPath = Path.Combine(collection.Path, image.RelativePath);
+            
             if (!File.Exists(fullPath))
             {
-                _logger.LogWarning("Image file not found at path {FilePath}", fullPath);
+                _logger.LogWarning("Image file does not exist: {FullPath}", fullPath);
                 return null;
             }
 
@@ -219,218 +330,213 @@ public class ImageService : IImageService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting image file for {ImageId}", id);
+            _logger.LogError(ex, "Error getting image file for {ImageId} from collection {CollectionId}", imageId, collectionId);
             throw;
         }
     }
 
-    public async Task<byte[]?> GetThumbnailAsync(ObjectId id, int? width = null, int? height = null, CancellationToken cancellationToken = default)
+    public async Task<byte[]?> GetThumbnailAsync(string imageId, ObjectId collectionId, int? width = null, int? height = null, CancellationToken cancellationToken = default)
     {
         try
         {
-            _logger.LogDebug("Getting thumbnail for {ImageId} with size {Width}x{Height}", id, width, height);
+            _logger.LogDebug("Getting thumbnail for {ImageId} from collection {CollectionId}", imageId, collectionId);
 
-            var image = await _unitOfWork.Images.GetByIdAsync(id);
-            if (image == null)
+            var thumbnailInfo = await GetThumbnailInfoAsync(imageId, collectionId, width, height, cancellationToken);
+            if (thumbnailInfo == null)
             {
-                _logger.LogWarning("Image {ImageId} not found", id);
+                _logger.LogWarning("Thumbnail info not found for {ImageId} in collection {CollectionId}", imageId, collectionId);
                 return null;
             }
 
-            var thumbnailWidth = width ?? _sizeOptions.ThumbnailWidth;
-            var thumbnailHeight = height ?? _sizeOptions.ThumbnailHeight;
+            if (!File.Exists(thumbnailInfo.ThumbnailPath))
+            {
+                _logger.LogWarning("Thumbnail file does not exist: {ThumbnailPath}", thumbnailInfo.ThumbnailPath);
+                return null;
+            }
 
-            // Generate thumbnail directly (avoid conflicting with collection cache entry)
-            var collection = await _unitOfWork.Collections.GetByIdAsync(image.CollectionId);
+            return await File.ReadAllBytesAsync(thumbnailInfo.ThumbnailPath, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting thumbnail for {ImageId} from collection {CollectionId}", imageId, collectionId);
+            throw;
+        }
+    }
+
+    public async Task<ThumbnailEmbedded?> GetThumbnailInfoAsync(string imageId, ObjectId collectionId, int? width = null, int? height = null, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            _logger.LogDebug("Getting thumbnail info for {ImageId} from collection {CollectionId}", imageId, collectionId);
+            
+            var collection = await _collectionRepository.GetByIdAsync(collectionId);
             if (collection == null)
             {
-                _logger.LogWarning("Collection for image {ImageId} not found", id);
+                _logger.LogWarning("Collection {CollectionId} not found", collectionId);
                 return null;
             }
 
-            var fullPath = Path.Combine(collection.Path, image.RelativePath);
-            if (!File.Exists(fullPath))
-            {
-                _logger.LogWarning("Image file not found at path {FilePath}", fullPath);
-                return null;
-            }
+            var targetWidth = width ?? _sizeOptions.ThumbnailWidth;
+            var targetHeight = height ?? _sizeOptions.ThumbnailHeight;
 
-            var thumbnailData = await _imageProcessingService.GenerateThumbnailAsync(fullPath, thumbnailWidth, thumbnailHeight, cancellationToken);
-
-            _logger.LogDebug("Generated thumbnail for {ImageId}", id);
-            return thumbnailData;
+            return collection.GetThumbnailForImage(imageId);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting thumbnail for {ImageId}", id);
+            _logger.LogError(ex, "Error getting thumbnail info for {ImageId} from collection {CollectionId}", imageId, collectionId);
             throw;
         }
     }
 
-    public async Task<ThumbnailInfo?> GetThumbnailInfoAsync(ObjectId id, int? width = null, int? height = null, CancellationToken cancellationToken = default)
+    public async Task<byte[]?> GetCachedImageAsync(string imageId, ObjectId collectionId, int? width = null, int? height = null, CancellationToken cancellationToken = default)
     {
         try
         {
-            _logger.LogDebug("Getting thumbnail info for {ImageId} with size {Width}x{Height}", id, width, height);
+            _logger.LogDebug("Getting cached image for {ImageId} from collection {CollectionId}", imageId, collectionId);
 
-            var image = await _unitOfWork.Images.GetByIdAsync(id);
-            if (image == null)
+            var image = await GetEmbeddedImageByIdAsync(imageId, collectionId, cancellationToken);
+            if (image?.CacheInfo == null)
             {
-                _logger.LogWarning("Image {ImageId} not found", id);
+                _logger.LogWarning("Cache info not found for {ImageId} in collection {CollectionId}", imageId, collectionId);
                 return null;
             }
 
-            var thumbnailWidth = width ?? _sizeOptions.ThumbnailWidth;
-            var thumbnailHeight = height ?? _sizeOptions.ThumbnailHeight;
+            if (!File.Exists(image.CacheInfo.CachePath))
+            {
+                _logger.LogWarning("Cache file does not exist: {CachePath}", image.CacheInfo.CachePath);
+                return null;
+            }
 
-            // Try to get existing thumbnail info from database
-            var thumbnailInfo = await _unitOfWork.ThumbnailInfo.GetByImageIdAndDimensionsAsync(id, thumbnailWidth, thumbnailHeight, cancellationToken);
+            return await File.ReadAllBytesAsync(image.CacheInfo.CachePath, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting cached image for {ImageId} from collection {CollectionId}", imageId, collectionId);
+            throw;
+        }
+    }
+
+    #endregion
+
+    #region CRUD Operations on Embedded Images
+
+    public async Task<ImageEmbedded> CreateEmbeddedImageAsync(ObjectId collectionId, string filename, string relativePath, long fileSize, int width, int height, string format, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            _logger.LogDebug("Creating embedded image {Filename} in collection {CollectionId}", filename, collectionId);
             
-            if (thumbnailInfo != null && !thumbnailInfo.IsExpired())
-            {
-                try
-                {
-                    if (File.Exists(thumbnailInfo.ThumbnailPath))
-                    {
-                        _logger.LogDebug("Found existing thumbnail info for {ImageId}", id);
-                        return thumbnailInfo;
-                    }
-                    else
-                    {
-                        _logger.LogWarning("Thumbnail file not found at path {ThumbnailPath} for image {ImageId}", 
-                            thumbnailInfo.ThumbnailPath, id);
-                        // Mark as invalid since file doesn't exist
-                        thumbnailInfo.MarkAsInvalid();
-                        await _unitOfWork.ThumbnailInfo.UpdateAsync(thumbnailInfo);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error checking thumbnail file existence for {ImageId}", id);
-                }
-            }
-
-            _logger.LogDebug("No valid thumbnail info found for {ImageId}, thumbnail may need to be generated", id);
-            return null;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting thumbnail info for {ImageId}", id);
-            throw;
-        }
-    }
-
-    public async Task<byte[]?> GetCachedImageAsync(ObjectId id, int? width = null, int? height = null, CancellationToken cancellationToken = default)
-    {
-        try
-        {
-            _logger.LogDebug("Getting cached image for {ImageId} with size {Width}x{Height}", id, width, height);
-
-            var image = await _unitOfWork.Images.GetByIdAsync(id);
-            if (image == null)
-            {
-                _logger.LogWarning("Image {ImageId} not found", id);
-                return null;
-            }
-
-            var cacheWidth = width ?? _sizeOptions.CacheWidth;
-            var cacheHeight = height ?? _sizeOptions.CacheHeight;
-            var dimensions = $"{cacheWidth}x{cacheHeight}";
-
-            // Check cache first
-            var cachedImage = await _cacheService.GetCachedImageAsync(id, dimensions, cancellationToken);
-            if (cachedImage != null)
-            {
-                _logger.LogDebug("Returning cached image for {ImageId}", id);
-                return cachedImage;
-            }
-
-            // Generate cached image
-            var collection = await _unitOfWork.Collections.GetByIdAsync(image.CollectionId);
+            var collection = await _collectionRepository.GetByIdAsync(collectionId);
             if (collection == null)
             {
-                _logger.LogWarning("Collection for image {ImageId} not found", id);
-                return null;
+                throw new InvalidOperationException($"Collection {collectionId} not found");
             }
 
-            var fullPath = Path.Combine(collection.Path, image.RelativePath);
-            if (!File.Exists(fullPath))
-            {
-                _logger.LogWarning("Image file not found at path {FilePath}", fullPath);
-                return null;
-            }
+            var embeddedImage = new ImageEmbedded(filename, relativePath, fileSize, width, height, format);
+            collection.AddImage(embeddedImage);
 
-            var cachedImageData = await _imageProcessingService.ResizeImageAsync(fullPath, cacheWidth, cacheHeight, _sizeOptions.JpegQuality, cancellationToken);
+            await _collectionRepository.UpdateAsync(collection);
             
-            // Cache the image
-            await _cacheService.SaveCachedImageAsync(id, dimensions, cachedImageData, cancellationToken);
-
-            _logger.LogDebug("Generated and cached image for {ImageId}", id);
-            return cachedImageData;
+            _logger.LogInformation("Created embedded image {ImageId} in collection {CollectionId}", embeddedImage.Id, collectionId);
+            return embeddedImage;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting cached image for {ImageId}", id);
+            _logger.LogError(ex, "Error creating embedded image {Filename} in collection {CollectionId}", filename, collectionId);
             throw;
         }
     }
 
-    public async Task DeleteAsync(ObjectId id, CancellationToken cancellationToken = default)
+    public async Task UpdateEmbeddedImageMetadataAsync(string imageId, ObjectId collectionId, int width, int height, long fileSize, CancellationToken cancellationToken = default)
     {
         try
         {
-            _logger.LogInformation("Deleting image {ImageId}", id);
-
-            var image = await _unitOfWork.Images.GetByIdAsync(id);
-            if (image == null)
+            _logger.LogDebug("Updating embedded image metadata {ImageId} in collection {CollectionId}", imageId, collectionId);
+            
+            var collection = await _collectionRepository.GetByIdAsync(collectionId);
+            if (collection == null)
             {
-                throw new InvalidOperationException($"Image with ID '{id}' not found");
+                throw new InvalidOperationException($"Collection {collectionId} not found");
             }
 
-            image.SoftDelete();
-            await _unitOfWork.Images.UpdateAsync(image);
-            await _unitOfWork.SaveChangesAsync(cancellationToken);
-
-            _logger.LogInformation("Successfully deleted image {ImageId}", id);
+            collection.UpdateImageMetadata(imageId, width, height, fileSize);
+            await _collectionRepository.UpdateAsync(collection);
+            
+            _logger.LogInformation("Updated embedded image metadata {ImageId} in collection {CollectionId}", imageId, collectionId);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error deleting image {ImageId}", id);
+            _logger.LogError(ex, "Error updating embedded image metadata {ImageId} in collection {CollectionId}", imageId, collectionId);
             throw;
         }
     }
 
-    public async Task RestoreAsync(ObjectId id, CancellationToken cancellationToken = default)
+    public async Task DeleteEmbeddedImageAsync(string imageId, ObjectId collectionId, CancellationToken cancellationToken = default)
     {
         try
         {
-            _logger.LogInformation("Restoring image {ImageId}", id);
+            _logger.LogDebug("Deleting embedded image {ImageId} from collection {CollectionId}", imageId, collectionId);
 
-            var image = await _unitOfWork.Images.GetByIdAsync(id);
-            if (image == null)
+            var collection = await _collectionRepository.GetByIdAsync(collectionId);
+            if (collection == null)
             {
-                throw new InvalidOperationException($"Image with ID '{id}' not found");
+                throw new InvalidOperationException($"Collection {collectionId} not found");
             }
 
-            image.Restore();
-            await _unitOfWork.Images.UpdateAsync(image);
-            await _unitOfWork.SaveChangesAsync(cancellationToken);
+            collection.RemoveImage(imageId);
+            await _collectionRepository.UpdateAsync(collection);
 
-            _logger.LogInformation("Successfully restored image {ImageId}", id);
+            _logger.LogInformation("Deleted embedded image {ImageId} from collection {CollectionId}", imageId, collectionId);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error restoring image {ImageId}", id);
+            _logger.LogError(ex, "Error deleting embedded image {ImageId} from collection {CollectionId}", imageId, collectionId);
             throw;
         }
     }
+
+    public async Task RestoreEmbeddedImageAsync(string imageId, ObjectId collectionId, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            _logger.LogDebug("Restoring embedded image {ImageId} in collection {CollectionId}", imageId, collectionId);
+
+            var collection = await _collectionRepository.GetByIdAsync(collectionId);
+            if (collection == null)
+            {
+                throw new InvalidOperationException($"Collection {collectionId} not found");
+            }
+
+            collection.RestoreImage(imageId);
+            await _collectionRepository.UpdateAsync(collection);
+
+            _logger.LogInformation("Restored embedded image {ImageId} in collection {CollectionId}", imageId, collectionId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error restoring embedded image {ImageId} in collection {CollectionId}", imageId, collectionId);
+            throw;
+        }
+    }
+
+    #endregion
+
+    #region Statistics
 
     public async Task<long> GetTotalSizeByCollectionAsync(ObjectId collectionId, CancellationToken cancellationToken = default)
     {
         try
         {
             _logger.LogDebug("Getting total size for collection {CollectionId}", collectionId);
-            return await _unitOfWork.Images.GetTotalSizeByCollectionAsync(collectionId);
+            
+            var collection = await _collectionRepository.GetByIdAsync(collectionId);
+            if (collection == null)
+            {
+                _logger.LogWarning("Collection {CollectionId} not found", collectionId);
+                return 0;
+            }
+
+            return collection.GetActiveImages().Sum(i => i.FileSize);
         }
         catch (Exception ex)
         {
@@ -444,7 +550,15 @@ public class ImageService : IImageService
         try
         {
             _logger.LogDebug("Getting count for collection {CollectionId}", collectionId);
-            return await _unitOfWork.Images.GetCountByCollectionAsync(collectionId);
+            
+            var collection = await _collectionRepository.GetByIdAsync(collectionId);
+            if (collection == null)
+            {
+                _logger.LogWarning("Collection {CollectionId} not found", collectionId);
+                return 0;
+            }
+
+            return collection.GetActiveImages().Count();
         }
         catch (Exception ex)
         {
@@ -453,78 +567,148 @@ public class ImageService : IImageService
         }
     }
 
-    public async Task GenerateThumbnailAsync(ObjectId id, int width, int height, CancellationToken cancellationToken = default)
+    #endregion
+
+    #region Thumbnail and Cache Operations
+
+    public async Task<ThumbnailEmbedded> GenerateThumbnailAsync(string imageId, ObjectId collectionId, int width, int height, CancellationToken cancellationToken = default)
     {
         try
         {
-            _logger.LogInformation("Generating thumbnail for image {ImageId} with size {Width}x{Height}", id, width, height);
-
-            var image = await _unitOfWork.Images.GetByIdAsync(id);
-            if (image == null)
-            {
-                throw new InvalidOperationException($"Image with ID '{id}' not found");
-            }
-
-            var collection = await _unitOfWork.Collections.GetByIdAsync(image.CollectionId);
+            _logger.LogDebug("Generating thumbnail for {ImageId} in collection {CollectionId}", imageId, collectionId);
+            
+            var collection = await _collectionRepository.GetByIdAsync(collectionId);
             if (collection == null)
             {
-                throw new InvalidOperationException($"Collection for image {id} not found");
+                throw new InvalidOperationException($"Collection {collectionId} not found");
             }
 
-            var fullPath = Path.Combine(collection.Path, image.RelativePath);
-            if (!File.Exists(fullPath))
+            var image = collection.GetImage(imageId);
+            if (image == null)
             {
-                throw new InvalidOperationException($"Image file not found at path {fullPath}");
+                throw new InvalidOperationException($"Image {imageId} not found in collection {collectionId}");
             }
 
-            var thumbnailData = await _imageProcessingService.GenerateThumbnailAsync(fullPath, width, height, cancellationToken);
-            var dimensions = $"{width}x{height}";
+            // Get the full image path
+            var fullImagePath = Path.Combine(collection.Path, image.RelativePath);
+            if (!File.Exists(fullImagePath))
+            {
+                throw new InvalidOperationException($"Image file does not exist: {fullImagePath}");
+            }
 
-            await _cacheService.SaveCachedImageAsync(id, dimensions, thumbnailData, cancellationToken);
-
-            _logger.LogInformation("Successfully generated thumbnail for image {ImageId}", id);
+            // Generate thumbnail using image processing service
+            var thumbnailData = await _imageProcessingService.GenerateThumbnailAsync(fullImagePath, width, height, cancellationToken);
+            
+            // Determine thumbnail path using cache service
+            var cacheFolders = await _cacheService.GetCacheFoldersAsync();
+            var cacheFoldersList = cacheFolders.ToList();
+            
+            if (cacheFoldersList.Count == 0)
+            {
+                throw new InvalidOperationException("No cache folders available");
+            }
+            
+            // Use hash-based distribution to select cache folder
+            var hash = collectionId.GetHashCode();
+            var selectedIndex = Math.Abs(hash) % cacheFoldersList.Count;
+            var selectedCacheFolder = cacheFoldersList[selectedIndex];
+            
+            // Create proper folder structure: CacheFolder/thumbnails/CollectionId/ImageFileName_WidthxHeight.ext
+            var collectionIdStr = collectionId.ToString();
+            var thumbnailDir = Path.Combine(selectedCacheFolder.Path, "thumbnails", collectionIdStr);
+            var thumbnailFileName = $"{Path.GetFileNameWithoutExtension(image.Filename)}_{width}x{height}{Path.GetExtension(image.Filename)}";
+            var thumbnailPath = Path.Combine(thumbnailDir, thumbnailFileName);
+            
+            // Ensure thumbnail directory exists
+            Directory.CreateDirectory(thumbnailDir);
+            
+            // Save thumbnail file
+            await File.WriteAllBytesAsync(thumbnailPath, thumbnailData, cancellationToken);
+            
+            // Create thumbnail info
+            var thumbnailInfo = new ThumbnailEmbedded(imageId, thumbnailPath, width, height, thumbnailData.Length, Path.GetExtension(image.Filename), 95);
+            
+            // Add thumbnail to collection
+            collection.AddThumbnail(thumbnailInfo);
+            await _collectionRepository.UpdateAsync(collection);
+            
+            _logger.LogInformation("Generated thumbnail for {ImageId} in collection {CollectionId}: {ThumbnailPath}", imageId, collectionId, thumbnailPath);
+            return thumbnailInfo;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error generating thumbnail for image {ImageId}", id);
+            _logger.LogError(ex, "Error generating thumbnail for {ImageId} in collection {CollectionId}", imageId, collectionId);
             throw;
         }
     }
 
-    public async Task GenerateCacheAsync(ObjectId id, int width, int height, CancellationToken cancellationToken = default)
+    public async Task<ImageCacheInfoEmbedded> GenerateCacheAsync(string imageId, ObjectId collectionId, int width, int height, CancellationToken cancellationToken = default)
     {
         try
         {
-            _logger.LogInformation("Generating cache for image {ImageId} with size {Width}x{Height}", id, width, height);
-
-            var image = await _unitOfWork.Images.GetByIdAsync(id);
-            if (image == null)
-            {
-                throw new InvalidOperationException($"Image with ID '{id}' not found");
-            }
-
-            var collection = await _unitOfWork.Collections.GetByIdAsync(image.CollectionId);
+            _logger.LogDebug("Generating cache for {ImageId} in collection {CollectionId}", imageId, collectionId);
+            
+            var collection = await _collectionRepository.GetByIdAsync(collectionId);
             if (collection == null)
             {
-                throw new InvalidOperationException($"Collection for image {id} not found");
+                throw new InvalidOperationException($"Collection {collectionId} not found");
             }
 
-            var fullPath = Path.Combine(collection.Path, image.RelativePath);
-            if (!File.Exists(fullPath))
+            var image = collection.GetImage(imageId);
+            if (image == null)
             {
-                throw new InvalidOperationException($"Image file not found at path {fullPath}");
+                throw new InvalidOperationException($"Image {imageId} not found in collection {collectionId}");
             }
 
-            var cachedImageData = await _imageProcessingService.ResizeImageAsync(fullPath, width, height, 95, cancellationToken);
-            var dimensions = $"{width}x{height}";
+            // Get the full image path
+            var fullImagePath = Path.Combine(collection.Path, image.RelativePath);
+            if (!File.Exists(fullImagePath))
+            {
+                throw new InvalidOperationException($"Image file does not exist: {fullImagePath}");
+            }
 
-            await _cacheService.SaveCachedImageAsync(id, dimensions, cachedImageData, cancellationToken);
-
-            _logger.LogInformation("Successfully generated cache for image {ImageId}", id);
+            // Generate cache using image processing service
+            var cacheData = await _imageProcessingService.ResizeImageAsync(fullImagePath, width, height, 95, cancellationToken);
+            
+            // Determine cache path using cache service
+            var cacheFolders = await _cacheService.GetCacheFoldersAsync();
+            var cacheFoldersList = cacheFolders.ToList();
+            
+            if (cacheFoldersList.Count == 0)
+            {
+                throw new InvalidOperationException("No cache folders available");
+            }
+            
+            // Use hash-based distribution to select cache folder
+            var hash = collectionId.GetHashCode();
+            var selectedIndex = Math.Abs(hash) % cacheFoldersList.Count;
+            var selectedCacheFolder = cacheFoldersList[selectedIndex];
+            
+            // Create proper folder structure: CacheFolder/cache/CollectionId/ImageId_CacheWidthxCacheHeight.jpg
+            var collectionIdStr = collectionId.ToString();
+            var cacheDir = Path.Combine(selectedCacheFolder.Path, "cache", collectionIdStr);
+            var fileName = $"{imageId}_cache_{width}x{height}.jpg";
+            var cachePath = Path.Combine(cacheDir, fileName);
+            
+            // Ensure cache directory exists
+            Directory.CreateDirectory(cacheDir);
+            
+            // Save cache file
+            await File.WriteAllBytesAsync(cachePath, cacheData, cancellationToken);
+            
+            // Create cache info
+            var cacheInfo = new ImageCacheInfoEmbedded(cachePath, cacheData.Length, ".jpg", width, height, 95);
+            
+            // Update image with cache info
+            image.SetCacheInfo(cacheInfo);
+            await _collectionRepository.UpdateAsync(collection);
+            
+            _logger.LogInformation("Generated cache for {ImageId} in collection {CollectionId}: {CachePath}", imageId, collectionId, cachePath);
+            return cacheInfo;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error generating cache for image {ImageId}", id);
+            _logger.LogError(ex, "Error generating cache for {ImageId} in collection {CollectionId}", imageId, collectionId);
             throw;
         }
     }
@@ -533,48 +717,52 @@ public class ImageService : IImageService
     {
         try
         {
-            _logger.LogInformation("Starting cleanup of expired thumbnails");
-
-            // Get expired thumbnails
-            var expiredThumbnails = await _unitOfWork.ThumbnailInfo.GetExpiredThumbnailsAsync(cancellationToken);
-            var expiredList = expiredThumbnails.ToList();
+            _logger.LogDebug("Cleaning up expired thumbnails");
             
-            _logger.LogInformation("Found {Count} expired thumbnails to cleanup", expiredList.Count);
+            var collections = await _collectionRepository.GetAllAsync();
+            var cleanedCount = 0;
 
-            int deletedCount = 0;
-            int errorCount = 0;
-
-            foreach (var thumbnail in expiredList)
+            foreach (var collection in collections)
             {
-                try
+                var invalidThumbnails = collection.GetInvalidThumbnails();
+                if (invalidThumbnails.Any())
                 {
-                    // Delete the physical file if it exists
-                    if (File.Exists(thumbnail.ThumbnailPath))
-                    {
-                        File.Delete(thumbnail.ThumbnailPath);
-                        _logger.LogDebug("Deleted thumbnail file: {ThumbnailPath}", thumbnail.ThumbnailPath);
-                    }
-
-                    // Mark as deleted in database
-                    await _unitOfWork.ThumbnailInfo.DeleteExpiredThumbnailsAsync(cancellationToken);
-                    deletedCount++;
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error deleting expired thumbnail {ThumbnailId} at path {ThumbnailPath}", 
-                        thumbnail.Id, thumbnail.ThumbnailPath);
-                    errorCount++;
+                    collection.CleanupInvalidThumbnails();
+                    await _collectionRepository.UpdateAsync(collection);
+                    cleanedCount += invalidThumbnails.Count();
                 }
             }
 
-            _logger.LogInformation("Thumbnail cleanup completed. Deleted: {DeletedCount}, Errors: {ErrorCount}", 
-                deletedCount, errorCount);
+            _logger.LogInformation("Cleaned up {CleanedCount} expired thumbnails", cleanedCount);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error during thumbnail cleanup");
+            _logger.LogError(ex, "Error cleaning up expired thumbnails");
             throw;
         }
     }
-}
 
+    #endregion
+
+    #region Legacy Support (will be removed)
+
+    public async Task<Image?> GetByIdAsync(ObjectId id, CancellationToken cancellationToken = default)
+    {
+        _logger.LogWarning("Legacy method GetByIdAsync called - this will be removed");
+        return null; // Legacy method - no longer supported
+    }
+
+    public async Task<Image?> GetByCollectionIdAndFilenameAsync(ObjectId collectionId, string filename, CancellationToken cancellationToken = default)
+    {
+        _logger.LogWarning("Legacy method GetByCollectionIdAndFilenameAsync called - this will be removed");
+        return null; // Legacy method - no longer supported
+    }
+
+    public async Task<IEnumerable<Image>> GetByCollectionIdAsync(ObjectId collectionId, CancellationToken cancellationToken = default)
+    {
+        _logger.LogWarning("Legacy method GetByCollectionIdAsync called - this will be removed");
+        return Enumerable.Empty<Image>(); // Legacy method - no longer supported
+    }
+
+    #endregion
+}
