@@ -47,7 +47,7 @@ public class StatisticsService : IStatisticsService
         var totalImages = images.Count();
         var totalSize = images.Sum(i => i.FileSizeBytes);
         var averageFileSize = totalImages > 0 ? totalSize / totalImages : 0;
-        var cachedImages = images.Count(i => i.CacheInfo != null);
+        var cachedImages = 0; // TODO: Use embedded Collection.Images[].CacheInfo
         var cachePercentage = totalImages > 0 ? (double)cachedImages / totalImages * 100 : 0;
 
         var totalViewTime = viewSessions.Sum(vs => vs.ViewDuration.TotalSeconds);
@@ -126,8 +126,8 @@ public class StatisticsService : IStatisticsService
             TotalImages = 1,
             TotalSize = image.FileSizeBytes,
             AverageFileSize = image.FileSizeBytes,
-            CachedImages = image.CacheInfo != null ? 1 : 0,
-            CachePercentage = image.CacheInfo != null ? 100 : 0,
+            CachedImages = 0, // TODO: Use embedded Collection.Images[].CacheInfo
+            CachePercentage = 0, // TODO: Use embedded Collection.Images[].CacheInfo
             FormatStatistics = new[]
             {
                 new FormatStatisticsDto
@@ -154,7 +154,7 @@ public class StatisticsService : IStatisticsService
         var totalCollections = collections.Count();
         var collectionsWithCache = collections.Count(c => c.CacheBindings.Any());
         var totalImages = images.Count();
-        var cachedImages = images.Count(i => i.CacheInfo != null);
+        var cachedImages = 0; // TODO: Use embedded Collection.Images[].CacheInfo
         var totalCacheSize = cacheFolders.Sum(cf => cf.CurrentSize);
         var cachePercentage = totalImages > 0 ? (double)cachedImages / totalImages * 100 : 0;
 

@@ -26,13 +26,7 @@ public class Image : BaseEntity
     [BsonIgnore]
     public Collection Collection { get; private set; } = null!;
     [BsonIgnore]
-    public ImageCacheInfo? CacheInfo { get; private set; }
-    [BsonIgnore]
     public ImageMetadataEntity? Metadata { get; private set; }
-    
-    // Collection of cache info for compatibility
-    [BsonIgnore]
-    public IEnumerable<ImageCacheInfo> CacheInfoCollection => CacheInfo != null ? new[] { CacheInfo } : Enumerable.Empty<ImageCacheInfo>();
 
     // Private constructor for EF Core
     private Image() { }
@@ -95,17 +89,6 @@ public class Image : BaseEntity
         UpdatedAt = DateTime.UtcNow;
     }
 
-    public void SetCacheInfo(ImageCacheInfo cacheInfo)
-    {
-        CacheInfo = cacheInfo ?? throw new ArgumentNullException(nameof(cacheInfo));
-        UpdatedAt = DateTime.UtcNow;
-    }
-
-    public void ClearCacheInfo()
-    {
-        CacheInfo = null;
-        UpdatedAt = DateTime.UtcNow;
-    }
 
     public void IncrementViewCount()
     {

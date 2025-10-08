@@ -65,12 +65,6 @@ public static class ServiceCollectionExtensions
             return database.GetCollection<Image>("images");
         });
         
-        services.AddScoped<IMongoCollection<ImageCacheInfo>>(provider =>
-        {
-            var database = provider.GetRequiredService<IMongoDatabase>();
-            return database.GetCollection<ImageCacheInfo>("image_cache_info");
-        });
-        
         services.AddScoped<IMongoCollection<User>>(provider =>
         {
             var database = provider.GetRequiredService<IMongoDatabase>();
@@ -131,8 +125,6 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ITagRepository, MongoTagRepository>();
         services.AddScoped<ICollectionTagRepository, MongoCollectionTagRepository>();
         services.AddScoped<ICacheFolderRepository, MongoCacheFolderRepository>();
-        services.AddScoped<ICacheInfoRepository, MongoCacheInfoRepository>();
-        services.AddScoped<IImageCacheInfoRepository, MongoImageCacheInfoRepository>();
         services.AddScoped<IThumbnailInfoRepository, MongoThumbnailInfoRepository>();
         services.AddScoped<IViewSessionRepository, MongoViewSessionRepository>();
         services.AddScoped<IBackgroundJobRepository, MongoBackgroundJobRepository>();
@@ -196,7 +188,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ISearchService, SearchService>();
         services.AddScoped<INotificationService, NotificationService>();
         services.AddScoped<IUserPreferencesService, UserPreferencesService>();
-        services.AddScoped<IPerformanceService, PerformanceService>();
+        // services.AddScoped<IPerformanceService, PerformanceService>(); // Removed - needs refactoring to embedded design
         services.AddScoped<ISecurityService, SecurityService>();
         services.AddScoped<IWindowsDriveService, WindowsDriveService>();
 

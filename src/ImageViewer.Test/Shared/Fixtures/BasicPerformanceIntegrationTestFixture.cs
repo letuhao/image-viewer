@@ -40,7 +40,7 @@ public class BasicPerformanceIntegrationTestFixture : IAsyncLifetime
         services.AddSingleton(mockRepositories.TagRepository);
         services.AddSingleton(mockRepositories.NotificationTemplateRepository);
         services.AddSingleton(mockRepositories.PerformanceMetricRepository.Object);
-        services.AddSingleton(mockRepositories.CacheInfoRepository.Object);
+        // services.AddSingleton(mockRepositories.CacheInfoRepository.Object); // Removed
         services.AddSingleton(mockRepositories.MediaProcessingJobRepository.Object);
         services.AddSingleton(mockRepositories.CacheFolderRepository.Object);
         services.AddSingleton(mockRepositories.BackgroundJobRepository);
@@ -55,8 +55,8 @@ public class BasicPerformanceIntegrationTestFixture : IAsyncLifetime
         services.AddScoped<IUserProfileService, UserProfileService>();
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<IBulkService, BulkService>();
-        services.AddScoped<IPerformanceService, PerformanceService>();
-        services.AddScoped<ICacheService, CacheService>();
+        // services.AddScoped<IPerformanceService, PerformanceService>(); // Removed
+        // services.AddScoped<ICacheService, CacheService>(); // Removed
         services.AddScoped<IImageProcessingService, SkiaSharpImageProcessingService>();
         services.AddScoped<INotificationService, NotificationService>();
         services.AddScoped<INotificationTemplateService, NotificationTemplateService>();
@@ -166,18 +166,7 @@ public class BasicPerformanceIntegrationTestFixture : IAsyncLifetime
         mockCacheFolderRepository.Setup(x => x.GetActiveOrderedByPriorityAsync())
             .ReturnsAsync(new List<CacheFolder> { testCacheFolder });
 
-        var mockCacheInfoRepository = new Mock<ICacheInfoRepository>();
-        var cacheInfoStorage = new Dictionary<ObjectId, ImageCacheInfo>();
-        
-        mockCacheInfoRepository.Setup(x => x.GetByIdAsync(It.IsAny<ObjectId>())).ReturnsAsync((ObjectId id) => 
-            cacheInfoStorage.TryGetValue(id, out var info) ? info : null);
-        mockCacheInfoRepository.Setup(x => x.GetAllAsync()).ReturnsAsync(() => cacheInfoStorage.Values.ToList());
-        mockCacheInfoRepository.Setup(x => x.GetByImageIdAsync(It.IsAny<ObjectId>())).ReturnsAsync((ObjectId imageId) => 
-            cacheInfoStorage.Values.FirstOrDefault(ci => ci.ImageId == imageId));
-        mockCacheInfoRepository.Setup(x => x.CreateAsync(It.IsAny<ImageCacheInfo>()))
-            .ReturnsAsync((ImageCacheInfo info) => { cacheInfoStorage[info.Id] = info; return info; });
-        mockCacheInfoRepository.Setup(x => x.UpdateAsync(It.IsAny<ImageCacheInfo>()))
-            .ReturnsAsync((ImageCacheInfo info) => { cacheInfoStorage[info.Id] = info; return info; });
+        // Removed: ICacheInfoRepository mocking - interface deleted
 
         var mockPerformanceMetricRepository = new Mock<IPerformanceMetricRepository>();
         mockPerformanceMetricRepository.Setup(x => x.GetByIdAsync(It.IsAny<ObjectId>())).ReturnsAsync((PerformanceMetric?)null);
@@ -197,7 +186,7 @@ public class BasicPerformanceIntegrationTestFixture : IAsyncLifetime
             TagRepository = Mock.Of<ITagRepository>(),
             NotificationTemplateRepository = Mock.Of<INotificationTemplateRepository>(),
             PerformanceMetricRepository = mockPerformanceMetricRepository,
-            CacheInfoRepository = mockCacheInfoRepository,
+            // CacheInfoRepository = mockCacheInfoRepository, // Removed
             MediaProcessingJobRepository = mockMediaProcessingJobRepository,
             CacheFolderRepository = mockCacheFolderRepository,
             BackgroundJobRepository = Mock.Of<IBackgroundJobRepository>(),
@@ -216,7 +205,7 @@ public class BasicPerformanceIntegrationTestFixture : IAsyncLifetime
         public ITagRepository TagRepository { get; set; } = null!;
         public INotificationTemplateRepository NotificationTemplateRepository { get; set; } = null!;
         public Mock<IPerformanceMetricRepository> PerformanceMetricRepository { get; set; } = null!;
-        public Mock<ICacheInfoRepository> CacheInfoRepository { get; set; } = null!;
+        // public Mock<ICacheInfoRepository> CacheInfoRepository { get; set; } = null!; // Removed
         public Mock<IMediaProcessingJobRepository> MediaProcessingJobRepository { get; set; } = null!;
         public Mock<ICacheFolderRepository> CacheFolderRepository { get; set; } = null!;
         public IBackgroundJobRepository BackgroundJobRepository { get; set; } = null!;

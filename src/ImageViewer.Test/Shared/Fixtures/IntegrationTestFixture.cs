@@ -46,7 +46,7 @@ namespace ImageViewer.Test.Shared.Fixtures;
                services.AddSingleton<ITagRepository>(CreateMockTagRepository().Object);
                services.AddSingleton<INotificationTemplateRepository>(CreateMockNotificationTemplateRepository().Object);
                services.AddSingleton<IPerformanceMetricRepository>(CreateMockPerformanceMetricRepository().Object);
-               services.AddSingleton<ICacheInfoRepository>(CreateMockCacheInfoRepository().Object);
+               // services.AddSingleton<ICacheInfoRepository>(CreateMockCacheInfoRepository().Object); // Removed
                services.AddSingleton<IMediaProcessingJobRepository>(CreateMockMediaProcessingJobRepository().Object);
                services.AddSingleton<ICacheFolderRepository>(CreateMockCacheFolderRepository().Object);
                services.AddSingleton<IBackgroundJobRepository>(CreateMockBackgroundJobRepository().Object);
@@ -62,8 +62,8 @@ namespace ImageViewer.Test.Shared.Fixtures;
         services.AddScoped<IUserProfileService, UserProfileService>();
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<IBulkService, BulkService>();
-        services.AddScoped<IPerformanceService, PerformanceService>();
-        services.AddScoped<ICacheService, CacheService>();
+        // services.AddScoped<IPerformanceService, PerformanceService>(); // Removed
+        // services.AddScoped<ICacheService, CacheService>(); // Removed
         services.AddScoped<IImageProcessingService, SkiaSharpImageProcessingService>();
         services.AddScoped<INotificationService, NotificationService>();
         services.AddScoped<INotificationTemplateService, NotificationTemplateService>();
@@ -83,8 +83,8 @@ namespace ImageViewer.Test.Shared.Fixtures;
         services.AddScoped<BulkOperationService>();
         services.AddScoped<ImageViewer.Application.Services.BackgroundJobService>();
         services.AddScoped<BulkService>();
-        services.AddScoped<PerformanceService>();
-        services.AddScoped<CacheService>();
+        // services.AddScoped<PerformanceService>(); // Removed
+        // services.AddScoped<CacheService>(); // Removed
         services.AddScoped<SkiaSharpImageProcessingService>();
         services.AddScoped<NotificationService>();
         services.AddScoped<NotificationTemplateService>();
@@ -331,6 +331,8 @@ namespace ImageViewer.Test.Shared.Fixtures;
         return mock;
     }
 
+    // Removed: CreateMockCacheInfoRepository - ICacheInfoRepository deleted
+    /*
     private Mock<ICacheInfoRepository> CreateMockCacheInfoRepository()
     {
         var mock = new Mock<ICacheInfoRepository>();
@@ -344,6 +346,7 @@ namespace ImageViewer.Test.Shared.Fixtures;
 
         return mock;
     }
+    */
 
     private Mock<IMediaProcessingJobRepository> CreateMockMediaProcessingJobRepository()
     {
@@ -488,10 +491,13 @@ namespace ImageViewer.Test.Shared.Fixtures;
         return new List<PerformanceMetric>();
     }
 
+    // Removed: CreateTestCacheInfos - ImageCacheInfo entity deleted
+    /*
     private List<ImageCacheInfo> CreateTestCacheInfos()
     {
         return new List<ImageCacheInfo>();
     }
+    */
 
     private List<MediaProcessingJob> CreateTestMediaProcessingJobs()
     {
