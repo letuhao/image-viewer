@@ -125,7 +125,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ITagRepository, MongoTagRepository>();
         services.AddScoped<ICollectionTagRepository, MongoCollectionTagRepository>();
         services.AddScoped<ICacheFolderRepository, MongoCacheFolderRepository>();
-        services.AddScoped<IThumbnailInfoRepository, MongoThumbnailInfoRepository>();
+        // services.AddScoped<IThumbnailInfoRepository, MongoThumbnailInfoRepository>(); // Removed - use embedded ThumbnailEmbedded
         services.AddScoped<IViewSessionRepository, MongoViewSessionRepository>();
         services.AddScoped<IBackgroundJobRepository, MongoBackgroundJobRepository>();
         services.AddScoped<ICollectionStatisticsRepository, MongoCollectionStatisticsRepository>();
