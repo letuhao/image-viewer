@@ -36,7 +36,7 @@ public class BasicPerformanceIntegrationTestFixture : IAsyncLifetime
         services.AddSingleton(mockRepositories.LibraryRepository.Object);
         services.AddSingleton(mockRepositories.CollectionRepository.Object);
         services.AddSingleton(mockRepositories.MediaItemRepository);
-        services.AddSingleton(mockRepositories.ImageRepository.Object);
+        // services.AddSingleton(mockRepositories.ImageRepository.Object); // Removed
         services.AddSingleton(mockRepositories.TagRepository);
         services.AddSingleton(mockRepositories.NotificationTemplateRepository);
         services.AddSingleton(mockRepositories.PerformanceMetricRepository.Object);
@@ -61,7 +61,7 @@ public class BasicPerformanceIntegrationTestFixture : IAsyncLifetime
         services.AddScoped<INotificationService, NotificationService>();
         services.AddScoped<INotificationTemplateService, NotificationTemplateService>();
         services.AddScoped<IRealTimeNotificationService, RealTimeNotificationService>();
-        services.AddScoped<IDiscoveryService, DiscoveryService>();
+        // services.AddScoped<IDiscoveryService, DiscoveryService>(); // Removed
         services.AddScoped<ISearchService, SearchService>();
 
         _serviceProvider = services.BuildServiceProvider();
@@ -140,11 +140,7 @@ public class BasicPerformanceIntegrationTestFixture : IAsyncLifetime
             .ReturnsAsync((ObjectId id) => new Collection(ObjectId.GenerateNewId(), "Test Collection", "/test/path", Domain.Enums.CollectionType.Folder) { Id = id });
         mockCollectionRepository.Setup(x => x.GetAllAsync()).ReturnsAsync(new List<Collection>());
 
-        var mockImageRepository = new Mock<IImageRepository>();
-        // Setup to return a mock image for any ID to support cache tests
-        mockImageRepository.Setup(x => x.GetByIdAsync(It.IsAny<ObjectId>()))
-            .ReturnsAsync((ObjectId id) => new Image(ObjectId.GenerateNewId(), "test.jpg", "/test/image.jpg", 1024L, 800, 600, "jpeg") { Id = id });
-        mockImageRepository.Setup(x => x.GetAllAsync()).ReturnsAsync(new List<Image>());
+        // Removed: IImageRepository mocking - interface deleted
 
         var mockCacheFolderRepository = new Mock<ICacheFolderRepository>();
         mockCacheFolderRepository.Setup(x => x.GetByIdAsync(It.IsAny<ObjectId>())).ReturnsAsync((CacheFolder?)null);
@@ -182,7 +178,7 @@ public class BasicPerformanceIntegrationTestFixture : IAsyncLifetime
             LibraryRepository = mockLibraryRepository,
             CollectionRepository = mockCollectionRepository,
             MediaItemRepository = Mock.Of<IMediaItemRepository>(),
-            ImageRepository = mockImageRepository,
+            // ImageRepository = mockImageRepository, // Removed
             TagRepository = Mock.Of<ITagRepository>(),
             NotificationTemplateRepository = Mock.Of<INotificationTemplateRepository>(),
             PerformanceMetricRepository = mockPerformanceMetricRepository,
@@ -201,7 +197,7 @@ public class BasicPerformanceIntegrationTestFixture : IAsyncLifetime
         public Mock<ILibraryRepository> LibraryRepository { get; set; } = null!;
         public Mock<ICollectionRepository> CollectionRepository { get; set; } = null!;
         public IMediaItemRepository MediaItemRepository { get; set; } = null!;
-        public Mock<IImageRepository> ImageRepository { get; set; } = null!;
+        // public Mock<IImageRepository> ImageRepository { get; set; } = null!; // Removed
         public ITagRepository TagRepository { get; set; } = null!;
         public INotificationTemplateRepository NotificationTemplateRepository { get; set; } = null!;
         public Mock<IPerformanceMetricRepository> PerformanceMetricRepository { get; set; } = null!;

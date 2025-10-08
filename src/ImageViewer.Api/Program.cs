@@ -115,13 +115,13 @@ builder.Services.AddScoped<IImageService, ImageService>();
 // builder.Services.AddScoped<ICacheService, CacheService>(); // Removed - needs refactoring to embedded design
 builder.Services.AddScoped<ITagService, TagService>();
 builder.Services.AddScoped<IBackgroundJobService, ImageViewer.Application.Services.BackgroundJobService>();
-builder.Services.AddScoped<IStatisticsService, StatisticsService>();
+// builder.Services.AddScoped<IStatisticsService, StatisticsService>(); // Removed - needs refactoring
 builder.Services.AddScoped<IBulkService, BulkService>();
 
 // Add Infrastructure Services
-builder.Services.AddScoped<IFileScannerService, FileScannerService>();
+// builder.Services.AddScoped<IFileScannerService, FileScannerService>(); // Removed - needs refactoring
 builder.Services.AddScoped<IImageProcessingService, SkiaSharpImageProcessingService>();
-builder.Services.AddScoped<IAdvancedThumbnailService, AdvancedThumbnailService>();
+// builder.Services.AddScoped<IAdvancedThumbnailService, AdvancedThumbnailService>(); // Removed - needs refactoring
 builder.Services.AddScoped<ICompressedFileService, CompressedFileService>();
 builder.Services.AddScoped<IUserContextService, ImageViewer.Infrastructure.Services.UserContextService>();
 builder.Services.AddScoped<IJwtService, ImageViewer.Infrastructure.Services.JwtService>();

@@ -19,7 +19,7 @@ public class ViewSession : BaseEntity
 
     // Navigation properties
     public Collection Collection { get; private set; } = null!;
-    public Image? CurrentImage { get; private set; }
+    // public Image? CurrentImage { get; private set; } // Removed - Image entity deleted
 
     // Private constructor for EF Core
     private ViewSession() { }

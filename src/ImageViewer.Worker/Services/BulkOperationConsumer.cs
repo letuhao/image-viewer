@@ -298,43 +298,43 @@ public class BulkOperationConsumer : BaseMessageConsumer
         var imageService = scope.ServiceProvider.GetRequiredService<IImageService>();
         var collectionService = scope.ServiceProvider.GetRequiredService<ICollectionService>();
         
-        // Get all images (we'll need to get them by collection since there's no GetAllImagesAsync)
-        var images = new List<Domain.Entities.Image>();
+        // Get all images using embedded design - iterate through collections
         var collections = await collectionService.GetCollectionsAsync(page: 1, pageSize: 1000);
+        int totalImages = 0;
+        
         foreach (var collection in collections)
         {
-            var collectionImages = await imageService.GetByCollectionIdAsync(collection.Id);
-            images.AddRange(collectionImages);
-        }
-        _logger.LogInformation("🖼️ Found {ImageCount} images for thumbnail generation", images.Count);
-        
-        // Create individual thumbnail generation jobs
-        foreach (var image in images)
-        {
-            try
+            var collectionImages = await imageService.GetEmbeddedImagesByCollectionAsync(collection.Id);
+            totalImages += collectionImages.Count();
+            
+            // Create individual thumbnail generation jobs for each image in this collection
+            foreach (var image in collectionImages)
             {
-                var thumbnailMessage = new ThumbnailGenerationMessage
+                try
                 {
-                    ImageId = image.Id.ToString(), // Convert ObjectId to string
-                    CollectionId = image.CollectionId.ToString(), // Convert ObjectId to string
-                    ImagePath = image.RelativePath, // This should be the full path
-                    ImageFilename = image.Filename,
-                    ThumbnailWidth = 300, // Default thumbnail size
-                    ThumbnailHeight = 300,
-                };
+                    var thumbnailMessage = new ThumbnailGenerationMessage
+                    {
+                        ImageId = image.Id, // Already a string
+                        CollectionId = collection.Id.ToString(), // Use collection.Id from outer loop
+                        ImagePath = image.RelativePath, // This should be the full path
+                        ImageFilename = image.Filename,
+                        ThumbnailWidth = 300, // Default thumbnail size
+                        ThumbnailHeight = 300,
+                    };
 
-                // Queue the thumbnail generation job
-                await messageQueueService.PublishAsync(thumbnailMessage, "thumbnail.generation");
-                _logger.LogInformation("📋 Queued thumbnail generation job for image {ImageId}: {Filename}", 
-                    image.Id, image.Filename);
-            }
+                    // Queue the thumbnail generation job
+                    await messageQueueService.PublishAsync(thumbnailMessage, "thumbnail.generation");
+                    _logger.LogInformation("📋 Queued thumbnail generation job for image {ImageId}: {Filename}", 
+                        image.Id, image.Filename);
+                }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "❌ Failed to create thumbnail generation job for image {ImageId}", image.Id);
             }
         }
+        }
         
-        _logger.LogInformation("✅ Created {ThumbnailJobCount} thumbnail generation jobs", images.Count());
+        _logger.LogInformation("✅ Created {ThumbnailJobCount} thumbnail generation jobs for {CollectionCount} collections", totalImages, collections.Count());
     }
 
     private async Task ProcessGenerateAllCacheAsync(BulkOperationMessage bulkMessage, IMessageQueueService messageQueueService)
@@ -345,45 +345,45 @@ public class BulkOperationConsumer : BaseMessageConsumer
         var imageService = scope.ServiceProvider.GetRequiredService<IImageService>();
         var collectionService = scope.ServiceProvider.GetRequiredService<ICollectionService>();
         
-        // Get all images (we'll need to get them by collection since there's no GetAllImagesAsync)
-        var images = new List<Domain.Entities.Image>();
+        // Get all images using embedded design - iterate through collections
         var collections = await collectionService.GetCollectionsAsync(page: 1, pageSize: 1000);
+        int totalImages = 0;
+        
         foreach (var collection in collections)
         {
-            var collectionImages = await imageService.GetByCollectionIdAsync(collection.Id);
-            images.AddRange(collectionImages);
-        }
-        _logger.LogInformation("🖼️ Found {ImageCount} images for cache generation", images.Count);
-        
-        // Create individual cache generation jobs
-        foreach (var image in images)
-        {
-            try
+            var collectionImages = await imageService.GetEmbeddedImagesByCollectionAsync(collection.Id);
+            totalImages += collectionImages.Count();
+            
+            // Create individual cache generation jobs for each image in this collection
+            foreach (var image in collectionImages)
             {
-                var cacheMessage = new CacheGenerationMessage
+                try
                 {
-                    ImageId = image.Id.ToString(), // Convert ObjectId to string
-                    CollectionId = image.CollectionId.ToString(), // Convert ObjectId to string
-                    ImagePath = image.RelativePath, // This should be the full path
-                    CachePath = "", // Will be determined by cache service
-                    CacheWidth = 1920, // Default cache size
-                    CacheHeight = 1080,
-                    Quality = 85,
-                    ForceRegenerate = true, // Force regeneration for bulk operations
-                };
+                    var cacheMessage = new CacheGenerationMessage
+                    {
+                        ImageId = image.Id, // Already a string
+                        CollectionId = collection.Id.ToString(), // Use collection.Id from outer loop
+                        ImagePath = image.RelativePath, // This should be the full path
+                        CachePath = "", // Will be determined by cache service
+                        CacheWidth = 1920, // Default cache size
+                        CacheHeight = 1080,
+                        Quality = 85,
+                        ForceRegenerate = true, // Force regeneration for bulk operations
+                    };
 
-                // Queue the cache generation job
-                await messageQueueService.PublishAsync(cacheMessage, "cache.generation");
-                _logger.LogInformation("📋 Queued cache generation job for image {ImageId}: {Filename}", 
-                    image.Id, image.Filename);
-            }
+                    // Queue the cache generation job
+                    await messageQueueService.PublishAsync(cacheMessage, "cache.generation");
+                    _logger.LogInformation("📋 Queued cache generation job for image {ImageId}: {Filename}", 
+                        image.Id, image.Filename);
+                }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "❌ Failed to create cache generation job for image {ImageId}", image.Id);
             }
         }
+        }
         
-        _logger.LogInformation("✅ Created {CacheJobCount} cache generation jobs", images.Count());
+        _logger.LogInformation("✅ Created {CacheJobCount} cache generation jobs for {CollectionCount} collections", totalImages, collections.Count());
     }
 
     private async Task ProcessScanCollectionsAsync(BulkOperationMessage bulkMessage, IMessageQueueService messageQueueService)
@@ -439,14 +439,40 @@ public class BulkOperationConsumer : BaseMessageConsumer
         using var scope = _serviceProvider.CreateScope();
         var imageService = scope.ServiceProvider.GetRequiredService<IImageService>();
         
-        // Get images for specified collections
-        var images = new List<Domain.Entities.Image>();
+        // Get images for specified collections using embedded design
+        int totalImages = 0;
         foreach (var collectionId in bulkMessage.CollectionIds)
         {
             try
             {
-                var collectionImages = await imageService.GetByCollectionIdAsync(ObjectId.Parse(collectionId.ToString()));
-                images.AddRange(collectionImages);
+                var collectionImages = await imageService.GetEmbeddedImagesByCollectionAsync(ObjectId.Parse(collectionId.ToString()));
+                totalImages += collectionImages.Count();
+                
+                // Create individual thumbnail generation jobs for each image in this collection
+                foreach (var image in collectionImages)
+                {
+                    try
+                    {
+                        var thumbnailMessage = new ThumbnailGenerationMessage
+                        {
+                            ImageId = image.Id, // Already a string
+                            CollectionId = collectionId.ToString(), // Use collectionId from outer loop
+                            ImagePath = image.RelativePath, // This should be the full path
+                            ImageFilename = image.Filename,
+                            ThumbnailWidth = 300, // Default thumbnail size
+                            ThumbnailHeight = 300,
+                        };
+
+                        // Queue the thumbnail generation job
+                        await messageQueueService.PublishAsync(thumbnailMessage, "thumbnail.generation");
+                        _logger.LogInformation("📋 Queued thumbnail generation job for image {ImageId}: {Filename}", 
+                            image.Id, image.Filename);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "❌ Failed to create thumbnail generation job for image {ImageId}", image.Id);
+                    }
+                }
             }
             catch (Exception ex)
             {
@@ -454,35 +480,7 @@ public class BulkOperationConsumer : BaseMessageConsumer
             }
         }
         
-        _logger.LogInformation("🖼️ Found {ImageCount} images for thumbnail generation", images.Count);
-        
-        // Create individual thumbnail generation jobs
-        foreach (var image in images)
-        {
-            try
-            {
-                var thumbnailMessage = new ThumbnailGenerationMessage
-                {
-                    ImageId = image.Id.ToString(), // Convert ObjectId to string
-                    CollectionId = image.CollectionId.ToString(), // Convert ObjectId to string
-                    ImagePath = image.RelativePath, // This should be the full path
-                    ImageFilename = image.Filename,
-                    ThumbnailWidth = 300, // Default thumbnail size
-                    ThumbnailHeight = 300,
-                };
-
-                // Queue the thumbnail generation job
-                await messageQueueService.PublishAsync(thumbnailMessage, "thumbnail.generation");
-                _logger.LogInformation("📋 Queued thumbnail generation job for image {ImageId}: {Filename}", 
-                    image.Id, image.Filename);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "❌ Failed to create thumbnail generation job for image {ImageId}", image.Id);
-            }
-        }
-        
-        _logger.LogInformation("✅ Created {ThumbnailJobCount} thumbnail generation jobs", images.Count);
+        _logger.LogInformation("✅ Created {ThumbnailJobCount} thumbnail generation jobs for {CollectionCount} collections", totalImages, bulkMessage.CollectionIds.Count);
     }
 
     private async Task ProcessGenerateCacheAsync(BulkOperationMessage bulkMessage, IMessageQueueService messageQueueService)
@@ -493,14 +491,42 @@ public class BulkOperationConsumer : BaseMessageConsumer
         using var scope = _serviceProvider.CreateScope();
         var imageService = scope.ServiceProvider.GetRequiredService<IImageService>();
         
-        // Get images for specified collections
-        var images = new List<Domain.Entities.Image>();
+        // Get images for specified collections using embedded design
+        int totalImages = 0;
         foreach (var collectionId in bulkMessage.CollectionIds)
         {
             try
             {
-                var collectionImages = await imageService.GetByCollectionIdAsync(ObjectId.Parse(collectionId.ToString()));
-                images.AddRange(collectionImages);
+                var collectionImages = await imageService.GetEmbeddedImagesByCollectionAsync(ObjectId.Parse(collectionId.ToString()));
+                totalImages += collectionImages.Count();
+                
+                // Create individual cache generation jobs for each image in this collection
+                foreach (var image in collectionImages)
+                {
+                    try
+                    {
+                        var cacheMessage = new CacheGenerationMessage
+                        {
+                            ImageId = image.Id, // Already a string
+                            CollectionId = collectionId.ToString(), // Use collectionId from outer loop
+                            ImagePath = image.RelativePath, // This should be the full path
+                            CachePath = "", // Will be determined by cache service
+                            CacheWidth = 1920, // Default cache size
+                            CacheHeight = 1080,
+                            Quality = 85,
+                            ForceRegenerate = true, // Force regeneration for bulk operations
+                        };
+
+                        // Queue the cache generation job
+                        await messageQueueService.PublishAsync(cacheMessage, "cache.generation");
+                        _logger.LogInformation("📋 Queued cache generation job for image {ImageId}: {Filename}", 
+                            image.Id, image.Filename);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "❌ Failed to create cache generation job for image {ImageId}", image.Id);
+                    }
+                }
             }
             catch (Exception ex)
             {
@@ -508,36 +534,6 @@ public class BulkOperationConsumer : BaseMessageConsumer
             }
         }
         
-        _logger.LogInformation("🖼️ Found {ImageCount} images for cache generation", images.Count);
-        
-        // Create individual cache generation jobs
-        foreach (var image in images)
-        {
-            try
-            {
-                var cacheMessage = new CacheGenerationMessage
-                {
-                    ImageId = image.Id.ToString(), // Convert ObjectId to string
-                    CollectionId = image.CollectionId.ToString(), // Convert ObjectId to string
-                    ImagePath = image.RelativePath, // This should be the full path
-                    CachePath = "", // Will be determined by cache service
-                    CacheWidth = 1920, // Default cache size
-                    CacheHeight = 1080,
-                    Quality = 85,
-                    ForceRegenerate = true, // Force regeneration for bulk operations
-                };
-
-                // Queue the cache generation job
-                await messageQueueService.PublishAsync(cacheMessage, "cache.generation");
-                _logger.LogInformation("📋 Queued cache generation job for image {ImageId}: {Filename}", 
-                    image.Id, image.Filename);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "❌ Failed to create cache generation job for image {ImageId}", image.Id);
-            }
-        }
-        
-        _logger.LogInformation("✅ Created {CacheJobCount} cache generation jobs", images.Count);
+        _logger.LogInformation("✅ Created {CacheJobCount} cache generation jobs for {CollectionCount} collections", totalImages, bulkMessage.CollectionIds.Count);
     }
 }

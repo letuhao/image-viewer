@@ -744,25 +744,4 @@ public class ImageService : IImageService
 
     #endregion
 
-    #region Legacy Support (will be removed)
-
-    public async Task<Image?> GetByIdAsync(ObjectId id, CancellationToken cancellationToken = default)
-    {
-        _logger.LogWarning("Legacy method GetByIdAsync called - this will be removed");
-        return null; // Legacy method - no longer supported
-    }
-
-    public async Task<Image?> GetByCollectionIdAndFilenameAsync(ObjectId collectionId, string filename, CancellationToken cancellationToken = default)
-    {
-        _logger.LogWarning("Legacy method GetByCollectionIdAndFilenameAsync called - this will be removed");
-        return null; // Legacy method - no longer supported
-    }
-
-    public async Task<IEnumerable<Image>> GetByCollectionIdAsync(ObjectId collectionId, CancellationToken cancellationToken = default)
-    {
-        _logger.LogWarning("Legacy method GetByCollectionIdAsync called - this will be removed");
-        return Enumerable.Empty<Image>(); // Legacy method - no longer supported
-    }
-
-    #endregion
 }

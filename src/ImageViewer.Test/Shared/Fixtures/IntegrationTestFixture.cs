@@ -42,7 +42,7 @@ namespace ImageViewer.Test.Shared.Fixtures;
                services.AddSingleton<ILibraryRepository>(CreateMockLibraryRepository().Object);
                services.AddSingleton<ICollectionRepository>(CreateMockCollectionRepository().Object);
                services.AddSingleton<IMediaItemRepository>(CreateMockMediaItemRepository().Object);
-               services.AddSingleton<IImageRepository>(CreateMockImageRepository().Object);
+               // services.AddSingleton<IImageRepository>(CreateMockImageRepository().Object); // Removed
                services.AddSingleton<ITagRepository>(CreateMockTagRepository().Object);
                services.AddSingleton<INotificationTemplateRepository>(CreateMockNotificationTemplateRepository().Object);
                services.AddSingleton<IPerformanceMetricRepository>(CreateMockPerformanceMetricRepository().Object);
@@ -68,7 +68,7 @@ namespace ImageViewer.Test.Shared.Fixtures;
         services.AddScoped<INotificationService, NotificationService>();
         services.AddScoped<INotificationTemplateService, NotificationTemplateService>();
         services.AddScoped<IRealTimeNotificationService, RealTimeNotificationService>();
-        services.AddScoped<IDiscoveryService, DiscoveryService>();
+        // services.AddScoped<IDiscoveryService, DiscoveryService>(); // Removed
         services.AddScoped<ISearchService, SearchService>();
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<IUserPreferencesService, UserPreferencesService>();
@@ -89,7 +89,7 @@ namespace ImageViewer.Test.Shared.Fixtures;
         services.AddScoped<NotificationService>();
         services.AddScoped<NotificationTemplateService>();
         services.AddScoped<RealTimeNotificationService>();
-        services.AddScoped<DiscoveryService>();
+        // services.AddScoped<DiscoveryService>(); // Removed
         services.AddScoped<SearchService>();
         services.AddScoped<UserService>();
         services.AddScoped<UserPreferencesService>();
@@ -245,6 +245,8 @@ namespace ImageViewer.Test.Shared.Fixtures;
         return mock;
     }
 
+    // Removed: CreateMockImageRepository - IImageRepository deleted
+    /*
     private Mock<IImageRepository> CreateMockImageRepository()
     {
         var mock = new Mock<IImageRepository>();
@@ -258,6 +260,7 @@ namespace ImageViewer.Test.Shared.Fixtures;
 
         return mock;
     }
+    */
 
     private Mock<ITagRepository> CreateMockTagRepository()
     {
@@ -471,10 +474,13 @@ namespace ImageViewer.Test.Shared.Fixtures;
         return new List<MediaItem>();
     }
 
+    // Removed: CreateTestImages - Image entity deleted
+    /*
     private List<Image> CreateTestImages()
     {
         return new List<Image>();
     }
+    */
 
     private List<Tag> CreateTestTags()
     {

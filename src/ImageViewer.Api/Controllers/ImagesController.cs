@@ -95,25 +95,13 @@ public class ImagesController : ControllerBase
     }
 
     /// <summary>
-    /// Get image by ID
+    /// Get image by ID - REMOVED: Use GET /api/v1/images/{collectionId}/{imageId} instead
     /// </summary>
     [HttpGet("{id}")]
-    public async Task<ActionResult<Image>> GetImage(ObjectId id)
+    [Obsolete("Use GET /api/v1/images/{collectionId}/{imageId} instead")]
+    public ActionResult GetImage(ObjectId id)
     {
-        try
-        {
-            var image = await _imageService.GetByIdAsync(id);
-            if (image == null)
-            {
-                return NotFound();
-            }
-            return Ok(image);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting image {Id}", id);
-            return StatusCode(500, "Internal server error");
-        }
+        return BadRequest("This endpoint is deprecated. Use GET /api/v1/images/{collectionId}/{imageId} instead.");
     }
 
     /// <summary>

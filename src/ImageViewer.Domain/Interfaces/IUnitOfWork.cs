@@ -10,7 +10,6 @@ namespace ImageViewer.Domain.Interfaces;
 public interface IUnitOfWork : IDisposable
 {
     ICollectionRepository Collections { get; }
-    IImageRepository Images { get; }
     IRepository<CacheFolder> CacheFolders { get; }
     IRepository<Tag> Tags { get; }
     IRepository<CollectionTag> CollectionTags { get; }

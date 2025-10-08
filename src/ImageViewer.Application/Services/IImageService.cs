@@ -45,9 +45,5 @@ public interface IImageService
     Task<ImageCacheInfoEmbedded> GenerateCacheAsync(string imageId, ObjectId collectionId, int width, int height, CancellationToken cancellationToken = default);
     Task CleanupExpiredThumbnailsAsync(CancellationToken cancellationToken = default);
     
-    // Legacy support (will be removed)
-    Task<Image?> GetByIdAsync(ObjectId id, CancellationToken cancellationToken = default);
-    Task<Image?> GetByCollectionIdAndFilenameAsync(ObjectId collectionId, string filename, CancellationToken cancellationToken = default);
-    Task<IEnumerable<Image>> GetByCollectionIdAsync(ObjectId collectionId, CancellationToken cancellationToken = default);
 }
 

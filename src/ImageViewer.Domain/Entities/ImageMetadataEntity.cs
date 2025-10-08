@@ -19,8 +19,7 @@ public class ImageMetadataEntity : BaseEntity
     public string AdditionalMetadataJson { get; private set; } = "{}";
     public DateTime? DeletedAt { get; private set; }
 
-    // Navigation property
-    public Image Image { get; private set; } = null!;
+    // Navigation property - removed (Image entity deleted)
 
     // Private constructor for EF Core
     private ImageMetadataEntity() { }

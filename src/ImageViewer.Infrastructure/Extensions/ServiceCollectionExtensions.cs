@@ -59,12 +59,6 @@ public static class ServiceCollectionExtensions
             return database.GetCollection<MediaItem>("media_items");
         });
         
-        services.AddScoped<IMongoCollection<Image>>(provider =>
-        {
-            var database = provider.GetRequiredService<IMongoDatabase>();
-            return database.GetCollection<Image>("images");
-        });
-        
         services.AddScoped<IMongoCollection<User>>(provider =>
         {
             var database = provider.GetRequiredService<IMongoDatabase>();
@@ -121,7 +115,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ILibraryRepository, LibraryRepository>();
         services.AddScoped<ICollectionRepository, MongoCollectionRepository>();
         services.AddScoped<IMediaItemRepository, MediaItemRepository>();
-        services.AddScoped<IImageRepository, MongoImageRepository>();
+        // services.AddScoped<IImageRepository, MongoImageRepository>(); // Removed - use embedded ImageEmbedded
         services.AddScoped<ITagRepository, MongoTagRepository>();
         services.AddScoped<ICollectionTagRepository, MongoCollectionTagRepository>();
         services.AddScoped<ICacheFolderRepository, MongoCacheFolderRepository>();
