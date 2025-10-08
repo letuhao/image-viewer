@@ -182,6 +182,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ISearchService, SearchService>();
         services.AddScoped<INotificationService, NotificationService>();
         services.AddScoped<IUserPreferencesService, UserPreferencesService>();
+        services.AddScoped<ICacheService, CacheService>(); // Refactored to use embedded design
         // services.AddScoped<IPerformanceService, PerformanceService>(); // Removed - needs refactoring to embedded design
         services.AddScoped<ISecurityService, SecurityService>();
         services.AddScoped<IWindowsDriveService, WindowsDriveService>();

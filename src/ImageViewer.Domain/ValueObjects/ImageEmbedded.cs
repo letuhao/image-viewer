@@ -83,9 +83,15 @@ public class ImageEmbedded
         UpdatedAt = DateTime.UtcNow;
     }
 
-    public void SetCacheInfo(ImageCacheInfoEmbedded cacheInfo)
+    public void SetCacheInfo(ImageCacheInfoEmbedded? cacheInfo)
     {
         CacheInfo = cacheInfo;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void ClearCacheInfo()
+    {
+        CacheInfo = null;
         UpdatedAt = DateTime.UtcNow;
     }
 
