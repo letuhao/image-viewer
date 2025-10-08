@@ -5,7 +5,9 @@ namespace ImageViewer.Domain.Entities;
 
 /// <summary>
 /// ThumbnailInfo entity - represents thumbnail information for an image
+/// OBSOLETE: Use embedded ThumbnailEmbedded in Collection entity instead. This entity is kept only for backward compatibility.
 /// </summary>
+[Obsolete("Use embedded ThumbnailEmbedded in Collection entity instead. Will be removed in future version.")]
 public class ThumbnailInfo : BaseEntity
 {
     public ObjectId ImageId { get; private set; }

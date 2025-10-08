@@ -7,7 +7,9 @@ namespace ImageViewer.Infrastructure.Data;
 
 /// <summary>
 /// MongoDB thumbnail info repository implementation
+/// OBSOLETE: Use embedded ThumbnailEmbedded in Collection entity instead. This implementation is kept only for backward compatibility.
 /// </summary>
+[Obsolete("Use embedded ThumbnailEmbedded in Collection entity instead. Will be removed in future version.")]
 public class MongoThumbnailInfoRepository : MongoRepository<ThumbnailInfo>, IThumbnailInfoRepository
 {
     public MongoThumbnailInfoRepository(IMongoDatabase database) : base(database, "thumbnail_info")

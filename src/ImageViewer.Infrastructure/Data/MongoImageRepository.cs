@@ -7,7 +7,9 @@ namespace ImageViewer.Infrastructure.Data;
 
 /// <summary>
 /// MongoDB image repository implementation
+/// OBSOLETE: Use embedded ImageEmbedded in Collection entity instead. This implementation is kept only for CacheService backward compatibility.
 /// </summary>
+[Obsolete("Use embedded ImageEmbedded in Collection entity instead. Will be removed in future version.")]
 public class MongoImageRepository : MongoRepository<Image>, IImageRepository
 {
     public MongoImageRepository(IMongoDatabase database) : base(database, "images")

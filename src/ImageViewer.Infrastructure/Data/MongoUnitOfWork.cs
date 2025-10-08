@@ -3,10 +3,13 @@ using ImageViewer.Domain.Entities;
 using ImageViewer.Domain.Interfaces;
 using Microsoft.Extensions.Logging;
 
+#pragma warning disable CS0618 // Type or member is obsolete - MongoUnitOfWork uses legacy repositories for backward compatibility
+
 namespace ImageViewer.Infrastructure.Data;
 
 /// <summary>
 /// MongoDB unit of work implementation
+/// TODO: Refactor to remove legacy Image/ThumbnailInfo repositories
 /// </summary>
 public class MongoUnitOfWork : IUnitOfWork
 {

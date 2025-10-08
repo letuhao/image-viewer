@@ -4,7 +4,9 @@ namespace ImageViewer.Domain.Interfaces;
 
 /// <summary>
 /// Unit of work interface
+/// TODO: Refactor to remove legacy Image/ThumbnailInfo repositories
 /// </summary>
+[Obsolete("IUnitOfWork contains obsolete Image/ThumbnailInfo repositories. Use ICollectionRepository directly for embedded design.")]
 public interface IUnitOfWork : IDisposable
 {
     ICollectionRepository Collections { get; }

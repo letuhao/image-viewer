@@ -5,7 +5,9 @@ namespace ImageViewer.Domain.Interfaces;
 
 /// <summary>
 /// Repository interface for ThumbnailInfo entities
+/// OBSOLETE: Use embedded ThumbnailEmbedded in Collection entity instead. This interface is kept only for backward compatibility.
 /// </summary>
+[Obsolete("Use embedded ThumbnailEmbedded in Collection entity instead. Will be removed in future version.")]
 public interface IThumbnailInfoRepository : IRepository<ThumbnailInfo>
 {
     Task<ThumbnailInfo?> GetByImageIdAsync(ObjectId imageId, CancellationToken cancellationToken = default);

@@ -5,7 +5,9 @@ namespace ImageViewer.Domain.Entities;
 
 /// <summary>
 /// ImageCacheInfo entity - represents cached image information
+/// OBSOLETE: Use embedded ImageCacheInfoEmbedded in Collection entity instead. This entity is kept only for backward compatibility.
 /// </summary>
+[Obsolete("Use embedded ImageCacheInfoEmbedded in Collection entity instead. Will be removed in future version.")]
 public class ImageCacheInfo : BaseEntity
 {
     public ObjectId ImageId { get; private set; }

@@ -5,7 +5,9 @@ namespace ImageViewer.Domain.Interfaces;
 
 /// <summary>
 /// Image repository interface
+/// OBSOLETE: Use embedded images in Collection entity instead. This interface is kept only for CacheService backward compatibility.
 /// </summary>
+[Obsolete("Use embedded ImageEmbedded in Collection entity instead. Will be removed in future version.")]
 public interface IImageRepository : IRepository<Image>
 {
     Task<IEnumerable<Image>> GetByCollectionIdAsync(ObjectId collectionId, CancellationToken cancellationToken = default);

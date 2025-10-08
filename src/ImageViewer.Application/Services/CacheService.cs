@@ -7,10 +7,13 @@ using ImageViewer.Application.Options;
 using Microsoft.Extensions.Options;
 using MongoDB.Bson;
 
+#pragma warning disable CS0618 // Type or member is obsolete - CacheService will be refactored to use embedded design
+
 namespace ImageViewer.Application.Services;
 
 /// <summary>
 /// Cache service implementation
+/// TODO: Refactor to use embedded ImageEmbedded instead of separate Image entity
 /// </summary>
 public class CacheService : ICacheService
 {
