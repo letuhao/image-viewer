@@ -116,11 +116,34 @@ public class ThumbnailGenerationConsumer : BaseMessageConsumer
             }
 
             // Generate thumbnail using image processing service
-            var thumbnailData = await imageProcessingService.GenerateThumbnailAsync(
-                imagePath, 
-                width, 
-                height, 
-                cancellationToken);
+            byte[] thumbnailData;
+            
+            // Handle ZIP entries
+            if (ZipFileHelper.IsZipEntryPath(imagePath))
+            {
+                // Extract image bytes from ZIP
+                var imageBytes = await ZipFileHelper.ExtractZipEntryBytes(imagePath, null, cancellationToken);
+                if (imageBytes == null || imageBytes.Length == 0)
+                {
+                    _logger.LogWarning("❌ Failed to extract ZIP entry: {Path}", imagePath);
+                    return null;
+                }
+                
+                thumbnailData = await imageProcessingService.GenerateThumbnailFromBytesAsync(
+                    imageBytes, 
+                    width, 
+                    height, 
+                    cancellationToken);
+            }
+            else
+            {
+                // Regular file
+                thumbnailData = await imageProcessingService.GenerateThumbnailAsync(
+                    imagePath, 
+                    width, 
+                    height, 
+                    cancellationToken);
+            }
 
             if (thumbnailData != null && thumbnailData.Length > 0)
             {

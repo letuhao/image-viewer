@@ -70,12 +70,36 @@ public class CacheGenerationConsumer : BaseMessageConsumer
             }
 
             // Generate cache image using ResizeImageAsync
-            var cacheImageData = await imageProcessingService.ResizeImageAsync(
-                cacheMessage.ImagePath,
-                cacheMessage.CacheWidth,
-                cacheMessage.CacheHeight,
-                cacheMessage.Quality,
-                cancellationToken);
+            byte[] cacheImageData;
+            
+            // Handle ZIP entries
+            if (ZipFileHelper.IsZipEntryPath(cacheMessage.ImagePath))
+            {
+                // Extract image bytes from ZIP
+                var imageBytes = await ZipFileHelper.ExtractZipEntryBytes(cacheMessage.ImagePath, null, cancellationToken);
+                if (imageBytes == null || imageBytes.Length == 0)
+                {
+                    _logger.LogWarning("❌ Failed to extract ZIP entry for cache: {Path}", cacheMessage.ImagePath);
+                    return;
+                }
+                
+                cacheImageData = await imageProcessingService.ResizeImageFromBytesAsync(
+                    imageBytes,
+                    cacheMessage.CacheWidth,
+                    cacheMessage.CacheHeight,
+                    cacheMessage.Quality,
+                    cancellationToken);
+            }
+            else
+            {
+                // Regular file
+                cacheImageData = await imageProcessingService.ResizeImageAsync(
+                    cacheMessage.ImagePath,
+                    cacheMessage.CacheWidth,
+                    cacheMessage.CacheHeight,
+                    cacheMessage.Quality,
+                    cancellationToken);
+            }
 
             // Ensure cache directory exists
             var cacheDir = Path.GetDirectoryName(cachePath);
