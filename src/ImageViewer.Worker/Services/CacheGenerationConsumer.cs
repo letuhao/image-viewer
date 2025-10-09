@@ -73,10 +73,10 @@ public class CacheGenerationConsumer : BaseMessageConsumer
             byte[] cacheImageData;
             
             // Handle ZIP entries
-            if (ZipFileHelper.IsZipEntryPath(cacheMessage.ImagePath))
+            if (ArchiveFileHelper.IsZipEntryPath(cacheMessage.ImagePath))
             {
                 // Extract image bytes from ZIP
-                var imageBytes = await ZipFileHelper.ExtractZipEntryBytes(cacheMessage.ImagePath, null, cancellationToken);
+                var imageBytes = await ArchiveFileHelper.ExtractZipEntryBytes(cacheMessage.ImagePath, null, cancellationToken);
                 if (imageBytes == null || imageBytes.Length == 0)
                 {
                     _logger.LogWarning("❌ Failed to extract ZIP entry for cache: {Path}", cacheMessage.ImagePath);

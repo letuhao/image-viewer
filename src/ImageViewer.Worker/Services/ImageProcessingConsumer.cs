@@ -76,11 +76,11 @@ public class ImageProcessingConsumer : BaseMessageConsumer
                 var messageQueueService = scope.ServiceProvider.GetRequiredService<IMessageQueueService>();
 
                 // Check if image file exists (handle both regular files and ZIP entries)
-                bool isZipEntry = ZipFileHelper.IsZipEntryPath(imageMessage.ImagePath);
+                bool isZipEntry = ArchiveFileHelper.IsArchiveEntryPath(imageMessage.ImagePath);
                 if (isZipEntry)
                 {
                     // Validate ZIP file exists
-                    var (zipPath, _) = ZipFileHelper.SplitZipEntryPath(imageMessage.ImagePath);
+                    var (zipPath, _) = ArchiveFileHelper.SplitZipEntryPath(imageMessage.ImagePath);
                     if (!File.Exists(zipPath))
                     {
                         _logger.LogWarning("❌ ZIP file {Path} does not exist, skipping processing", zipPath);
@@ -264,7 +264,7 @@ public class ImageProcessingConsumer : BaseMessageConsumer
         try
         {
             // Use shared ZIP helper to extract bytes
-            var imageBytes = await ZipFileHelper.ExtractZipEntryBytes(zipEntryPath, _logger, cancellationToken);
+            var imageBytes = await ArchiveFileHelper.ExtractZipEntryBytes(zipEntryPath, _logger, cancellationToken);
             if (imageBytes == null || imageBytes.Length == 0)
             {
                 _logger.LogWarning("Failed to extract bytes from ZIP entry: {Path}", zipEntryPath);
@@ -282,7 +282,7 @@ public class ImageProcessingConsumer : BaseMessageConsumer
             }
 
             var info = codec.Info;
-            var entryName = ZipFileHelper.SplitZipEntryPath(zipEntryPath).entryName;
+            var entryName = ArchiveFileHelper.SplitZipEntryPath(zipEntryPath).entryName;
             _logger.LogDebug("ZIP entry {Entry}: {Width}x{Height}, {Size} bytes", entryName, info.Width, info.Height, imageBytes.Length);
             
             return (info.Width, info.Height, imageBytes.Length);

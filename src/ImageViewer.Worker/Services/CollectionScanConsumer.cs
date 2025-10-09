@@ -1,5 +1,7 @@
 using System.Text.Json;
 using System.IO.Compression;
+using SharpCompress.Archives;
+using SharpCompress.Common;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -130,15 +132,15 @@ public class CollectionScanConsumer : BaseMessageConsumer
         
         try
         {
-            if (collectionType == CollectionType.Zip)
-            {
-                // Handle ZIP files
-                ScanZipFile(collectionPath, mediaFiles);
-            }
-            else
+            if (collectionType == CollectionType.Folder)
             {
                 // Handle regular directories
                 ScanDirectory(collectionPath, mediaFiles);
+            }
+            else
+            {
+                // Handle all compressed archive types (ZIP, 7Z, RAR, TAR, etc.)
+                ScanCompressedArchive(collectionPath, mediaFiles);
             }
         }
         catch (Exception ex)
@@ -149,29 +151,33 @@ public class CollectionScanConsumer : BaseMessageConsumer
         return mediaFiles;
     }
 
-    private void ScanZipFile(string zipPath, List<MediaFileInfo> mediaFiles)
+    private void ScanCompressedArchive(string archivePath, List<MediaFileInfo> mediaFiles)
     {
         try
         {
-            using var archive = ZipFile.OpenRead(zipPath);
+            // Use SharpCompress to support ZIP, 7Z, RAR, TAR, CBZ, CBR, and more
+            using var archive = ArchiveFactory.Open(archivePath);
             foreach (var entry in archive.Entries)
             {
-                if (IsMediaFile(entry.Name))
+                if (!entry.IsDirectory && IsMediaFile(entry.Key))
                 {
                     mediaFiles.Add(new MediaFileInfo
                     {
-                        FullPath = $"{zipPath}#{entry.FullName}",
-                        RelativePath = entry.FullName,
-                        FileName = entry.Name,
-                        Extension = Path.GetExtension(entry.Name).ToLowerInvariant(),
-                        FileSize = entry.Length
+                        FullPath = $"{archivePath}#{entry.Key}",
+                        RelativePath = entry.Key,
+                        FileName = Path.GetFileName(entry.Key),
+                        Extension = Path.GetExtension(entry.Key).ToLowerInvariant(),
+                        FileSize = entry.Size
                     });
                 }
             }
+            
+            _logger.LogInformation("📦 Scanned archive {Archive}: found {Count} media files", 
+                Path.GetFileName(archivePath), mediaFiles.Count);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "❌ Error scanning ZIP file {ZipPath}", zipPath);
+            _logger.LogError(ex, "❌ Error scanning compressed archive {ArchivePath}", archivePath);
         }
     }
 

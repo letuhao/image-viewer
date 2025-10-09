@@ -119,10 +119,10 @@ public class ThumbnailGenerationConsumer : BaseMessageConsumer
             byte[] thumbnailData;
             
             // Handle ZIP entries
-            if (ZipFileHelper.IsZipEntryPath(imagePath))
+            if (ArchiveFileHelper.IsZipEntryPath(imagePath))
             {
                 // Extract image bytes from ZIP
-                var imageBytes = await ZipFileHelper.ExtractZipEntryBytes(imagePath, null, cancellationToken);
+                var imageBytes = await ArchiveFileHelper.ExtractZipEntryBytes(imagePath, null, cancellationToken);
                 if (imageBytes == null || imageBytes.Length == 0)
                 {
                     _logger.LogWarning("❌ Failed to extract ZIP entry: {Path}", imagePath);
