@@ -19,16 +19,16 @@ namespace ImageViewer.Worker.Services;
 /// </summary>
 public class CollectionScanConsumer : BaseMessageConsumer
 {
-    private readonly IServiceProvider _serviceProvider;
+    private readonly IServiceScopeFactory _serviceScopeFactory;
 
     public CollectionScanConsumer(
         IConnection connection,
         IOptions<RabbitMQOptions> options,
-        IServiceProvider serviceProvider,
+        IServiceScopeFactory serviceScopeFactory,
         ILogger<CollectionScanConsumer> logger)
         : base(connection, options, logger, "collection.scan", "collection-scan-consumer")
     {
-        _serviceProvider = serviceProvider;
+        _serviceScopeFactory = serviceScopeFactory;
     }
 
     protected override async Task ProcessMessageAsync(string message, CancellationToken cancellationToken)
@@ -52,7 +52,7 @@ public class CollectionScanConsumer : BaseMessageConsumer
             _logger.LogInformation("🔍 Processing collection scan for collection {CollectionId} at path {Path}", 
                 scanMessage.CollectionId, scanMessage.CollectionPath);
 
-            using var scope = _serviceProvider.CreateScope();
+            using var scope = _serviceScopeFactory.CreateScope();
             var collectionService = scope.ServiceProvider.GetRequiredService<ICollectionService>();
             var messageQueueService = scope.ServiceProvider.GetRequiredService<IMessageQueueService>();
 
@@ -213,7 +213,7 @@ public class CollectionScanConsumer : BaseMessageConsumer
     {
         try
         {
-            using var scope = _serviceProvider.CreateScope();
+            using var scope = _serviceScopeFactory.CreateScope();
             var imageProcessingService = scope.ServiceProvider.GetRequiredService<IImageProcessingService>();
             
             // For ZIP files, we can't easily extract dimensions without extracting the file

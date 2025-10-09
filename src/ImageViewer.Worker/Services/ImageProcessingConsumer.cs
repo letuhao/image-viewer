@@ -17,16 +17,16 @@ namespace ImageViewer.Worker.Services;
 /// </summary>
 public class ImageProcessingConsumer : BaseMessageConsumer
 {
-    private readonly IServiceProvider _serviceProvider;
+    private readonly IServiceScopeFactory _serviceScopeFactory;
 
     public ImageProcessingConsumer(
         IConnection connection,
         IOptions<RabbitMQOptions> options,
-        IServiceProvider serviceProvider,
+        IServiceScopeFactory serviceScopeFactory,
         ILogger<ImageProcessingConsumer> logger)
         : base(connection, options, logger, "image.processing", "image-processing-consumer")
     {
-        _serviceProvider = serviceProvider;
+        _serviceScopeFactory = serviceScopeFactory;
     }
 
     protected override async Task ProcessMessageAsync(string message, CancellationToken cancellationToken)
@@ -50,7 +50,7 @@ public class ImageProcessingConsumer : BaseMessageConsumer
             _logger.LogInformation("🖼️ Processing image {ImageId} at path {Path}", 
                 imageMessage.ImageId, imageMessage.ImagePath);
 
-            using var scope = _serviceProvider.CreateScope();
+            using var scope = _serviceScopeFactory.CreateScope();
             var imageService = scope.ServiceProvider.GetRequiredService<IImageService>();
             var messageQueueService = scope.ServiceProvider.GetRequiredService<IMessageQueueService>();
 
@@ -142,7 +142,7 @@ public class ImageProcessingConsumer : BaseMessageConsumer
             
             if (width == 0 || height == 0 || fileSize == 0)
             {
-                using var scope = _serviceProvider.CreateScope();
+                using var scope = _serviceScopeFactory.CreateScope();
                 var imageProcessingService = scope.ServiceProvider.GetRequiredService<IImageProcessingService>();
                 
                 try

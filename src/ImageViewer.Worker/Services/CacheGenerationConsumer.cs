@@ -19,16 +19,16 @@ namespace ImageViewer.Worker.Services;
 /// </summary>
 public class CacheGenerationConsumer : BaseMessageConsumer
 {
-    private readonly IServiceProvider _serviceProvider;
+    private readonly IServiceScopeFactory _serviceScopeFactory;
 
     public CacheGenerationConsumer(
         IConnection connection,
         IOptions<RabbitMQOptions> options,
-        IServiceProvider serviceProvider,
+        IServiceScopeFactory serviceScopeFactory,
         ILogger<CacheGenerationConsumer> logger)
         : base(connection, options, logger, "cache.generation", "cache-generation-consumer")
     {
-        _serviceProvider = serviceProvider;
+        _serviceScopeFactory = serviceScopeFactory;
     }
 
     protected override async Task ProcessMessageAsync(string message, CancellationToken cancellationToken)
@@ -50,7 +50,7 @@ public class CacheGenerationConsumer : BaseMessageConsumer
             _logger.LogInformation("Processing cache generation for image {ImageId} ({Path})", 
                 cacheMessage.ImageId, cacheMessage.ImagePath);
 
-            using var scope = _serviceProvider.CreateScope();
+            using var scope = _serviceScopeFactory.CreateScope();
             var imageProcessingService = scope.ServiceProvider.GetRequiredService<IImageProcessingService>();
             var cacheService = scope.ServiceProvider.GetRequiredService<ICacheService>();
 
@@ -173,7 +173,7 @@ public class CacheGenerationConsumer : BaseMessageConsumer
             var collectionId = ObjectId.Parse(cacheMessage.CollectionId);
             
             // Generate cache using the new embedded service
-            using var scope = _serviceProvider.CreateScope();
+            using var scope = _serviceScopeFactory.CreateScope();
             var imageService = scope.ServiceProvider.GetRequiredService<IImageService>();
             
             var cacheInfoEmbedded = await imageService.GenerateCacheAsync(

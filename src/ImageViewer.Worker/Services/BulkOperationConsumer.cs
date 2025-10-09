@@ -17,16 +17,16 @@ namespace ImageViewer.Worker.Services;
 /// </summary>
 public class BulkOperationConsumer : BaseMessageConsumer
 {
-    private readonly IServiceProvider _serviceProvider;
+    private readonly IServiceScopeFactory _serviceScopeFactory;
 
     public BulkOperationConsumer(
         IConnection connection,
         IOptions<RabbitMQOptions> options,
-        IServiceProvider serviceProvider,
+        IServiceScopeFactory serviceScopeFactory,
         ILogger<BulkOperationConsumer> logger)
         : base(connection, options, logger, options.Value.BulkOperationQueue, "bulk-operation-consumer")
     {
-        _serviceProvider = serviceProvider;
+        _serviceScopeFactory = serviceScopeFactory;
     }
 
     protected override async Task ProcessMessageAsync(string message, CancellationToken cancellationToken)
@@ -50,7 +50,7 @@ public class BulkOperationConsumer : BaseMessageConsumer
             _logger.LogInformation("🚀 Processing bulk operation {OperationType} for {CollectionCount} collections", 
                 bulkMessage.OperationType, bulkMessage.CollectionIds.Count);
 
-            using var scope = _serviceProvider.CreateScope();
+            using var scope = _serviceScopeFactory.CreateScope();
             var bulkService = scope.ServiceProvider.GetRequiredService<IBulkService>();
             var backgroundJobService = scope.ServiceProvider.GetRequiredService<IBackgroundJobService>();
             var messageQueueService = scope.ServiceProvider.GetRequiredService<IMessageQueueService>();
@@ -116,7 +116,7 @@ public class BulkOperationConsumer : BaseMessageConsumer
                 var bulkMessage = JsonSerializer.Deserialize<BulkOperationMessage>(message, options);
                 if (!string.IsNullOrEmpty(bulkMessage?.JobId))
                 {
-                    using var scope = _serviceProvider.CreateScope();
+                    using var scope = _serviceScopeFactory.CreateScope();
                     var backgroundJobService = scope.ServiceProvider.GetRequiredService<IBackgroundJobService>();
                     var jobId = ObjectId.Parse(bulkMessage!.JobId);
                     await backgroundJobService.UpdateJobStatusAsync(jobId, "Failed");
@@ -196,7 +196,7 @@ public class BulkOperationConsumer : BaseMessageConsumer
             {
                 _logger.LogInformation("🔄 Creating collection scan jobs for {SuccessCount} collections", result.SuccessCount);
                 
-                using var scope = _serviceProvider.CreateScope();
+                using var scope = _serviceScopeFactory.CreateScope();
                 var collectionService = scope.ServiceProvider.GetRequiredService<ICollectionService>();
                 var createdCollections = result.Results?.Where(r => r.Status == "Success" && r.CollectionId.HasValue).ToList() ?? new List<BulkCollectionResult>();
                 
@@ -256,7 +256,7 @@ public class BulkOperationConsumer : BaseMessageConsumer
     {
         _logger.LogInformation("🔍 Processing scan all collections operation");
         
-        using var scope = _serviceProvider.CreateScope();
+                using var scope = _serviceScopeFactory.CreateScope();
         var collectionService = scope.ServiceProvider.GetRequiredService<ICollectionService>();
         
         // Get all collections
@@ -294,7 +294,7 @@ public class BulkOperationConsumer : BaseMessageConsumer
     {
         _logger.LogInformation("🖼️ Processing generate all thumbnails operation");
         
-        using var scope = _serviceProvider.CreateScope();
+                using var scope = _serviceScopeFactory.CreateScope();
         var imageService = scope.ServiceProvider.GetRequiredService<IImageService>();
         var collectionService = scope.ServiceProvider.GetRequiredService<ICollectionService>();
         
@@ -341,7 +341,7 @@ public class BulkOperationConsumer : BaseMessageConsumer
     {
         _logger.LogInformation("💾 Processing generate all cache operation");
         
-        using var scope = _serviceProvider.CreateScope();
+                using var scope = _serviceScopeFactory.CreateScope();
         var imageService = scope.ServiceProvider.GetRequiredService<IImageService>();
         var collectionService = scope.ServiceProvider.GetRequiredService<ICollectionService>();
         
@@ -391,7 +391,7 @@ public class BulkOperationConsumer : BaseMessageConsumer
         _logger.LogInformation("🔍 Processing scan collections operation for {CollectionIds}", 
             string.Join(", ", bulkMessage.CollectionIds));
         
-        using var scope = _serviceProvider.CreateScope();
+                using var scope = _serviceScopeFactory.CreateScope();
         var collectionService = scope.ServiceProvider.GetRequiredService<ICollectionService>();
         
         // Create individual collection scan jobs for specified collections
@@ -436,7 +436,7 @@ public class BulkOperationConsumer : BaseMessageConsumer
         _logger.LogInformation("🖼️ Processing generate thumbnails operation for {CollectionIds}", 
             string.Join(", ", bulkMessage.CollectionIds));
         
-        using var scope = _serviceProvider.CreateScope();
+                using var scope = _serviceScopeFactory.CreateScope();
         var imageService = scope.ServiceProvider.GetRequiredService<IImageService>();
         
         // Get images for specified collections using embedded design
@@ -488,7 +488,7 @@ public class BulkOperationConsumer : BaseMessageConsumer
         _logger.LogInformation("💾 Processing generate cache operation for {CollectionIds}", 
             string.Join(", ", bulkMessage.CollectionIds));
         
-        using var scope = _serviceProvider.CreateScope();
+                using var scope = _serviceScopeFactory.CreateScope();
         var imageService = scope.ServiceProvider.GetRequiredService<IImageService>();
         
         // Get images for specified collections using embedded design

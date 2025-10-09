@@ -18,16 +18,16 @@ namespace ImageViewer.Worker.Services;
 /// </summary>
 public class ThumbnailGenerationConsumer : BaseMessageConsumer
 {
-    private readonly IServiceProvider _serviceProvider;
+    private readonly IServiceScopeFactory _serviceScopeFactory;
 
     public ThumbnailGenerationConsumer(
         IConnection connection,
         IOptions<RabbitMQOptions> options,
-        IServiceProvider serviceProvider,
+        IServiceScopeFactory serviceScopeFactory,
         ILogger<ThumbnailGenerationConsumer> logger)
         : base(connection, options, logger, "thumbnail.generation", "thumbnail-generation-consumer")
     {
-        _serviceProvider = serviceProvider;
+        _serviceScopeFactory = serviceScopeFactory;
     }
 
     protected override async Task ProcessMessageAsync(string message, CancellationToken cancellationToken)
@@ -51,7 +51,7 @@ public class ThumbnailGenerationConsumer : BaseMessageConsumer
             _logger.LogInformation("🖼️ Generating thumbnail for image {ImageId} ({Filename})", 
                 thumbnailMessage.ImageId, thumbnailMessage.ImageFilename);
 
-            using var scope = _serviceProvider.CreateScope();
+            using var scope = _serviceScopeFactory.CreateScope();
             var imageProcessingService = scope.ServiceProvider.GetRequiredService<IImageProcessingService>();
             var imageService = scope.ServiceProvider.GetRequiredService<IImageService>();
 
@@ -148,7 +148,7 @@ public class ThumbnailGenerationConsumer : BaseMessageConsumer
         var extension = Path.GetExtension(imagePath);
         
         // Use cache service to get the appropriate cache folder for thumbnails
-        using var scope = _serviceProvider.CreateScope();
+                using var scope = _serviceScopeFactory.CreateScope();
         var cacheService = scope.ServiceProvider.GetRequiredService<ICacheService>();
         
         // Get all cache folders and select one based on collection ID hash for even distribution
