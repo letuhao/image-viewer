@@ -121,7 +121,7 @@ builder.Services.AddScoped<IBulkService, BulkService>();
 // Add Infrastructure Services
 // builder.Services.AddScoped<IFileScannerService, FileScannerService>(); // Removed - needs refactoring
 builder.Services.AddScoped<IImageProcessingService, SkiaSharpImageProcessingService>();
-// builder.Services.AddScoped<IAdvancedThumbnailService, AdvancedThumbnailService>(); // Removed - needs refactoring
+builder.Services.AddScoped<IAdvancedThumbnailService, AdvancedThumbnailService>(); // Refactored to use embedded design
 builder.Services.AddScoped<ICompressedFileService, CompressedFileService>();
 builder.Services.AddScoped<IUserContextService, ImageViewer.Infrastructure.Services.UserContextService>();
 builder.Services.AddScoped<IJwtService, ImageViewer.Infrastructure.Services.JwtService>();

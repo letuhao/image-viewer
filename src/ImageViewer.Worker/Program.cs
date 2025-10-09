@@ -74,7 +74,7 @@ builder.Services.AddScoped<IBulkService, BulkService>();
 // Add Infrastructure Services
 // builder.Services.AddScoped<IFileScannerService, FileScannerService>(); // Removed - needs refactoring
 builder.Services.AddScoped<IImageProcessingService, SkiaSharpImageProcessingService>();
-// builder.Services.AddScoped<IAdvancedThumbnailService, AdvancedThumbnailService>(); // Removed - needs refactoring
+builder.Services.AddScoped<IAdvancedThumbnailService, AdvancedThumbnailService>(); // Refactored to use embedded design
 builder.Services.AddScoped<ICompressedFileService, CompressedFileService>();
 
 // Note: UserContextService and JwtService are designed for web applications
