@@ -33,6 +33,13 @@ public class ImageProcessingConsumer : BaseMessageConsumer
     {
         try
         {
+            // Check if cancellation requested before processing
+            if (cancellationToken.IsCancellationRequested)
+            {
+                _logger.LogWarning("⚠️ Cancellation requested, skipping message processing");
+                return;
+            }
+
             _logger.LogInformation("🖼️ Received image processing message: {Message}", message);
             
             var options = new JsonSerializerOptions
@@ -50,9 +57,22 @@ public class ImageProcessingConsumer : BaseMessageConsumer
             _logger.LogInformation("🖼️ Processing image {ImageId} at path {Path}", 
                 imageMessage.ImageId, imageMessage.ImagePath);
 
-            using var scope = _serviceScopeFactory.CreateScope();
-            var imageService = scope.ServiceProvider.GetRequiredService<IImageService>();
-            var messageQueueService = scope.ServiceProvider.GetRequiredService<IMessageQueueService>();
+            // Try to create scope, handle disposal gracefully
+            IServiceScope? scope = null;
+            try
+            {
+                scope = _serviceScopeFactory.CreateScope();
+            }
+            catch (ObjectDisposedException)
+            {
+                _logger.LogWarning("⚠️ Service provider disposed, worker is shutting down. Skipping message.");
+                return;
+            }
+
+            using (scope)
+            {
+                var imageService = scope.ServiceProvider.GetRequiredService<IImageService>();
+                var messageQueueService = scope.ServiceProvider.GetRequiredService<IMessageQueueService>();
 
             // Check if image file exists
             if (!File.Exists(imageMessage.ImagePath) && !imageMessage.ImagePath.Contains("#"))
@@ -121,6 +141,7 @@ public class ImageProcessingConsumer : BaseMessageConsumer
             }
 
             _logger.LogInformation("✅ Successfully processed image {ImageId}", embeddedImage.Id);
+            } // Close the using (scope) block
         }
         catch (Exception ex)
         {
