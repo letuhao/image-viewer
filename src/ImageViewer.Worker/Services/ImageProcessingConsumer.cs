@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.IO.Compression;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -82,15 +83,19 @@ public class ImageProcessingConsumer : BaseMessageConsumer
                     return;
                 }
 
-                // For ZIP entries, skip processing for now - not fully implemented
+                // For ZIP entries, validate ZIP file exists
                 if (isZipEntry)
                 {
-                    _logger.LogWarning("⚠️ ZIP entry processing not fully implemented yet. Skipping: {Path}", imageMessage.ImagePath);
-                    return;
+                    var zipPath = imageMessage.ImagePath.Split('#')[0];
+                    if (!File.Exists(zipPath))
+                    {
+                        _logger.LogWarning("❌ ZIP file {Path} does not exist, skipping processing", zipPath);
+                        return;
+                    }
                 }
 
-                // Create or update embedded image
-                var embeddedImage = await CreateOrUpdateEmbeddedImage(imageMessage, imageService, cancellationToken);
+                // Create or update embedded image (handles both regular files and ZIP entries)
+                var embeddedImage = await CreateOrUpdateEmbeddedImage(imageMessage, imageService, scope.ServiceProvider, cancellationToken);
             if (embeddedImage == null)
             {
                 _logger.LogWarning("❌ Failed to create/update embedded image for {Path}", imageMessage.ImagePath);
@@ -158,7 +163,7 @@ public class ImageProcessingConsumer : BaseMessageConsumer
         }
     }
 
-    private async Task<Domain.ValueObjects.ImageEmbedded?> CreateOrUpdateEmbeddedImage(ImageProcessingMessage imageMessage, IImageService imageService, CancellationToken cancellationToken = default)
+    private async Task<Domain.ValueObjects.ImageEmbedded?> CreateOrUpdateEmbeddedImage(ImageProcessingMessage imageMessage, IImageService imageService, IServiceProvider serviceProvider, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -171,12 +176,25 @@ public class ImageProcessingConsumer : BaseMessageConsumer
             
             if (width == 0 || height == 0 || fileSize == 0)
             {
-                using var scope = _serviceScopeFactory.CreateScope();
-                var imageProcessingService = scope.ServiceProvider.GetRequiredService<IImageProcessingService>();
+                // Check if this is a ZIP entry
+                bool isZipEntry = imageMessage.ImagePath.Contains("#");
                 
-                try
+                if (isZipEntry)
                 {
-                    var dimensions = await imageProcessingService.GetImageDimensionsAsync(imageMessage.ImagePath, cancellationToken);
+                    // Extract dimensions from ZIP entry
+                    var (zipWidth, zipHeight, zipSize) = await ExtractZipEntryMetadata(imageMessage.ImagePath, cancellationToken);
+                    width = zipWidth;
+                    height = zipHeight;
+                    fileSize = zipSize > 0 ? zipSize : imageMessage.FileSize;
+                }
+                else
+                {
+                    // Regular file - use image processing service
+                    var imageProcessingService = serviceProvider.GetRequiredService<IImageProcessingService>();
+                    
+                    try
+                    {
+                        var dimensions = await imageProcessingService.GetImageDimensionsAsync(imageMessage.ImagePath, cancellationToken);
                     if (dimensions != null)
                     {
                         width = dimensions.Width;
@@ -192,10 +210,11 @@ public class ImageProcessingConsumer : BaseMessageConsumer
                         _logger.LogInformation("📊 Extracted metadata: {Width}x{Height}, {FileSize} bytes", 
                             width, height, fileSize);
                     }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "⚠️ Failed to extract metadata for {Path}, using provided values", imageMessage.ImagePath);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "⚠️ Failed to extract metadata for {Path}, using provided values", imageMessage.ImagePath);
+                    }
                 }
             }
             
@@ -236,5 +255,64 @@ public class ImageProcessingConsumer : BaseMessageConsumer
         // For regular files, return just the filename for now
         // In a real implementation, you'd want to store the full relative path
         return Path.GetFileName(fullPath);
+    }
+
+    /// <summary>
+    /// Extract metadata from a ZIP entry (path format: zipfile.zip#entry.png)
+    /// </summary>
+    private async Task<(int width, int height, long fileSize)> ExtractZipEntryMetadata(string zipEntryPath, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var parts = zipEntryPath.Split('#');
+            if (parts.Length != 2)
+            {
+                _logger.LogWarning("Invalid ZIP entry path format: {Path}", zipEntryPath);
+                return (0, 0, 0);
+            }
+
+            var zipPath = parts[0];
+            var entryName = parts[1];
+
+            if (!File.Exists(zipPath))
+            {
+                _logger.LogWarning("ZIP file not found: {Path}", zipPath);
+                return (0, 0, 0);
+            }
+
+            using var archive = ZipFile.OpenRead(zipPath);
+            var entry = archive.GetEntry(entryName);
+            if (entry == null)
+            {
+                _logger.LogWarning("Entry {Entry} not found in ZIP {Zip}", entryName, zipPath);
+                return (0, 0, 0);
+            }
+
+            // Extract entry to memory stream and get dimensions
+            using var entryStream = entry.Open();
+            using var memoryStream = new MemoryStream();
+            await entryStream.CopyToAsync(memoryStream, cancellationToken);
+            var imageBytes = memoryStream.ToArray();
+
+            // Use SkiaSharp to get dimensions from bytes
+            using var data = SkiaSharp.SKData.CreateCopy(imageBytes);
+            using var codec = SkiaSharp.SKCodec.Create(data);
+            
+            if (codec == null)
+            {
+                _logger.LogWarning("Failed to decode image from ZIP entry: {Path}", zipEntryPath);
+                return (0, 0, entry.Length);
+            }
+
+            var info = codec.Info;
+            _logger.LogDebug("ZIP entry {Entry}: {Width}x{Height}, {Size} bytes", entryName, info.Width, info.Height, entry.Length);
+            
+            return (info.Width, info.Height, entry.Length);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error extracting metadata from ZIP entry: {Path}", zipEntryPath);
+            return (0, 0, 0);
+        }
     }
 }
