@@ -305,6 +305,54 @@ public class BackgroundJobService : IBackgroundJobService
         return MapToDto(job);
     }
 
+    public async Task IncrementJobStageProgressAsync(ObjectId jobId, string stageName, int incrementBy = 1)
+    {
+        try
+        {
+            var job = await _backgroundJobRepository.GetByIdAsync(jobId);
+            if (job == null)
+            {
+                _logger.LogWarning("Job {JobId} not found for stage increment", jobId);
+                return;
+            }
+            
+            if (job.Stages == null || !job.Stages.ContainsKey(stageName))
+            {
+                _logger.LogWarning("Stage {StageName} not found in job {JobId}", stageName, jobId);
+                return;
+            }
+            
+            var stage = job.Stages[stageName];
+            int newCompleted = stage.CompletedItems + incrementBy;
+            int total = stage.TotalItems;
+            
+            // Update progress
+            job.UpdateStageProgress(stageName, newCompleted, total, null);
+            
+            // Auto-transition states based on progress
+            if (newCompleted >= total && total > 0)
+            {
+                // Complete the stage
+                job.CompleteStage(stageName, $"All {total} items completed");
+                _logger.LogDebug("✅ Stage {StageName} completed for job {JobId}: {Completed}/{Total}", 
+                    stageName, jobId, newCompleted, total);
+            }
+            else if (stage.Status == "Pending" && newCompleted > 0)
+            {
+                // Start the stage on first item
+                job.StartStage(stageName, total, $"Processing {newCompleted}/{total} items");
+                _logger.LogDebug("▶️ Stage {StageName} started for job {JobId}", stageName, jobId);
+            }
+            
+            await _backgroundJobRepository.UpdateAsync(job);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to increment job stage progress for {JobId}.{StageName}", jobId, stageName);
+            // Don't throw - this is best-effort, fallback monitor will reconcile
+        }
+    }
+    
     public async Task UpdateJobStageAsync(ObjectId jobId, string stageName, string status, int completed = 0, int total = 0, string? message = null)
     {
         var job = await _backgroundJobRepository.GetByIdAsync(jobId);

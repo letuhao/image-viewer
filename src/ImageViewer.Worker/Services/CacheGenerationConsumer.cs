@@ -155,11 +155,11 @@ public class CacheGenerationConsumer : BaseMessageConsumer
                 {
                     // Regular file
                     cacheImageData = await imageProcessingService.ResizeImageAsync(
-                        cacheMessage.ImagePath,
-                        cacheMessage.CacheWidth,
-                        cacheMessage.CacheHeight,
+                cacheMessage.ImagePath,
+                cacheMessage.CacheWidth,
+                cacheMessage.CacheHeight,
                         adjustedQuality, // Use adjusted quality!
-                        cancellationToken);
+                cancellationToken);
                 }
             }
 
@@ -174,7 +174,8 @@ public class CacheGenerationConsumer : BaseMessageConsumer
             await File.WriteAllBytesAsync(cachePath, cacheImageData, cancellationToken);
 
             // Update cache info in database
-            await UpdateCacheInfoInDatabase(cacheMessage, cachePath, collectionRepository);
+            var backgroundJobService = scope.ServiceProvider.GetRequiredService<IBackgroundJobService>();
+            await UpdateCacheInfoInDatabase(cacheMessage, cachePath, collectionRepository, backgroundJobService);
 
             _logger.LogDebug("✅ Cache generated for image {ImageId} at path {CachePath} with dimensions {Width}x{Height}", 
                 cacheMessage.ImageId, cachePath, cacheMessage.CacheWidth, cacheMessage.CacheHeight);
@@ -265,7 +266,7 @@ public class CacheGenerationConsumer : BaseMessageConsumer
         return selectedFolder;
     }
 
-    private async Task UpdateCacheInfoInDatabase(CacheGenerationMessage cacheMessage, string cachePath, ICollectionRepository collectionRepository)
+    private async Task UpdateCacheInfoInDatabase(CacheGenerationMessage cacheMessage, string cachePath, ICollectionRepository collectionRepository, IBackgroundJobService backgroundJobService)
     {
         try
         {
@@ -307,6 +308,22 @@ public class CacheGenerationConsumer : BaseMessageConsumer
             {
                 _logger.LogWarning("Failed to add cache image to collection {CollectionId} - collection might not exist", collectionId);
                 return;
+            }
+            
+            // REAL-TIME JOB TRACKING: Update job stage immediately after each cache
+            if (!string.IsNullOrEmpty(cacheMessage.ScanJobId))
+            {
+                try
+                {
+                    await backgroundJobService.IncrementJobStageProgressAsync(
+                        ObjectId.Parse(cacheMessage.ScanJobId),
+                        "cache",
+                        incrementBy: 1);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to update job stage for {JobId}, fallback monitor will handle it", cacheMessage.ScanJobId);
+                }
             }
             
             _logger.LogInformation("✅ Cache info updated for image {ImageId}: {CachePath}", 

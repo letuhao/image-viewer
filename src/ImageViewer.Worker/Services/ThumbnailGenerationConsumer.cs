@@ -97,6 +97,23 @@ public class ThumbnailGenerationConsumer : BaseMessageConsumer
                     // Update database with thumbnail information
                     await UpdateThumbnailInfoInDatabase(thumbnailMessage, thumbnailPath, collectionRepository);
                     
+                    // REAL-TIME JOB TRACKING: Update job stage immediately after each thumbnail
+                    if (!string.IsNullOrEmpty(thumbnailMessage.ScanJobId))
+                    {
+                        try
+                        {
+                            var backgroundJobService = scope.ServiceProvider.GetRequiredService<IBackgroundJobService>();
+                            await backgroundJobService.IncrementJobStageProgressAsync(
+                                ObjectId.Parse(thumbnailMessage.ScanJobId),
+                                "thumbnail",
+                                incrementBy: 1);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning(ex, "Failed to update job stage for {JobId}, fallback monitor will handle it", thumbnailMessage.ScanJobId);
+                        }
+                    }
+                    
                     // Batched logging - log every 50 files
                     int currentCount;
                     lock (_counterLock)
@@ -104,9 +121,6 @@ public class ThumbnailGenerationConsumer : BaseMessageConsumer
                         _processedCount++;
                         currentCount = _processedCount;
                     }
-
-                    // Note: Job completion tracking is handled by CollectionScanConsumer.MonitorJobCompletionAsync()
-                    // which polls MongoDB to check when all thumbnails/cache are generated
                     
                     if (currentCount % 50 == 0)
                     {

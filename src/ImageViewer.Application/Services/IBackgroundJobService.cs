@@ -67,4 +67,9 @@ public interface IBackgroundJobService
     /// Update job stage status (for multi-stage jobs)
     /// </summary>
     Task UpdateJobStageAsync(ObjectId jobId, string stageName, string status, int completed = 0, int total = 0, string? message = null);
+    
+    /// <summary>
+    /// Increment job stage progress atomically (for real-time consumer updates)
+    /// </summary>
+    Task IncrementJobStageProgressAsync(ObjectId jobId, string stageName, int incrementBy = 1);
 }
