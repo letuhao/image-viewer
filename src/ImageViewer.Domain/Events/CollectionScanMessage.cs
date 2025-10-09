@@ -15,6 +15,7 @@ public class CollectionScanMessage : MessageEvent
     public string? CreatedBy { get; set; }
     public string? CreatedBySystem { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public string? JobId { get; set; } // Link to background job for tracking
 
     public CollectionScanMessage()
     {

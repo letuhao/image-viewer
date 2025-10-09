@@ -29,6 +29,7 @@ public class ThumbnailGenerationMessage : MessageEvent
     public int ThumbnailWidth { get; set; }
     public int ThumbnailHeight { get; set; }
     public string? UserId { get; set; }
+    public string? JobId { get; set; } // Link to background job for tracking
 
     public ThumbnailGenerationMessage()
     {
