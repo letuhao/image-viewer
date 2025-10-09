@@ -68,7 +68,7 @@ public class DiscoveryService : IDiscoveryService
                 {
                     Id = c.Id,
                     Title = c.Name,
-                    Description = c.Description ?? "",
+                    Description = "", // Collection doesn't have Description property
                     Type = ContentType.Collection,
                     Path = c.Path,
                     RelevanceScore = 0.8,
@@ -121,7 +121,7 @@ public class DiscoveryService : IDiscoveryService
                     {
                         Id = collection.Id,
                         Title = collection.Name,
-                        Description = collection.Description ?? "",
+                        Description = "", // Collection doesn't have Description property
                         Type = ContentType.Collection,
                         Path = collection.Path,
                         RelevanceScore = 0.9,
@@ -190,7 +190,7 @@ public class DiscoveryService : IDiscoveryService
                     {
                         Id = c.Id,
                         Title = c.Name,
-                        Description = c.Description ?? "",
+                        Description = "", // Collection doesn't have Description property
                         Type = ContentType.Collection,
                         Path = c.Path,
                         RelevanceScore = 0.7,
@@ -239,7 +239,7 @@ public class DiscoveryService : IDiscoveryService
                 {
                     Id = c.Id,
                     Title = c.Name,
-                    Description = c.Description ?? "",
+                    Description = "", // Collection doesn't have Description property
                     Type = ContentType.Collection,
                     Path = c.Path,
                     RelevanceScore = 0.85,
@@ -288,7 +288,8 @@ public class DiscoveryService : IDiscoveryService
         {
             // Get user's view history and recommend similar content
             var viewSessions = await _viewSessionRepository.GetAllAsync();
-            var userSessions = viewSessions.Where(vs => vs.UserId == userId).ToList();
+            // Note: ViewSession doesn't have UserId property yet - return empty for now
+            var userSessions = new List<ViewSession>(); // viewSessions.Where(vs => vs.UserId == userId).ToList();
 
             if (!userSessions.Any())
             {
@@ -312,7 +313,7 @@ public class DiscoveryService : IDiscoveryService
                 {
                     Id = c.Id,
                     Title = c.Name,
-                    Description = c.Description ?? "",
+                    Description = "", // Collection doesn't have Description property
                     Type = ContentType.Collection,
                     Path = c.Path,
                     RelevanceScore = 0.75,
@@ -353,10 +354,11 @@ public class DiscoveryService : IDiscoveryService
             var viewSessions = await _viewSessionRepository.GetAllAsync();
 
             // Filter by user if specified
-            if (userId.HasValue)
-            {
-                viewSessions = viewSessions.Where(vs => vs.UserId == userId.Value);
-            }
+            // Note: ViewSession doesn't have UserId property yet
+            // if (userId.HasValue)
+            // {
+            //     viewSessions = viewSessions.Where(vs => vs.UserId == userId.Value);
+            // }
 
             // Filter by date range
             if (fromDate.HasValue)

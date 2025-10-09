@@ -70,11 +70,11 @@ public class StatisticsService : IStatisticsService
             return new CollectionStatisticsDto
             {
                 CollectionId = collectionId,
-                ViewCount = collection.Statistics.TotalViews,
+                ViewCount = (int)collection.Statistics.TotalViews,
                 TotalViewTime = viewSessionsList.Sum(vs => vs.TotalViewTime.TotalSeconds),
-                SearchCount = collection.Statistics.TotalSearches,
+                SearchCount = 0, // CollectionStatistics doesn't have TotalSearches
                 LastViewed = collection.Statistics.LastViewed,
-                LastSearched = collection.Statistics.LastSearched,
+                LastSearched = null, // CollectionStatistics doesn't have LastSearched
                 AverageViewTime = viewSessionsList.Any() 
                     ? viewSessionsList.Average(vs => vs.TotalViewTime.TotalSeconds) 
                     : 0,
@@ -246,8 +246,8 @@ public class StatisticsService : IStatisticsService
         try
         {
             var backgroundJobs = await _backgroundJobRepository.GetAllAsync();
-            var completedJobs = backgroundJobs.Where(j => j.Status == Domain.Enums.JobStatus.Completed).ToList();
-            var failedJobs = backgroundJobs.Where(j => j.Status == Domain.Enums.JobStatus.Failed).ToList();
+            var completedJobs = backgroundJobs.Where(j => j.Status == "Completed").ToList();
+            var failedJobs = backgroundJobs.Where(j => j.Status == "Failed").ToList();
             
             var totalRequests = backgroundJobs.Count();
             var successfulRequests = completedJobs.Count;

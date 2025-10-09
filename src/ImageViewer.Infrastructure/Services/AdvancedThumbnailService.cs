@@ -35,7 +35,7 @@ public class AdvancedThumbnailService : IAdvancedThumbnailService
 
         try
         {
-            var collection = await _collectionRepository.GetByIdAsync(collectionId, cancellationToken);
+            var collection = await _collectionRepository.GetByIdAsync(collectionId);
             if (collection == null)
             {
                 _logger.LogWarning("Collection not found: {CollectionId}", collectionId);
@@ -107,7 +107,7 @@ public class AdvancedThumbnailService : IAdvancedThumbnailService
                 95);
 
             collection.AddThumbnail(thumbnail);
-            await _collectionRepository.UpdateAsync(collection, cancellationToken);
+            await _collectionRepository.UpdateAsync(collection);
 
             _logger.LogInformation("Generated thumbnail for collection {CollectionId}: {ThumbnailPath}", 
                 collectionId, thumbnailPath);
@@ -166,7 +166,7 @@ public class AdvancedThumbnailService : IAdvancedThumbnailService
 
         try
         {
-            var collection = await _collectionRepository.GetByIdAsync(collectionId, cancellationToken);
+            var collection = await _collectionRepository.GetByIdAsync(collectionId);
             if (collection == null)
             {
                 _logger.LogWarning("Collection not found: {CollectionId}", collectionId);
@@ -187,7 +187,7 @@ public class AdvancedThumbnailService : IAdvancedThumbnailService
             {
                 _logger.LogWarning("Thumbnail file not found: {ThumbnailPath}", thumbnail.ThumbnailPath);
                 collection.MarkThumbnailAsInvalid(thumbnail.Id);
-                await _collectionRepository.UpdateAsync(collection, cancellationToken);
+                await _collectionRepository.UpdateAsync(collection);
                 return null;
             }
 
@@ -196,7 +196,7 @@ public class AdvancedThumbnailService : IAdvancedThumbnailService
             
             // Update access time
             collection.UpdateThumbnailAccess(thumbnail.Id);
-            await _collectionRepository.UpdateAsync(collection, cancellationToken);
+            await _collectionRepository.UpdateAsync(collection);
 
             return thumbnailData;
         }
@@ -213,7 +213,7 @@ public class AdvancedThumbnailService : IAdvancedThumbnailService
 
         try
         {
-            var collection = await _collectionRepository.GetByIdAsync(collectionId, cancellationToken);
+            var collection = await _collectionRepository.GetByIdAsync(collectionId);
             if (collection == null)
             {
                 throw new KeyNotFoundException($"Collection with ID {collectionId} not found");
@@ -241,7 +241,7 @@ public class AdvancedThumbnailService : IAdvancedThumbnailService
                 collection.RemoveThumbnail(thumbnail.Id);
             }
 
-            await _collectionRepository.UpdateAsync(collection, cancellationToken);
+            await _collectionRepository.UpdateAsync(collection);
             _logger.LogInformation("Deleted {Count} thumbnails for collection: {CollectionId}", thumbnails.Count, collectionId);
         }
         catch (Exception ex)
