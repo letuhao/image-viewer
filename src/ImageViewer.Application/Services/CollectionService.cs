@@ -30,7 +30,7 @@ public class CollectionService : ICollectionService
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    public async Task<Collection> CreateCollectionAsync(ObjectId libraryId, string name, string path, CollectionType type, string? createdBy = null, string? createdBySystem = null)
+    public async Task<Collection> CreateCollectionAsync(ObjectId libraryId, string name, string path, CollectionType type, string? description = null, string? createdBy = null, string? createdBySystem = null)
     {
         try
         {
@@ -57,7 +57,7 @@ public class CollectionService : ICollectionService
                 throw new DuplicateEntityException($"Collection at path '{path}' already exists");
 
             // Create new collection with creator tracking
-            var collection = new Collection(libraryId, name, path, type, createdBy, createdBySystem);
+            var collection = new Collection(libraryId, name, path, type, description, createdBy, createdBySystem);
             var createdCollection = await _collectionRepository.CreateAsync(collection);
             
             // Trigger collection scan if AutoScan is enabled (default is true)
@@ -182,6 +182,11 @@ public class CollectionService : ICollectionService
             if (request.Name != null)
             {
                 collection.UpdateName(request.Name);
+            }
+            
+            if (request.Description != null)
+            {
+                collection.UpdateDescription(request.Description);
             }
             
             if (request.Path != null)

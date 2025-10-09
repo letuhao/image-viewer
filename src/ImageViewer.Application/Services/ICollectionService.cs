@@ -12,7 +12,7 @@ public interface ICollectionService
 {
     #region Collection Management
     
-    Task<Collection> CreateCollectionAsync(ObjectId libraryId, string name, string path, CollectionType type, string? createdBy = null, string? createdBySystem = null);
+    Task<Collection> CreateCollectionAsync(ObjectId libraryId, string name, string path, CollectionType type, string? description = null, string? createdBy = null, string? createdBySystem = null);
     Task<Collection?> GetCollectionByIdAsync(ObjectId collectionId);
     Task<Collection?> GetCollectionByPathAsync(string path);
     Task<IEnumerable<Collection>> GetCollectionsByLibraryIdAsync(ObjectId libraryId);
@@ -69,6 +69,7 @@ public interface ICollectionService
 public class UpdateCollectionRequest
 {
     public string? Name { get; set; }
+    public string? Description { get; set; }
     public string? Path { get; set; }
     public CollectionType? Type { get; set; }
 }

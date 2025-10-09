@@ -8,6 +8,7 @@ namespace ImageViewer.Domain.Entities;
 /// </summary>
 public class ViewSession : BaseEntity
 {
+    public ObjectId? UserId { get; private set; }
     public ObjectId CollectionId { get; private set; }
     public ObjectId? CurrentImageId { get; private set; }
     public ViewSessionSettings Settings { get; private set; }
@@ -24,8 +25,9 @@ public class ViewSession : BaseEntity
     // Private constructor for EF Core
     private ViewSession() { }
 
-    public ViewSession(ObjectId collectionId, ViewSessionSettings settings)
+    public ViewSession(ObjectId collectionId, ViewSessionSettings settings, ObjectId? userId = null)
     {
+        UserId = userId;
         CollectionId = collectionId;
         Settings = settings ?? throw new ArgumentNullException(nameof(settings));
         StartedAt = DateTime.UtcNow;

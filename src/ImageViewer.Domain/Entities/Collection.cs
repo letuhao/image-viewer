@@ -17,6 +17,9 @@ public class Collection : BaseEntity
     [BsonElement("name")]
     public string Name { get; private set; }
     
+    [BsonElement("description")]
+    public string? Description { get; private set; }
+    
     [BsonElement("path")]
     public string Path { get; private set; }
     
@@ -53,10 +56,11 @@ public class Collection : BaseEntity
     // Private constructor for MongoDB
     private Collection() { }
 
-    public Collection(ObjectId libraryId, string name, string path, CollectionType type, string? createdBy = null, string? createdBySystem = null)
+    public Collection(ObjectId libraryId, string name, string path, CollectionType type, string? description = null, string? createdBy = null, string? createdBySystem = null)
     {
         LibraryId = libraryId;
         Name = name ?? throw new ArgumentNullException(nameof(name));
+        Description = description;
         Path = path ?? throw new ArgumentNullException(nameof(path));
         Type = type;
         IsActive = true;
@@ -79,6 +83,12 @@ public class Collection : BaseEntity
             throw new ArgumentException("Name cannot be null or empty", nameof(name));
 
         Name = name;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void UpdateDescription(string? description)
+    {
+        Description = description;
         UpdatedAt = DateTime.UtcNow;
     }
 
