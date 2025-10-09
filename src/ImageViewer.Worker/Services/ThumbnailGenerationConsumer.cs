@@ -274,11 +274,13 @@ public class ThumbnailGenerationConsumer : BaseMessageConsumer
                 95 // quality
             );
             
-            // Add thumbnail to collection
-            collection.AddThumbnail(thumbnailEmbedded);
-            
-            // Save the collection
-            await collectionRepository.UpdateAsync(collection);
+            // Atomically add thumbnail to collection (thread-safe, prevents race conditions!)
+            var added = await collectionRepository.AtomicAddThumbnailAsync(collectionId, thumbnailEmbedded);
+            if (!added)
+            {
+                _logger.LogWarning("Failed to add thumbnail to collection {CollectionId} - collection might not exist", collectionId);
+                return;
+            }
             
             _logger.LogInformation("✅ Thumbnail info created and persisted for image {ImageId}: {ThumbnailPath}", 
                 thumbnailMessage.ImageId, thumbnailPath);

@@ -289,11 +289,13 @@ public class CacheGenerationConsumer : BaseMessageConsumer
                 cacheMessage.Quality
             );
             
-            // Add to cacheImages array (no need to find the image - just add to array!)
-            collection.AddCacheImage(cacheImage);
-            
-            // Save the collection
-            await collectionRepository.UpdateAsync(collection);
+            // Atomically add cache image to collection (thread-safe, prevents race conditions!)
+            var added = await collectionRepository.AtomicAddCacheImageAsync(collectionId, cacheImage);
+            if (!added)
+            {
+                _logger.LogWarning("Failed to add cache image to collection {CollectionId} - collection might not exist", collectionId);
+                return;
+            }
             
             _logger.LogInformation("✅ Cache info updated for image {ImageId}: {CachePath}", 
                 cacheMessage.ImageId, cachePath);

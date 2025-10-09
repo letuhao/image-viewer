@@ -35,6 +35,28 @@ public interface ICollectionRepository : IRepository<Collection>
     Task<IEnumerable<Collection>> GetRecentCollectionsAsync(int limit = 10);
     
     #endregion
+    
+    #region Atomic Array Operations (Thread-Safe)
+    
+    /// <summary>
+    /// Atomically adds an image to the collection using MongoDB $push
+    /// This is thread-safe and prevents race conditions
+    /// </summary>
+    Task<bool> AtomicAddImageAsync(ObjectId collectionId, ImageEmbedded image);
+    
+    /// <summary>
+    /// Atomically adds a thumbnail to the collection using MongoDB $push
+    /// This is thread-safe and prevents race conditions
+    /// </summary>
+    Task<bool> AtomicAddThumbnailAsync(ObjectId collectionId, ThumbnailEmbedded thumbnail);
+    
+    /// <summary>
+    /// Atomically adds a cache image to the collection using MongoDB $push
+    /// This is thread-safe and prevents race conditions
+    /// </summary>
+    Task<bool> AtomicAddCacheImageAsync(ObjectId collectionId, CacheImageEmbedded cacheImage);
+    
+    #endregion
 }
 
 /// <summary>

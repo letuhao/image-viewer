@@ -444,9 +444,13 @@ public class ImageService : IImageService
             }
 
             var embeddedImage = new ImageEmbedded(filename, relativePath, fileSize, width, height, format);
-            collection.AddImage(embeddedImage);
-
-            await _collectionRepository.UpdateAsync(collection);
+            
+            // Atomically add image to collection (thread-safe, prevents race conditions!)
+            var added = await _collectionRepository.AtomicAddImageAsync(collectionId, embeddedImage);
+            if (!added)
+            {
+                throw new InvalidOperationException($"Failed to add image to collection {collectionId} - collection might not exist");
+            }
             
             _logger.LogInformation("Created embedded image {ImageId} in collection {CollectionId}", embeddedImage.Id, collectionId);
             return embeddedImage;

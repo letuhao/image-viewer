@@ -124,4 +124,41 @@ public class MongoCollectionRepository : MongoRepository<Collection>, ICollectio
             .Limit(limit)
             .ToListAsync();
     }
+
+    #region Atomic Array Operations
+
+    public async Task<bool> AtomicAddImageAsync(ObjectId collectionId, Domain.ValueObjects.ImageEmbedded image)
+    {
+        var filter = Builders<Collection>.Filter.Eq(x => x.Id, collectionId);
+        var update = Builders<Collection>.Update
+            .Push(x => x.Images, image)
+            .Set(x => x.UpdatedAt, DateTime.UtcNow);
+        
+        var result = await _collection.UpdateOneAsync(filter, update);
+        return result.ModifiedCount > 0;
+    }
+
+    public async Task<bool> AtomicAddThumbnailAsync(ObjectId collectionId, Domain.ValueObjects.ThumbnailEmbedded thumbnail)
+    {
+        var filter = Builders<Collection>.Filter.Eq(x => x.Id, collectionId);
+        var update = Builders<Collection>.Update
+            .Push(x => x.Thumbnails, thumbnail)
+            .Set(x => x.UpdatedAt, DateTime.UtcNow);
+        
+        var result = await _collection.UpdateOneAsync(filter, update);
+        return result.ModifiedCount > 0;
+    }
+
+    public async Task<bool> AtomicAddCacheImageAsync(ObjectId collectionId, Domain.ValueObjects.CacheImageEmbedded cacheImage)
+    {
+        var filter = Builders<Collection>.Filter.Eq(x => x.Id, collectionId);
+        var update = Builders<Collection>.Update
+            .Push(x => x.CacheImages, cacheImage)
+            .Set(x => x.UpdatedAt, DateTime.UtcNow);
+        
+        var result = await _collection.UpdateOneAsync(filter, update);
+        return result.ModifiedCount > 0;
+    }
+
+    #endregion
 }
