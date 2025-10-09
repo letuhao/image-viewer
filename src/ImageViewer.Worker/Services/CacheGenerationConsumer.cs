@@ -236,51 +236,35 @@ public class CacheGenerationConsumer : BaseMessageConsumer
             // Convert string back to ObjectId for database operations
             var collectionId = ObjectId.Parse(cacheMessage.CollectionId);
             
-            // Get the collection (with retry for race condition)
-            Collection? collection = null;
-            Domain.ValueObjects.ImageEmbedded? image = null;
-            
-            for (int attempt = 0; attempt < 3; attempt++)
+            // Get the collection
+            var collection = await collectionRepository.GetByIdAsync(collectionId);
+            if (collection == null)
             {
-                collection = await collectionRepository.GetByIdAsync(collectionId);
-                if (collection == null)
-                {
-                    throw new InvalidOperationException($"Collection {collectionId} not found");
-                }
-                
-                // Find the image in the embedded images
-                image = collection.Images?.FirstOrDefault(i => i.Id == cacheMessage.ImageId);
-                if (image != null)
-                {
-                    break; // Found it!
-                }
-                
-                // Image not found yet - might be a race condition where image was just created
-                if (attempt < 2)
-                {
-                    _logger.LogDebug("Image {ImageId} not found in collection yet, retrying (attempt {Attempt}/3)...", 
-                        cacheMessage.ImageId, attempt + 1);
-                    await Task.Delay(500); // Wait 500ms for MongoDB to sync (increased from 100ms)
-                }
+                throw new InvalidOperationException($"Collection {collectionId} not found");
             }
             
-            if (image == null)
+            // Check if cache already exists for this image (prevent duplicates)
+            var existingCache = collection.CacheImages?.FirstOrDefault(c => c.ImageId == cacheMessage.ImageId);
+            if (existingCache != null)
             {
-                throw new InvalidOperationException($"Image {cacheMessage.ImageId} not found in collection {collectionId} after 3 attempts");
+                _logger.LogDebug("Cache already exists for image {ImageId}, skipping", cacheMessage.ImageId);
+                return;
             }
             
-            // Update the cache info
+            // Create cache image embedded object
             var fileInfo = new FileInfo(cachePath);
-            var cacheInfo = new ImageCacheInfoEmbedded(
+            var cacheImage = new CacheImageEmbedded(
+                cacheMessage.ImageId,
                 cachePath,
-                fileInfo.Length,
-                fileInfo.Extension.TrimStart('.').ToUpperInvariant(), // e.g., "PNG", "JPEG"
                 cacheMessage.CacheWidth,
                 cacheMessage.CacheHeight,
+                fileInfo.Length,
+                fileInfo.Extension.TrimStart('.').ToUpperInvariant(),
                 cacheMessage.Quality
             );
             
-            image.SetCacheInfo(cacheInfo);
+            // Add to cacheImages array (no need to find the image - just add to array!)
+            collection.AddCacheImage(cacheImage);
             
             // Save the collection
             await collectionRepository.UpdateAsync(collection);

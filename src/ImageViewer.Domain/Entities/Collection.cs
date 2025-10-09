@@ -52,6 +52,9 @@ public class Collection : BaseEntity
     
     [BsonElement("thumbnails")]
     public List<ThumbnailEmbedded> Thumbnails { get; private set; } = new();
+    
+    [BsonElement("cacheImages")]
+    public List<CacheImageEmbedded> CacheImages { get; private set; } = new();
 
     // Private constructor for MongoDB
     private Collection() { }
@@ -282,6 +285,35 @@ public class Collection : BaseEntity
     public ThumbnailEmbedded? GetThumbnailForImage(string imageId)
     {
         return Thumbnails.FirstOrDefault(t => t.ImageId == imageId);
+    }
+
+    // Cache image management methods
+    public void AddCacheImage(CacheImageEmbedded cacheImage)
+    {
+        if (cacheImage == null) throw new ArgumentNullException(nameof(cacheImage));
+        
+        CacheImages.Add(cacheImage);
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void RemoveCacheImage(string cacheImageId)
+    {
+        var cacheImage = CacheImages.FirstOrDefault(c => c.Id == cacheImageId);
+        if (cacheImage != null)
+        {
+            CacheImages.Remove(cacheImage);
+            UpdatedAt = DateTime.UtcNow;
+        }
+    }
+
+    public CacheImageEmbedded? GetCacheImage(string cacheImageId)
+    {
+        return CacheImages.FirstOrDefault(c => c.Id == cacheImageId);
+    }
+
+    public CacheImageEmbedded? GetCacheImageForImage(string imageId)
+    {
+        return CacheImages.FirstOrDefault(c => c.ImageId == imageId);
     }
 
     public List<ThumbnailEmbedded> GetThumbnailsForImages(List<string> imageIds)

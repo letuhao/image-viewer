@@ -438,7 +438,8 @@ public class ImageService : IImageService
             
             if (existingImage != null)
             {
-                _logger.LogDebug("Image {Filename} already exists in collection {CollectionId}, returning existing image", filename, collectionId);
+                _logger.LogInformation("⚠️ Image {Filename} already exists in collection {CollectionId} with ID {ExistingId}, skipping duplicate creation", 
+                    filename, collectionId, existingImage.Id);
                 return existingImage;
             }
 

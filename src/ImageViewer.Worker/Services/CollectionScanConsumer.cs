@@ -373,7 +373,7 @@ public class CollectionScanConsumer : BaseMessageConsumer
                 if (collection == null) break;
                 
                 int newThumbnailCount = collection.Thumbnails?.Count ?? 0;
-                int newCacheCount = collection.Images?.Count(img => img.CacheInfo != null) ?? 0;
+                int newCacheCount = collection.CacheImages?.Count ?? 0; // Use new cacheImages array!
                 
                 bool thumbnailComplete = newThumbnailCount >= expectedCount;
                 bool cacheComplete = newCacheCount >= expectedCount;
