@@ -12,18 +12,32 @@ public abstract class BaseEntity
     [BsonId]
     public ObjectId Id { get; set; }
     
+    [BsonElement("createdAt")]
     public DateTime CreatedAt { get; set; }
+    
+    [BsonElement("updatedAt")]
     public DateTime UpdatedAt { get; set; }
+    
+    [BsonElement("isDeleted")]
     public bool IsDeleted { get; set; } = false;
     
     // Creator/Modifier tracking
+    [BsonElement("createdBy")]
     public string? CreatedBy { get; set; }
+    
+    [BsonElement("updatedBy")]
     public string? UpdatedBy { get; set; }
+    
+    [BsonElement("createdBySystem")]
     public string? CreatedBySystem { get; set; } // Track which system created the record
+    
+    [BsonElement("updatedBySystem")]
     public string? UpdatedBySystem { get; set; } // Track which system updated the record
 
+    [BsonIgnore]
     private readonly List<IDomainEvent> _domainEvents = new();
 
+    [BsonIgnore]
     public IReadOnlyCollection<IDomainEvent> DomainEvents => _domainEvents.AsReadOnly();
 
     protected BaseEntity()
