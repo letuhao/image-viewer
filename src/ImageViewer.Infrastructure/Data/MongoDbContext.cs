@@ -23,9 +23,9 @@ public class MongoDbContext
     public IMongoCollection<ImageViewer.Domain.Entities.Tag> Tags => _database.GetCollection<ImageViewer.Domain.Entities.Tag>("tags");
 
     // System Collections
-    public IMongoCollection<BackgroundJob> BackgroundJobs => _database.GetCollection<BackgroundJob>("backgroundJobs");
-    public IMongoCollection<ViewSession> ViewSessions => _database.GetCollection<ViewSession>("viewSessions");
-    public IMongoCollection<CacheFolder> CacheFolders => _database.GetCollection<CacheFolder>("cacheFolders");
+    public IMongoCollection<BackgroundJob> BackgroundJobs => _database.GetCollection<BackgroundJob>("background_jobs");
+    public IMongoCollection<ViewSession> ViewSessions => _database.GetCollection<ViewSession>("view_sessions");
+    public IMongoCollection<CacheFolder> CacheFolders => _database.GetCollection<CacheFolder>("cache_folders");
 
     // Analytics Collections
     public IMongoCollection<UserBehaviorEvent> UserBehaviorEvents => _database.GetCollection<UserBehaviorEvent>("userBehaviorEvents");
@@ -60,10 +60,10 @@ public class MongoDbContext
     public IMongoCollection<UserPremiumFeature> UserPremiumFeatures => _database.GetCollection<UserPremiumFeature>("userPremiumFeatures");
 
     // Settings Collections
-    public IMongoCollection<SystemSetting> SystemSettings => _database.GetCollection<SystemSetting>("systemSettings");
+    public IMongoCollection<SystemSetting> SystemSettings => _database.GetCollection<SystemSetting>("system_settings");
     // TODO: Uncomment when entities are created
-    public IMongoCollection<UserSetting> UserSettings => _database.GetCollection<UserSetting>("userSettings");
-    public IMongoCollection<RefreshToken> RefreshTokens => _database.GetCollection<RefreshToken>("refreshTokens");
+    public IMongoCollection<UserSetting> UserSettings => _database.GetCollection<UserSetting>("user_settings");
+    public IMongoCollection<RefreshToken> RefreshTokens => _database.GetCollection<RefreshToken>("refresh_tokens");
     public IMongoCollection<Session> Sessions => _database.GetCollection<Session>("sessions");
     public IMongoCollection<StorageLocation> StorageLocations => _database.GetCollection<StorageLocation>("storageLocations");
     public IMongoCollection<FileStorageMapping> FileStorageMappings => _database.GetCollection<FileStorageMapping>("fileStorageMappings");

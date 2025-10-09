@@ -9,7 +9,7 @@ namespace ImageViewer.Infrastructure.Data;
 public class MongoSystemSettingRepository : MongoRepository<SystemSetting>, ISystemSettingRepository
 {
     public MongoSystemSettingRepository(IMongoDatabase database, ILogger<MongoSystemSettingRepository> logger)
-        : base(database.GetCollection<SystemSetting>("systemSettings"), logger)
+        : base(database.GetCollection<SystemSetting>("system_settings"), logger)
     {
     }
 
