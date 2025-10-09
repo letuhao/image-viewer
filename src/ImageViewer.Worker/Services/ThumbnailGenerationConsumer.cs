@@ -202,8 +202,23 @@ public class ThumbnailGenerationConsumer : BaseMessageConsumer
 
     private async Task<string> GetThumbnailPath(string imagePath, int width, int height, ObjectId collectionId)
     {
-        var fileName = Path.GetFileNameWithoutExtension(imagePath);
-        var extension = Path.GetExtension(imagePath);
+        // Extract filename only (handle archive entries like "archive.zip#entry.png")
+        string fileName;
+        string extension;
+        
+        if (ArchiveFileHelper.IsArchiveEntryPath(imagePath))
+        {
+            // For archive entries, extract ONLY the entry name (after #)
+            var (_, entryName) = ArchiveFileHelper.SplitArchiveEntryPath(imagePath);
+            fileName = Path.GetFileNameWithoutExtension(entryName);
+            extension = Path.GetExtension(entryName);
+        }
+        else
+        {
+            // For regular files, use filename only (not full path)
+            fileName = Path.GetFileNameWithoutExtension(imagePath);
+            extension = Path.GetExtension(imagePath);
+        }
         
         // Use cache service to get the appropriate cache folder for thumbnails
                 using var scope = _serviceScopeFactory.CreateScope();
