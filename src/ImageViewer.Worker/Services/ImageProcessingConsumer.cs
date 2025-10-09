@@ -264,8 +264,24 @@ public class ImageProcessingConsumer : BaseMessageConsumer
             
             // Create embedded image using the new service
             var collectionId = ObjectId.Parse(imageMessage.CollectionId); // Convert string back to ObjectId
-            var filename = Path.GetFileName(imageMessage.ImagePath);
-            var relativePath = GetRelativePath(imageMessage.ImagePath, collectionId);
+            
+            // Extract filename properly (handle archive entries)
+            string filename;
+            string relativePath;
+            
+            if (ArchiveFileHelper.IsArchiveEntryPath(imageMessage.ImagePath))
+            {
+                // For archive entries like "archive.zip#entry.png", extract only the entry name
+                var (_, entryName) = ArchiveFileHelper.SplitArchiveEntryPath(imageMessage.ImagePath);
+                filename = Path.GetFileName(entryName); // Just the entry filename
+                relativePath = entryName; // Use entry path as relative path
+            }
+            else
+            {
+                // Regular file
+                filename = Path.GetFileName(imageMessage.ImagePath);
+                relativePath = GetRelativePath(imageMessage.ImagePath, collectionId);
+            }
             
             var embeddedImage = await imageService.CreateEmbeddedImageAsync(
                 collectionId,

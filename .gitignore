@@ -192,3 +192,5 @@ src/ImageViewer.Test/obj/
 *.user
 
 src/src/ImageViewer.Test/obj/
+
+temp_extract/
