@@ -662,13 +662,33 @@ public class ImageService : IImageService
 
             // Get the full image path
             var fullImagePath = Path.Combine(collection.Path, image.RelativePath);
-            if (!File.Exists(fullImagePath))
+            
+            // Check if this is an archive entry (ZIP, 7Z, etc.)
+            bool isArchiveEntry = fullImagePath.Contains("#");
+            
+            // For archive entries, we don't check File.Exists because the path format is "archive.zip#entry.png"
+            if (!isArchiveEntry && !File.Exists(fullImagePath))
             {
                 throw new InvalidOperationException($"Image file does not exist: {fullImagePath}");
             }
 
             // Generate cache using image processing service
-            var cacheData = await _imageProcessingService.ResizeImageAsync(fullImagePath, width, height, 95, cancellationToken);
+            byte[] cacheData;
+            if (isArchiveEntry)
+            {
+                // For archive entries, we need to extract and process from bytes
+                // The fullImagePath is in format "archive.zip#entry.png"
+                _logger.LogDebug("Processing cache for archive entry: {Path}", fullImagePath);
+                
+                // Note: The actual archive extraction is handled by the consumer
+                // This path should have already been validated by the consumer
+                // For now, we'll just note that archive processing happens in the consumer
+                throw new InvalidOperationException($"Archive entry caching should be handled by CacheGenerationConsumer, not ImageService: {fullImagePath}");
+            }
+            else
+            {
+                cacheData = await _imageProcessingService.ResizeImageAsync(fullImagePath, width, height, 95, cancellationToken);
+            }
             
             // Determine cache path using cache service
             var cacheFolders = await _cacheService.GetCacheFoldersAsync();

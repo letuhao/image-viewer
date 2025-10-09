@@ -7,6 +7,7 @@ using RabbitMQ.Client.Events;
 using ImageViewer.Domain.Events;
 using ImageViewer.Domain.Entities;
 using ImageViewer.Domain.Interfaces;
+using ImageViewer.Domain.ValueObjects;
 using ImageViewer.Infrastructure.Data;
 using ImageViewer.Application.Services;
 using ImageViewer.Application.DTOs.Cache;
@@ -73,6 +74,7 @@ public class CacheGenerationConsumer : BaseMessageConsumer
             {
             var imageProcessingService = scope.ServiceProvider.GetRequiredService<IImageProcessingService>();
             var cacheService = scope.ServiceProvider.GetRequiredService<ICacheService>();
+            var collectionRepository = scope.ServiceProvider.GetRequiredService<ICollectionRepository>();
 
             // Determine proper cache path using cache service
             var cachePath = await DetermineCachePath(cacheMessage, cacheService);
@@ -132,7 +134,7 @@ public class CacheGenerationConsumer : BaseMessageConsumer
             await File.WriteAllBytesAsync(cachePath, cacheImageData, cancellationToken);
 
             // Update cache info in database
-            await UpdateCacheInfoInDatabase(cacheMessage, cachePath, cacheService);
+            await UpdateCacheInfoInDatabase(cacheMessage, cachePath, collectionRepository);
 
             _logger.LogInformation("✅ Cache generated for image {ImageId} at path {CachePath} with dimensions {Width}x{Height}", 
                 cacheMessage.ImageId, cachePath, cacheMessage.CacheWidth, cacheMessage.CacheHeight);
@@ -208,7 +210,7 @@ public class CacheGenerationConsumer : BaseMessageConsumer
         return selectedFolder;
     }
 
-    private async Task UpdateCacheInfoInDatabase(CacheGenerationMessage cacheMessage, string cachePath, ICacheService cacheService)
+    private async Task UpdateCacheInfoInDatabase(CacheGenerationMessage cacheMessage, string cachePath, ICollectionRepository collectionRepository)
     {
         try
         {
@@ -217,18 +219,37 @@ public class CacheGenerationConsumer : BaseMessageConsumer
             // Convert string back to ObjectId for database operations
             var collectionId = ObjectId.Parse(cacheMessage.CollectionId);
             
-            // Generate cache using the new embedded service
-            using var scope = _serviceScopeFactory.CreateScope();
-            var imageService = scope.ServiceProvider.GetRequiredService<IImageService>();
+            // Get the collection
+            var collection = await collectionRepository.GetByIdAsync(collectionId);
+            if (collection == null)
+            {
+                throw new InvalidOperationException($"Collection {collectionId} not found");
+            }
             
-            var cacheInfoEmbedded = await imageService.GenerateCacheAsync(
-                cacheMessage.ImageId,
-                collectionId,
+            // Find the image in the embedded images
+            var image = collection.Images?.FirstOrDefault(i => i.Id == cacheMessage.ImageId);
+            if (image == null)
+            {
+                throw new InvalidOperationException($"Image {cacheMessage.ImageId} not found in collection {collectionId}");
+            }
+            
+            // Update the cache info
+            var fileInfo = new FileInfo(cachePath);
+            var cacheInfo = new ImageCacheInfoEmbedded(
+                cachePath,
+                fileInfo.Length,
+                fileInfo.Extension.TrimStart('.').ToUpperInvariant(), // e.g., "PNG", "JPEG"
                 cacheMessage.CacheWidth,
-                cacheMessage.CacheHeight
+                cacheMessage.CacheHeight,
+                cacheMessage.Quality
             );
             
-            _logger.LogInformation("✅ Cache info created and persisted for image {ImageId}: {CachePath}", 
+            image.SetCacheInfo(cacheInfo);
+            
+            // Save the collection
+            await collectionRepository.UpdateAsync(collection);
+            
+            _logger.LogInformation("✅ Cache info updated for image {ImageId}: {CachePath}", 
                 cacheMessage.ImageId, cachePath);
         }
         catch (Exception ex)
