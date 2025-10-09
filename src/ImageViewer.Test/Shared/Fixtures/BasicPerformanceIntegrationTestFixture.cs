@@ -61,7 +61,7 @@ public class BasicPerformanceIntegrationTestFixture : IAsyncLifetime
         services.AddScoped<INotificationService, NotificationService>();
         services.AddScoped<INotificationTemplateService, NotificationTemplateService>();
         services.AddScoped<IRealTimeNotificationService, RealTimeNotificationService>();
-        // services.AddScoped<IDiscoveryService, DiscoveryService>(); // Removed
+        services.AddScoped<IDiscoveryService, DiscoveryService>(); // Refactored to use embedded design
         services.AddScoped<ISearchService, SearchService>();
 
         _serviceProvider = services.BuildServiceProvider();

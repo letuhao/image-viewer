@@ -68,7 +68,7 @@ namespace ImageViewer.Test.Shared.Fixtures;
         services.AddScoped<INotificationService, NotificationService>();
         services.AddScoped<INotificationTemplateService, NotificationTemplateService>();
         services.AddScoped<IRealTimeNotificationService, RealTimeNotificationService>();
-        // services.AddScoped<IDiscoveryService, DiscoveryService>(); // Removed
+        services.AddScoped<IDiscoveryService, DiscoveryService>(); // Refactored to use embedded design
         services.AddScoped<ISearchService, SearchService>();
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<IUserPreferencesService, UserPreferencesService>();
@@ -89,7 +89,7 @@ namespace ImageViewer.Test.Shared.Fixtures;
         services.AddScoped<NotificationService>();
         services.AddScoped<NotificationTemplateService>();
         services.AddScoped<RealTimeNotificationService>();
-        // services.AddScoped<DiscoveryService>(); // Removed
+        services.AddScoped<DiscoveryService>(); // Refactored to use embedded design
         services.AddScoped<SearchService>();
         services.AddScoped<UserService>();
         services.AddScoped<UserPreferencesService>();
