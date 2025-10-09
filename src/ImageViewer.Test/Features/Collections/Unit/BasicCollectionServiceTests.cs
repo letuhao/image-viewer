@@ -3,6 +3,7 @@ using Moq;
 using Xunit;
 using MongoDB.Bson;
 using ImageViewer.Application.Services;
+using ImageViewer.Application.DTOs.BackgroundJobs;
 using ImageViewer.Domain.Entities;
 using ImageViewer.Domain.Interfaces;
 using ImageViewer.Domain.Exceptions;
@@ -23,19 +24,27 @@ public class BasicCollectionServiceTests
     private readonly Mock<ILogger<CollectionService>> _mockLogger;
     private readonly CollectionService _collectionService;
 
-    public BasicCollectionServiceTests()
-    {
-        _mockCollectionRepository = new Mock<ICollectionRepository>();
-        _mockMessageQueueService = new Mock<IMessageQueueService>();
-        _mockServiceProvider = new Mock<IServiceProvider>();
-        _mockLogger = new Mock<ILogger<CollectionService>>();
+        public BasicCollectionServiceTests()
+        {
+            _mockCollectionRepository = new Mock<ICollectionRepository>();
+            _mockMessageQueueService = new Mock<IMessageQueueService>();
+            _mockServiceProvider = new Mock<IServiceProvider>();
+            _mockLogger = new Mock<ILogger<CollectionService>>();
 
-        _collectionService = new CollectionService(
-            _mockCollectionRepository.Object,
-            _mockMessageQueueService.Object,
-            _mockServiceProvider.Object,
-            _mockLogger.Object);
-    }
+            // Setup IServiceProvider to return IBackgroundJobService
+            var mockBackgroundJobService = new Mock<IBackgroundJobService>();
+            mockBackgroundJobService.Setup(s => s.CreateJobAsync(It.IsAny<CreateBackgroundJobDto>()))
+                .ReturnsAsync(new BackgroundJobDto { JobId = ObjectId.GenerateNewId() });
+            
+            _mockServiceProvider.Setup(sp => sp.GetService(typeof(IBackgroundJobService)))
+                .Returns(mockBackgroundJobService.Object);
+
+            _collectionService = new CollectionService(
+                _mockCollectionRepository.Object,
+                _mockMessageQueueService.Object,
+                _mockServiceProvider.Object,
+                _mockLogger.Object);
+        }
 
     [Fact]
     public async Task CreateCollectionAsync_WithValidData_ShouldReturnCreatedCollection()

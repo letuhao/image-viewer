@@ -62,8 +62,9 @@ namespace ImageViewer.Test.Shared.Fixtures;
         services.AddScoped<IUserProfileService, UserProfileService>();
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<IBulkService, BulkService>();
-        // services.AddScoped<IPerformanceService, PerformanceService>(); // Removed
-        // services.AddScoped<ICacheService, CacheService>(); // Removed
+        services.AddScoped<IPerformanceService, PerformanceService>(); // Stub implementation
+        services.AddScoped<ICacheService, CacheService>(); // Refactored to use embedded design
+        services.AddScoped<IStatisticsService, StatisticsService>(); // Refactored to use embedded design
         services.AddScoped<IImageProcessingService, SkiaSharpImageProcessingService>();
         services.AddScoped<INotificationService, NotificationService>();
         services.AddScoped<INotificationTemplateService, NotificationTemplateService>();
@@ -74,6 +75,8 @@ namespace ImageViewer.Test.Shared.Fixtures;
         services.AddScoped<IUserPreferencesService, UserPreferencesService>();
         services.AddScoped<IUserProfileService, UserProfileService>();
         services.AddScoped<ISecurityService, SecurityService>();
+        // Add IMessageQueueService mock for CollectionService
+        services.AddSingleton<IMessageQueueService>(Mock.Of<IMessageQueueService>());
         services.AddScoped<ICollectionService, CollectionService>();
         services.AddScoped<IMediaItemService, MediaItemService>();
         services.AddScoped<IImageService, ImageService>();
@@ -83,8 +86,9 @@ namespace ImageViewer.Test.Shared.Fixtures;
         services.AddScoped<BulkOperationService>();
         services.AddScoped<ImageViewer.Application.Services.BackgroundJobService>();
         services.AddScoped<BulkService>();
-        // services.AddScoped<PerformanceService>(); // Removed
-        // services.AddScoped<CacheService>(); // Removed
+        services.AddScoped<PerformanceService>(); // Stub implementation
+        services.AddScoped<CacheService>(); // Refactored to use embedded design
+        services.AddScoped<StatisticsService>(); // Refactored to use embedded design
         services.AddScoped<SkiaSharpImageProcessingService>();
         services.AddScoped<NotificationService>();
         services.AddScoped<NotificationTemplateService>();

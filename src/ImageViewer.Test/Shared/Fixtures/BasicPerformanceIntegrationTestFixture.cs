@@ -46,6 +46,9 @@ public class BasicPerformanceIntegrationTestFixture : IAsyncLifetime
         services.AddSingleton(mockRepositories.BackgroundJobRepository);
         services.AddSingleton(mockRepositories.UserSettingRepository);
         services.AddSingleton(mockRepositories.UnitOfWork);
+        
+        // Add IMessageQueueService mock for CollectionService
+        services.AddSingleton<IMessageQueueService>(Mock.Of<IMessageQueueService>());
 
         // Add application services
         services.AddScoped<ISystemHealthService, SystemHealthService>();
@@ -55,8 +58,9 @@ public class BasicPerformanceIntegrationTestFixture : IAsyncLifetime
         services.AddScoped<IUserProfileService, UserProfileService>();
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<IBulkService, BulkService>();
-        // services.AddScoped<IPerformanceService, PerformanceService>(); // Removed
-        // services.AddScoped<ICacheService, CacheService>(); // Removed
+        services.AddScoped<IPerformanceService, PerformanceService>(); // Stub implementation
+        services.AddScoped<ICacheService, CacheService>(); // Refactored to use embedded design
+        services.AddScoped<IStatisticsService, StatisticsService>(); // Refactored to use embedded design
         services.AddScoped<IImageProcessingService, SkiaSharpImageProcessingService>();
         services.AddScoped<INotificationService, NotificationService>();
         services.AddScoped<INotificationTemplateService, NotificationTemplateService>();
