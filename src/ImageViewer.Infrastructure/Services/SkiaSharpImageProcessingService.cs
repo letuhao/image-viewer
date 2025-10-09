@@ -73,7 +73,11 @@ public class SkiaSharpImageProcessingService : IImageProcessingService
             };
 
             canvas.Clear(SKColors.Transparent);
-            canvas.DrawImage(originalImage, new SKRect(0, 0, thumbnailWidth, thumbnailHeight), paint);
+            // DrawImage(image, source rect, dest rect, paint) - CORRECT ORDER!
+            canvas.DrawImage(originalImage,
+                new SKRect(0, 0, originalInfo.Width, originalInfo.Height), // Source: entire original
+                new SKRect(0, 0, thumbnailWidth, thumbnailHeight), // Dest: thumbnail size
+                paint);
             
             using var image = surface.Snapshot();
             using var encoded = image.Encode(SKEncodedImageFormat.Jpeg, 90);
@@ -117,7 +121,11 @@ public class SkiaSharpImageProcessingService : IImageProcessingService
             };
             
             canvas.Clear(SKColors.White);
-            canvas.DrawImage(originalImage, new SKRect(0, 0, thumbnailWidth, thumbnailHeight), new SKRect(0, 0, originalInfo.Width, originalInfo.Height), paint);
+            // DrawImage(image, source rect, dest rect, paint) - CORRECT ORDER!
+            canvas.DrawImage(originalImage,
+                new SKRect(0, 0, originalInfo.Width, originalInfo.Height), // Source: entire original
+                new SKRect(0, 0, thumbnailWidth, thumbnailHeight), // Dest: thumbnail size
+                paint);
 
             using var thumbnailImage = SKImage.FromBitmap(thumbnailBitmap);
             using var thumbnailStream = thumbnailImage.Encode(SKEncodedImageFormat.Jpeg, 95); // Higher quality for thumbnails
