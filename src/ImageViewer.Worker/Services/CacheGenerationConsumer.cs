@@ -21,6 +21,8 @@ namespace ImageViewer.Worker.Services;
 public class CacheGenerationConsumer : BaseMessageConsumer
 {
     private readonly IServiceScopeFactory _serviceScopeFactory;
+    private int _processedCount = 0;
+    private readonly object _counterLock = new object();
 
     public CacheGenerationConsumer(
         IConnection connection,
@@ -55,7 +57,7 @@ public class CacheGenerationConsumer : BaseMessageConsumer
                 return;
             }
 
-            _logger.LogInformation("Processing cache generation for image {ImageId} ({Path})", 
+            _logger.LogDebug("Processing cache generation for image {ImageId} ({Path})", 
                 cacheMessage.ImageId, cacheMessage.ImagePath);
 
             // Try to create scope, handle disposal gracefully
@@ -136,10 +138,25 @@ public class CacheGenerationConsumer : BaseMessageConsumer
             // Update cache info in database
             await UpdateCacheInfoInDatabase(cacheMessage, cachePath, collectionRepository);
 
-            _logger.LogInformation("✅ Cache generated for image {ImageId} at path {CachePath} with dimensions {Width}x{Height}", 
+            _logger.LogDebug("✅ Cache generated for image {ImageId} at path {CachePath} with dimensions {Width}x{Height}", 
                 cacheMessage.ImageId, cachePath, cacheMessage.CacheWidth, cacheMessage.CacheHeight);
 
-            _logger.LogInformation("Successfully generated cache for image {ImageId}", cacheMessage.ImageId);
+            // Batched logging - log every 50 files
+            int currentCount;
+            lock (_counterLock)
+            {
+                _processedCount++;
+                currentCount = _processedCount;
+            }
+
+            if (currentCount % 50 == 0)
+            {
+                _logger.LogInformation("✅ Generated {Count} cache files (latest: {ImageId})", currentCount, cacheMessage.ImageId);
+            }
+            else
+            {
+                _logger.LogDebug("Successfully generated cache for image {ImageId}", cacheMessage.ImageId);
+            }
             } // Close using (scope) block
         }
         catch (Exception ex)
@@ -219,18 +236,37 @@ public class CacheGenerationConsumer : BaseMessageConsumer
             // Convert string back to ObjectId for database operations
             var collectionId = ObjectId.Parse(cacheMessage.CollectionId);
             
-            // Get the collection
-            var collection = await collectionRepository.GetByIdAsync(collectionId);
-            if (collection == null)
+            // Get the collection (with retry for race condition)
+            Collection? collection = null;
+            Domain.ValueObjects.ImageEmbedded? image = null;
+            
+            for (int attempt = 0; attempt < 3; attempt++)
             {
-                throw new InvalidOperationException($"Collection {collectionId} not found");
+                collection = await collectionRepository.GetByIdAsync(collectionId);
+                if (collection == null)
+                {
+                    throw new InvalidOperationException($"Collection {collectionId} not found");
+                }
+                
+                // Find the image in the embedded images
+                image = collection.Images?.FirstOrDefault(i => i.Id == cacheMessage.ImageId);
+                if (image != null)
+                {
+                    break; // Found it!
+                }
+                
+                // Image not found yet - might be a race condition where image was just created
+                if (attempt < 2)
+                {
+                    _logger.LogDebug("Image {ImageId} not found in collection yet, retrying (attempt {Attempt}/3)...", 
+                        cacheMessage.ImageId, attempt + 1);
+                    await Task.Delay(100); // Wait 100ms for MongoDB to sync
+                }
             }
             
-            // Find the image in the embedded images
-            var image = collection.Images?.FirstOrDefault(i => i.Id == cacheMessage.ImageId);
             if (image == null)
             {
-                throw new InvalidOperationException($"Image {cacheMessage.ImageId} not found in collection {collectionId}");
+                throw new InvalidOperationException($"Image {cacheMessage.ImageId} not found in collection {collectionId} after 3 attempts");
             }
             
             // Update the cache info

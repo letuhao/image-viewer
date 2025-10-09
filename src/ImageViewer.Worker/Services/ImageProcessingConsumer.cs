@@ -19,6 +19,8 @@ namespace ImageViewer.Worker.Services;
 public class ImageProcessingConsumer : BaseMessageConsumer
 {
     private readonly IServiceScopeFactory _serviceScopeFactory;
+    private int _processedCount = 0;
+    private readonly object _counterLock = new object();
 
     public ImageProcessingConsumer(
         IConnection connection,
@@ -41,7 +43,7 @@ public class ImageProcessingConsumer : BaseMessageConsumer
                 return;
             }
 
-            _logger.LogInformation("🖼️ Received image processing message: {Message}", message);
+            _logger.LogDebug("🖼️ Received image processing message: {Message}", message);
             
             var options = new JsonSerializerOptions
             {
@@ -118,7 +120,7 @@ public class ImageProcessingConsumer : BaseMessageConsumer
 
                     // Queue the thumbnail generation job
                     await messageQueueService.PublishAsync(thumbnailMessage, "thumbnail.generation");
-                    _logger.LogInformation("📋 Queued thumbnail generation job for image {ImageId}", embeddedImage.Id);
+                    _logger.LogDebug("📋 Queued thumbnail generation job for image {ImageId}", embeddedImage.Id);
                 }
                 catch (Exception ex)
                 {
@@ -145,14 +147,29 @@ public class ImageProcessingConsumer : BaseMessageConsumer
 
                 // Queue the cache generation job
                 await messageQueueService.PublishAsync(cacheMessage, "cache.generation");
-                _logger.LogInformation("📋 Queued cache generation job for image {ImageId}", embeddedImage.Id);
+                _logger.LogDebug("📋 Queued cache generation job for image {ImageId}", embeddedImage.Id);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "❌ Failed to create cache generation job for image {ImageId}", embeddedImage.Id);
             }
 
-            _logger.LogInformation("✅ Successfully processed image {ImageId}", embeddedImage.Id);
+            // Batched logging - log every 50 files to reduce log size by 50x
+            int currentCount;
+            lock (_counterLock)
+            {
+                _processedCount++;
+                currentCount = _processedCount;
+            }
+
+            if (currentCount % 50 == 0)
+            {
+                _logger.LogInformation("✅ Processed {Count} images (latest: {ImageId})", currentCount, embeddedImage.Id);
+            }
+            else
+            {
+                _logger.LogDebug("✅ Successfully processed image {ImageId}", embeddedImage.Id);
+            }
             } // Close the using (scope) block
         }
         catch (Exception ex)

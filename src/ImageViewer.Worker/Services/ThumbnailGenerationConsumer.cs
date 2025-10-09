@@ -20,6 +20,8 @@ namespace ImageViewer.Worker.Services;
 public class ThumbnailGenerationConsumer : BaseMessageConsumer
 {
     private readonly IServiceScopeFactory _serviceScopeFactory;
+    private int _processedCount = 0;
+    private readonly object _counterLock = new object();
 
     public ThumbnailGenerationConsumer(
         IConnection connection,
@@ -35,7 +37,7 @@ public class ThumbnailGenerationConsumer : BaseMessageConsumer
     {
         try
         {
-            _logger.LogInformation("🖼️ Received thumbnail generation message: {Message}", message);
+            _logger.LogDebug("🖼️ Received thumbnail generation message: {Message}", message);
             
             var options = new JsonSerializerOptions
             {
@@ -49,7 +51,7 @@ public class ThumbnailGenerationConsumer : BaseMessageConsumer
                 return;
             }
 
-            _logger.LogInformation("🖼️ Generating thumbnail for image {ImageId} ({Filename})", 
+            _logger.LogDebug("🖼️ Generating thumbnail for image {ImageId} ({Filename})", 
                 thumbnailMessage.ImageId, thumbnailMessage.ImageFilename);
 
             // Try to create scope, handle disposal gracefully
@@ -95,8 +97,23 @@ public class ThumbnailGenerationConsumer : BaseMessageConsumer
                     // Update database with thumbnail information
                     await UpdateThumbnailInfoInDatabase(thumbnailMessage, thumbnailPath, collectionRepository);
                     
-                    _logger.LogInformation("✅ Successfully generated thumbnail for image {ImageId} at {ThumbnailPath}", 
-                        thumbnailMessage.ImageId, thumbnailPath);
+                    // Batched logging - log every 50 files
+                    int currentCount;
+                    lock (_counterLock)
+                    {
+                        _processedCount++;
+                        currentCount = _processedCount;
+                    }
+
+                    if (currentCount % 50 == 0)
+                    {
+                        _logger.LogInformation("✅ Generated {Count} thumbnails (latest: {ImageId})", currentCount, thumbnailMessage.ImageId);
+                    }
+                    else
+                    {
+                        _logger.LogDebug("✅ Successfully generated thumbnail for image {ImageId} at {ThumbnailPath}", 
+                            thumbnailMessage.ImageId, thumbnailPath);
+                    }
                 }
                 else
                 {
