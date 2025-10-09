@@ -39,7 +39,7 @@ public class CollectionsController : ControllerBase
             if (!Enum.TryParse<CollectionType>(request.Type, out var collectionType))
                 return BadRequest(new { message = "Invalid collection type" });
 
-            var collection = await _collectionService.CreateCollectionAsync(libraryId, request.Name, request.Path, collectionType);
+            var collection = await _collectionService.CreateCollectionAsync(libraryId, request.Name, request.Path, collectionType, request.Description);
             return CreatedAtAction(nameof(GetCollection), new { id = collection.Id }, collection);
         }
         catch (ValidationException ex)
@@ -559,4 +559,5 @@ public class CreateCollectionRequest
     public string Name { get; set; } = string.Empty;
     public string Path { get; set; } = string.Empty;
     public string Type { get; set; } = string.Empty;
+    public string? Description { get; set; }
 }

@@ -65,8 +65,12 @@ public class CollectionScanConsumer : BaseMessageConsumer
                 return;
             }
 
-            // Check if collection path exists
-            if (!Directory.Exists(collection.Path))
+            // Check if collection path exists (directory for Folder type, file for Zip type)
+            bool pathExists = collection.Type == CollectionType.Folder 
+                ? Directory.Exists(collection.Path) 
+                : File.Exists(collection.Path);
+            
+            if (!pathExists)
             {
                 _logger.LogWarning("❌ Collection path {Path} does not exist, skipping scan", collection.Path);
                 return;
