@@ -225,6 +225,26 @@ using (var scope = app.Services.CreateScope())
     }
 }
 
+// Initialize system settings with defaults if not exists
+using (var scope = app.Services.CreateScope())
+{
+    try
+    {
+        var systemSettingService = scope.ServiceProvider.GetRequiredService<ISystemSettingService>();
+        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+        
+        logger.LogInformation("🔧 Checking system settings...");
+        await systemSettingService.InitializeDefaultSettingsAsync();
+        logger.LogInformation("✅ System settings initialized successfully");
+    }
+    catch (Exception ex)
+    {
+        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "❌ Failed to initialize system settings");
+        // Don't throw - let the API start even if settings initialization fails
+    }
+}
+
 // MongoDB doesn't require database creation - it creates collections automatically
 
 app.Run();
