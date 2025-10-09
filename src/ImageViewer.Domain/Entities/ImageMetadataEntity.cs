@@ -1,5 +1,6 @@
 using ImageViewer.Domain.Entities;
 using MongoDB.Bson;
+using MongoDB.Bson.Serialization.Attributes;
 
 namespace ImageViewer.Domain.Entities;
 
@@ -8,15 +9,35 @@ namespace ImageViewer.Domain.Entities;
 /// </summary>
 public class ImageMetadataEntity : BaseEntity
 {
+    [BsonElement("imageId")]
+    [BsonRepresentation(BsonType.ObjectId)]
     public ObjectId ImageId { get; private set; }
+    
+    [BsonElement("quality")]
     public int Quality { get; private set; }
+    
+    [BsonElement("colorSpace")]
     public string? ColorSpace { get; private set; }
+    
+    [BsonElement("compression")]
     public string? Compression { get; private set; }
+    
+    [BsonElement("createdDate")]
     public DateTime? CreatedDate { get; private set; }
+    
+    [BsonElement("modifiedDate")]
     public DateTime? ModifiedDate { get; private set; }
+    
+    [BsonElement("camera")]
     public string? Camera { get; private set; }
+    
+    [BsonElement("software")]
     public string? Software { get; private set; }
+    
+    [BsonElement("additionalMetadataJson")]
     public string AdditionalMetadataJson { get; private set; } = "{}";
+    
+    [BsonElement("deletedAt")]
     public DateTime? DeletedAt { get; private set; }
 
     // Navigation property - removed (Image entity deleted)

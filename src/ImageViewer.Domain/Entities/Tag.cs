@@ -1,5 +1,6 @@
 using ImageViewer.Domain.ValueObjects;
 using MongoDB.Bson;
+using MongoDB.Bson.Serialization.Attributes;
 
 namespace ImageViewer.Domain.Entities;
 
@@ -8,13 +9,23 @@ namespace ImageViewer.Domain.Entities;
 /// </summary>
 public class Tag : BaseEntity
 {
+    [BsonElement("name")]
     public string Name { get; private set; }
+    
+    [BsonElement("description")]
     public string Description { get; private set; }
+    
+    [BsonElement("color")]
     public TagColor Color { get; private set; }
+    
+    [BsonElement("usageCount")]
     public int UsageCount { get; private set; }
 
     // Navigation properties
+    [BsonIgnore]
     private readonly List<CollectionTag> _collectionTags = new();
+    
+    [BsonIgnore]
     public IReadOnlyCollection<CollectionTag> CollectionTags => _collectionTags.AsReadOnly();
 
     // Private constructor for EF Core

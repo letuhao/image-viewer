@@ -1,5 +1,6 @@
 using ImageViewer.Domain.Enums;
 using MongoDB.Bson;
+using MongoDB.Bson.Serialization.Attributes;
 
 namespace ImageViewer.Domain.Entities;
 
@@ -8,15 +9,29 @@ namespace ImageViewer.Domain.Entities;
 /// </summary>
 public class CacheFolder : BaseEntity
 {
+    [BsonElement("name")]
     public string Name { get; private set; }
+    
+    [BsonElement("path")]
     public string Path { get; private set; }
+    
+    [BsonElement("maxSizeBytes")]
     public long MaxSizeBytes { get; private set; }
+    
+    [BsonElement("currentSizeBytes")]
     public long CurrentSizeBytes { get; private set; }
     
     // Alias properties for compatibility
+    [BsonIgnore]
     public long MaxSize => MaxSizeBytes;
+    
+    [BsonIgnore]
     public long CurrentSize => CurrentSizeBytes;
+    
+    [BsonElement("priority")]
     public int Priority { get; private set; }
+    
+    [BsonElement("isActive")]
     public bool IsActive { get; private set; }
 
     // Navigation properties

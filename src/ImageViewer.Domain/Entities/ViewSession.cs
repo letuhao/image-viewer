@@ -1,5 +1,6 @@
 using ImageViewer.Domain.ValueObjects;
 using MongoDB.Bson;
+using MongoDB.Bson.Serialization.Attributes;
 
 namespace ImageViewer.Domain.Entities;
 
@@ -8,17 +9,38 @@ namespace ImageViewer.Domain.Entities;
 /// </summary>
 public class ViewSession : BaseEntity
 {
+    [BsonElement("userId")]
+    [BsonRepresentation(BsonType.ObjectId)]
     public ObjectId? UserId { get; private set; }
+    
+    [BsonElement("collectionId")]
+    [BsonRepresentation(BsonType.ObjectId)]
     public ObjectId CollectionId { get; private set; }
+    
+    [BsonElement("currentImageId")]
+    [BsonRepresentation(BsonType.ObjectId)]
     public ObjectId? CurrentImageId { get; private set; }
+    
+    [BsonElement("settings")]
     public ViewSessionSettings Settings { get; private set; }
+    
+    [BsonElement("startedAt")]
     public DateTime StartedAt { get; private set; }
+    
+    [BsonElement("endedAt")]
     public DateTime? EndedAt { get; private set; }
+    
+    [BsonElement("imagesViewed")]
     public int ImagesViewed { get; private set; }
+    
+    [BsonElement("totalViewTime")]
     public TimeSpan TotalViewTime { get; private set; }
+    
+    [BsonIgnore]
     public TimeSpan ViewDuration => TotalViewTime;
 
     // Navigation properties
+    [BsonIgnore]
     public Collection Collection { get; private set; } = null!;
     // public Image? CurrentImage { get; private set; } // Removed - Image entity deleted
 

@@ -1,4 +1,5 @@
 using MongoDB.Bson;
+using MongoDB.Bson.Serialization.Attributes;
 
 namespace ImageViewer.Domain.Entities;
 
@@ -7,15 +8,30 @@ namespace ImageViewer.Domain.Entities;
 /// </summary>
 public class CollectionStatisticsEntity : BaseEntity
 {
+    [BsonElement("collectionId")]
+    [BsonRepresentation(BsonType.ObjectId)]
     public ObjectId CollectionId { get; private set; }
+    
+    [BsonElement("totalImages")]
     public int TotalImages { get; private set; }
+    
+    [BsonElement("totalSizeBytes")]
     public long TotalSizeBytes { get; private set; }
+    
+    [BsonElement("averageWidth")]
     public int AverageWidth { get; private set; }
+    
+    [BsonElement("averageHeight")]
     public int AverageHeight { get; private set; }
+    
+    [BsonElement("viewCount")]
     public int ViewCount { get; private set; }
+    
+    [BsonElement("lastViewedAt")]
     public DateTime LastViewedAt { get; private set; }
 
     // Navigation properties
+    [BsonIgnore]
     public Collection Collection { get; private set; } = null!;
 
     // Private constructor for MongoDB

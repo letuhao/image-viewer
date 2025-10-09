@@ -1,4 +1,5 @@
 using MongoDB.Bson;
+using MongoDB.Bson.Serialization.Attributes;
 
 namespace ImageViewer.Domain.Entities;
 
@@ -7,20 +8,45 @@ namespace ImageViewer.Domain.Entities;
 /// </summary>
 public class CollectionSettingsEntity : BaseEntity
 {
+    [BsonElement("collectionId")]
+    [BsonRepresentation(BsonType.ObjectId)]
     public ObjectId CollectionId { get; private set; }
+    
+    [BsonElement("totalImages")]
     public int TotalImages { get; private set; }
+    
+    [BsonElement("totalSizeBytes")]
     public long TotalSizeBytes { get; private set; }
+    
+    [BsonElement("thumbnailWidth")]
     public int ThumbnailWidth { get; private set; }
+    
+    [BsonElement("thumbnailHeight")]
     public int ThumbnailHeight { get; private set; }
+    
+    [BsonElement("cacheWidth")]
     public int CacheWidth { get; private set; }
+    
+    [BsonElement("cacheHeight")]
     public int CacheHeight { get; private set; }
+    
+    [BsonElement("autoGenerateThumbnails")]
     public bool AutoGenerateThumbnails { get; private set; }
+    
+    [BsonElement("autoGenerateCache")]
     public bool AutoGenerateCache { get; private set; }
+    
+    [BsonElement("cacheExpiration")]
     public TimeSpan CacheExpiration { get; private set; }
+    
+    [BsonElement("additionalSettingsJson")]
     public string AdditionalSettingsJson { get; private set; } = "{}";
+    
+    [BsonElement("deletedAt")]
     public DateTime? DeletedAt { get; private set; }
 
     // Navigation property
+    [BsonIgnore]
     public Collection Collection { get; private set; } = null!;
 
     // Private constructor for EF Core

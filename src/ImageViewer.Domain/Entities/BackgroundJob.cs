@@ -1,6 +1,7 @@
 using ImageViewer.Domain.Enums;
 using ImageViewer.Domain.ValueObjects;
 using MongoDB.Bson;
+using MongoDB.Bson.Serialization.Attributes;
 
 namespace ImageViewer.Domain.Entities;
 
@@ -9,23 +10,53 @@ namespace ImageViewer.Domain.Entities;
 /// </summary>
 public class BackgroundJob : BaseEntity
 {
+    [BsonElement("jobType")]
     public string JobType { get; private set; }
+    
+    [BsonElement("status")]
     public string Status { get; private set; }
+    
+    [BsonElement("parameters")]
     public string? Parameters { get; private set; }
+    
+    [BsonElement("result")]
     public string? Result { get; private set; }
+    
+    [BsonElement("errorMessage")]
     public string? ErrorMessage { get; private set; }
+    
+    [BsonElement("progress")]
     public int Progress { get; private set; }
+    
+    [BsonElement("totalItems")]
     public int TotalItems { get; private set; }
+    
+    [BsonElement("completedItems")]
     public int CompletedItems { get; private set; }
+    
+    [BsonElement("currentItem")]
     public string? CurrentItem { get; private set; }
+    
+    [BsonElement("message")]
     public string? Message { get; private set; }
+    
+    [BsonElement("errors")]
     public List<string>? Errors { get; private set; }
+    
+    [BsonElement("estimatedCompletion")]
     public DateTime? EstimatedCompletion { get; private set; }
+    
+    [BsonElement("startedAt")]
     public DateTime? StartedAt { get; private set; }
+    
+    [BsonElement("completedAt")]
     public DateTime? CompletedAt { get; private set; }
     
     // Multi-stage job tracking (for complex jobs like collection-scan)
+    [BsonElement("stages")]
     public Dictionary<string, JobStageInfo>? Stages { get; private set; }
+    
+    [BsonElement("currentStage")]
     public string? CurrentStage { get; private set; }
 
     // Private constructor for EF Core
