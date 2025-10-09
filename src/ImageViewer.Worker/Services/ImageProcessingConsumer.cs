@@ -135,7 +135,7 @@ public class ImageProcessingConsumer : BaseMessageConsumer
             {
                 // Load cache settings from system settings (if available)
                 var systemSettingService = serviceProvider.GetService<ISystemSettingService>();
-                int cacheQuality = 100; // Perfect quality default
+                int cacheQuality = 85; // Optimized for web (default)
                 string cacheFormat = "jpeg"; // Default
                 int cacheWidth = 1920; // Default
                 int cacheHeight = 1080; // Default

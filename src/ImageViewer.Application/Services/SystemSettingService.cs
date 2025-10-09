@@ -142,7 +142,7 @@ public class SystemSettingService : ISystemSettingService
     // Cache-specific settings
     public async Task<int> GetDefaultCacheQualityAsync()
     {
-        return await GetSettingValueAsync("Cache.DefaultQuality", 100); // Perfect quality default
+        return await GetSettingValueAsync("Cache.DefaultQuality", 85); // Optimized for web (default)
     }
 
     public async Task<string> GetDefaultCacheFormatAsync()
@@ -165,7 +165,7 @@ public class SystemSettingService : ISystemSettingService
     // Bulk operation settings
     public async Task<int> GetBulkAddDefaultQualityAsync()
     {
-        return await GetSettingValueAsync("BulkAdd.DefaultQuality", 100); // Perfect quality for bulk operations
+        return await GetSettingValueAsync("BulkAdd.DefaultQuality", 85); // Optimized for web (default)
     }
 
     public async Task<string> GetBulkAddDefaultFormatAsync()
@@ -183,8 +183,8 @@ public class SystemSettingService : ISystemSettingService
     {
         var defaultSettings = new Dictionary<string, (string value, string type, string category, string description)>
         {
-            // Cache settings - Perfect quality as default
-            { "Cache.DefaultQuality", ("100", "Integer", "Cache", "Default JPEG quality for cache generation (0-100) - Perfect quality") },
+            // Cache settings - Optimized for web as default
+            { "Cache.DefaultQuality", ("85", "Integer", "Cache", "Default JPEG quality for cache generation (0-100) - Optimized for web") },
             { "Cache.DefaultFormat", ("jpeg", "String", "Cache", "Default format for cache images (jpeg, webp, original)") },
             { "Cache.DefaultWidth", ("1920", "Integer", "Cache", "Default maximum width for cache images") },
             { "Cache.DefaultHeight", ("1080", "Integer", "Cache", "Default maximum height for cache images") },
@@ -195,8 +195,8 @@ public class SystemSettingService : ISystemSettingService
             { "Thumbnail.Quality", ("95", "Integer", "Thumbnail", "Thumbnail JPEG quality (0-100)") },
             { "Thumbnail.Format", ("jpeg", "String", "Thumbnail", "Thumbnail format (jpeg, webp)") },
             
-            // Bulk operation settings - Perfect quality for bulk add
-            { "BulkAdd.DefaultQuality", ("100", "Integer", "BulkOperation", "Default quality for bulk add operations (0-100) - Perfect quality") },
+            // Bulk operation settings - Optimized for bulk add
+            { "BulkAdd.DefaultQuality", ("85", "Integer", "BulkOperation", "Default quality for bulk add operations (0-100) - Optimized for web") },
             { "BulkAdd.DefaultFormat", ("jpeg", "String", "BulkOperation", "Default format for bulk add cache generation") },
             { "BulkAdd.AutoScan", ("true", "Boolean", "BulkOperation", "Automatically scan collections after bulk add") },
             { "BulkAdd.GenerateCache", ("true", "Boolean", "BulkOperation", "Automatically generate cache for bulk added collections") },

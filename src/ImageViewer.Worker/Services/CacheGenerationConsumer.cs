@@ -93,6 +93,18 @@ public class CacheGenerationConsumer : BaseMessageConsumer
                 return;
             }
 
+            // Smart quality adjustment: avoid degrading low-quality source images
+            int adjustedQuality = await DetermineOptimalCacheQuality(
+                cacheMessage, 
+                imageProcessingService, 
+                cancellationToken);
+            
+            if (adjustedQuality != cacheMessage.Quality)
+            {
+                _logger.LogInformation("🎨 Adjusted cache quality from {RequestedQuality} to {AdjustedQuality} based on source image analysis", 
+                    cacheMessage.Quality, adjustedQuality);
+            }
+            
             // Generate cache image
             byte[] cacheImageData;
             
@@ -120,7 +132,7 @@ public class CacheGenerationConsumer : BaseMessageConsumer
             }
             else
             {
-                // Resize to cache dimensions
+                // Resize to cache dimensions with smart quality
                 // Handle ZIP entries
                 if (ArchiveFileHelper.IsZipEntryPath(cacheMessage.ImagePath))
                 {
@@ -136,7 +148,7 @@ public class CacheGenerationConsumer : BaseMessageConsumer
                         imageBytes,
                         cacheMessage.CacheWidth,
                         cacheMessage.CacheHeight,
-                        cacheMessage.Quality,
+                        adjustedQuality, // Use adjusted quality!
                         cancellationToken);
                 }
                 else
@@ -146,7 +158,7 @@ public class CacheGenerationConsumer : BaseMessageConsumer
                         cacheMessage.ImagePath,
                         cacheMessage.CacheWidth,
                         cacheMessage.CacheHeight,
-                        cacheMessage.Quality,
+                        adjustedQuality, // Use adjusted quality!
                         cancellationToken);
                 }
             }
@@ -304,6 +316,102 @@ public class CacheGenerationConsumer : BaseMessageConsumer
         {
             _logger.LogError(ex, "❌ Error updating cache info in database for image {ImageId}", cacheMessage.ImageId);
             throw;
+        }
+    }
+
+    /// <summary>
+    /// Determines optimal cache quality to avoid degrading low-quality source images
+    /// </summary>
+    private async Task<int> DetermineOptimalCacheQuality(
+        CacheGenerationMessage cacheMessage, 
+        IImageProcessingService imageProcessingService,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            // Extract image bytes for analysis
+            byte[]? imageBytes = null;
+            long fileSize = 0;
+            int requestedQuality = cacheMessage.Quality;
+            
+            if (ArchiveFileHelper.IsArchiveEntryPath(cacheMessage.ImagePath))
+            {
+                imageBytes = await ArchiveFileHelper.ExtractZipEntryBytes(cacheMessage.ImagePath, null, cancellationToken);
+                fileSize = imageBytes?.Length ?? 0;
+            }
+            else if (File.Exists(cacheMessage.ImagePath))
+            {
+                var fileInfo = new FileInfo(cacheMessage.ImagePath);
+                fileSize = fileInfo.Length;
+            }
+            
+            // Get image dimensions from metadata (we should have this from ImageProcessingConsumer)
+            // For now, use file size as a proxy for quality estimation
+            
+            // Rule 1: If source is very small (likely low quality or highly compressed), don't use high quality
+            // File size per pixel ratio estimation
+            if (fileSize > 0 && imageBytes != null)
+            {
+                // Use SkiaSharp to analyze the image
+                using var skImage = SkiaSharp.SKBitmap.Decode(imageBytes);
+                if (skImage != null)
+                {
+                    var totalPixels = skImage.Width * skImage.Height;
+                    var bytesPerPixel = (double)fileSize / totalPixels;
+                    
+                    // Estimate source quality based on bytes per pixel
+                    // High quality JPEGs: > 2 bytes/pixel
+                    // Medium quality: 1-2 bytes/pixel
+                    // Low quality: < 1 byte/pixel
+                    // Very low quality: < 0.5 bytes/pixel
+                    
+                    int estimatedSourceQuality;
+                    if (bytesPerPixel >= 2.0)
+                    {
+                        estimatedSourceQuality = 95; // High quality source
+                    }
+                    else if (bytesPerPixel >= 1.0)
+                    {
+                        estimatedSourceQuality = 85; // Medium-high quality
+                    }
+                    else if (bytesPerPixel >= 0.5)
+                    {
+                        estimatedSourceQuality = 75; // Medium quality
+                    }
+                    else
+                    {
+                        estimatedSourceQuality = 60; // Low quality source
+                    }
+                    
+                    // Don't use cache quality higher than source quality
+                    // (no point compressing at 95% when source is already 60%)
+                    if (requestedQuality > estimatedSourceQuality)
+                    {
+                        _logger.LogDebug("Source image appears to be {EstimatedQuality}% quality ({BytesPerPixel:F2} bytes/pixel), " +
+                            "adjusting cache quality from {RequestedQuality}% to {AdjustedQuality}%",
+                            estimatedSourceQuality, bytesPerPixel, requestedQuality, estimatedSourceQuality);
+                        return estimatedSourceQuality;
+                    }
+                    
+                    // Rule 2: If image is already smaller than cache target, preserve original quality
+                    if (skImage.Width <= cacheMessage.CacheWidth && skImage.Height <= cacheMessage.CacheHeight)
+                    {
+                        _logger.LogDebug("Source image ({Width}x{Height}) is smaller than cache target ({CacheWidth}x{CacheHeight}), " +
+                            "using quality 100 to preserve original",
+                            skImage.Width, skImage.Height, cacheMessage.CacheWidth, cacheMessage.CacheHeight);
+                        return 100; // Preserve original quality for small images
+                    }
+                }
+            }
+            
+            // Default: use requested quality
+            return requestedQuality;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to analyze image quality for {ImagePath}, using requested quality {Quality}", 
+                cacheMessage.ImagePath, cacheMessage.Quality);
+            return cacheMessage.Quality; // Fallback to requested quality
         }
     }
 }
