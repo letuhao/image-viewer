@@ -161,7 +161,11 @@ public class SkiaSharpImageProcessingService : IImageProcessingService
             };
 
             canvas.Clear(SKColors.White);
-            canvas.DrawImage(originalImage, new SKRect(0, 0, newWidth, newHeight), paint);
+            // DrawImage(image, source rect, dest rect, paint) - CORRECT ORDER!
+            canvas.DrawImage(originalImage, 
+                new SKRect(0, 0, originalInfo.Width, originalInfo.Height), // Source: entire original
+                new SKRect(0, 0, newWidth, newHeight), // Dest: resized canvas
+                paint);
             
             using var image = surface.Snapshot();
             using var encoded = image.Encode(SKEncodedImageFormat.Jpeg, quality);
@@ -196,9 +200,18 @@ public class SkiaSharpImageProcessingService : IImageProcessingService
 
             using var resizedBitmap = new SKBitmap(newWidth, newHeight);
             using var canvas = new SKCanvas(resizedBitmap);
+            using var paint = new SKPaint
+            {
+                FilterQuality = SKFilterQuality.High,
+                IsAntialias = true
+            };
             
             canvas.Clear(SKColors.White);
-            canvas.DrawImage(originalImage, new SKRect(0, 0, newWidth, newHeight), new SKRect(0, 0, originalInfo.Width, originalInfo.Height));
+            // DrawImage(image, source rect, dest rect, paint) - CORRECT ORDER!
+            canvas.DrawImage(originalImage, 
+                new SKRect(0, 0, originalInfo.Width, originalInfo.Height), // Source: entire original
+                new SKRect(0, 0, newWidth, newHeight), // Dest: resized canvas
+                paint);
 
             using var resizedImage = SKImage.FromBitmap(resizedBitmap);
             using var resizedStream = resizedImage.Encode(SKEncodedImageFormat.Jpeg, quality);
