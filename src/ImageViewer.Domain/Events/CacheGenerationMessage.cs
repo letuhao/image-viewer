@@ -14,6 +14,8 @@ public class CacheGenerationMessage : MessageEvent
     public int CacheWidth { get; set; } = 1920;
     public int CacheHeight { get; set; } = 1080;
     public int Quality { get; set; } = 85;
+    public string Format { get; set; } = "jpeg"; // jpeg, webp, original
+    public bool PreserveOriginal { get; set; } = false; // If true, don't resize, keep original quality
     public bool ForceRegenerate { get; set; } = false;
     public string? CreatedBy { get; set; }
     public string? CreatedBySystem { get; set; }

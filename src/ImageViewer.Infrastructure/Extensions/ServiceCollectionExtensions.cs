@@ -187,6 +187,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IPerformanceService, PerformanceService>(); // Stub implementation
         services.AddScoped<ISecurityService, SecurityService>();
         services.AddScoped<IWindowsDriveService, WindowsDriveService>();
+        services.AddScoped<ISystemSettingService, SystemSettingService>();
 
         // Register infrastructure services
         services.AddScoped<IJwtService, JwtService>();

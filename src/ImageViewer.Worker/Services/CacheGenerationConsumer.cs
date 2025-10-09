@@ -93,36 +93,62 @@ public class CacheGenerationConsumer : BaseMessageConsumer
                 return;
             }
 
-            // Generate cache image using ResizeImageAsync
+            // Generate cache image
             byte[] cacheImageData;
             
-            // Handle ZIP entries
-            if (ArchiveFileHelper.IsZipEntryPath(cacheMessage.ImagePath))
+            // Check if we should preserve original (no resize)
+            if (cacheMessage.PreserveOriginal || cacheMessage.Format == "original")
             {
-                // Extract image bytes from ZIP
-                var imageBytes = await ArchiveFileHelper.ExtractZipEntryBytes(cacheMessage.ImagePath, null, cancellationToken);
-                if (imageBytes == null || imageBytes.Length == 0)
-                {
-                    _logger.LogWarning("❌ Failed to extract ZIP entry for cache: {Path}", cacheMessage.ImagePath);
-                    return;
-                }
+                _logger.LogDebug("Preserving original quality for image {ImageId} (no resize)", cacheMessage.ImageId);
                 
-                cacheImageData = await imageProcessingService.ResizeImageFromBytesAsync(
-                    imageBytes,
-                    cacheMessage.CacheWidth,
-                    cacheMessage.CacheHeight,
-                    cacheMessage.Quality,
-                    cancellationToken);
+                // Handle ZIP entries - extract bytes
+                if (ArchiveFileHelper.IsZipEntryPath(cacheMessage.ImagePath))
+                {
+                    var imageBytes = await ArchiveFileHelper.ExtractZipEntryBytes(cacheMessage.ImagePath, null, cancellationToken);
+                    if (imageBytes == null || imageBytes.Length == 0)
+                    {
+                        _logger.LogWarning("❌ Failed to extract ZIP entry for cache: {Path}", cacheMessage.ImagePath);
+                        return;
+                    }
+                    cacheImageData = imageBytes; // Use original bytes, no resize
+                }
+                else
+                {
+                    // Regular file - read original file
+                    cacheImageData = await File.ReadAllBytesAsync(cacheMessage.ImagePath, cancellationToken);
+                }
             }
             else
             {
-                // Regular file
-                cacheImageData = await imageProcessingService.ResizeImageAsync(
-                    cacheMessage.ImagePath,
-                    cacheMessage.CacheWidth,
-                    cacheMessage.CacheHeight,
-                    cacheMessage.Quality,
-                    cancellationToken);
+                // Resize to cache dimensions
+                // Handle ZIP entries
+                if (ArchiveFileHelper.IsZipEntryPath(cacheMessage.ImagePath))
+                {
+                    // Extract image bytes from ZIP
+                    var imageBytes = await ArchiveFileHelper.ExtractZipEntryBytes(cacheMessage.ImagePath, null, cancellationToken);
+                    if (imageBytes == null || imageBytes.Length == 0)
+                    {
+                        _logger.LogWarning("❌ Failed to extract ZIP entry for cache: {Path}", cacheMessage.ImagePath);
+                        return;
+                    }
+                    
+                    cacheImageData = await imageProcessingService.ResizeImageFromBytesAsync(
+                        imageBytes,
+                        cacheMessage.CacheWidth,
+                        cacheMessage.CacheHeight,
+                        cacheMessage.Quality,
+                        cancellationToken);
+                }
+                else
+                {
+                    // Regular file
+                    cacheImageData = await imageProcessingService.ResizeImageAsync(
+                        cacheMessage.ImagePath,
+                        cacheMessage.CacheWidth,
+                        cacheMessage.CacheHeight,
+                        cacheMessage.Quality,
+                        cancellationToken);
+                }
             }
 
             // Ensure cache directory exists

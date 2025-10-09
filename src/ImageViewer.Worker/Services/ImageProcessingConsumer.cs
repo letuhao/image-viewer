@@ -74,8 +74,9 @@ public class ImageProcessingConsumer : BaseMessageConsumer
 
             using (scope)
             {
-                var imageService = scope.ServiceProvider.GetRequiredService<IImageService>();
-                var messageQueueService = scope.ServiceProvider.GetRequiredService<IMessageQueueService>();
+                var serviceProvider = scope.ServiceProvider;
+                var imageService = serviceProvider.GetRequiredService<IImageService>();
+                var messageQueueService = serviceProvider.GetRequiredService<IMessageQueueService>();
 
                 // Check if image file exists (handle both regular files and ZIP entries)
                 bool isZipEntry = ArchiveFileHelper.IsArchiveEntryPath(imageMessage.ImagePath);
@@ -132,15 +133,40 @@ public class ImageProcessingConsumer : BaseMessageConsumer
             // Queue cache generation if needed
             try
             {
+                // Load cache settings from system settings (if available)
+                var systemSettingService = serviceProvider.GetService<ISystemSettingService>();
+                int cacheQuality = 85; // Default
+                string cacheFormat = "jpeg"; // Default
+                int cacheWidth = 1920; // Default
+                int cacheHeight = 1080; // Default
+                bool preserveOriginal = false; // Default
+
+                if (systemSettingService != null)
+                {
+                    try
+                    {
+                        cacheQuality = await systemSettingService.GetDefaultCacheQualityAsync();
+                        cacheFormat = await systemSettingService.GetDefaultCacheFormatAsync();
+                        (cacheWidth, cacheHeight) = await systemSettingService.GetDefaultCacheDimensionsAsync();
+                        preserveOriginal = await systemSettingService.GetCachePreserveOriginalAsync();
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogDebug(ex, "Failed to load cache settings from system settings, using defaults");
+                    }
+                }
+
                 var cacheMessage = new CacheGenerationMessage
                 {
                     ImageId = embeddedImage.Id, // Already a string
                     CollectionId = imageMessage.CollectionId, // Already a string
                     ImagePath = imageMessage.ImagePath,
                     CachePath = "", // Will be determined by cache service
-                    CacheWidth = 1920, // Default cache size
-                    CacheHeight = 1080,
-                    Quality = 85,
+                    CacheWidth = cacheWidth,
+                    CacheHeight = cacheHeight,
+                    Quality = cacheQuality,
+                    Format = cacheFormat,
+                    PreserveOriginal = preserveOriginal,
                     ForceRegenerate = false,
                     CreatedBy = "ImageProcessingConsumer",
                     CreatedBySystem = "ImageViewer.Worker",
