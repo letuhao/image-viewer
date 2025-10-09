@@ -1,12 +1,51 @@
 # 🖼️ ImageViewer Platform
 
-A modern, high-performance image management and viewing platform built with .NET 8, featuring advanced search capabilities, real-time notifications, and comprehensive media management.
+A modern, high-performance image management and viewing platform built with .NET 9, featuring advanced search capabilities, real-time notifications, and comprehensive media management.
 
-[![.NET 8](https://img.shields.io/badge/.NET-8.0-blue.svg)](https://dotnet.microsoft.com/download/dotnet/8.0)
+[![.NET 9](https://img.shields.io/badge/.NET-9.0-blue.svg)](https://dotnet.microsoft.com/download/dotnet/9.0)
 [![MongoDB](https://img.shields.io/badge/MongoDB-7.0-green.svg)](https://www.mongodb.com/)
 [![RabbitMQ](https://img.shields.io/badge/RabbitMQ-3.12-orange.svg)](https://www.rabbitmq.com/)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/Tests-585%20Passing-brightgreen.svg)](#testing)
+[![Tests](https://img.shields.io/badge/Tests-Passing-brightgreen.svg)](#testing)
+
+## 📁 Project Structure
+
+```
+image-viewer/
+├── src/                          # Source code (.NET 9 solution)
+│   ├── ImageViewer.Api/          # REST API
+│   ├── ImageViewer.Application/  # Application layer
+│   ├── ImageViewer.Domain/       # Domain entities & logic
+│   ├── ImageViewer.Infrastructure/ # Infrastructure & data access
+│   ├── ImageViewer.Worker/       # Background worker service
+│   └── ImageViewer.Test/         # Unit & integration tests
+├── docs/                         # Documentation
+│   ├── 01-requirements/          # Requirements & analysis
+│   ├── 02-architecture/          # Architecture design
+│   ├── 03-api/                   # API documentation
+│   ├── 04-database/              # Database schema
+│   ├── 05-deployment/            # Deployment guides
+│   ├── 07-migration/             # Migration plans
+│   ├── 08-source-code-review/    # Code reviews
+│   └── 09-troubleshooting/       # Troubleshooting guides
+├── scripts/                      # Operational scripts
+│   ├── deployment/               # Deployment scripts
+│   ├── development/              # Development/testing scripts
+│   └── maintenance/              # Maintenance & cleanup scripts
+├── deployment/                   # Deployment configurations
+│   ├── docker/                   # Dockerfiles & scripts
+│   └── docker-compose/           # Docker compose configs
+├── config/                       # Configuration files
+│   ├── env.* files               # Environment configs
+│   └── appsettings files         # App settings
+├── monitoring/                   # Monitoring configs
+│   ├── prometheus/               # Prometheus config
+│   └── alertmanager/             # Alertmanager config
+├── nginx/                        # Nginx configuration
+├── _archive/                     # Archived code
+│   └── nodejs-legacy/            # Legacy Node.js implementation
+└── docker-compose.yml            # Main compose file
+```
 
 ## 🚀 Features
 
