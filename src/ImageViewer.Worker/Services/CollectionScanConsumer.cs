@@ -54,7 +54,20 @@ public class CollectionScanConsumer : BaseMessageConsumer
             _logger.LogInformation("🔍 Processing collection scan for collection {CollectionId} at path {Path}", 
                 scanMessage.CollectionId, scanMessage.CollectionPath);
 
-            using var scope = _serviceScopeFactory.CreateScope();
+            // Try to create scope, handle disposal gracefully
+            IServiceScope? scope = null;
+            try
+            {
+                scope = _serviceScopeFactory.CreateScope();
+            }
+            catch (ObjectDisposedException)
+            {
+                _logger.LogWarning("⚠️ Service provider disposed, worker is shutting down. Skipping collection scan.");
+                return;
+            }
+
+            using (scope)
+            {
             var collectionService = scope.ServiceProvider.GetRequiredService<ICollectionService>();
             var messageQueueService = scope.ServiceProvider.GetRequiredService<IMessageQueueService>();
 
@@ -118,6 +131,7 @@ public class CollectionScanConsumer : BaseMessageConsumer
 
             _logger.LogInformation("✅ Successfully processed collection scan for {CollectionId}, queued {JobCount} image processing jobs", 
                 collection.Id, mediaFiles.Count);
+            } // Close using (scope) block
         }
         catch (Exception ex)
         {

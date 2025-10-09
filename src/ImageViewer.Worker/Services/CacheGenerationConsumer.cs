@@ -35,6 +35,13 @@ public class CacheGenerationConsumer : BaseMessageConsumer
     {
         try
         {
+            // Check if cancellation requested
+            if (cancellationToken.IsCancellationRequested)
+            {
+                _logger.LogWarning("⚠️ Cancellation requested, skipping cache generation");
+                return;
+            }
+
             var options = new JsonSerializerOptions
             {
                 PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -50,7 +57,20 @@ public class CacheGenerationConsumer : BaseMessageConsumer
             _logger.LogInformation("Processing cache generation for image {ImageId} ({Path})", 
                 cacheMessage.ImageId, cacheMessage.ImagePath);
 
-            using var scope = _serviceScopeFactory.CreateScope();
+            // Try to create scope, handle disposal gracefully
+            IServiceScope? scope = null;
+            try
+            {
+                scope = _serviceScopeFactory.CreateScope();
+            }
+            catch (ObjectDisposedException)
+            {
+                _logger.LogWarning("⚠️ Service provider disposed, worker is shutting down. Skipping cache generation.");
+                return;
+            }
+
+            using (scope)
+            {
             var imageProcessingService = scope.ServiceProvider.GetRequiredService<IImageProcessingService>();
             var cacheService = scope.ServiceProvider.GetRequiredService<ICacheService>();
 
@@ -118,6 +138,7 @@ public class CacheGenerationConsumer : BaseMessageConsumer
                 cacheMessage.ImageId, cachePath, cacheMessage.CacheWidth, cacheMessage.CacheHeight);
 
             _logger.LogInformation("Successfully generated cache for image {ImageId}", cacheMessage.ImageId);
+            } // Close using (scope) block
         }
         catch (Exception ex)
         {

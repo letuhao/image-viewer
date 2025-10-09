@@ -51,7 +51,20 @@ public class ThumbnailGenerationConsumer : BaseMessageConsumer
             _logger.LogInformation("🖼️ Generating thumbnail for image {ImageId} ({Filename})", 
                 thumbnailMessage.ImageId, thumbnailMessage.ImageFilename);
 
-            using var scope = _serviceScopeFactory.CreateScope();
+            // Try to create scope, handle disposal gracefully
+            IServiceScope? scope = null;
+            try
+            {
+                scope = _serviceScopeFactory.CreateScope();
+            }
+            catch (ObjectDisposedException)
+            {
+                _logger.LogWarning("⚠️ Service provider disposed, worker is shutting down. Skipping thumbnail generation.");
+                return;
+            }
+
+            using (scope)
+            {
             var imageProcessingService = scope.ServiceProvider.GetRequiredService<IImageProcessingService>();
             var imageService = scope.ServiceProvider.GetRequiredService<IImageService>();
 
@@ -93,6 +106,7 @@ public class ThumbnailGenerationConsumer : BaseMessageConsumer
             {
                 _logger.LogError(ex, "❌ Failed to generate thumbnail for image {ImageId}", thumbnailMessage.ImageId);
             }
+            } // Close using (scope) block
         }
         catch (Exception ex)
         {
