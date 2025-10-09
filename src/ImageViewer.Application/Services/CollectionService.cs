@@ -227,7 +227,7 @@ public class CollectionService : ICollectionService
         }
     }
 
-    public async Task<Collection> UpdateSettingsAsync(ObjectId collectionId, UpdateCollectionSettingsRequest request)
+    public async Task<Collection> UpdateSettingsAsync(ObjectId collectionId, UpdateCollectionSettingsRequest request, bool triggerScan = true)
     {
         try
         {
@@ -288,8 +288,8 @@ public class CollectionService : ICollectionService
             collection.UpdateSettings(newSettings);
             var updatedCollection = await _collectionRepository.UpdateAsync(collection);
             
-        // Trigger collection scan if AutoScan is enabled - MANDATORY
-        if (newSettings.AutoScan)
+        // Trigger collection scan if AutoScan is enabled AND triggerScan parameter is true
+        if (newSettings.AutoScan && triggerScan)
         {
             // Create background job for collection scan tracking - MANDATORY
             var backgroundJobService = _serviceProvider.GetRequiredService<IBackgroundJobService>();

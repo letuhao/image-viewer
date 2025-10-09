@@ -393,9 +393,9 @@ public class QueuedCollectionService : ICollectionService
         await _collectionService.DeleteCollectionAsync(id);
     }
 
-    public async Task<Collection> UpdateSettingsAsync(ObjectId id, UpdateCollectionSettingsRequest request)
+    public async Task<Collection> UpdateSettingsAsync(ObjectId id, UpdateCollectionSettingsRequest request, bool triggerScan = true)
     {
-        return await _collectionService.UpdateSettingsAsync(id, request);
+        return await _collectionService.UpdateSettingsAsync(id, request, triggerScan);
     }
 
     public async Task<Collection> UpdateMetadataAsync(ObjectId id, UpdateCollectionMetadataRequest request)

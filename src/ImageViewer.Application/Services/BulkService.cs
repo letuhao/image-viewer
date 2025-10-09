@@ -183,7 +183,7 @@ public class BulkService : IBulkService
                 AllowedFormats = settings.AllowedFormats?.ToList(),
                 ExcludedPaths = settings.ExcludedPaths?.ToList()
             };
-            collection = await _collectionService.UpdateSettingsAsync(collection.Id, settingsRequest);
+            collection = await _collectionService.UpdateSettingsAsync(collection.Id, settingsRequest, triggerScan: false); // Don't trigger scan - already triggered by CreateCollectionAsync
             
             _logger.LogInformation("Successfully created new collection {Name} with ID {CollectionId} and applied settings", 
                 potential.Name, collection.Id);

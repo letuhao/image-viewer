@@ -192,49 +192,13 @@ public class BulkOperationConsumer : BaseMessageConsumer
             }
 
             // NEW: Create individual collection scan jobs for each created collection
+            // Note: Collection scan jobs are automatically created by CollectionService.CreateCollectionAsync()
+            // when AutoScan is enabled (default). No need to create duplicate scan jobs here.
+            // This was causing double-scanning of each collection!
+            
             if (result.SuccessCount > 0)
             {
-                _logger.LogInformation("🔄 Creating collection scan jobs for {SuccessCount} collections", result.SuccessCount);
-                
-                using var scope = _serviceScopeFactory.CreateScope();
-                var collectionService = scope.ServiceProvider.GetRequiredService<ICollectionService>();
-                var createdCollections = result.Results?.Where(r => r.Status == "Success" && r.CollectionId.HasValue).ToList() ?? new List<BulkCollectionResult>();
-                
-                foreach (var collectionResult in createdCollections)
-                {
-                    if (collectionResult.CollectionId.HasValue)
-                    {
-                        try
-                        {
-                            // Get the collection details
-                            var collection = await collectionService.GetCollectionByIdAsync(collectionResult.CollectionId.Value);
-                            if (collection != null)
-                            {
-                                // Create collection scan job
-                                var scanMessage = new CollectionScanMessage
-                                {
-                                    CollectionId = collection.Id.ToString(), // Convert ObjectId to string
-                                    CollectionPath = collection.Path,
-                                    CollectionType = collection.Type,
-                                    ForceRescan = false,
-                                    CreatedBy = "BulkOperationConsumer",
-                                    CreatedBySystem = "ImageViewer.Worker"
-                                };
-
-                                // Queue the scan job
-                                await messageQueueService.PublishAsync(scanMessage, "collection.scan");
-                                _logger.LogInformation("📋 Queued scan job for collection {CollectionId}: {CollectionName}", 
-                                    collection.Id, collection.Name);
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            _logger.LogError(ex, "❌ Failed to create scan job for collection {CollectionId}", collectionResult.CollectionId);
-                        }
-                    }
-                }
-                
-                _logger.LogInformation("✅ Created {ScanJobCount} collection scan jobs", createdCollections.Count);
+                _logger.LogInformation("✅ {SuccessCount} collections created. Scan jobs automatically created by CollectionService.", result.SuccessCount);
             }
             
             // Update job status to completed
