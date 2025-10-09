@@ -99,4 +99,22 @@ public class MongoBackgroundJobRepository : MongoRepository<BackgroundJob>, IBac
 
         return counts;
     }
+    
+    /// <summary>
+    /// Atomically increment stage progress using MongoDB $inc operator
+    /// Simple increment only - let fallback monitor handle status transitions
+    /// This prevents race conditions from read-modify-write cycles
+    /// </summary>
+    public async Task<bool> AtomicIncrementStageAsync(ObjectId jobId, string stageName, int incrementBy = 1)
+    {
+        var filter = Builders<BackgroundJob>.Filter.Eq(j => j.Id, jobId);
+        
+        // ONLY increment - don't try to update status here to avoid race conditions
+        var update = Builders<BackgroundJob>.Update
+            .Inc($"stages.{stageName}.completedItems", incrementBy)
+            .Set("updatedAt", DateTime.UtcNow);
+        
+        var result = await _collection.UpdateOneAsync(filter, update);
+        return result.ModifiedCount > 0;
+    }
 }

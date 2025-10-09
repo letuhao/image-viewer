@@ -1,5 +1,6 @@
 using ImageViewer.Domain.Entities;
 using ImageViewer.Domain.Enums;
+using MongoDB.Bson;
 
 namespace ImageViewer.Domain.Interfaces;
 
@@ -37,4 +38,9 @@ public interface IBackgroundJobRepository : IRepository<BackgroundJob>
     /// Get job statistics
     /// </summary>
     Task<Dictionary<JobStatus, int>> GetJobCountsByStatusAsync();
+    
+    /// <summary>
+    /// Atomically increment stage progress (thread-safe for concurrent consumer updates)
+    /// </summary>
+    Task<bool> AtomicIncrementStageAsync(ObjectId jobId, string stageName, int incrementBy = 1);
 }

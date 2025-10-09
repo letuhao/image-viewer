@@ -309,42 +309,18 @@ public class BackgroundJobService : IBackgroundJobService
     {
         try
         {
-            var job = await _backgroundJobRepository.GetByIdAsync(jobId);
-            if (job == null)
+            // Use atomic increment to prevent lost updates from concurrent consumers
+            var success = await _backgroundJobRepository.AtomicIncrementStageAsync(jobId, stageName, incrementBy);
+            
+            if (!success)
             {
-                _logger.LogWarning("Job {JobId} not found for stage increment", jobId);
-                return;
+                _logger.LogWarning("Failed to atomically increment stage {StageName} for job {JobId}", stageName, jobId);
             }
             
-            if (job.Stages == null || !job.Stages.ContainsKey(stageName))
-            {
-                _logger.LogWarning("Stage {StageName} not found in job {JobId}", stageName, jobId);
-                return;
-            }
-            
-            var stage = job.Stages[stageName];
-            int newCompleted = stage.CompletedItems + incrementBy;
-            int total = stage.TotalItems;
-            
-            // Update progress
-            job.UpdateStageProgress(stageName, newCompleted, total, null);
-            
-            // Auto-transition states based on progress
-            if (newCompleted >= total && total > 0)
-            {
-                // Complete the stage
-                job.CompleteStage(stageName, $"All {total} items completed");
-                _logger.LogDebug("✅ Stage {StageName} completed for job {JobId}: {Completed}/{Total}", 
-                    stageName, jobId, newCompleted, total);
-            }
-            else if (stage.Status == "Pending" && newCompleted > 0)
-            {
-                // Start the stage on first item
-                job.StartStage(stageName, total, $"Processing {newCompleted}/{total} items");
-                _logger.LogDebug("▶️ Stage {StageName} started for job {JobId}", stageName, jobId);
-            }
-            
-            await _backgroundJobRepository.UpdateAsync(job);
+            // NOTE: Status transitions (Pending → InProgress → Completed) are handled by:
+            // 1. First increment: Fallback monitor detects completedItems > 0 and sets to InProgress
+            // 2. Final increment: Fallback monitor detects completedItems >= totalItems and sets to Completed
+            // This separates concerns: consumers update counts, monitor manages states
         }
         catch (Exception ex)
         {

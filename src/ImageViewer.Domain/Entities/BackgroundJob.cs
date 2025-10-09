@@ -288,12 +288,18 @@ public class BackgroundJob : BaseEntity
             return;
         }
 
-        // Calculate weighted average of all stage progress
+        // Calculate average progress across all stages
         var totalProgress = Stages.Values.Sum(s => s.Progress);
         Progress = totalProgress / Stages.Count;
         
-        // Update overall completed/total based on all stages
-        CompletedItems = Stages.Values.Sum(s => s.CompletedItems);
-        TotalItems = Stages.Values.Sum(s => s.TotalItems);
+        // For multi-stage jobs, use the FIRST stage's totals (all stages process the same items)
+        // Example: scan finds 39 images, then thumbnail processes 39, cache processes 39
+        // Don't sum them (would be 117), use the scan total (39)
+        var scanStage = Stages.ContainsKey("scan") ? Stages["scan"] : Stages.Values.FirstOrDefault();
+        if (scanStage != null)
+        {
+            CompletedItems = scanStage.CompletedItems;
+            TotalItems = scanStage.TotalItems;
+        }
     }
 }

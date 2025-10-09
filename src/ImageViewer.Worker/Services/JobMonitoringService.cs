@@ -17,9 +17,9 @@ public class JobMonitoringService : BackgroundService
 {
     private readonly IServiceScopeFactory _serviceScopeFactory;
     private readonly ILogger<JobMonitoringService> _logger;
-    private const int CheckIntervalSeconds = 60; // Check every 60 seconds (fallback only)
-    private const int StuckThresholdMinutes = 5; // Jobs not updated in 5 minutes are considered stuck
-    private const int BatchSize = 100; // Process max 100 stuck jobs per cycle
+    private const int CheckIntervalSeconds = 5; // Check every 5 seconds for status transitions
+    private const int StuckThresholdMinutes = 2; // Jobs not updated in 2 minutes need reconciliation
+    private const int BatchSize = 500; // Process max 500 jobs per cycle
 
     public JobMonitoringService(
         IServiceScopeFactory serviceScopeFactory,
@@ -31,7 +31,7 @@ public class JobMonitoringService : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        _logger.LogInformation("🚀 JobMonitoringService started - fallback monitor for stuck jobs (every {Interval}s)", CheckIntervalSeconds);
+        _logger.LogInformation("🚀 JobMonitoringService started - handles status transitions and reconciles stuck jobs (every {Interval}s)", CheckIntervalSeconds);
 
         while (!stoppingToken.IsCancellationRequested)
         {
@@ -62,31 +62,30 @@ public class JobMonitoringService : BackgroundService
         var jobsCollection = mongoDatabase.GetCollection<Domain.Entities.BackgroundJob>("background_jobs");
         var collectionsCollection = mongoDatabase.GetCollection<Domain.Entities.Collection>("collections");
         
-        // Query STUCK jobs: Pending/InProgress AND not updated in last 5 minutes AND has CollectionId
-        var stuckThreshold = DateTime.UtcNow.AddMinutes(-StuckThresholdMinutes);
+        // Query ALL pending/in-progress collection-scan jobs with CollectionId
+        // This handles BOTH: stuck jobs AND jobs that need status transitions
         var filter = MongoDB.Driver.Builders<Domain.Entities.BackgroundJob>.Filter.And(
             MongoDB.Driver.Builders<Domain.Entities.BackgroundJob>.Filter.Eq(j => j.JobType, "collection-scan"),
             MongoDB.Driver.Builders<Domain.Entities.BackgroundJob>.Filter.In(j => j.Status, new[] { "Pending", "InProgress" }),
-            MongoDB.Driver.Builders<Domain.Entities.BackgroundJob>.Filter.Ne(j => j.CollectionId, null),
-            MongoDB.Driver.Builders<Domain.Entities.BackgroundJob>.Filter.Lt(j => j.UpdatedAt, stuckThreshold)
+            MongoDB.Driver.Builders<Domain.Entities.BackgroundJob>.Filter.Ne(j => j.CollectionId, null)
         );
         
-        var stuckJobs = await jobsCollection
+        var pendingJobs = await jobsCollection
             .Find(filter)
             .Sort(MongoDB.Driver.Builders<Domain.Entities.BackgroundJob>.Sort.Ascending(j => j.CreatedAt))
             .Limit(BatchSize)
             .ToListAsync(cancellationToken);
         
-        if (stuckJobs.Count == 0)
+        if (pendingJobs.Count == 0)
         {
-            return; // No stuck jobs
+            return; // No pending jobs
         }
         
-        _logger.LogWarning("⚠️ Found {Count} stuck jobs (not updated in {Minutes} minutes), reconciling...", 
-            stuckJobs.Count, StuckThresholdMinutes);
+        _logger.LogDebug("📊 Monitoring {Count} pending collection-scan jobs for status transitions", 
+            pendingJobs.Count);
         
         // BATCH query all collections at once (performance optimization)
-        var collectionIds = stuckJobs
+        var collectionIds = pendingJobs
             .Where(j => j.CollectionId.HasValue)
             .Select(j => j.CollectionId.Value)
             .ToList();
@@ -97,7 +96,7 @@ public class JobMonitoringService : BackgroundService
         
         var collectionDict = collections.ToDictionary(c => c.Id);
         
-        foreach (var job in stuckJobs)
+        foreach (var job in pendingJobs)
         {
             try
             {
@@ -125,7 +124,7 @@ public class JobMonitoringService : BackgroundService
                 int thumbnailCount = collection.Thumbnails?.Count ?? 0;
                 int cacheCount = collection.CacheImages?.Count ?? 0;
                 
-                _logger.LogWarning("🔧 Reconciling stuck job {JobId} [{Name}]: Thumbnails={T}/{E}, Cache={C}/{E}", 
+                _logger.LogDebug("🔍 Checking job {JobId} [{Name}]: Thumbnails={T}/{E}, Cache={C}/{E}", 
                     job.Id, collection.Name, thumbnailCount, expectedCount, cacheCount, expectedCount);
                 
                 // Reconcile thumbnail stage (force update to actual count)
@@ -148,12 +147,8 @@ public class JobMonitoringService : BackgroundService
                 
                 if (thumbnailChanged || cacheChanged)
                 {
-                    _logger.LogInformation("✅ Reconciled stuck job {JobId}: Thumbnails {T}/{E}, Cache {C}/{E}", 
+                    _logger.LogInformation("✅ Updated job {JobId}: Thumbnails {T}/{E}, Cache {C}/{E}", 
                         job.Id, thumbnailCount, expectedCount, cacheCount, expectedCount);
-                }
-                else
-                {
-                    _logger.LogDebug("Job {JobId} is stuck but counts match - might be a consumer issue", job.Id);
                 }
             }
             catch (Exception ex)
