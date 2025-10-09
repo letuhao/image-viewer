@@ -432,6 +432,16 @@ public class ImageService : IImageService
                 throw new InvalidOperationException($"Collection {collectionId} not found");
             }
 
+            // Check if image already exists (prevent duplicates from double-scans)
+            var existingImage = collection.Images?.FirstOrDefault(img => 
+                img.Filename == filename && img.RelativePath == relativePath);
+            
+            if (existingImage != null)
+            {
+                _logger.LogDebug("Image {Filename} already exists in collection {CollectionId}, returning existing image", filename, collectionId);
+                return existingImage;
+            }
+
             var embeddedImage = new ImageEmbedded(filename, relativePath, fileSize, width, height, format);
             collection.AddImage(embeddedImage);
 

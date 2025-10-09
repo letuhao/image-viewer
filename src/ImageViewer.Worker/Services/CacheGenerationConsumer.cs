@@ -260,7 +260,7 @@ public class CacheGenerationConsumer : BaseMessageConsumer
                 {
                     _logger.LogDebug("Image {ImageId} not found in collection yet, retrying (attempt {Attempt}/3)...", 
                         cacheMessage.ImageId, attempt + 1);
-                    await Task.Delay(100); // Wait 100ms for MongoDB to sync
+                    await Task.Delay(500); // Wait 500ms for MongoDB to sync (increased from 100ms)
                 }
             }
             
