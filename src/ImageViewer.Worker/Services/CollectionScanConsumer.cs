@@ -70,6 +70,7 @@ public class CollectionScanConsumer : BaseMessageConsumer
             {
             var collectionService = scope.ServiceProvider.GetRequiredService<ICollectionService>();
             var messageQueueService = scope.ServiceProvider.GetRequiredService<IMessageQueueService>();
+            var backgroundJobService = scope.ServiceProvider.GetRequiredService<IBackgroundJobService>();
 
             // Get the collection (convert string CollectionId back to ObjectId)
             var collectionId = ObjectId.Parse(scanMessage.CollectionId);
@@ -77,7 +78,33 @@ public class CollectionScanConsumer : BaseMessageConsumer
             if (collection == null)
             {
                 _logger.LogWarning("❌ Collection {CollectionId} not found, skipping scan", scanMessage.CollectionId);
+                
+                // Update job status to failed if JobId exists
+                if (!string.IsNullOrEmpty(scanMessage.JobId))
+                {
+                    try
+                    {
+                        await backgroundJobService.UpdateJobStatusAsync(ObjectId.Parse(scanMessage.JobId), "Failed", $"Collection {scanMessage.CollectionId} not found");
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to update job status for {JobId}", scanMessage.JobId);
+                    }
+                }
                 return;
+            }
+            
+            // Update job status to InProgress if JobId exists
+            if (!string.IsNullOrEmpty(scanMessage.JobId))
+            {
+                try
+                {
+                    await backgroundJobService.UpdateJobStatusAsync(ObjectId.Parse(scanMessage.JobId), "InProgress", $"Scanning collection {collection.Name}");
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to update job status to InProgress for {JobId}", scanMessage.JobId);
+                }
             }
 
             // Check if collection path exists (directory for Folder type, file for Zip type)
@@ -131,6 +158,21 @@ public class CollectionScanConsumer : BaseMessageConsumer
 
             _logger.LogInformation("✅ Successfully processed collection scan for {CollectionId}, queued {JobCount} image processing jobs", 
                 collection.Id, mediaFiles.Count);
+            
+            // Update job status to Completed if JobId exists
+            if (!string.IsNullOrEmpty(scanMessage.JobId))
+            {
+                try
+                {
+                    await backgroundJobService.UpdateJobProgressAsync(ObjectId.Parse(scanMessage.JobId), mediaFiles.Count, mediaFiles.Count, $"Completed: {mediaFiles.Count} images queued");
+                    await backgroundJobService.UpdateJobStatusAsync(ObjectId.Parse(scanMessage.JobId), "Completed", $"Scan completed: {mediaFiles.Count} images found and queued for processing");
+                    _logger.LogInformation("✅ Updated job {JobId} to Completed", scanMessage.JobId);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to update job status to Completed for {JobId}", scanMessage.JobId);
+                }
+            }
             } // Close using (scope) block
         }
         catch (Exception ex)

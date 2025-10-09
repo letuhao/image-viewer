@@ -79,7 +79,8 @@ public class CollectionService : ICollectionService
                     CollectionType = createdCollection.Type,
                     ForceRescan = false,
                     CreatedBy = "CollectionService",
-                    CreatedBySystem = "ImageViewer.Application"
+                    CreatedBySystem = "ImageViewer.Application",
+                    JobId = scanJob.JobId.ToString() // Link message to job for tracking!
                 };
                 
                 await _messageQueueService.PublishAsync(scanMessage, "collection.scan");
@@ -307,7 +308,8 @@ public class CollectionService : ICollectionService
                 CollectionType = collection.Type,
                 ForceRescan = false,
                 CreatedBy = "CollectionService",
-                CreatedBySystem = "ImageViewer.Application"
+                CreatedBySystem = "ImageViewer.Application",
+                JobId = scanJob.JobId.ToString() // Link message to job for tracking!
             };
             
             await _messageQueueService.PublishAsync(scanMessage, "collection.scan");
