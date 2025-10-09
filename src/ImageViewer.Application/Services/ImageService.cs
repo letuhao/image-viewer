@@ -591,12 +591,24 @@ public class ImageService : IImageService
 
             // Get the full image path
             var fullImagePath = Path.Combine(collection.Path, image.RelativePath);
-            if (!File.Exists(fullImagePath))
+            
+            // Check if this is an archive entry (ZIP, 7Z, etc.)
+            bool isArchiveEntry = fullImagePath.Contains("#");
+            
+            // For archive entries, we don't check File.Exists because the path format is "archive.zip#entry.png"
+            if (!isArchiveEntry && !File.Exists(fullImagePath))
             {
                 throw new InvalidOperationException($"Image file does not exist: {fullImagePath}");
             }
 
             // Generate thumbnail using image processing service
+            // Note: Archive entry thumbnail generation should be handled by ThumbnailGenerationConsumer
+            if (isArchiveEntry)
+            {
+                _logger.LogDebug("Processing thumbnail for archive entry: {Path}", fullImagePath);
+                throw new InvalidOperationException($"Archive entry thumbnail generation should be handled by ThumbnailGenerationConsumer, not ImageService: {fullImagePath}");
+            }
+            
             var thumbnailData = await _imageProcessingService.GenerateThumbnailAsync(fullImagePath, width, height, cancellationToken);
             
             // Determine thumbnail path using cache service

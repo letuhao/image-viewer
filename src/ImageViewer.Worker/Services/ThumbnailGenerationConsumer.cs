@@ -7,6 +7,7 @@ using RabbitMQ.Client.Events;
 using ImageViewer.Domain.Events;
 using ImageViewer.Domain.Entities;
 using ImageViewer.Domain.Interfaces;
+using ImageViewer.Domain.ValueObjects;
 using ImageViewer.Application.Services;
 using ImageViewer.Infrastructure.Data;
 using MongoDB.Bson;
@@ -66,7 +67,7 @@ public class ThumbnailGenerationConsumer : BaseMessageConsumer
             using (scope)
             {
             var imageProcessingService = scope.ServiceProvider.GetRequiredService<IImageProcessingService>();
-            var imageService = scope.ServiceProvider.GetRequiredService<IImageService>();
+            var collectionRepository = scope.ServiceProvider.GetRequiredService<ICollectionRepository>();
 
             // Check if image file exists
             if (!File.Exists(thumbnailMessage.ImagePath) && !thumbnailMessage.ImagePath.Contains("#"))
@@ -92,7 +93,7 @@ public class ThumbnailGenerationConsumer : BaseMessageConsumer
                 if (!string.IsNullOrEmpty(thumbnailPath))
                 {
                     // Update database with thumbnail information
-                    await UpdateThumbnailInfoInDatabase(thumbnailMessage, thumbnailPath, imageService);
+                    await UpdateThumbnailInfoInDatabase(thumbnailMessage, thumbnailPath, collectionRepository);
                     
                     _logger.LogInformation("✅ Successfully generated thumbnail for image {ImageId} at {ThumbnailPath}", 
                         thumbnailMessage.ImageId, thumbnailPath);
@@ -210,7 +211,7 @@ public class ThumbnailGenerationConsumer : BaseMessageConsumer
         return Path.Combine(thumbnailDir, thumbnailFileName);
     }
 
-    private async Task UpdateThumbnailInfoInDatabase(ThumbnailGenerationMessage thumbnailMessage, string thumbnailPath, IImageService imageService)
+    private async Task UpdateThumbnailInfoInDatabase(ThumbnailGenerationMessage thumbnailMessage, string thumbnailPath, ICollectionRepository collectionRepository)
     {
         try
         {
@@ -219,13 +220,30 @@ public class ThumbnailGenerationConsumer : BaseMessageConsumer
             // Convert string back to ObjectId for database operations
             var collectionId = ObjectId.Parse(thumbnailMessage.CollectionId);
             
-            // Generate thumbnail using the new embedded service
-            var thumbnailEmbedded = await imageService.GenerateThumbnailAsync(
+            // Get the collection
+            var collection = await collectionRepository.GetByIdAsync(collectionId);
+            if (collection == null)
+            {
+                throw new InvalidOperationException($"Collection {collectionId} not found");
+            }
+            
+            // Create thumbnail embedded object
+            var fileInfo = new FileInfo(thumbnailPath);
+            var thumbnailEmbedded = new ThumbnailEmbedded(
                 thumbnailMessage.ImageId,
-                collectionId,
+                thumbnailPath,
                 thumbnailMessage.ThumbnailWidth,
-                thumbnailMessage.ThumbnailHeight
+                thumbnailMessage.ThumbnailHeight,
+                fileInfo.Length,
+                fileInfo.Extension.TrimStart('.').ToUpperInvariant(),
+                95 // quality
             );
+            
+            // Add thumbnail to collection
+            collection.AddThumbnail(thumbnailEmbedded);
+            
+            // Save the collection
+            await collectionRepository.UpdateAsync(collection);
             
             _logger.LogInformation("✅ Thumbnail info created and persisted for image {ImageId}: {ThumbnailPath}", 
                 thumbnailMessage.ImageId, thumbnailPath);
