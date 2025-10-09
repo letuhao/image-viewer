@@ -359,7 +359,11 @@ public class BulkService : IBulkService
         try
         {
             var imageExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".tiff", ".svg" };
-            var files = Directory.GetFiles(directory, "*", SearchOption.TopDirectoryOnly);
+            
+            // IMPORTANT: Use AllDirectories to find images in nested folders!
+            // This ensures that collections with nested image structures are detected
+            // Example: L:\test\collection1\images\*.jpg will be found
+            var files = Directory.GetFiles(directory, "*", SearchOption.AllDirectories);
             
             return Task.FromResult(files.Any(file => 
                 imageExtensions.Contains(Path.GetExtension(file).ToLowerInvariant())));

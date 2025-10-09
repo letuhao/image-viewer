@@ -48,16 +48,23 @@ public class Collection : BaseEntity
     public List<CacheBinding> CacheBindings { get; private set; } = new();
     
     [BsonElement("images")]
-    public List<ImageEmbedded> Images { get; private set; } = new();
+    public List<ImageEmbedded> Images { get; set; } = new();  // Must be public set for MongoDB driver!
     
     [BsonElement("thumbnails")]
-    public List<ThumbnailEmbedded> Thumbnails { get; private set; } = new();
+    public List<ThumbnailEmbedded> Thumbnails { get; set; } = new();  // Must be public set for MongoDB driver!
     
     [BsonElement("cacheImages")]
-    public List<CacheImageEmbedded> CacheImages { get; private set; } = new();
+    public List<CacheImageEmbedded> CacheImages { get; set; } = new();  // Must be public set for MongoDB driver!
 
-    // Private constructor for MongoDB
-    private Collection() { }
+    // Private constructor for MongoDB deserialization
+    private Collection()
+    {
+        // MongoDB will populate these arrays during deserialization
+        // Initialize to prevent null reference exceptions if arrays don't exist in DB
+        Images = new List<ImageEmbedded>();
+        Thumbnails = new List<ThumbnailEmbedded>();
+        CacheImages = new List<CacheImageEmbedded>();
+    }
 
     public Collection(ObjectId libraryId, string name, string path, CollectionType type, string? description = null, string? createdBy = null, string? createdBySystem = null)
     {

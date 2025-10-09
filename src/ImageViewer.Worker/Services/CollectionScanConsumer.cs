@@ -181,33 +181,49 @@ public class CollectionScanConsumer : BaseMessageConsumer
                         mediaFiles.Count, 
                         $"Found {mediaFiles.Count} media files");
                     
-                    // Start thumbnail stage
+                    _logger.LogInformation("✅ Scan stage completed for job {JobId}: {Count} files found", scanMessage.JobId, mediaFiles.Count);
+                    
+                    // Initialize thumbnail/cache stages as Pending with correct totalItems
+                    // This ensures the stages exist before monitoring starts
                     await backgroundJobService.UpdateJobStageAsync(
                         ObjectId.Parse(scanMessage.JobId), 
                         "thumbnail", 
-                        "InProgress", 
+                        "Pending", 
                         0, 
                         mediaFiles.Count, 
-                        $"Generating thumbnails for {mediaFiles.Count} images");
+                        $"Waiting to generate {mediaFiles.Count} thumbnails");
                     
-                    // Start cache stage
                     await backgroundJobService.UpdateJobStageAsync(
                         ObjectId.Parse(scanMessage.JobId), 
                         "cache", 
-                        "InProgress", 
+                        "Pending", 
                         0, 
                         mediaFiles.Count, 
-                        $"Generating cache for {mediaFiles.Count} images");
+                        $"Waiting to generate {mediaFiles.Count} cache files");
                     
-                    _logger.LogInformation("✅ Updated job {JobId} stages: scan=Completed, thumbnail/cache=InProgress", scanMessage.JobId);
+                    _logger.LogInformation("📝 Initialized thumbnail/cache stages for job {JobId}", scanMessage.JobId);
                     
                     // Start background monitoring to detect completion
-                    _ = Task.Run(async () => await MonitorJobCompletionAsync(
-                        ObjectId.Parse(scanMessage.JobId), 
-                        collectionId, 
-                        mediaFiles.Count,
-                        backgroundJobService,
-                        collectionService));
+                    // IMPORTANT: Pass _serviceScopeFactory, NOT service instances!
+                    // The monitoring task runs in background AFTER this scope closes,
+                    // so passing service instances would use disposed objects.
+                    _logger.LogInformation("🚀 Starting MonitorJobCompletionAsync for job {JobId}, collection {CollectionId}, expected {Count} items", 
+                        scanMessage.JobId, collectionId, mediaFiles.Count);
+                    
+                    _ = Task.Run(async () => 
+                    {
+                        try
+                        {
+                            await MonitorJobCompletionAsync(
+                                ObjectId.Parse(scanMessage.JobId), 
+                                collectionId, 
+                                mediaFiles.Count);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "❌ MonitorJobCompletionAsync failed for job {JobId}", scanMessage.JobId);
+                        }
+                    });
                 }
                 catch (Exception ex)
                 {
@@ -351,9 +367,7 @@ public class CollectionScanConsumer : BaseMessageConsumer
     private async Task MonitorJobCompletionAsync(
         ObjectId jobId, 
         ObjectId collectionId, 
-        int expectedCount,
-        IBackgroundJobService backgroundJobService,
-        ICollectionService collectionService)
+        int expectedCount)
     {
         try
         {
@@ -368,9 +382,21 @@ public class CollectionScanConsumer : BaseMessageConsumer
             {
                 await Task.Delay(5000); // Check every 5 seconds
                 
+                // Create a NEW scope for each iteration to avoid disposed service issues
+                using var scope = _serviceScopeFactory.CreateScope();
+                var collectionService = scope.ServiceProvider.GetRequiredService<ICollectionService>();
+                var backgroundJobService = scope.ServiceProvider.GetRequiredService<IBackgroundJobService>();
+                
                 // Get collection and count thumbnails/cache
                 var collection = await collectionService.GetCollectionByIdAsync(collectionId);
-                if (collection == null) break;
+                if (collection == null)
+                {
+                    _logger.LogWarning("⚠️ Collection {CollectionId} not found in iteration {Iteration} for job {JobId}", collectionId, i, jobId);
+                    break;
+                }
+                
+                _logger.LogInformation("🔄 Monitor iteration {Iteration} for job {JobId} - Collection {CollectionId}: {Name} - Thumbnails: {Thumbs}, Cache: {Cache}", 
+                    i, jobId, collectionId, collection.Name, collection.Thumbnails?.Count ?? 0, collection.CacheImages?.Count ?? 0);
                 
                 int newThumbnailCount = collection.Thumbnails?.Count ?? 0;
                 int newCacheCount = collection.CacheImages?.Count ?? 0; // Use new cacheImages array!
@@ -378,8 +404,8 @@ public class CollectionScanConsumer : BaseMessageConsumer
                 bool thumbnailComplete = newThumbnailCount >= expectedCount;
                 bool cacheComplete = newCacheCount >= expectedCount;
                 
-                // Update thumbnail stage if changed
-                if (newThumbnailCount != thumbnailCount)
+                // Update thumbnail stage if changed OR if currently at 0 and completed
+                if (newThumbnailCount != thumbnailCount || (thumbnailCount == 0 && thumbnailComplete))
                 {
                     thumbnailCount = newThumbnailCount;
                     
@@ -388,15 +414,15 @@ public class CollectionScanConsumer : BaseMessageConsumer
                         await backgroundJobService.UpdateJobStageAsync(jobId, "thumbnail", "Completed", thumbnailCount, expectedCount, $"All {expectedCount} thumbnails generated");
                         _logger.LogInformation("🎊 Thumbnail stage completed for job {JobId}: {Count}/{Total}", jobId, thumbnailCount, expectedCount);
                     }
-                    else
+                    else if (thumbnailCount > 0)
                     {
                         await backgroundJobService.UpdateJobStageAsync(jobId, "thumbnail", "InProgress", thumbnailCount, expectedCount, $"Generated {thumbnailCount}/{expectedCount} thumbnails");
                     }
                     checksWithoutProgress = 0;
                 }
                 
-                // Update cache stage if changed
-                if (newCacheCount != cacheCount)
+                // Update cache stage if changed OR if currently at 0 and completed
+                if (newCacheCount != cacheCount || (cacheCount == 0 && cacheComplete))
                 {
                     cacheCount = newCacheCount;
                     
@@ -405,7 +431,7 @@ public class CollectionScanConsumer : BaseMessageConsumer
                         await backgroundJobService.UpdateJobStageAsync(jobId, "cache", "Completed", cacheCount, expectedCount, $"All {expectedCount} cache files generated");
                         _logger.LogInformation("🎊 Cache stage completed for job {JobId}: {Count}/{Total}", jobId, cacheCount, expectedCount);
                     }
-                    else
+                    else if (cacheCount > 0)
                     {
                         await backgroundJobService.UpdateJobStageAsync(jobId, "cache", "InProgress", cacheCount, expectedCount, $"Generated {cacheCount}/{expectedCount} cache files");
                     }
