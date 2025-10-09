@@ -317,6 +317,11 @@ public class BackgroundJobService : IBackgroundJobService
                 job.StartStage(stageName, total, message);
                 break;
             case "completed":
+                // Update progress before completing (to set final counts)
+                if (completed > 0 || total > 0)
+                {
+                    job.UpdateStageProgress(stageName, completed, total, message);
+                }
                 job.CompleteStage(stageName, message);
                 break;
             case "failed":

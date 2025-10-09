@@ -67,6 +67,7 @@ public class JobStageInfo
         Status = "Completed";
         CompletedAt = DateTime.UtcNow;
         Progress = 100;
+        CompletedItems = TotalItems; // Ensure completed items match total on completion
         if (message != null) Message = message;
     }
 
