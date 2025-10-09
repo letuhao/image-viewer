@@ -48,22 +48,21 @@ public class Collection : BaseEntity
     public List<CacheBinding> CacheBindings { get; private set; } = new();
     
     [BsonElement("images")]
-    public List<ImageEmbedded> Images { get; set; } = new();  // Must be public set for MongoDB driver!
+    public List<ImageEmbedded> Images { get; set; } = null!;  // MongoDB will set this during deserialization
     
     [BsonElement("thumbnails")]
-    public List<ThumbnailEmbedded> Thumbnails { get; set; } = new();  // Must be public set for MongoDB driver!
+    public List<ThumbnailEmbedded> Thumbnails { get; set; } = null!;  // MongoDB will set this during deserialization
     
     [BsonElement("cacheImages")]
-    public List<CacheImageEmbedded> CacheImages { get; set; } = new();  // Must be public set for MongoDB driver!
+    public List<CacheImageEmbedded> CacheImages { get; set; } = null!;  // MongoDB will set this during deserialization
 
     // Private constructor for MongoDB deserialization
+    [BsonConstructor]
     private Collection()
     {
         // MongoDB will populate these arrays during deserialization
-        // Initialize to prevent null reference exceptions if arrays don't exist in DB
-        Images = new List<ImageEmbedded>();
-        Thumbnails = new List<ThumbnailEmbedded>();
-        CacheImages = new List<CacheImageEmbedded>();
+        // DO NOT initialize arrays here - let MongoDB driver handle it!
+        // If we initialize to new(), driver might not overwrite them
     }
 
     public Collection(ObjectId libraryId, string name, string path, CollectionType type, string? description = null, string? createdBy = null, string? createdBySystem = null)
@@ -80,6 +79,11 @@ public class Collection : BaseEntity
         Statistics = new CollectionStatistics();
         WatchInfo = new WatchInfo();
         SearchIndex = new SearchIndex();
+        
+        // Initialize arrays for new collections
+        Images = new List<ImageEmbedded>();
+        Thumbnails = new List<ThumbnailEmbedded>();
+        CacheImages = new List<CacheImageEmbedded>();
         
         // Set creator information
         SetCreator(createdBy, createdBySystem);

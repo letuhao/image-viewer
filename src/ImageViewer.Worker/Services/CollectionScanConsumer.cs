@@ -201,29 +201,7 @@ public class CollectionScanConsumer : BaseMessageConsumer
                         mediaFiles.Count, 
                         $"Waiting to generate {mediaFiles.Count} cache files");
                     
-                    _logger.LogInformation("📝 Initialized thumbnail/cache stages for job {JobId}", scanMessage.JobId);
-                    
-                    // Start background monitoring to detect completion
-                    // IMPORTANT: Pass _serviceScopeFactory, NOT service instances!
-                    // The monitoring task runs in background AFTER this scope closes,
-                    // so passing service instances would use disposed objects.
-                    _logger.LogInformation("🚀 Starting MonitorJobCompletionAsync for job {JobId}, collection {CollectionId}, expected {Count} items", 
-                        scanMessage.JobId, collectionId, mediaFiles.Count);
-                    
-                    _ = Task.Run(async () => 
-                    {
-                        try
-                        {
-                            await MonitorJobCompletionAsync(
-                                ObjectId.Parse(scanMessage.JobId), 
-                                collectionId, 
-                                mediaFiles.Count);
-                        }
-                        catch (Exception ex)
-                        {
-                            _logger.LogError(ex, "❌ MonitorJobCompletionAsync failed for job {JobId}", scanMessage.JobId);
-                        }
-                    });
+                    _logger.LogInformation("📝 Initialized stages for job {JobId} - Centralized JobMonitoringService will track completion", scanMessage.JobId);
                 }
                 catch (Exception ex)
                 {
@@ -364,105 +342,8 @@ public class CollectionScanConsumer : BaseMessageConsumer
         }
     }
 
-    private async Task MonitorJobCompletionAsync(
-        ObjectId jobId, 
-        ObjectId collectionId, 
-        int expectedCount)
-    {
-        try
-        {
-            _logger.LogInformation("📊 Starting completion monitor for job {JobId}, expecting {Count} images", jobId, expectedCount);
-            
-            int thumbnailCount = 0;
-            int cacheCount = 0;
-            int checksWithoutProgress = 0;
-            int maxChecks = 60; // Max 5 minutes (60 * 5 seconds)
-            
-            for (int i = 0; i < maxChecks; i++)
-            {
-                await Task.Delay(5000); // Check every 5 seconds
-                
-                // Create a NEW scope for each iteration to avoid disposed service issues
-                using var scope = _serviceScopeFactory.CreateScope();
-                var collectionService = scope.ServiceProvider.GetRequiredService<ICollectionService>();
-                var backgroundJobService = scope.ServiceProvider.GetRequiredService<IBackgroundJobService>();
-                
-                // Get collection and count thumbnails/cache
-                var collection = await collectionService.GetCollectionByIdAsync(collectionId);
-                if (collection == null)
-                {
-                    _logger.LogWarning("⚠️ Collection {CollectionId} not found in iteration {Iteration} for job {JobId}", collectionId, i, jobId);
-                    break;
-                }
-                
-                _logger.LogInformation("🔄 Monitor iteration {Iteration} for job {JobId} - Collection {CollectionId}: {Name} - Thumbnails: {Thumbs}, Cache: {Cache}", 
-                    i, jobId, collectionId, collection.Name, collection.Thumbnails?.Count ?? 0, collection.CacheImages?.Count ?? 0);
-                
-                int newThumbnailCount = collection.Thumbnails?.Count ?? 0;
-                int newCacheCount = collection.CacheImages?.Count ?? 0; // Use new cacheImages array!
-                
-                bool thumbnailComplete = newThumbnailCount >= expectedCount;
-                bool cacheComplete = newCacheCount >= expectedCount;
-                
-                // Update thumbnail stage if changed OR if currently at 0 and completed
-                if (newThumbnailCount != thumbnailCount || (thumbnailCount == 0 && thumbnailComplete))
-                {
-                    thumbnailCount = newThumbnailCount;
-                    
-                    if (thumbnailComplete)
-                    {
-                        await backgroundJobService.UpdateJobStageAsync(jobId, "thumbnail", "Completed", thumbnailCount, expectedCount, $"All {expectedCount} thumbnails generated");
-                        _logger.LogInformation("🎊 Thumbnail stage completed for job {JobId}: {Count}/{Total}", jobId, thumbnailCount, expectedCount);
-                    }
-                    else if (thumbnailCount > 0)
-                    {
-                        await backgroundJobService.UpdateJobStageAsync(jobId, "thumbnail", "InProgress", thumbnailCount, expectedCount, $"Generated {thumbnailCount}/{expectedCount} thumbnails");
-                    }
-                    checksWithoutProgress = 0;
-                }
-                
-                // Update cache stage if changed OR if currently at 0 and completed
-                if (newCacheCount != cacheCount || (cacheCount == 0 && cacheComplete))
-                {
-                    cacheCount = newCacheCount;
-                    
-                    if (cacheComplete)
-                    {
-                        await backgroundJobService.UpdateJobStageAsync(jobId, "cache", "Completed", cacheCount, expectedCount, $"All {expectedCount} cache files generated");
-                        _logger.LogInformation("🎊 Cache stage completed for job {JobId}: {Count}/{Total}", jobId, cacheCount, expectedCount);
-                    }
-                    else if (cacheCount > 0)
-                    {
-                        await backgroundJobService.UpdateJobStageAsync(jobId, "cache", "InProgress", cacheCount, expectedCount, $"Generated {cacheCount}/{expectedCount} cache files");
-                    }
-                    checksWithoutProgress = 0;
-                }
-                
-                // Both complete? Exit monitoring
-                if (thumbnailComplete && cacheComplete)
-                {
-                    _logger.LogInformation("🎉 Job {JobId} fully completed! Thumbnails: {Thumbs}, Cache: {Cache}", jobId, thumbnailCount, cacheCount);
-                    break;
-                }
-                
-                // No progress for too long? Exit to prevent infinite loop
-                if (newThumbnailCount == thumbnailCount && newCacheCount == cacheCount)
-                {
-                    checksWithoutProgress++;
-                    if (checksWithoutProgress >= 12) // 1 minute without progress
-                    {
-                        _logger.LogWarning("⚠️ Job {JobId} monitoring stopped - no progress for 1 minute. Thumbnails: {Thumbs}/{Total}, Cache: {Cache}/{Total}", 
-                            jobId, thumbnailCount, expectedCount, cacheCount, expectedCount);
-                        break;
-                    }
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error in job completion monitoring for {JobId}", jobId);
-        }
-    }
+    // Monitoring is now handled by centralized JobMonitoringService
+    // No need for per-job monitoring tasks that can fail or get disposed
 
     private class MediaFileInfo
     {

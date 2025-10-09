@@ -83,12 +83,17 @@ public class BackgroundJobService : IBackgroundJobService
             isMultiStage
         );
 
-        // For collection-scan jobs, initialize stages
+        // For collection-scan jobs, initialize stages and set CollectionId
         if (isMultiStage)
         {
             job.AddStage("scan");
             job.AddStage("thumbnail");
             job.AddStage("cache");
+            
+            if (dto.CollectionId.HasValue)
+            {
+                job.SetCollectionId(dto.CollectionId.Value);
+            }
         }
 
         await _backgroundJobRepository.CreateAsync(job);

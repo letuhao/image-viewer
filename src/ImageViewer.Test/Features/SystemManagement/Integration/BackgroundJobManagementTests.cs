@@ -32,7 +32,7 @@ public class BackgroundJobManagementTests : IClassFixture<IntegrationTestFixture
         {
             Type = "CacheGeneration",
             Description = "Generate cache for collection",
-            CollectionId = Guid.NewGuid()
+            CollectionId = ObjectId.GenerateNewId()
         };
 
         // Act
@@ -56,7 +56,7 @@ public class BackgroundJobManagementTests : IClassFixture<IntegrationTestFixture
         {
             Type = "ThumbnailGeneration",
             Description = "Generate thumbnails for collection",
-            CollectionId = Guid.NewGuid()
+            CollectionId = ObjectId.GenerateNewId()
         };
         var createdJob = await _backgroundJobService.CreateJobAsync(jobRequest);
 
@@ -75,7 +75,7 @@ public class BackgroundJobManagementTests : IClassFixture<IntegrationTestFixture
         {
             Type = "BulkOperation",
             Description = "Bulk import operation",
-            CollectionId = Guid.NewGuid()
+            CollectionId = ObjectId.GenerateNewId()
         };
         var createdJob = await _backgroundJobService.CreateJobAsync(jobRequest);
 
@@ -94,13 +94,13 @@ public class BackgroundJobManagementTests : IClassFixture<IntegrationTestFixture
         {
             Type = "CacheGeneration",
             Description = "Generate cache",
-            CollectionId = Guid.NewGuid()
+            CollectionId = ObjectId.GenerateNewId()
         };
         var jobRequest2 = new CreateBackgroundJobDto
         {
             Type = "ThumbnailGeneration",
             Description = "Generate thumbnails",
-            CollectionId = Guid.NewGuid()
+            CollectionId = ObjectId.GenerateNewId()
         };
         await _backgroundJobService.CreateJobAsync(jobRequest1);
         await _backgroundJobService.CreateJobAsync(jobRequest2);
@@ -122,13 +122,13 @@ public class BackgroundJobManagementTests : IClassFixture<IntegrationTestFixture
         {
             Type = "CacheGeneration",
             Description = "Generate cache 1",
-            CollectionId = Guid.NewGuid()
+            CollectionId = ObjectId.GenerateNewId()
         };
         var jobRequest2 = new CreateBackgroundJobDto
         {
             Type = "CacheGeneration",
             Description = "Generate cache 2",
-            CollectionId = Guid.NewGuid()
+            CollectionId = ObjectId.GenerateNewId()
         };
         await _backgroundJobService.CreateJobAsync(jobRequest1);
         await _backgroundJobService.CreateJobAsync(jobRequest2);
@@ -150,7 +150,7 @@ public class BackgroundJobManagementTests : IClassFixture<IntegrationTestFixture
         {
             Type = "BulkOperation",
             Description = "Bulk operation",
-            CollectionId = Guid.NewGuid()
+            CollectionId = ObjectId.GenerateNewId()
         };
         var createdJob = await _backgroundJobService.CreateJobAsync(jobRequest);
 
@@ -169,7 +169,7 @@ public class BackgroundJobManagementTests : IClassFixture<IntegrationTestFixture
         {
             Type = "ThumbnailGeneration",
             Description = "Generate thumbnails",
-            CollectionId = Guid.NewGuid()
+            CollectionId = ObjectId.GenerateNewId()
         };
         var createdJob = await _backgroundJobService.CreateJobAsync(jobRequest);
 
@@ -188,13 +188,13 @@ public class BackgroundJobManagementTests : IClassFixture<IntegrationTestFixture
         {
             Type = "CacheGeneration",
             Description = "Generate cache",
-            CollectionId = Guid.NewGuid()
+            CollectionId = ObjectId.GenerateNewId()
         };
         var jobRequest2 = new CreateBackgroundJobDto
         {
             Type = "ThumbnailGeneration",
             Description = "Generate thumbnails",
-            CollectionId = Guid.NewGuid()
+            CollectionId = ObjectId.GenerateNewId()
         };
         await _backgroundJobService.CreateJobAsync(jobRequest1);
         await _backgroundJobService.CreateJobAsync(jobRequest2);

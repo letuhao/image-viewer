@@ -69,7 +69,7 @@ public class CollectionService : ICollectionService
                 {
                     Type = "collection-scan",
                     Description = $"Collection scan for {createdCollection.Name}",
-                    CollectionId = null // CollectionId is not used in BackgroundJob entity
+                    CollectionId = createdCollection.Id // Link job to collection
                 });
 
                 var scanMessage = new CollectionScanMessage

@@ -58,6 +58,11 @@ public class BackgroundJob : BaseEntity
     
     [BsonElement("currentStage")]
     public string? CurrentStage { get; private set; }
+    
+    // Reference to collection being processed (for collection-scan jobs)
+    [BsonElement("collectionId")]
+    [BsonRepresentation(BsonType.ObjectId)]
+    public ObjectId? CollectionId { get; private set; }
 
     // Private constructor for EF Core
     private BackgroundJob() { }
@@ -137,6 +142,12 @@ public class BackgroundJob : BaseEntity
     public void UpdateCurrentItem(string currentItem)
     {
         CurrentItem = currentItem;
+    }
+    
+    public void SetCollectionId(ObjectId collectionId)
+    {
+        CollectionId = collectionId;
+        UpdatedAt = DateTime.UtcNow;
     }
 
     public void Complete(string? result = null)

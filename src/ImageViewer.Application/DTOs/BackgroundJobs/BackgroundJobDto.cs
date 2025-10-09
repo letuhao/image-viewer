@@ -49,7 +49,7 @@ public class CreateBackgroundJobDto
 {
     public string Type { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
-    public Guid? CollectionId { get; set; }
+    public ObjectId? CollectionId { get; set; }
 }
 
 /// <summary>

@@ -86,6 +86,9 @@ builder.Services.AddScoped<IUserContextService, MockUserContextService>();
 builder.Services.AddScoped<RabbitMQSetupService>();
 builder.Services.AddHostedService<RabbitMQStartupHostedService>();
 
+// Register centralized job monitoring service (runs every 5 seconds)
+builder.Services.AddHostedService<JobMonitoringService>();
+
 // Register consumers
 builder.Services.AddHostedService<CollectionScanConsumer>();
 builder.Services.AddHostedService<ImageProcessingConsumer>();
