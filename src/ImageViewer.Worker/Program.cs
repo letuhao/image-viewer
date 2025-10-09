@@ -68,7 +68,7 @@ builder.Services.AddScoped<IImageService, ImageService>();
 builder.Services.AddScoped<ICacheService, CacheService>(); // Refactored to use embedded design
 builder.Services.AddScoped<ITagService, TagService>();
 builder.Services.AddScoped<IBackgroundJobService, ImageViewer.Application.Services.BackgroundJobService>();
-// builder.Services.AddScoped<IStatisticsService, StatisticsService>(); // Removed - needs refactoring
+builder.Services.AddScoped<IStatisticsService, StatisticsService>(); // Refactored to use embedded design
 builder.Services.AddScoped<IBulkService, BulkService>();
 
 // Add Infrastructure Services
