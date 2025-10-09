@@ -74,15 +74,23 @@ public class ImageProcessingConsumer : BaseMessageConsumer
                 var imageService = scope.ServiceProvider.GetRequiredService<IImageService>();
                 var messageQueueService = scope.ServiceProvider.GetRequiredService<IMessageQueueService>();
 
-            // Check if image file exists
-            if (!File.Exists(imageMessage.ImagePath) && !imageMessage.ImagePath.Contains("#"))
-            {
-                _logger.LogWarning("❌ Image file {Path} does not exist, skipping processing", imageMessage.ImagePath);
-                return;
-            }
+                // Check if image file exists (handle both regular files and ZIP entries)
+                bool isZipEntry = imageMessage.ImagePath.Contains("#");
+                if (!isZipEntry && !File.Exists(imageMessage.ImagePath))
+                {
+                    _logger.LogWarning("❌ Image file {Path} does not exist, skipping processing", imageMessage.ImagePath);
+                    return;
+                }
 
-            // Create or update embedded image
-            var embeddedImage = await CreateOrUpdateEmbeddedImage(imageMessage, imageService, cancellationToken);
+                // For ZIP entries, skip processing for now - not fully implemented
+                if (isZipEntry)
+                {
+                    _logger.LogWarning("⚠️ ZIP entry processing not fully implemented yet. Skipping: {Path}", imageMessage.ImagePath);
+                    return;
+                }
+
+                // Create or update embedded image
+                var embeddedImage = await CreateOrUpdateEmbeddedImage(imageMessage, imageService, cancellationToken);
             if (embeddedImage == null)
             {
                 _logger.LogWarning("❌ Failed to create/update embedded image for {Path}", imageMessage.ImagePath);
