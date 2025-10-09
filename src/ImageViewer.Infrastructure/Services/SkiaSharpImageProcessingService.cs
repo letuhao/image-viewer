@@ -46,6 +46,49 @@ public class SkiaSharpImageProcessingService : IImageProcessingService
         }
     }
 
+    public Task<byte[]> GenerateThumbnailFromBytesAsync(byte[] imageData, int width, int height, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            _logger.LogDebug("Generating thumbnail from bytes with size {Width}x{Height}", width, height);
+
+            using var data = SKData.CreateCopy(imageData);
+            using var originalImage = SKImage.FromEncodedData(data);
+            
+            var originalInfo = originalImage.Info;
+            var scaleX = (float)width / originalInfo.Width;
+            var scaleY = (float)height / originalInfo.Height;
+            var scale = Math.Min(scaleX, scaleY);
+
+            var thumbnailWidth = (int)(originalInfo.Width * scale);
+            var thumbnailHeight = (int)(originalInfo.Height * scale);
+
+            var imageInfo = new SKImageInfo(thumbnailWidth, thumbnailHeight);
+            using var surface = SKSurface.Create(imageInfo);
+            using var canvas = surface.Canvas;
+            using var paint = new SKPaint
+            {
+                FilterQuality = SKFilterQuality.High,
+                IsAntialias = true
+            };
+
+            canvas.Clear(SKColors.Transparent);
+            canvas.DrawImage(originalImage, new SKRect(0, 0, thumbnailWidth, thumbnailHeight), paint);
+            
+            using var image = surface.Snapshot();
+            using var encoded = image.Encode(SKEncodedImageFormat.Jpeg, 90);
+            
+            var result = encoded.ToArray();
+            _logger.LogDebug("Generated thumbnail from bytes: {Size} bytes", result.Length);
+            return Task.FromResult(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error generating thumbnail from bytes");
+            throw;
+        }
+    }
+
     public Task<byte[]> GenerateThumbnailAsync(string imagePath, int width, int height, CancellationToken cancellationToken = default)
     {
         try
@@ -87,6 +130,49 @@ public class SkiaSharpImageProcessingService : IImageProcessingService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error generating thumbnail for {ImagePath}", imagePath);
+            throw;
+        }
+    }
+
+    public Task<byte[]> ResizeImageFromBytesAsync(byte[] imageData, int width, int height, int quality = 95, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            _logger.LogDebug("Resizing image from bytes to {Width}x{Height} with quality {Quality}", width, height, quality);
+
+            using var data = SKData.CreateCopy(imageData);
+            using var originalImage = SKImage.FromEncodedData(data);
+            
+            var originalInfo = originalImage.Info;
+            var scaleX = (float)width / originalInfo.Width;
+            var scaleY = (float)height / originalInfo.Height;
+            var scale = Math.Min(scaleX, scaleY);
+
+            var newWidth = (int)(originalInfo.Width * scale);
+            var newHeight = (int)(originalInfo.Height * scale);
+
+            var imageInfo = new SKImageInfo(newWidth, newHeight);
+            using var surface = SKSurface.Create(imageInfo);
+            using var canvas = surface.Canvas;
+            using var paint = new SKPaint
+            {
+                FilterQuality = SKFilterQuality.High,
+                IsAntialias = true
+            };
+
+            canvas.Clear(SKColors.White);
+            canvas.DrawImage(originalImage, new SKRect(0, 0, newWidth, newHeight), paint);
+            
+            using var image = surface.Snapshot();
+            using var encoded = image.Encode(SKEncodedImageFormat.Jpeg, quality);
+            
+            var result = encoded.ToArray();
+            _logger.LogDebug("Resized image from bytes: {Size} bytes", result.Length);
+            return Task.FromResult(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error resizing image from bytes");
             throw;
         }
     }

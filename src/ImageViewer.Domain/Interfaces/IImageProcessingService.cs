@@ -10,7 +10,9 @@ public interface IImageProcessingService
 {
     Task<ImageMetadata> ExtractMetadataAsync(string imagePath, CancellationToken cancellationToken = default);
     Task<byte[]> GenerateThumbnailAsync(string imagePath, int width, int height, CancellationToken cancellationToken = default);
+    Task<byte[]> GenerateThumbnailFromBytesAsync(byte[] imageData, int width, int height, CancellationToken cancellationToken = default);
     Task<byte[]> ResizeImageAsync(string imagePath, int width, int height, int quality = 95, CancellationToken cancellationToken = default);
+    Task<byte[]> ResizeImageFromBytesAsync(byte[] imageData, int width, int height, int quality = 95, CancellationToken cancellationToken = default);
     Task<byte[]> ConvertImageFormatAsync(string imagePath, string targetFormat, int quality = 95, CancellationToken cancellationToken = default);
     Task<bool> IsImageFileAsync(string filePath, CancellationToken cancellationToken = default);
     Task<string[]> GetSupportedFormatsAsync(CancellationToken cancellationToken = default);

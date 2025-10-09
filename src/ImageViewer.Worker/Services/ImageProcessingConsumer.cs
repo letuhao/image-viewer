@@ -76,22 +76,21 @@ public class ImageProcessingConsumer : BaseMessageConsumer
                 var messageQueueService = scope.ServiceProvider.GetRequiredService<IMessageQueueService>();
 
                 // Check if image file exists (handle both regular files and ZIP entries)
-                bool isZipEntry = imageMessage.ImagePath.Contains("#");
-                if (!isZipEntry && !File.Exists(imageMessage.ImagePath))
-                {
-                    _logger.LogWarning("❌ Image file {Path} does not exist, skipping processing", imageMessage.ImagePath);
-                    return;
-                }
-
-                // For ZIP entries, validate ZIP file exists
+                bool isZipEntry = ZipFileHelper.IsZipEntryPath(imageMessage.ImagePath);
                 if (isZipEntry)
                 {
-                    var zipPath = imageMessage.ImagePath.Split('#')[0];
+                    // Validate ZIP file exists
+                    var (zipPath, _) = ZipFileHelper.SplitZipEntryPath(imageMessage.ImagePath);
                     if (!File.Exists(zipPath))
                     {
                         _logger.LogWarning("❌ ZIP file {Path} does not exist, skipping processing", zipPath);
                         return;
                     }
+                }
+                else if (!File.Exists(imageMessage.ImagePath))
+                {
+                    _logger.LogWarning("❌ Image file {Path} does not exist, skipping processing", imageMessage.ImagePath);
+                    return;
                 }
 
                 // Create or update embedded image (handles both regular files and ZIP entries)
@@ -264,35 +263,13 @@ public class ImageProcessingConsumer : BaseMessageConsumer
     {
         try
         {
-            var parts = zipEntryPath.Split('#');
-            if (parts.Length != 2)
+            // Use shared ZIP helper to extract bytes
+            var imageBytes = await ZipFileHelper.ExtractZipEntryBytes(zipEntryPath, _logger, cancellationToken);
+            if (imageBytes == null || imageBytes.Length == 0)
             {
-                _logger.LogWarning("Invalid ZIP entry path format: {Path}", zipEntryPath);
+                _logger.LogWarning("Failed to extract bytes from ZIP entry: {Path}", zipEntryPath);
                 return (0, 0, 0);
             }
-
-            var zipPath = parts[0];
-            var entryName = parts[1];
-
-            if (!File.Exists(zipPath))
-            {
-                _logger.LogWarning("ZIP file not found: {Path}", zipPath);
-                return (0, 0, 0);
-            }
-
-            using var archive = ZipFile.OpenRead(zipPath);
-            var entry = archive.GetEntry(entryName);
-            if (entry == null)
-            {
-                _logger.LogWarning("Entry {Entry} not found in ZIP {Zip}", entryName, zipPath);
-                return (0, 0, 0);
-            }
-
-            // Extract entry to memory stream and get dimensions
-            using var entryStream = entry.Open();
-            using var memoryStream = new MemoryStream();
-            await entryStream.CopyToAsync(memoryStream, cancellationToken);
-            var imageBytes = memoryStream.ToArray();
 
             // Use SkiaSharp to get dimensions from bytes
             using var data = SkiaSharp.SKData.CreateCopy(imageBytes);
@@ -301,13 +278,14 @@ public class ImageProcessingConsumer : BaseMessageConsumer
             if (codec == null)
             {
                 _logger.LogWarning("Failed to decode image from ZIP entry: {Path}", zipEntryPath);
-                return (0, 0, entry.Length);
+                return (0, 0, imageBytes.Length);
             }
 
             var info = codec.Info;
-            _logger.LogDebug("ZIP entry {Entry}: {Width}x{Height}, {Size} bytes", entryName, info.Width, info.Height, entry.Length);
+            var entryName = ZipFileHelper.SplitZipEntryPath(zipEntryPath).entryName;
+            _logger.LogDebug("ZIP entry {Entry}: {Width}x{Height}, {Size} bytes", entryName, info.Width, info.Height, imageBytes.Length);
             
-            return (info.Width, info.Height, entry.Length);
+            return (info.Width, info.Height, imageBytes.Length);
         }
         catch (Exception ex)
         {
