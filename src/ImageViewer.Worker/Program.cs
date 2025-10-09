@@ -26,8 +26,8 @@ Log.Logger = new LoggerConfiguration()
     .WriteTo.File("logs/imageviewer-worker.log", rollingInterval: RollingInterval.Day)
     .CreateLogger();
 
-// Note: UseSerilog() extension method may not be available in this context
-// builder.Host.UseSerilog();
+// Use Serilog for all logging
+builder.Services.AddSerilog();
 
 // Configure MongoDB
 builder.Services.AddMongoDb(builder.Configuration);
