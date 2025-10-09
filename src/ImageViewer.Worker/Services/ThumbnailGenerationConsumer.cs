@@ -108,6 +108,27 @@ public class ThumbnailGenerationConsumer : BaseMessageConsumer
                     if (currentCount % 50 == 0)
                     {
                         _logger.LogInformation("✅ Generated {Count} thumbnails (latest: {ImageId})", currentCount, thumbnailMessage.ImageId);
+                        
+                        // Update scan job thumbnail stage progress if ScanJobId exists
+                        if (!string.IsNullOrEmpty(thumbnailMessage.ScanJobId))
+                        {
+                            try
+                            {
+                                var backgroundJobService = scope.ServiceProvider.GetRequiredService<IBackgroundJobService>();
+                                // We don't know the total, so just update the completed count
+                                await backgroundJobService.UpdateJobStageAsync(
+                                    ObjectId.Parse(thumbnailMessage.ScanJobId),
+                                    "thumbnail",
+                                    "InProgress",
+                                    currentCount,
+                                    0, // Total unknown - will be set by scan completion
+                                    $"{currentCount} thumbnails generated");
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger.LogDebug(ex, "Failed to update scan job thumbnail stage");
+                            }
+                        }
                     }
                     else
                     {

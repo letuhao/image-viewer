@@ -94,16 +94,23 @@ public class CollectionScanConsumer : BaseMessageConsumer
                 return;
             }
             
-            // Update job status to InProgress if JobId exists
+            // Update job stage to InProgress - SCAN stage
             if (!string.IsNullOrEmpty(scanMessage.JobId))
             {
                 try
                 {
-                    await backgroundJobService.UpdateJobStatusAsync(ObjectId.Parse(scanMessage.JobId), "InProgress", $"Scanning collection {collection.Name}");
+                    await backgroundJobService.UpdateJobStageAsync(
+                        ObjectId.Parse(scanMessage.JobId), 
+                        "scan", 
+                        "InProgress", 
+                        0, 
+                        0, 
+                        $"Scanning collection {collection.Name}");
+                    _logger.LogDebug("Updated job {JobId} scan stage to InProgress", scanMessage.JobId);
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Failed to update job status to InProgress for {JobId}", scanMessage.JobId);
+                    _logger.LogWarning(ex, "Failed to update job stage for {JobId}", scanMessage.JobId);
                 }
             }
 
@@ -143,7 +150,8 @@ public class CollectionScanConsumer : BaseMessageConsumer
                         GenerateThumbnail = true,
                         OptimizeImage = false,
                         CreatedBy = "CollectionScanConsumer",
-                        CreatedBySystem = "ImageViewer.Worker"
+                        CreatedBySystem = "ImageViewer.Worker",
+                        ScanJobId = scanMessage.JobId // Pass scan job ID for tracking
                     };
 
                     // Queue the image processing job
@@ -159,18 +167,43 @@ public class CollectionScanConsumer : BaseMessageConsumer
             _logger.LogInformation("✅ Successfully processed collection scan for {CollectionId}, queued {JobCount} image processing jobs", 
                 collection.Id, mediaFiles.Count);
             
-            // Update job status to Completed if JobId exists
+            // Update SCAN stage to Completed and initialize THUMBNAIL and CACHE stages
             if (!string.IsNullOrEmpty(scanMessage.JobId))
             {
                 try
                 {
-                    await backgroundJobService.UpdateJobProgressAsync(ObjectId.Parse(scanMessage.JobId), mediaFiles.Count, mediaFiles.Count, $"Completed: {mediaFiles.Count} images queued");
-                    await backgroundJobService.UpdateJobStatusAsync(ObjectId.Parse(scanMessage.JobId), "Completed", $"Scan completed: {mediaFiles.Count} images found and queued for processing");
-                    _logger.LogInformation("✅ Updated job {JobId} to Completed", scanMessage.JobId);
+                    // Complete scan stage
+                    await backgroundJobService.UpdateJobStageAsync(
+                        ObjectId.Parse(scanMessage.JobId), 
+                        "scan", 
+                        "Completed", 
+                        mediaFiles.Count, 
+                        mediaFiles.Count, 
+                        $"Found {mediaFiles.Count} media files");
+                    
+                    // Start thumbnail stage
+                    await backgroundJobService.UpdateJobStageAsync(
+                        ObjectId.Parse(scanMessage.JobId), 
+                        "thumbnail", 
+                        "InProgress", 
+                        0, 
+                        mediaFiles.Count, 
+                        $"Generating thumbnails for {mediaFiles.Count} images");
+                    
+                    // Start cache stage
+                    await backgroundJobService.UpdateJobStageAsync(
+                        ObjectId.Parse(scanMessage.JobId), 
+                        "cache", 
+                        "InProgress", 
+                        0, 
+                        mediaFiles.Count, 
+                        $"Generating cache for {mediaFiles.Count} images");
+                    
+                    _logger.LogInformation("✅ Updated job {JobId} stages: scan=Completed, thumbnail/cache=InProgress", scanMessage.JobId);
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Failed to update job status to Completed for {JobId}", scanMessage.JobId);
+                    _logger.LogWarning(ex, "Failed to update job stages for {JobId}", scanMessage.JobId);
                 }
             }
             } // Close using (scope) block

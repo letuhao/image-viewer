@@ -62,4 +62,9 @@ public interface IBackgroundJobService
     /// Start bulk operation job
     /// </summary>
     Task<BackgroundJobDto> StartBulkOperationJobAsync(BulkOperationDto dto);
+
+    /// <summary>
+    /// Update job stage status (for multi-stage jobs)
+    /// </summary>
+    Task UpdateJobStageAsync(ObjectId jobId, string stageName, string status, int completed = 0, int total = 0, string? message = null);
 }

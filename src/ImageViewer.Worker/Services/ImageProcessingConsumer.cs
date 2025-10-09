@@ -115,7 +115,8 @@ public class ImageProcessingConsumer : BaseMessageConsumer
                     ImagePath = imageMessage.ImagePath,
                     ImageFilename = Path.GetFileName(imageMessage.ImagePath),
                     ThumbnailWidth = 300, // Default thumbnail size
-                    ThumbnailHeight = 300
+                    ThumbnailHeight = 300,
+                    ScanJobId = imageMessage.ScanJobId // Pass scan job ID for tracking
                 };
 
                     // Queue the thumbnail generation job
@@ -142,7 +143,8 @@ public class ImageProcessingConsumer : BaseMessageConsumer
                     Quality = 85,
                     ForceRegenerate = false,
                     CreatedBy = "ImageProcessingConsumer",
-                    CreatedBySystem = "ImageViewer.Worker"
+                    CreatedBySystem = "ImageViewer.Worker",
+                    ScanJobId = imageMessage.ScanJobId // Pass scan job ID for tracking
                 };
 
                 // Queue the cache generation job

@@ -1,4 +1,5 @@
 using ImageViewer.Domain.Enums;
+using ImageViewer.Domain.ValueObjects;
 using MongoDB.Bson;
 
 namespace ImageViewer.Domain.Entities;
@@ -22,11 +23,15 @@ public class BackgroundJob : BaseEntity
     public DateTime? EstimatedCompletion { get; private set; }
     public DateTime? StartedAt { get; private set; }
     public DateTime? CompletedAt { get; private set; }
+    
+    // Multi-stage job tracking (for complex jobs like collection-scan)
+    public Dictionary<string, JobStageInfo>? Stages { get; private set; }
+    public string? CurrentStage { get; private set; }
 
     // Private constructor for EF Core
     private BackgroundJob() { }
 
-    public BackgroundJob(string jobType, string? parameters = null)
+    public BackgroundJob(string jobType, string? parameters = null, bool isMultiStage = false)
     {
         Id = ObjectId.GenerateNewId();
         JobType = jobType ?? throw new ArgumentNullException(nameof(jobType));
@@ -37,9 +42,14 @@ public class BackgroundJob : BaseEntity
         CompletedItems = 0;
         Errors = new List<string>();
         CreatedAt = DateTime.UtcNow;
+        
+        if (isMultiStage)
+        {
+            Stages = new Dictionary<string, JobStageInfo>();
+        }
     }
 
-    public BackgroundJob(string jobType, string description, Dictionary<string, object> parameters)
+    public BackgroundJob(string jobType, string description, Dictionary<string, object> parameters, bool isMultiStage = false)
     {
         Id = ObjectId.GenerateNewId();
         JobType = jobType ?? throw new ArgumentNullException(nameof(jobType));
@@ -50,6 +60,11 @@ public class BackgroundJob : BaseEntity
         CompletedItems = 0;
         Errors = new List<string>();
         CreatedAt = DateTime.UtcNow;
+        
+        if (isMultiStage)
+        {
+            Stages = new Dictionary<string, JobStageInfo>();
+        }
     }
 
     public void Start()
@@ -159,5 +174,84 @@ public class BackgroundJob : BaseEntity
     public bool IsPending()
     {
         return Status == JobStatus.Pending.ToString();
+    }
+
+    // Multi-stage job management
+    public void AddStage(string stageName)
+    {
+        if (Stages == null)
+        {
+            Stages = new Dictionary<string, JobStageInfo>();
+        }
+        
+        if (!Stages.ContainsKey(stageName))
+        {
+            Stages[stageName] = new JobStageInfo(stageName);
+        }
+    }
+
+    public void StartStage(string stageName, int totalItems = 0, string? message = null)
+    {
+        if (Stages == null || !Stages.ContainsKey(stageName))
+        {
+            AddStage(stageName);
+        }
+        
+        Stages![stageName].Start(totalItems, message);
+        CurrentStage = stageName;
+    }
+
+    public void UpdateStageProgress(string stageName, int completed, int total, string? message = null)
+    {
+        if (Stages != null && Stages.ContainsKey(stageName))
+        {
+            Stages[stageName].UpdateProgress(completed, total, message);
+            
+            // Update overall job progress based on all stages
+            RecalculateOverallProgress();
+        }
+    }
+
+    public void CompleteStage(string stageName, string? message = null)
+    {
+        if (Stages != null && Stages.ContainsKey(stageName))
+        {
+            Stages[stageName].Complete(message);
+            
+            // Check if all stages are complete
+            if (Stages.Values.All(s => s.Status == "Completed"))
+            {
+                Status = JobStatus.Completed.ToString();
+                CompletedAt = DateTime.UtcNow;
+                Message = "All stages completed successfully";
+            }
+        }
+    }
+
+    public void FailStage(string stageName, string errorMessage)
+    {
+        if (Stages != null && Stages.ContainsKey(stageName))
+        {
+            Stages[stageName].Fail(errorMessage);
+            Status = JobStatus.Failed.ToString();
+            ErrorMessage = $"Stage '{stageName}' failed: {errorMessage}";
+            CompletedAt = DateTime.UtcNow;
+        }
+    }
+
+    private void RecalculateOverallProgress()
+    {
+        if (Stages == null || Stages.Count == 0)
+        {
+            return;
+        }
+
+        // Calculate weighted average of all stage progress
+        var totalProgress = Stages.Values.Sum(s => s.Progress);
+        Progress = totalProgress / Stages.Count;
+        
+        // Update overall completed/total based on all stages
+        CompletedItems = Stages.Values.Sum(s => s.CompletedItems);
+        TotalItems = Stages.Values.Sum(s => s.TotalItems);
     }
 }

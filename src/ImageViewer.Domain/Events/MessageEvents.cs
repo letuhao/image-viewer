@@ -30,6 +30,7 @@ public class ThumbnailGenerationMessage : MessageEvent
     public int ThumbnailHeight { get; set; }
     public string? UserId { get; set; }
     public string? JobId { get; set; } // Link to background job for tracking
+    public string? ScanJobId { get; set; } // Link to parent scan job for multi-stage tracking
 
     public ThumbnailGenerationMessage()
     {

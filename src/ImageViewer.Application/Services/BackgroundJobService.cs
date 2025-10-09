@@ -73,15 +73,27 @@ public class BackgroundJobService : IBackgroundJobService
 
         _logger.LogInformation("Creating job: {Type}", dto.Type);
 
+        // Check if this is a multi-stage job
+        bool isMultiStage = dto.Type == "collection-scan";
+        
         var job = new BackgroundJob(
             dto.Type,
             dto.Description,
-            new Dictionary<string, object>()
+            new Dictionary<string, object>(),
+            isMultiStage
         );
+
+        // For collection-scan jobs, initialize stages
+        if (isMultiStage)
+        {
+            job.AddStage("scan");
+            job.AddStage("thumbnail");
+            job.AddStage("cache");
+        }
 
         await _backgroundJobRepository.CreateAsync(job);
 
-        _logger.LogInformation("Job created with ID: {JobId}", job.Id);
+        _logger.LogInformation("Job created with ID: {JobId} (Multi-stage: {IsMultiStage})", job.Id, isMultiStage);
 
         return MapToDto(job);
     }
@@ -288,6 +300,38 @@ public class BackgroundJobService : IBackgroundJobService
         return MapToDto(job);
     }
 
+    public async Task UpdateJobStageAsync(ObjectId jobId, string stageName, string status, int completed = 0, int total = 0, string? message = null)
+    {
+        var job = await _backgroundJobRepository.GetByIdAsync(jobId);
+        if (job == null)
+        {
+            throw new ArgumentException($"Job with ID {jobId} not found");
+        }
+
+        _logger.LogDebug("Updating job {JobId} stage '{StageName}' to {Status}", jobId, stageName, status);
+
+        switch (status.ToLower())
+        {
+            case "inprogress":
+            case "running":
+                job.StartStage(stageName, total, message);
+                break;
+            case "completed":
+                job.CompleteStage(stageName, message);
+                break;
+            case "failed":
+                job.FailStage(stageName, message ?? "Stage failed");
+                break;
+            default:
+                if (completed > 0 || total > 0)
+                {
+                    job.UpdateStageProgress(stageName, completed, total, message);
+                }
+                break;
+        }
+
+        await _backgroundJobRepository.UpdateAsync(job);
+    }
 
     private static BackgroundJobDto MapToDto(BackgroundJob job)
     {

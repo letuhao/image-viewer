@@ -19,6 +19,7 @@ public class CacheGenerationMessage : MessageEvent
     public string? CreatedBySystem { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public string? JobId { get; set; } // Link to background job for tracking
+    public string? ScanJobId { get; set; } // Link to parent scan job for multi-stage tracking
 
     public CacheGenerationMessage()
     {
