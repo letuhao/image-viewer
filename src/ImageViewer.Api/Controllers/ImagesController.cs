@@ -4,6 +4,8 @@ using ImageViewer.Application.Services;
 using ImageViewer.Domain.Entities;
 using ImageViewer.Application.DTOs.Common;
 using ImageViewer.Application.Extensions;
+using ImageViewer.Domain.Interfaces;
+using ImageViewer.Domain.Events;
 using MongoDB.Bson;
 
 namespace ImageViewer.Api.Controllers;
@@ -14,11 +16,22 @@ public class ImagesController : ControllerBase
 {
     private readonly IImageService _imageService;
     private readonly ILogger<ImagesController> _logger;
+    private readonly IMessageQueueService _messageQueueService;
+    private readonly ICollectionService _collectionService;
+    private readonly ICacheFolderSelectionService _cacheFolderSelectionService;
 
-    public ImagesController(IImageService imageService, ILogger<ImagesController> logger)
+    public ImagesController(
+        IImageService imageService, 
+        ILogger<ImagesController> logger,
+        IMessageQueueService messageQueueService,
+        ICollectionService collectionService,
+        ICacheFolderSelectionService cacheFolderSelectionService)
     {
         _imageService = imageService;
         _logger = logger;
+        _messageQueueService = messageQueueService;
+        _collectionService = collectionService;
+        _cacheFolderSelectionService = cacheFolderSelectionService;
     }
 
     /// <summary>
@@ -153,8 +166,21 @@ public class ImagesController : ControllerBase
             // Fallback to original image if cache is not available
             if (fileBytes == null)
             {
-                _logger.LogWarning("Cache not found for image {ImageId}, falling back to original file", imageId);
+                _logger.LogWarning("Cache not found for image {ImageId}, falling back to original file and queuing cache generation", imageId);
                 fileBytes = await _imageService.GetImageFileAsync(imageId, collectionId);
+                
+                // Queue cache generation for this image (fire and forget)
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        await QueueCacheGenerationAsync(collectionId, imageId, image);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Failed to queue cache generation for image {ImageId}", imageId);
+                    }
+                });
             }
             else
             {
@@ -235,5 +261,67 @@ public class ImagesController : ControllerBase
             "tiff" or "tif" => "image/tiff",
             _ => "application/octet-stream"
         };
+    }
+
+    /// <summary>
+    /// Queue cache generation for a single image
+    /// </summary>
+    private async Task QueueCacheGenerationAsync(ObjectId collectionId, string imageId, Domain.ValueObjects.ImageEmbedded image)
+    {
+        try
+        {
+            // Get collection to determine image path
+            var collection = await _collectionService.GetCollectionByIdAsync(collectionId);
+            if (collection == null)
+            {
+                _logger.LogWarning("Collection {CollectionId} not found, cannot queue cache generation", collectionId);
+                return;
+            }
+
+            // Get cache folder for this collection
+            var cacheFolder = await _cacheFolderSelectionService.SelectCacheFolderForCacheAsync(collectionId);
+            if (cacheFolder == null)
+            {
+                _logger.LogWarning("No cache folder available, cannot queue cache generation for image {ImageId}", imageId);
+                return;
+            }
+
+            // Build full image path
+            var imagePath = Path.Combine(collection.Path, image.RelativePath);
+
+            // Determine cache path
+            var cacheFileName = $"{Path.GetFileNameWithoutExtension(image.Filename)}_cache{Path.GetExtension(image.Filename)}";
+            var cachePath = Path.Combine(cacheFolder.Path, collectionId.ToString(), cacheFileName);
+
+            // Create cache generation message
+            var cacheMessage = new CacheGenerationMessage
+            {
+                ImageId = imageId,
+                CollectionId = collectionId.ToString(),
+                ImagePath = imagePath,
+                CachePath = cachePath,
+                CacheWidth = 1920,
+                CacheHeight = 1080,
+                Quality = 85,
+                Format = "jpeg",
+                PreserveOriginal = false,
+                ForceRegenerate = false,
+                CreatedBy = null,
+                CreatedBySystem = "ImageViewer.Api.AutoCache",
+                CreatedAt = DateTime.UtcNow,
+                JobId = null,
+                ScanJobId = null
+            };
+
+            // Publish the message to the queue
+            await _messageQueueService.PublishAsync(cacheMessage);
+
+            _logger.LogInformation("Queued cache generation for image {ImageId} in collection {CollectionId}", imageId, collectionId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error queuing cache generation for image {ImageId}", imageId);
+            throw;
+        }
     }
 }
