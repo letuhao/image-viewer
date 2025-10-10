@@ -71,7 +71,13 @@ const CollectionDetail: React.FC = () => {
   }
 
   const images = imagesData?.data || [];
-  const pagination = imagesData?.pagination;
+  const pagination = imagesData ? {
+    totalPages: imagesData.totalPages,
+    hasPrevious: imagesData.hasPreviousPage,
+    hasNext: imagesData.hasNextPage,
+    page: imagesData.page,
+    total: imagesData.totalCount
+  } : null;
 
   const formatBytes = (bytes: number) => {
     if (bytes === 0) return '0 B';
