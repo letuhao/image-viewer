@@ -300,9 +300,22 @@ const ImageViewer: React.FC = () => {
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, []);
 
-  // Image preloading
+  // Scroll to current image in scroll mode
   useEffect(() => {
-    if (currentIndex === -1 || images.length === 0) {
+    if (navigationMode === 'scroll' && imageId && currentIndex >= 0) {
+      // Small delay to ensure DOM is ready
+      setTimeout(() => {
+        const imageElement = document.getElementById(`image-${imageId}`);
+        if (imageElement) {
+          imageElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 100);
+    }
+  }, [navigationMode, imageId, currentIndex]);
+
+  // Image preloading (only in paging mode)
+  useEffect(() => {
+    if (navigationMode === 'scroll' || currentIndex === -1 || images.length === 0) {
       return;
     }
 
@@ -519,29 +532,16 @@ const ImageViewer: React.FC = () => {
       >
         {navigationMode === 'scroll' ? (
           // Scroll Mode: Show all images in a vertical list
-          <div className="flex flex-col gap-4 py-4">
+          <div className="flex flex-col gap-4 py-4 w-full items-center">
             {images.map((image, index) => (
-              <div key={image.id} className="flex flex-col items-center">
-                {imageLoading && currentIndex === index && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/50">
-                    <LoadingSpinner text="Loading..." />
-                  </div>
-                )}
-                {imageError && currentIndex === index && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/50 text-white">
-                    <div className="text-center">
-                      <p className="text-red-500 text-lg mb-2">Failed to load image</p>
-                      <button
-                        onClick={() => {
-                          setImageError(false);
-                          setImageLoading(true);
-                        }}
-                        className="px-4 py-2 bg-primary-500 rounded-lg hover:bg-primary-600"
-                      >
-                        Retry
-                      </button>
-                    </div>
-                  </div>
+              <div 
+                key={image.id} 
+                id={`image-${image.id}`}
+                className="flex flex-col items-center relative"
+              >
+                {/* Highlight current image */}
+                {currentIndex === index && (
+                  <div className="absolute -inset-2 border-2 border-primary-500 rounded-lg pointer-events-none"></div>
                 )}
                 <img
                   src={`/api/v1/images/${collectionId}/${image.id}/file`}
@@ -550,13 +550,7 @@ const ImageViewer: React.FC = () => {
                   style={{
                     transform: `rotate(${rotation}deg)`,
                   }}
-                  onLoad={() => currentIndex === index && setImageLoading(false)}
-                  onError={() => {
-                    if (currentIndex === index) {
-                      setImageLoading(false);
-                      setImageError(true);
-                    }
-                  }}
+                  loading="lazy"
                 />
                 <div className="mt-2 text-white text-sm text-center">
                   {index + 1} / {images.length} - {image.filename}
