@@ -154,8 +154,13 @@ public class ThumbnailGenerationConsumer : BaseMessageConsumer
     {
         try
         {
-            // Determine thumbnail path
-            var thumbnailPath = await GetThumbnailPath(imagePath, width, height, collectionId);
+            // Get format from settings FIRST before determining thumbnail path
+            using var settingsScope = _serviceScopeFactory.CreateScope();
+            var settingsService = settingsScope.ServiceProvider.GetRequiredService<IImageProcessingSettingsService>();
+            var format = await settingsService.GetThumbnailFormatAsync();
+            
+            // Determine thumbnail path (with correct format extension)
+            var thumbnailPath = await GetThumbnailPath(imagePath, width, height, collectionId, format);
             
             // Ensure thumbnail directory exists
             var thumbnailDir = Path.GetDirectoryName(thumbnailPath);
@@ -167,10 +172,7 @@ public class ThumbnailGenerationConsumer : BaseMessageConsumer
             // Generate thumbnail using image processing service
             byte[] thumbnailData;
             
-            // Get format and quality settings
-            using var settingsScope = _serviceScopeFactory.CreateScope();
-            var settingsService = settingsScope.ServiceProvider.GetRequiredService<IImageProcessingSettingsService>();
-            var format = await settingsService.GetThumbnailFormatAsync();
+            // Get quality setting (format already retrieved earlier)
             var quality = await settingsService.GetThumbnailQualityAsync();
             
             _logger.LogDebug("🎨 Using thumbnail format: {Format}, quality: {Quality}", format, quality);
@@ -230,28 +232,35 @@ public class ThumbnailGenerationConsumer : BaseMessageConsumer
         }
     }
 
-    private async Task<string> GetThumbnailPath(string imagePath, int width, int height, ObjectId collectionId)
+    private async Task<string> GetThumbnailPath(string imagePath, int width, int height, ObjectId collectionId, string format)
     {
+        // Determine file extension based on format
+        var extension = format.ToLowerInvariant() switch
+        {
+            "jpeg" => ".jpg",
+            "jpg" => ".jpg",
+            "png" => ".png",
+            "webp" => ".webp",
+            _ => ".jpg" // Default fallback
+        };
+        
         // Extract filename only (handle archive entries like "archive.zip#entry.png")
         string fileName;
-        string extension;
         
         if (ArchiveFileHelper.IsArchiveEntryPath(imagePath))
         {
             // For archive entries, extract ONLY the entry name (after #)
             var (_, entryName) = ArchiveFileHelper.SplitArchiveEntryPath(imagePath);
             fileName = Path.GetFileNameWithoutExtension(entryName);
-            extension = Path.GetExtension(entryName);
         }
         else
         {
             // For regular files, use filename only (not full path)
             fileName = Path.GetFileNameWithoutExtension(imagePath);
-            extension = Path.GetExtension(imagePath);
         }
         
         // Use cache service to get the appropriate cache folder for thumbnails
-                using var scope = _serviceScopeFactory.CreateScope();
+        using var scope = _serviceScopeFactory.CreateScope();
         var cacheService = scope.ServiceProvider.GetRequiredService<ICacheService>();
         
         // Get all cache folders and select one based on collection ID hash for even distribution
@@ -268,10 +277,13 @@ public class ThumbnailGenerationConsumer : BaseMessageConsumer
         var selectedIndex = Math.Abs(hash) % cacheFoldersList.Count;
         var selectedCacheFolder = cacheFoldersList[selectedIndex];
         
-        // Create proper folder structure: CacheFolder/thumbnails/CollectionId/ImageFileName_WidthxHeight.ext
+        // Create proper folder structure: CacheFolder/thumbnails/CollectionId/ImageFileName_WidthxHeight.{ext}
         var collectionIdStr = collectionId.ToString();
         var thumbnailDir = Path.Combine(selectedCacheFolder.Path, "thumbnails", collectionIdStr);
         var thumbnailFileName = $"{fileName}_{width}x{height}{extension}";
+        
+        _logger.LogDebug("📁 Selected cache folder {CacheFolderName} for thumbnail (format: {Format})", 
+            selectedCacheFolder.Name, format);
         
         return Path.Combine(thumbnailDir, thumbnailFileName);
     }

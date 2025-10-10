@@ -183,41 +183,12 @@ public class SystemSettingService : ISystemSettingService
     {
         var defaultSettings = new Dictionary<string, (string value, string type, string category, string description)>
         {
-            // Cache settings - Optimized for web as default
-            { "Cache.DefaultQuality", ("85", "Integer", "Cache", "Default JPEG quality for cache generation (0-100) - Optimized for web") },
-            { "Cache.DefaultFormat", ("jpeg", "String", "Cache", "Default format for cache images (jpeg, webp, original)") },
-            { "Cache.DefaultWidth", ("1920", "Integer", "Cache", "Default maximum width for cache images") },
-            { "Cache.DefaultHeight", ("1080", "Integer", "Cache", "Default maximum height for cache images") },
-            { "Cache.PreserveOriginal", ("false", "Boolean", "Cache", "Preserve original image without resizing") },
-            
-            // Thumbnail settings
-            { "Thumbnail.DefaultSize", ("300", "Integer", "Thumbnail", "Default thumbnail size in pixels") },
-            { "Thumbnail.Quality", ("95", "Integer", "Thumbnail", "Thumbnail JPEG quality (0-100)") },
-            { "Thumbnail.Format", ("jpeg", "String", "Thumbnail", "Thumbnail format (jpeg, webp)") },
-            
-            // Bulk operation settings - Optimized for bulk add
-            { "BulkAdd.DefaultQuality", ("85", "Integer", "BulkOperation", "Default quality for bulk add operations (0-100) - Optimized for web") },
-            { "BulkAdd.DefaultFormat", ("jpeg", "String", "BulkOperation", "Default format for bulk add cache generation") },
-            { "BulkAdd.AutoScan", ("true", "Boolean", "BulkOperation", "Automatically scan collections after bulk add") },
-            { "BulkAdd.GenerateCache", ("true", "Boolean", "BulkOperation", "Automatically generate cache for bulk added collections") },
-            { "BulkAdd.GenerateThumbnails", ("true", "Boolean", "BulkOperation", "Automatically generate thumbnails for bulk added collections") },
-            
-            // Quality presets (JSON)
-            { "Cache.QualityPresets", (
-                JsonSerializer.Serialize(new[] {
-                    new { Id = "perfect", Name = "Perfect (100%)", Quality = 100, Format = "jpeg", Description = "Maximum quality, preserve original details" },
-                    new { Id = "high", Name = "High Quality (95%)", Quality = 95, Format = "jpeg", Description = "Best quality, larger file size - Recommended for bulk add" },
-                    new { Id = "optimize", Name = "Optimized (85%)", Quality = 85, Format = "jpeg", Description = "Balanced quality and file size - Default" },
-                    new { Id = "medium", Name = "Medium (75%)", Quality = 75, Format = "jpeg", Description = "Good quality, smaller file size" },
-                    new { Id = "low", Name = "Low (60%)", Quality = 60, Format = "jpeg", Description = "Smaller file size, faster loading" },
-                    new { Id = "webp", Name = "WebP (85%)", Quality = 85, Format = "webp", Description = "Modern format, excellent compression" },
-                    new { Id = "webp-high", Name = "WebP High (95%)", Quality = 95, Format = "webp", Description = "Modern format with high quality" },
-                    new { Id = "original", Name = "Original Quality", Quality = 100, Format = "original", Description = "Keep original quality and format (no resize)" }
-                }), 
-                "JSON", 
-                "Cache", 
-                "Predefined quality presets for cache generation") 
-            },
+            // Image Processing Settings (dot-notation) - Used by IImageProcessingSettingsService
+            { "cache.default.format", ("jpeg", "String", "ImageProcessing", "Default image format for cache generation (jpeg, png, webp)") },
+            { "cache.default.quality", ("85", "Integer", "ImageProcessing", "Default quality for cache generation (0-100)") },
+            { "thumbnail.default.format", ("jpeg", "String", "ImageProcessing", "Default image format for thumbnail generation (jpeg, png, webp)") },
+            { "thumbnail.default.quality", ("90", "Integer", "ImageProcessing", "Default quality for thumbnail generation (0-100)") },
+            { "thumbnail.default.size", ("300", "Integer", "ImageProcessing", "Default thumbnail size in pixels") },
         };
 
         foreach (var (key, (value, type, category, description)) in defaultSettings)
