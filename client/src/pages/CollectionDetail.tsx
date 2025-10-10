@@ -128,10 +128,10 @@ const CollectionDetail: React.FC = () => {
                 <span className="text-xs text-slate-500">IMAGES</span>
               </div>
               <div className="text-2xl font-bold text-white">
-                {collection.imageCount.toLocaleString()}
+                {(collection.imageCount ?? 0).toLocaleString()}
               </div>
               <div className="text-xs text-slate-400 mt-1">
-                {formatBytes(collection.totalSize)} total
+                {formatBytes(collection.totalSize ?? 0)} total
               </div>
             </div>
 
@@ -142,10 +142,10 @@ const CollectionDetail: React.FC = () => {
                 <span className="text-xs text-slate-500">THUMBNAILS</span>
               </div>
               <div className="text-2xl font-bold text-white">
-                {collection.thumbnailCount.toLocaleString()}
+                {(collection.thumbnailCount ?? 0).toLocaleString()}
               </div>
               <div className="text-xs text-slate-400 mt-1">
-                {Math.round((collection.thumbnailCount / Math.max(collection.imageCount, 1)) * 100)}% generated
+                {Math.round(((collection.thumbnailCount ?? 0) / Math.max(collection.imageCount ?? 1, 1)) * 100)}% generated
               </div>
             </div>
 
@@ -156,10 +156,10 @@ const CollectionDetail: React.FC = () => {
                 <span className="text-xs text-slate-500">CACHE</span>
               </div>
               <div className="text-2xl font-bold text-white">
-                {collection.cacheImageCount.toLocaleString()}
+                {(collection.cacheImageCount ?? 0).toLocaleString()}
               </div>
               <div className="text-xs text-slate-400 mt-1">
-                {Math.round((collection.cacheImageCount / Math.max(collection.imageCount, 1)) * 100)}% cached
+                {Math.round(((collection.cacheImageCount ?? 0) / Math.max(collection.imageCount ?? 1, 1)) * 100)}% cached
               </div>
             </div>
 
@@ -170,10 +170,10 @@ const CollectionDetail: React.FC = () => {
                 <span className="text-xs text-slate-500">UPDATED</span>
               </div>
               <div className="text-sm font-medium text-white">
-                {formatDate(collection.updatedAt)}
+                {collection.updatedAt ? formatDate(collection.updatedAt) : 'Unknown'}
               </div>
               <div className="text-xs text-slate-400 mt-1">
-                Type: {collection.type}
+                Type: {collection.type ?? 'unknown'}
               </div>
             </div>
           </div>
