@@ -39,7 +39,9 @@ const Collections: React.FC = () => {
   const navigate = useNavigate();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
-  const limit = 100; // Load more items for better ultrawide experience
+  const [limit, setLimit] = useState(() => 
+    parseInt(localStorage.getItem('collectionsPageSize') || '100')
+  );
 
   // View preferences (persisted to localStorage)
   const [viewMode, setViewMode] = useState<ViewMode>(() => 
@@ -78,6 +80,12 @@ const Collections: React.FC = () => {
   const saveCompactMode = useCallback((compact: boolean) => {
     setCompactMode(compact);
     localStorage.setItem('compactMode', compact.toString());
+  }, []);
+
+  const savePageSize = useCallback((size: number) => {
+    setLimit(size);
+    localStorage.setItem('collectionsPageSize', size.toString());
+    setPage(1); // Reset to first page when changing page size
   }, []);
 
   const handleCollectionClick = (collection: Collection) => {
@@ -176,12 +184,11 @@ const Collections: React.FC = () => {
             {/* Right: View Controls + Pagination - Compact & Efficient */}
             <div className="flex items-center gap-2 lg:gap-3 flex-shrink-0">
               {/* Pagination Controls - Compact */}
-              {data && data.totalPages > 1 && (
-                <div className="flex items-center gap-2 bg-slate-800 rounded-lg px-2 py-1">
+              <div className="flex items-center gap-2 bg-slate-800 rounded-lg px-2 py-1">
                   {/* Previous Button */}
                   <button
                     onClick={() => setPage(p => Math.max(1, p - 1))}
-                    disabled={!data.hasPrevious}
+                    disabled={!data?.hasPrevious}
                     className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     title="Previous Page"
                   >
@@ -193,11 +200,11 @@ const Collections: React.FC = () => {
                     <input
                       type="number"
                       min="1"
-                      max={data.totalPages}
+                      max={data?.totalPages || 1}
                       value={page}
                       onChange={(e) => {
                         const newPage = parseInt(e.target.value);
-                        if (newPage >= 1 && newPage <= data.totalPages) {
+                        if (newPage >= 1 && newPage <= (data?.totalPages || 1)) {
                           setPage(newPage);
                         }
                       }}
@@ -205,20 +212,19 @@ const Collections: React.FC = () => {
                       title="Go to page"
                     />
                     <span className="text-xs text-slate-400">/</span>
-                    <span className="text-xs text-slate-400 w-6 text-center">{data.totalPages}</span>
+                    <span className="text-xs text-slate-400 w-6 text-center">{data?.totalPages || 1}</span>
                   </div>
 
                   {/* Next Button */}
                   <button
                     onClick={() => setPage(p => p + 1)}
-                    disabled={!data.hasNext}
+                    disabled={!data?.hasNext}
                     className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     title="Next Page"
                   >
                     <ChevronRight className="h-4 w-4" />
                   </button>
                 </div>
-              )}
 
               {/* View Mode - Compact Icons Only */}
               <div className="flex items-center gap-1 bg-slate-800 rounded-lg p-1">
@@ -288,6 +294,23 @@ const Collections: React.FC = () => {
                   {compactMode ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
                 </button>
               )}
+
+              {/* Page Size Input */}
+              <input
+                type="number"
+                min="1"
+                max="1000"
+                value={limit}
+                onChange={(e) => {
+                  const newValue = parseInt(e.target.value) || 100;
+                  if (newValue >= 1 && newValue <= 1000) {
+                    savePageSize(newValue);
+                  }
+                }}
+                className="px-2 py-1.5 bg-slate-800 border border-slate-700 rounded text-white text-xs focus:outline-none focus:ring-1 focus:ring-primary-500 w-16 lg:w-20 text-center"
+                title="Items Per Page"
+                placeholder="100"
+              />
             </div>
           </div>
         </div>

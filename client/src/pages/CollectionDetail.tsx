@@ -300,19 +300,22 @@ const CollectionDetail: React.FC = () => {
                   </select>
                 )}
 
-                {/* Page Size Selector */}
-                <select
+                {/* Page Size Input */}
+                <input
+                  type="number"
+                  min="1"
+                  max="1000"
                   value={limit}
-                  onChange={(e) => savePageSize(parseInt(e.target.value))}
-                  className="px-2 py-1.5 bg-slate-800 border border-slate-700 rounded text-white text-xs focus:outline-none focus:ring-1 focus:ring-primary-500 w-16 lg:w-20"
+                  onChange={(e) => {
+                    const newValue = parseInt(e.target.value) || 20;
+                    if (newValue >= 1 && newValue <= 1000) {
+                      savePageSize(newValue);
+                    }
+                  }}
+                  className="px-2 py-1.5 bg-slate-800 border border-slate-700 rounded text-white text-xs focus:outline-none focus:ring-1 focus:ring-primary-500 w-16 lg:w-20 text-center"
                   title="Items Per Page"
-                >
-                  <option value={5}>5</option>
-                  <option value={10}>10</option>
-                  <option value={20}>20</option>
-                  <option value={50}>50</option>
-                  <option value={100}>100</option>
-                </select>
+                  placeholder="20"
+                />
               </div>
             </div>
           </div>
