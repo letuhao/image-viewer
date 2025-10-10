@@ -37,17 +37,17 @@ const Settings: React.FC = () => {
   useEffect(() => {
     if (apiSettings) {
       setUserSettings({
-        theme: apiSettings.displaySettings.theme,
-        viewMode: apiSettings.displaySettings.viewMode,
-        itemsPerPage: apiSettings.displaySettings.itemsPerPage,
-        cardSize: apiSettings.displaySettings.cardSize,
-        compactMode: apiSettings.displaySettings.compactMode,
+        theme: apiSettings.theme,
+        viewMode: apiSettings.displayMode,
+        itemsPerPage: apiSettings.itemsPerPage,
+        cardSize: 'medium', // Not in backend, use default
+        compactMode: false, // Not in backend, use default
         language: apiSettings.language,
-        enableAnimations: apiSettings.displaySettings.enableAnimations,
-        emailNotifications: apiSettings.notificationSettings.emailNotifications,
-        pushNotifications: apiSettings.notificationSettings.pushNotifications,
-        profilePublic: apiSettings.privacySettings.profilePublic,
-        analytics: apiSettings.privacySettings.allowAnalytics,
+        enableAnimations: true, // Not in backend, use default
+        emailNotifications: apiSettings.notifications.email,
+        pushNotifications: apiSettings.notifications.push,
+        profilePublic: apiSettings.privacy.profileVisibility === 'public',
+        analytics: apiSettings.privacy.analytics,
       });
     }
   }, [apiSettings]);
@@ -59,23 +59,18 @@ const Settings: React.FC = () => {
 
   const handleSaveSettings = () => {
     updateSettingsMutation.mutate({
-      displaySettings: {
-        theme: userSettings.theme,
-        viewMode: userSettings.viewMode,
-        itemsPerPage: userSettings.itemsPerPage,
-        cardSize: userSettings.cardSize,
-        compactMode: userSettings.compactMode,
-        enableAnimations: userSettings.enableAnimations,
-      },
-      notificationSettings: {
-        emailNotifications: userSettings.emailNotifications,
-        pushNotifications: userSettings.pushNotifications,
-      },
-      privacySettings: {
-        profilePublic: userSettings.profilePublic,
-        allowAnalytics: userSettings.analytics,
-      },
+      theme: userSettings.theme,
+      displayMode: userSettings.viewMode,
+      itemsPerPage: userSettings.itemsPerPage,
       language: userSettings.language,
+      notifications: {
+        email: userSettings.emailNotifications,
+        push: userSettings.pushNotifications,
+      },
+      privacy: {
+        profileVisibility: userSettings.profilePublic ? 'public' : 'private',
+        analytics: userSettings.analytics,
+      },
     });
   };
 

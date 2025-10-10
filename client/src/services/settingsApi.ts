@@ -5,32 +5,35 @@ import api from './api';
 // ============================================================================
 
 export interface UserSettings {
-  displaySettings: DisplaySettings;
-  privacySettings: PrivacySettings;
-  notificationSettings: NotificationSettings;
+  displayMode: string;
+  itemsPerPage: number;
+  theme: string;
   language: string;
   timezone: string;
-}
-
-export interface DisplaySettings {
-  theme: string;
-  viewMode: string;
-  itemsPerPage: number;
-  cardSize: string;
-  compactMode: boolean;
-  enableAnimations: boolean;
-}
-
-export interface PrivacySettings {
-  profilePublic: boolean;
-  showOnlineStatus: boolean;
-  allowAnalytics: boolean;
+  notifications: NotificationSettings;
+  privacy: PrivacySettings;
+  performance: PerformanceSettings;
 }
 
 export interface NotificationSettings {
-  emailNotifications: boolean;
-  pushNotifications: boolean;
-  desktopNotifications: boolean;
+  email: boolean;
+  push: boolean;
+  sms: boolean;
+  inApp: boolean;
+}
+
+export interface PrivacySettings {
+  profileVisibility: string;
+  activityVisibility: string;
+  dataSharing: boolean;
+  analytics: boolean;
+}
+
+export interface PerformanceSettings {
+  imageQuality: string;
+  videoQuality: string;
+  cacheSize: number;
+  autoOptimize: boolean;
 }
 
 export interface SystemSetting {
@@ -46,11 +49,14 @@ export interface SystemSetting {
 }
 
 export interface UpdateUserSettingsRequest {
-  displaySettings?: Partial<DisplaySettings>;
-  notificationSettings?: Partial<NotificationSettings>;
-  privacySettings?: Partial<PrivacySettings>;
+  displayMode?: string;
+  itemsPerPage?: number;
+  theme?: string;
   language?: string;
   timezone?: string;
+  notifications?: Partial<NotificationSettings>;
+  privacy?: Partial<PrivacySettings>;
+  performance?: Partial<PerformanceSettings>;
 }
 
 export interface UpdateSystemSettingRequest {
