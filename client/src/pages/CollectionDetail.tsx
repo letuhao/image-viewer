@@ -25,6 +25,7 @@ import {
 import { formatDistanceToNow } from 'date-fns';
 
 type ViewMode = 'grid' | 'list' | 'detail';
+type CardSize = 'mini' | 'tiny' | 'small' | 'medium' | 'large' | 'xlarge';
 
 /**
  * Collection Detail Page
@@ -36,7 +37,12 @@ const CollectionDetail: React.FC = () => {
   const navigate = useNavigate();
   const [page, setPage] = useState(1);
   const [limit] = useState(50); // Items per page
-  const [viewMode, setViewMode] = useState<ViewMode>('grid');
+  const [viewMode, setViewMode] = useState<ViewMode>(() => 
+    (localStorage.getItem('collectionDetailViewMode') as ViewMode) || 'grid'
+  );
+  const [cardSize, setCardSize] = useState<CardSize>(() => 
+    (localStorage.getItem('collectionDetailCardSize') as CardSize) || 'medium'
+  );
   
   const { data: collection, isLoading } = useCollection(id!);
   const { data: imagesData, isLoading: imagesLoading } = useImages({
@@ -79,6 +85,35 @@ const CollectionDetail: React.FC = () => {
       return isNaN(date.getTime()) ? 'Unknown' : formatDistanceToNow(date, { addSuffix: true });
     } catch {
       return 'Unknown';
+    }
+  };
+
+  // Save view preferences to localStorage
+  const saveViewMode = (mode: ViewMode) => {
+    setViewMode(mode);
+    localStorage.setItem('collectionDetailViewMode', mode);
+  };
+
+  const saveCardSize = (size: CardSize) => {
+    setCardSize(size);
+    localStorage.setItem('collectionDetailCardSize', size);
+  };
+
+  // Get grid classes based on card size (same as Collections page)
+  const getGridClasses = () => {
+    switch (cardSize) {
+      case 'mini':
+        return 'grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 xl:grid-cols-12 2xl:grid-cols-14';
+      case 'tiny':
+        return 'grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-9 2xl:grid-cols-10';
+      case 'small':
+        return 'grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 2xl:grid-cols-8';
+      case 'medium':
+        return 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7';
+      case 'large':
+        return 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6';
+      case 'xlarge':
+        return 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5';
     }
   };
 
@@ -202,7 +237,7 @@ const CollectionDetail: React.FC = () => {
                 {/* View Mode Controls */}
                 <div className="flex items-center gap-1 bg-slate-800 rounded-lg p-1">
                   <button
-                    onClick={() => setViewMode('grid')}
+                    onClick={() => saveViewMode('grid')}
                     className={`p-1.5 rounded transition-colors ${
                       viewMode === 'grid' 
                         ? 'bg-primary-500 text-white' 
@@ -213,7 +248,7 @@ const CollectionDetail: React.FC = () => {
                     <Grid3x3 className="h-4 w-4" />
                   </button>
                   <button
-                    onClick={() => setViewMode('list')}
+                    onClick={() => saveViewMode('list')}
                     className={`p-1.5 rounded transition-colors ${
                       viewMode === 'list' 
                         ? 'bg-primary-500 text-white' 
@@ -224,7 +259,7 @@ const CollectionDetail: React.FC = () => {
                     <List className="h-4 w-4" />
                   </button>
                   <button
-                    onClick={() => setViewMode('detail')}
+                    onClick={() => saveViewMode('detail')}
                     className={`p-1.5 rounded transition-colors ${
                       viewMode === 'detail' 
                         ? 'bg-primary-500 text-white' 
@@ -235,6 +270,23 @@ const CollectionDetail: React.FC = () => {
                     <ListTree className="h-4 w-4" />
                   </button>
                 </div>
+
+                {/* Card Size Selector (only for grid mode) */}
+                {viewMode === 'grid' && (
+                  <select
+                    value={cardSize}
+                    onChange={(e) => saveCardSize(e.target.value as CardSize)}
+                    className="px-2 py-1.5 bg-slate-800 border border-slate-700 rounded text-white text-xs focus:outline-none focus:ring-1 focus:ring-primary-500 w-16 lg:w-20"
+                    title="Card Size"
+                  >
+                    <option value="mini">Mini</option>
+                    <option value="tiny">Tiny</option>
+                    <option value="small">Small</option>
+                    <option value="medium">Medium</option>
+                    <option value="large">Large</option>
+                    <option value="xlarge">XLarge</option>
+                  </select>
+                )}
               </div>
             </div>
           </div>
@@ -252,6 +304,7 @@ const CollectionDetail: React.FC = () => {
                 collectionId={id!}
                 images={images}
                 isLoading={false}
+                gridClasses={getGridClasses()}
               />
             )}
             
