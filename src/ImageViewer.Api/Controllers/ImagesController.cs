@@ -134,7 +134,7 @@ public class ImagesController : ControllerBase
     }
 
     /// <summary>
-    /// Get image file content
+    /// Get image file content (loads from cache, falls back to original)
     /// </summary>
     [HttpGet("{collectionId}/{imageId}/file")]
     public async Task<IActionResult> GetImageFile(ObjectId collectionId, string imageId, [FromQuery] int? width = null, [FromQuery] int? height = null)
@@ -147,7 +147,20 @@ public class ImagesController : ControllerBase
                 return NotFound();
             }
 
-            var fileBytes = await _imageService.GetImageFileAsync(imageId, collectionId);
+            // Try to load from cache first
+            var fileBytes = await _imageService.GetCachedImageAsync(imageId, collectionId, width, height);
+            
+            // Fallback to original image if cache is not available
+            if (fileBytes == null)
+            {
+                _logger.LogWarning("Cache not found for image {ImageId}, falling back to original file", imageId);
+                fileBytes = await _imageService.GetImageFileAsync(imageId, collectionId);
+            }
+            else
+            {
+                _logger.LogDebug("Loaded image {ImageId} from cache", imageId);
+            }
+
             if (fileBytes == null)
             {
                 return NotFound("Image file not found");
