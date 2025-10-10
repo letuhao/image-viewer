@@ -167,6 +167,14 @@ public class ThumbnailGenerationConsumer : BaseMessageConsumer
             // Generate thumbnail using image processing service
             byte[] thumbnailData;
             
+            // Get format and quality settings
+            using var settingsScope = _serviceScopeFactory.CreateScope();
+            var settingsService = settingsScope.ServiceProvider.GetRequiredService<IImageProcessingSettingsService>();
+            var format = await settingsService.GetThumbnailFormatAsync();
+            var quality = await settingsService.GetThumbnailQualityAsync();
+            
+            _logger.LogDebug("🎨 Using thumbnail format: {Format}, quality: {Quality}", format, quality);
+            
             // Handle ZIP entries
             if (ArchiveFileHelper.IsZipEntryPath(imagePath))
             {
@@ -181,7 +189,9 @@ public class ThumbnailGenerationConsumer : BaseMessageConsumer
                 thumbnailData = await imageProcessingService.GenerateThumbnailFromBytesAsync(
                     imageBytes, 
                     width, 
-                    height, 
+                    height,
+                    format,
+                    quality,
                     cancellationToken);
             }
             else
@@ -190,7 +200,9 @@ public class ThumbnailGenerationConsumer : BaseMessageConsumer
                 thumbnailData = await imageProcessingService.GenerateThumbnailAsync(
                     imagePath, 
                     width, 
-                    height, 
+                    height,
+                    format,
+                    quality,
                     cancellationToken);
             }
 

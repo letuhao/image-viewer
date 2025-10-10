@@ -132,6 +132,13 @@ public class CacheGenerationConsumer : BaseMessageConsumer
             }
             else
             {
+                // Get format setting from system settings
+                using var settingsScope = _serviceScopeFactory.CreateScope();
+                var settingsService = settingsScope.ServiceProvider.GetRequiredService<IImageProcessingSettingsService>();
+                var format = await settingsService.GetCacheFormatAsync();
+                
+                _logger.LogDebug("🎨 Using cache format: {Format}, quality: {Quality}", format, adjustedQuality);
+                
                 // Resize to cache dimensions with smart quality
                 // Handle ZIP entries
                 if (ArchiveFileHelper.IsZipEntryPath(cacheMessage.ImagePath))
@@ -148,6 +155,7 @@ public class CacheGenerationConsumer : BaseMessageConsumer
                         imageBytes,
                         cacheMessage.CacheWidth,
                         cacheMessage.CacheHeight,
+                        format, // Use format from settings!
                         adjustedQuality, // Use adjusted quality!
                         cancellationToken);
                 }
@@ -158,6 +166,7 @@ public class CacheGenerationConsumer : BaseMessageConsumer
                 cacheMessage.ImagePath,
                 cacheMessage.CacheWidth,
                 cacheMessage.CacheHeight,
+                        format, // Use format from settings!
                         adjustedQuality, // Use adjusted quality!
                 cancellationToken);
                 }
