@@ -21,6 +21,12 @@ export interface Collection {
   thumbnailCount: number;
   cacheImageCount: number;
   totalSize: number;
+  
+  // Thumbnail info for collection card display
+  thumbnailPath?: string;
+  thumbnailImageId?: string;
+  hasThumbnail: boolean;
+  
   createdAt: string;
   updatedAt: string;
 }

@@ -59,6 +59,81 @@ public class CollectionsController : ControllerBase
     }
 
     /// <summary>
+    /// Get thumbnail image for a collection
+    /// </summary>
+    [HttpGet("{id}/thumbnails/{thumbnailId}")]
+    public async Task<IActionResult> GetCollectionThumbnail(string id, string thumbnailId)
+    {
+        try
+        {
+            if (!ObjectId.TryParse(id, out var collectionId))
+            {
+                return BadRequest(new { message = "Invalid collection ID format" });
+            }
+
+            if (!ObjectId.TryParse(thumbnailId, out var thumbId))
+            {
+                return BadRequest(new { message = "Invalid thumbnail ID format" });
+            }
+
+            _logger.LogInformation("Getting thumbnail {ThumbnailId} for collection {CollectionId}", thumbnailId, id);
+            _logger.LogDebug("Thumbnail request: CollectionId={CollectionId}, ThumbnailId={ThumbnailId}", collectionId, thumbId);
+
+            // Get the collection to find the thumbnail
+            var collection = await _collectionService.GetCollectionByIdAsync(collectionId);
+            if (collection == null)
+            {
+                return NotFound(new { message = "Collection not found" });
+            }
+
+            // Find the specific thumbnail
+            _logger.LogDebug("Collection has {ThumbnailCount} thumbnails", collection.Thumbnails?.Count ?? 0);
+            
+            var thumbnail = collection.Thumbnails?.FirstOrDefault(t => t.Id == thumbId.ToString());
+            if (thumbnail == null)
+            {
+                _logger.LogWarning("Thumbnail {ThumbnailId} not found in collection {CollectionId}", thumbId, collectionId);
+                return NotFound(new { message = "Thumbnail not found" });
+            }
+            
+            if (!thumbnail.IsGenerated)
+            {
+                _logger.LogWarning("Thumbnail {ThumbnailId} is not generated", thumbId);
+                return NotFound(new { message = "Thumbnail not generated" });
+            }
+            
+            if (!thumbnail.IsValid)
+            {
+                _logger.LogWarning("Thumbnail {ThumbnailId} is invalid", thumbId);
+                return NotFound(new { message = "Thumbnail is invalid" });
+            }
+            
+            _logger.LogDebug("Found thumbnail {ThumbnailId} at path: {ThumbnailPath}", thumbId, thumbnail.ThumbnailPath);
+
+            // Check if thumbnail file exists
+            if (!System.IO.File.Exists(thumbnail.ThumbnailPath))
+            {
+                _logger.LogWarning("Thumbnail file not found at path: {ThumbnailPath}", thumbnail.ThumbnailPath);
+                return NotFound(new { message = "Thumbnail file not found" });
+            }
+
+            // Read and return the thumbnail file
+            var fileBytes = await System.IO.File.ReadAllBytesAsync(thumbnail.ThumbnailPath);
+            var contentType = GetContentType(thumbnail.Format);
+
+            // Update access statistics
+            thumbnail.UpdateAccess();
+
+            return base.File(fileBytes, contentType);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get thumbnail {ThumbnailId} for collection {CollectionId}", thumbnailId, id);
+            return StatusCode(500, new { message = "Internal server error" });
+        }
+    }
+
+    /// <summary>
     /// Get collection by ID (detailed view with all embedded data)
     /// </summary>
     [HttpGet("{id}")]
@@ -606,6 +681,22 @@ public class CollectionsController : ControllerBase
             _logger.LogError(ex, "Failed to get collections by type {Type}", type);
             return StatusCode(500, new { message = "Internal server error" });
         }
+    }
+
+    /// <summary>
+    /// Get content type for thumbnail format
+    /// </summary>
+    private static string GetContentType(string format)
+    {
+        return format.ToLower() switch
+        {
+            "jpg" or "jpeg" => "image/jpeg",
+            "png" => "image/png",
+            "webp" => "image/webp",
+            "gif" => "image/gif",
+            "bmp" => "image/bmp",
+            _ => "image/jpeg" // Default fallback
+        };
     }
 }
 

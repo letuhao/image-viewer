@@ -304,15 +304,32 @@ const Collections: React.FC = () => {
                       <CardContent className={compactMode ? 'p-3' : 'p-4'}>
                         {/* Thumbnail */}
                         <div className={`${compactMode ? 'mb-2' : 'mb-3'} relative bg-slate-800 rounded-lg overflow-hidden ${compactMode ? 'aspect-square' : 'aspect-video'}`}>
-                          {collection.type === 'archive' ? (
-                            <div className="absolute inset-0 flex items-center justify-center">
+                          {collection.hasThumbnail && collection.thumbnailPath ? (
+                            <img 
+                              src={`/api/v1/collections/${collection.id}/thumbnails/${collection.thumbnailImageId}`}
+                              alt={`${collection.name} thumbnail`}
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                // Fallback to icon if thumbnail fails to load
+                                e.currentTarget.style.display = 'none';
+                                const nextElement = e.currentTarget.nextElementSibling as HTMLElement;
+                                if (nextElement) {
+                                  nextElement.style.display = 'flex';
+                                }
+                              }}
+                            />
+                          ) : null}
+                          
+                          {/* Fallback Icon (always present but hidden when thumbnail loads) */}
+                          <div 
+                            className={`absolute inset-0 flex items-center justify-center ${collection.hasThumbnail && collection.thumbnailPath ? 'hidden' : 'flex'}`}
+                          >
+                            {collection.type === 'archive' ? (
                               <Archive className={`${compactMode ? 'h-8 w-8' : 'h-12 w-12'} text-purple-500`} />
-                            </div>
-                          ) : (
-                            <div className="absolute inset-0 flex items-center justify-center">
+                            ) : (
                               <FolderOpen className={`${compactMode ? 'h-8 w-8' : 'h-12 w-12'} text-blue-500`} />
-                            </div>
-                          )}
+                            )}
+                          </div>
                         </div>
 
                         {/* Info */}

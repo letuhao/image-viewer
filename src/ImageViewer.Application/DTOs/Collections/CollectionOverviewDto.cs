@@ -20,6 +20,11 @@ public class CollectionOverviewDto
     public long CacheImageCount { get; set; }
     public long TotalSize { get; set; }
     
+    // Thumbnail info for collection card display
+    public string? ThumbnailPath { get; set; }
+    public string? ThumbnailImageId { get; set; }
+    public bool HasThumbnail { get; set; }
+    
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 }

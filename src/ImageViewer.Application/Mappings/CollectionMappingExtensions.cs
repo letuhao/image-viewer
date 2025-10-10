@@ -7,9 +7,13 @@ public static class CollectionMappingExtensions
 {
     /// <summary>
     /// Convert Collection entity to lightweight overview DTO (for lists)
+    /// Includes thumbnail info for collection card display
     /// </summary>
     public static CollectionOverviewDto ToOverviewDto(this Collection collection)
     {
+        // Get middle thumbnail (if thumbnails exist)
+        var middleThumbnail = GetMiddleThumbnail(collection.Thumbnails);
+        
         return new CollectionOverviewDto
         {
             Id = collection.Id.ToString(),
@@ -22,9 +26,37 @@ public static class CollectionMappingExtensions
             ThumbnailCount = collection.Thumbnails?.Count ?? 0,
             CacheImageCount = collection.CacheImages?.Count ?? 0,
             TotalSize = collection.Images?.Sum(i => i.FileSize) ?? 0,
+            
+            // Thumbnail info for collection card display
+            ThumbnailPath = middleThumbnail?.ThumbnailPath,
+            ThumbnailImageId = middleThumbnail?.Id, // Use Thumbnail ID, not Image ID
+            HasThumbnail = middleThumbnail != null,
+            
             CreatedAt = collection.CreatedAt,
             UpdatedAt = collection.UpdatedAt,
         };
+    }
+
+    /// <summary>
+    /// Get the middle thumbnail from the collection (for collection card preview)
+    /// Returns null if no thumbnails exist or if no valid thumbnails found
+    /// </summary>
+    private static Domain.ValueObjects.ThumbnailEmbedded? GetMiddleThumbnail(List<Domain.ValueObjects.ThumbnailEmbedded>? thumbnails)
+    {
+        if (thumbnails == null || thumbnails.Count == 0)
+            return null;
+
+        // Filter for valid, generated thumbnails
+        var validThumbnails = thumbnails
+            .Where(t => t.IsGenerated && t.IsValid && !string.IsNullOrEmpty(t.ThumbnailPath))
+            .ToList();
+
+        if (validThumbnails.Count == 0)
+            return null;
+
+        // Return the middle thumbnail (or first if only one)
+        var middleIndex = validThumbnails.Count / 2;
+        return validThumbnails[middleIndex];
     }
 
     /// <summary>
