@@ -56,11 +56,19 @@ public class SecurityController : ControllerBase
                     user = result.User != null ? new { 
                         id = result.User.Id,
                         username = result.User.Username,
-                        email = result.User.Email
+                        email = result.User.Email,
+                        role = result.User.Role,
+                        isEmailVerified = result.User.IsEmailVerified,
+                        twoFactorEnabled = result.User.TwoFactorEnabled,
+                        lastLoginAt = result.User.LastLoginAt
                     } : new { 
                         id = "",
                         username = request.Username,
-                        email = ""
+                        email = "",
+                        role = "User",
+                        isEmailVerified = false,
+                        twoFactorEnabled = false,
+                        lastLoginAt = (DateTime?)null
                     }
                 });
             }
