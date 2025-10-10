@@ -4,6 +4,8 @@ import { useCollections } from '../hooks/useCollections';
 import { Card, CardContent } from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
+import AddCollectionDialog from '../components/collections/AddCollectionDialog';
+import BulkAddCollectionsDialog from '../components/collections/BulkAddCollectionsDialog';
 import { 
   FolderOpen, 
   Archive, 
@@ -15,7 +17,8 @@ import {
   List,
   ListTree,
   Maximize2,
-  Minimize2
+  Minimize2,
+  Zap
 } from 'lucide-react';
 import type { Collection } from '../services/types';
 
@@ -49,7 +52,11 @@ const Collections: React.FC = () => {
     localStorage.getItem('compactMode') === 'true'
   );
 
-  const { data, isLoading } = useCollections({ page, limit });
+  // Dialog states
+  const [showAddDialog, setShowAddDialog] = useState(false);
+  const [showBulkAddDialog, setShowBulkAddDialog] = useState(false);
+
+  const { data, isLoading, refetch } = useCollections({ page, limit });
 
   // Filter collections by search query
   const filteredCollections = data?.data?.filter((collection) =>
@@ -139,6 +146,28 @@ const Collections: React.FC = () => {
                 onChange={(e) => setSearch(e.target.value)}
                 className="w-full pl-9 pr-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm"
               />
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => setShowAddDialog(true)}
+                className="flex items-center space-x-1.5"
+              >
+                <Plus className="h-4 w-4" />
+                <span className="hidden sm:inline">Add</span>
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowBulkAddDialog(true)}
+                className="flex items-center space-x-1.5"
+              >
+                <Zap className="h-4 w-4" />
+                <span className="hidden sm:inline">Bulk Add</span>
+              </Button>
             </div>
 
             {/* Right: View Controls + Pagination - Compact & Efficient */}
@@ -473,6 +502,18 @@ const Collections: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* Dialogs */}
+      <AddCollectionDialog
+        isOpen={showAddDialog}
+        onClose={() => setShowAddDialog(false)}
+        onSuccess={() => refetch()}
+      />
+      <BulkAddCollectionsDialog
+        isOpen={showBulkAddDialog}
+        onClose={() => setShowBulkAddDialog(false)}
+        onSuccess={() => refetch()}
+      />
     </div>
   );
 };
