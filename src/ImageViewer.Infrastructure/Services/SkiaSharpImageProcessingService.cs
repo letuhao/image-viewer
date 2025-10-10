@@ -46,11 +46,11 @@ public class SkiaSharpImageProcessingService : IImageProcessingService
         }
     }
 
-    public Task<byte[]> GenerateThumbnailFromBytesAsync(byte[] imageData, int width, int height, CancellationToken cancellationToken = default)
+    public Task<byte[]> GenerateThumbnailFromBytesAsync(byte[] imageData, int width, int height, string format = "jpeg", int quality = 90, CancellationToken cancellationToken = default)
     {
         try
         {
-            _logger.LogDebug("Generating thumbnail from bytes with size {Width}x{Height}", width, height);
+            _logger.LogDebug("Generating thumbnail from bytes with size {Width}x{Height}, format {Format}, quality {Quality}", width, height, format, quality);
 
             using var data = SKData.CreateCopy(imageData);
             using var originalImage = SKImage.FromEncodedData(data);
@@ -80,10 +80,11 @@ public class SkiaSharpImageProcessingService : IImageProcessingService
                 paint);
             
             using var image = surface.Snapshot();
-            using var encoded = image.Encode(SKEncodedImageFormat.Jpeg, 90);
+            var encodedFormat = ParseImageFormat(format);
+            using var encoded = image.Encode(encodedFormat, quality);
             
             var result = encoded.ToArray();
-            _logger.LogDebug("Generated thumbnail from bytes: {Size} bytes", result.Length);
+            _logger.LogDebug("Generated thumbnail from bytes: {Size} bytes, format {Format}", result.Length, format);
             return Task.FromResult(result);
         }
         catch (Exception ex)
@@ -93,11 +94,11 @@ public class SkiaSharpImageProcessingService : IImageProcessingService
         }
     }
 
-    public Task<byte[]> GenerateThumbnailAsync(string imagePath, int width, int height, CancellationToken cancellationToken = default)
+    public Task<byte[]> GenerateThumbnailAsync(string imagePath, int width, int height, string format = "jpeg", int quality = 95, CancellationToken cancellationToken = default)
     {
         try
         {
-            _logger.LogDebug("Generating thumbnail for {ImagePath} with size {Width}x{Height}", imagePath, width, height);
+            _logger.LogDebug("Generating thumbnail for {ImagePath} with size {Width}x{Height}, format {Format}, quality {Quality}", imagePath, width, height, format, quality);
 
             using var stream = File.OpenRead(imagePath);
             using var originalImage = SKImage.FromEncodedData(stream);
@@ -128,11 +129,12 @@ public class SkiaSharpImageProcessingService : IImageProcessingService
                 paint);
 
             using var thumbnailImage = SKImage.FromBitmap(thumbnailBitmap);
-            using var thumbnailStream = thumbnailImage.Encode(SKEncodedImageFormat.Jpeg, 95); // Higher quality for thumbnails
+            var encodedFormat = ParseImageFormat(format);
+            using var thumbnailStream = thumbnailImage.Encode(encodedFormat, quality);
             
             var result = thumbnailStream.ToArray();
             
-            _logger.LogDebug("Successfully generated thumbnail for {ImagePath}", imagePath);
+            _logger.LogDebug("Successfully generated thumbnail for {ImagePath}, format {Format}", imagePath, format);
             return Task.FromResult(result);
         }
         catch (Exception ex)
@@ -142,11 +144,11 @@ public class SkiaSharpImageProcessingService : IImageProcessingService
         }
     }
 
-    public Task<byte[]> ResizeImageFromBytesAsync(byte[] imageData, int width, int height, int quality = 95, CancellationToken cancellationToken = default)
+    public Task<byte[]> ResizeImageFromBytesAsync(byte[] imageData, int width, int height, string format = "jpeg", int quality = 95, CancellationToken cancellationToken = default)
     {
         try
         {
-            _logger.LogDebug("Resizing image from bytes to {Width}x{Height} with quality {Quality}", width, height, quality);
+            _logger.LogDebug("Resizing image from bytes to {Width}x{Height} with format {Format}, quality {Quality}", width, height, format, quality);
 
             using var data = SKData.CreateCopy(imageData);
             using var originalImage = SKImage.FromEncodedData(data);
@@ -176,10 +178,11 @@ public class SkiaSharpImageProcessingService : IImageProcessingService
                 paint);
             
             using var image = surface.Snapshot();
-            using var encoded = image.Encode(SKEncodedImageFormat.Jpeg, quality);
+            var encodedFormat = ParseImageFormat(format);
+            using var encoded = image.Encode(encodedFormat, quality);
             
             var result = encoded.ToArray();
-            _logger.LogDebug("Resized image from bytes: {Size} bytes", result.Length);
+            _logger.LogDebug("Resized image from bytes: {Size} bytes, format {Format}", result.Length, format);
             return Task.FromResult(result);
         }
         catch (Exception ex)
@@ -189,11 +192,11 @@ public class SkiaSharpImageProcessingService : IImageProcessingService
         }
     }
 
-    public Task<byte[]> ResizeImageAsync(string imagePath, int width, int height, int quality = 95, CancellationToken cancellationToken = default)
+    public Task<byte[]> ResizeImageAsync(string imagePath, int width, int height, string format = "jpeg", int quality = 95, CancellationToken cancellationToken = default)
     {
         try
         {
-            _logger.LogDebug("Resizing image {ImagePath} to {Width}x{Height} with quality {Quality}", imagePath, width, height, quality);
+            _logger.LogDebug("Resizing image {ImagePath} to {Width}x{Height} with format {Format}, quality {Quality}", imagePath, width, height, format, quality);
 
             using var stream = File.OpenRead(imagePath);
             using var originalImage = SKImage.FromEncodedData(stream);
@@ -222,11 +225,12 @@ public class SkiaSharpImageProcessingService : IImageProcessingService
                 paint);
 
             using var resizedImage = SKImage.FromBitmap(resizedBitmap);
-            using var resizedStream = resizedImage.Encode(SKEncodedImageFormat.Jpeg, quality);
+            var encodedFormat = ParseImageFormat(format);
+            using var resizedStream = resizedImage.Encode(encodedFormat, quality);
             
             var result = resizedStream.ToArray();
             
-            _logger.LogDebug("Successfully resized image {ImagePath}", imagePath);
+            _logger.LogDebug("Successfully resized image {ImagePath}, format {Format}", imagePath, format);
             return Task.FromResult(result);
         }
         catch (Exception ex)
@@ -361,5 +365,20 @@ public class SkiaSharpImageProcessingService : IImageProcessingService
             _logger.LogError(ex, "Error getting file size for {ImagePath}", imagePath);
             throw;
         }
+    }
+
+    /// <summary>
+    /// Parse image format string to SKEncodedImageFormat enum
+    /// </summary>
+    private SKEncodedImageFormat ParseImageFormat(string format)
+    {
+        return format.ToLowerInvariant() switch
+        {
+            "jpg" or "jpeg" => SKEncodedImageFormat.Jpeg,
+            "png" => SKEncodedImageFormat.Png,
+            "webp" => SKEncodedImageFormat.Webp,
+            "bmp" => SKEncodedImageFormat.Bmp,
+            _ => SKEncodedImageFormat.Jpeg // Default to JPEG
+        };
     }
 }

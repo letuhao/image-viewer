@@ -624,7 +624,7 @@ public class ImageService : IImageService
                 throw new InvalidOperationException($"Archive entry thumbnail generation should be handled by ThumbnailGenerationConsumer, not ImageService: {fullImagePath}");
             }
             
-            var thumbnailData = await _imageProcessingService.GenerateThumbnailAsync(fullImagePath, width, height, cancellationToken);
+            var thumbnailData = await _imageProcessingService.GenerateThumbnailAsync(fullImagePath, width, height, "jpeg", 95, cancellationToken);
             
             // Determine thumbnail path using cache service
             var cacheFolders = await _cacheService.GetCacheFoldersAsync();
@@ -714,7 +714,7 @@ public class ImageService : IImageService
             }
             else
             {
-                cacheData = await _imageProcessingService.ResizeImageAsync(fullImagePath, width, height, 95, cancellationToken);
+                cacheData = await _imageProcessingService.ResizeImageAsync(fullImagePath, width, height, "jpeg", 95, cancellationToken);
             }
             
             // Determine cache path using cache service

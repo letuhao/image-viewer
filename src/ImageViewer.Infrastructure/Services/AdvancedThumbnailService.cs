@@ -85,7 +85,7 @@ public class AdvancedThumbnailService : IAdvancedThumbnailService
 
             // Generate thumbnail using image processing service
             var thumbnailData = await _imageProcessingService.GenerateThumbnailAsync(
-                sourcePath, 300, 300, cancellationToken);
+                sourcePath, 300, 300, "jpeg", 95, cancellationToken);
 
             if (thumbnailData == null || thumbnailData.Length == 0)
             {
