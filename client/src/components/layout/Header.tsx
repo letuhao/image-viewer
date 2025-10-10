@@ -5,9 +5,12 @@ import {
   Settings, 
   Activity,
   Menu,
-  X
+  X,
+  LogOut,
+  User
 } from 'lucide-react';
 import { useState } from 'react';
+import { useAuth } from '../../contexts/AuthContext';
 
 /**
  * Header Component
@@ -20,6 +23,7 @@ import { useState } from 'react';
  */
 const Header: React.FC = () => {
   const location = useLocation();
+  const { user, logout } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const navItems = [
@@ -69,6 +73,21 @@ const Header: React.FC = () => {
               </Link>
             );
           })}
+          
+          {/* User Menu */}
+          <div className="ml-4 pl-4 border-l border-slate-700 flex items-center space-x-2">
+            <div className="text-sm text-slate-400">
+              <User className="h-4 w-4 inline mr-1" />
+              {user?.username}
+            </div>
+            <button
+              onClick={logout}
+              className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
+              title="Logout"
+            >
+              <LogOut className="h-5 w-5" />
+            </button>
+          </div>
         </nav>
 
         {/* Mobile Menu Button */}
