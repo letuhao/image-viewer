@@ -201,11 +201,10 @@ const CollectionDetail: React.FC = () => {
               {/* View Mode + Pagination Controls */}
               <div className="flex items-center gap-2">
                 {/* Pagination Controls */}
-                {pagination && (
-                  <div className="flex items-center gap-2 bg-slate-800 rounded-lg px-2 py-1">
+                <div className="flex items-center gap-2 bg-slate-800 rounded-lg px-2 py-1">
                     <button
                       onClick={() => setPage(Math.max(1, page - 1))}
-                      disabled={!pagination.hasPrevious}
+                      disabled={!pagination?.hasPrevious}
                       className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                       title="Previous Page"
                     >
@@ -216,11 +215,11 @@ const CollectionDetail: React.FC = () => {
                       <input
                         type="number"
                         min="1"
-                        max={pagination.totalPages}
+                        max={pagination?.totalPages || 1}
                         value={page}
                         onChange={(e) => {
                           const newPage = parseInt(e.target.value);
-                          if (newPage >= 1 && newPage <= pagination.totalPages) {
+                          if (newPage >= 1 && newPage <= (pagination?.totalPages || 1)) {
                             setPage(newPage);
                           }
                         }}
@@ -228,19 +227,18 @@ const CollectionDetail: React.FC = () => {
                         title="Go to page"
                       />
                       <span className="text-xs text-slate-400">/</span>
-                      <span className="text-xs text-slate-400 w-6 text-center">{pagination.totalPages}</span>
+                      <span className="text-xs text-slate-400 w-6 text-center">{pagination?.totalPages || 1}</span>
                     </div>
 
                     <button
                       onClick={() => setPage(page + 1)}
-                      disabled={!pagination.hasNext}
+                      disabled={!pagination?.hasNext}
                       className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                       title="Next Page"
                     >
                       <ChevronRight className="h-4 w-4" />
                     </button>
-                  </div>
-                )}
+                </div>
 
                 {/* View Mode Controls */}
                 <div className="flex items-center gap-1 bg-slate-800 rounded-lg p-1">
