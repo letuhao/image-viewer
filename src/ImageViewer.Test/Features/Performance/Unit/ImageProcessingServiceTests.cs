@@ -131,7 +131,7 @@ public class ImageProcessingServiceTests
         try
         {
             // Act
-            var result = await _imageProcessingService.ResizeImageAsync(imagePath, 200, 200, 90);
+            var result = await _imageProcessingService.ResizeImageAsync(imagePath, 200, 200, "jpeg", 90);
 
             // Assert
             result.Should().NotBeNull();
@@ -155,7 +155,7 @@ public class ImageProcessingServiceTests
         try
         {
             // Act
-            var result = await _imageProcessingService.ResizeImageAsync(imagePath, 200, 200, 150); // Invalid quality > 100
+            var result = await _imageProcessingService.ResizeImageAsync(imagePath, 200, 200, "jpeg", 150); // Invalid quality > 100
 
             // Assert
             result.Should().NotBeNull();
@@ -353,7 +353,7 @@ public class ImageProcessingServiceTests
         try
         {
             // Act - Test that the service can accept a cancellation token without throwing
-            var result = await _imageProcessingService.GenerateThumbnailAsync(imagePath, 100, 100, cancellationTokenSource.Token);
+            var result = await _imageProcessingService.GenerateThumbnailAsync(imagePath, 100, 100, "jpeg", 95, cancellationTokenSource.Token);
 
             // Assert
             result.Should().NotBeNull();
