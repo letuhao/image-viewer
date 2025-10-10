@@ -77,9 +77,13 @@ public class CacheGenerationConsumer : BaseMessageConsumer
             var imageProcessingService = scope.ServiceProvider.GetRequiredService<IImageProcessingService>();
             var cacheService = scope.ServiceProvider.GetRequiredService<ICacheService>();
             var collectionRepository = scope.ServiceProvider.GetRequiredService<ICollectionRepository>();
+            var settingsService = scope.ServiceProvider.GetRequiredService<IImageProcessingSettingsService>();
+            
+            // Get format from settings FIRST before determining cache path
+            var format = await settingsService.GetCacheFormatAsync();
 
-            // Determine proper cache path using cache service
-            var cachePath = await DetermineCachePath(cacheMessage, cacheService);
+            // Determine proper cache path using cache service (with correct format extension)
+            var cachePath = await DetermineCachePath(cacheMessage, cacheService, format);
             if (string.IsNullOrEmpty(cachePath))
             {
                 _logger.LogWarning("❌ Could not determine cache path for image {ImageId}", cacheMessage.ImageId);
@@ -132,11 +136,7 @@ public class CacheGenerationConsumer : BaseMessageConsumer
             }
             else
             {
-                // Get format setting from system settings
-                using var settingsScope = _serviceScopeFactory.CreateScope();
-                var settingsService = settingsScope.ServiceProvider.GetRequiredService<IImageProcessingSettingsService>();
-                var format = await settingsService.GetCacheFormatAsync();
-                
+                // Format already retrieved earlier from settingsService
                 _logger.LogDebug("🎨 Using cache format: {Format}, quality: {Quality}", format, adjustedQuality);
                 
                 // Resize to cache dimensions with smart quality
@@ -224,29 +224,40 @@ public class CacheGenerationConsumer : BaseMessageConsumer
         }
     }
 
-    private async Task<string?> DetermineCachePath(CacheGenerationMessage cacheMessage, ICacheService cacheService)
+    private async Task<string?> DetermineCachePath(CacheGenerationMessage cacheMessage, ICacheService cacheService, string format)
     {
         try
         {
+            // Determine file extension based on format
+            var extension = format.ToLowerInvariant() switch
+            {
+                "jpeg" => ".jpg",
+                "jpg" => ".jpg",
+                "png" => ".png",
+                "webp" => ".webp",
+                "original" => Path.GetExtension(cacheMessage.ImagePath), // Preserve original extension
+                _ => ".jpg" // Default fallback
+            };
+            
             // Use cache service to determine the proper cache path
             var cacheFolders = await cacheService.GetCacheFoldersAsync();
             if (!cacheFolders.Any())
             {
                 _logger.LogWarning("⚠️ No cache folders configured, using default cache directory");
-                return Path.Combine("cache", $"{cacheMessage.ImageId}_cache_{cacheMessage.CacheWidth}x{cacheMessage.CacheHeight}.jpg");
+                return Path.Combine("cache", $"{cacheMessage.ImageId}_cache_{cacheMessage.CacheWidth}x{cacheMessage.CacheHeight}{extension}");
             }
 
             // Select cache folder using hash-based distribution for equal load balancing
             var collectionId = ObjectId.Parse(cacheMessage.CollectionId); // Convert string back to ObjectId
             var cacheFolder = SelectCacheFolderForEqualDistribution(cacheFolders, collectionId);
             
-            // Create proper folder structure: CacheFolder/cache/CollectionId/ImageId_CacheWidthxCacheHeight.jpg
+            // Create proper folder structure: CacheFolder/cache/CollectionId/ImageId_CacheWidthxCacheHeight.{ext}
             var collectionIdStr = cacheMessage.CollectionId; // Already a string
             var cacheDir = Path.Combine(cacheFolder.Path, "cache", collectionIdStr);
-            var fileName = $"{cacheMessage.ImageId}_cache_{cacheMessage.CacheWidth}x{cacheMessage.CacheHeight}.jpg";
+            var fileName = $"{cacheMessage.ImageId}_cache_{cacheMessage.CacheWidth}x{cacheMessage.CacheHeight}{extension}";
             
-            _logger.LogDebug("📁 Selected cache folder {CacheFolderName} for collection {CollectionId}, image {ImageId}", 
-                cacheFolder.Name, collectionIdStr, cacheMessage.ImageId);
+            _logger.LogDebug("📁 Selected cache folder {CacheFolderName} for collection {CollectionId}, image {ImageId} (format: {Format})", 
+                cacheFolder.Name, collectionIdStr, cacheMessage.ImageId, format);
             return Path.Combine(cacheDir, fileName);
         }
         catch (Exception ex)
