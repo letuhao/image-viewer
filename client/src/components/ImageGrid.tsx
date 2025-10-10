@@ -83,7 +83,7 @@ const ImageGrid: React.FC<ImageGridProps> = ({ collectionId, images, isLoading, 
             className="relative bg-slate-900 rounded-lg overflow-hidden cursor-pointer group hover:ring-2 hover:ring-primary-500 transition-all aspect-square"
           >
             <img
-              src={`/api/v1/collections/${collectionId}/thumbnails/${image.id}`}
+              src={`/api/v1/images/${collectionId}/${image.id}/thumbnail`}
               alt={image.fileName}
               className="w-full h-full object-cover"
               loading="lazy"
@@ -148,7 +148,7 @@ const ImageGrid: React.FC<ImageGridProps> = ({ collectionId, images, isLoading, 
                     className="relative bg-slate-900 rounded-lg overflow-hidden cursor-pointer group hover:ring-2 hover:ring-primary-500 transition-all"
                   >
                     <img
-                      src={`/api/v1/collections/${collectionId}/thumbnails/${image.id}`}
+                      src={`/api/v1/images/${collectionId}/${image.id}/thumbnail`}
                       alt={image.fileName}
                       className="w-full h-full object-cover"
                       loading="lazy"

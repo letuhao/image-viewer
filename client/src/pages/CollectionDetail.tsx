@@ -314,7 +314,7 @@ const CollectionDetail: React.FC = () => {
                   <div key={image.id} className="flex items-center space-x-4 p-3 bg-slate-800/50 border border-slate-700 rounded-lg hover:bg-slate-800/70 transition-colors">
                     <div className="flex-shrink-0">
                       <img
-                        src={`/api/v1/collections/${id}/thumbnails/${image.id}`}
+                        src={`/api/v1/images/${id}/${image.id}/thumbnail`}
                         alt={image.fileName}
                         className="w-16 h-16 object-cover rounded border border-slate-600"
                       />
@@ -339,7 +339,7 @@ const CollectionDetail: React.FC = () => {
                   <div key={image.id} className="bg-slate-800/50 border border-slate-700 rounded-lg p-4 hover:bg-slate-800/70 transition-colors">
                     <div className="mb-3">
                       <img
-                        src={`/api/v1/collections/${id}/thumbnails/${image.id}`}
+                        src={`/api/v1/images/${id}/${image.id}/thumbnail`}
                         alt={image.fileName}
                         className="w-full h-48 object-cover rounded border border-slate-600"
                       />
