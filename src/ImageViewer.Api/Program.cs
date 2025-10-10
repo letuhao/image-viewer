@@ -142,6 +142,7 @@ builder.Services.AddScoped<ITagService, TagService>();
 builder.Services.AddScoped<IBackgroundJobService, ImageViewer.Application.Services.BackgroundJobService>();
 builder.Services.AddScoped<IStatisticsService, StatisticsService>(); // Refactored to use embedded design
 builder.Services.AddScoped<IBulkService, BulkService>();
+builder.Services.AddScoped<IImageProcessingSettingsService, ImageProcessingSettingsService>();
 
 // Add Infrastructure Services
 // builder.Services.AddScoped<IFileScannerService, FileScannerService>(); // Removed - needs refactoring

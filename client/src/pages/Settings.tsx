@@ -288,8 +288,23 @@ const Settings: React.FC = () => {
                     description="Global image processing configuration"
                   >
                     <SettingItem
+                      label="Cache Format"
+                      description="Image format for cache generation (JPEG = smaller, PNG = lossless, WebP = modern)"
+                      vertical
+                    >
+                      <select
+                        defaultValue="jpeg"
+                        className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="jpeg">JPEG (Best compatibility)</option>
+                        <option value="png">PNG (Lossless quality)</option>
+                        <option value="webp">WebP (Best compression)</option>
+                      </select>
+                    </SettingItem>
+
+                    <SettingItem
                       label="Cache Default Quality"
-                      description="Default JPEG quality for cache generation (0-100)"
+                      description="Quality for cache generation (0-100, higher = better quality but larger file)"
                       vertical
                     >
                       <div className="space-y-2">
@@ -301,6 +316,38 @@ const Settings: React.FC = () => {
                           className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-600"
                         />
                         <div className="text-sm text-slate-400 text-right">85%</div>
+                      </div>
+                    </SettingItem>
+
+                    <SettingItem
+                      label="Thumbnail Format"
+                      description="Image format for thumbnail generation"
+                      vertical
+                    >
+                      <select
+                        defaultValue="jpeg"
+                        className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="jpeg">JPEG (Best compatibility)</option>
+                        <option value="png">PNG (Lossless quality)</option>
+                        <option value="webp">WebP (Best compression)</option>
+                      </select>
+                    </SettingItem>
+
+                    <SettingItem
+                      label="Thumbnail Quality"
+                      description="Quality for thumbnail generation (0-100)"
+                      vertical
+                    >
+                      <div className="space-y-2">
+                        <input
+                          type="range"
+                          min="0"
+                          max="100"
+                          defaultValue="90"
+                          className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-600"
+                        />
+                        <div className="text-sm text-slate-400 text-right">90%</div>
                       </div>
                     </SettingItem>
 
