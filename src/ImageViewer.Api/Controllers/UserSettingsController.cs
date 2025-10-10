@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Authorization;
 using MongoDB.Bson;
 using ImageViewer.Application.Services;
 using ImageViewer.Domain.Entities;
+using ImageViewer.Domain.Interfaces;
+using ImageViewer.Domain.ValueObjects;
 
 namespace ImageViewer.Api.Controllers;
 
@@ -53,11 +55,32 @@ public class UserSettingsController : ControllerBase
 
             return Ok(new
             {
-                displaySettings = user.Settings.DisplaySettings,
-                privacySettings = user.Settings.PrivacySettings,
-                notificationSettings = user.Settings.NotificationSettings,
+                displayMode = user.Settings.DisplayMode,
+                itemsPerPage = user.Settings.ItemsPerPage,
+                theme = user.Settings.Theme,
                 language = user.Settings.Language,
-                timezone = user.Settings.Timezone
+                timezone = user.Settings.Timezone,
+                notifications = new
+                {
+                    email = user.Settings.Notifications.Email,
+                    push = user.Settings.Notifications.Push,
+                    sms = user.Settings.Notifications.Sms,
+                    inApp = user.Settings.Notifications.InApp
+                },
+                privacy = new
+                {
+                    profileVisibility = user.Settings.Privacy.ProfileVisibility,
+                    activityVisibility = user.Settings.Privacy.ActivityVisibility,
+                    dataSharing = user.Settings.Privacy.DataSharing,
+                    analytics = user.Settings.Privacy.Analytics
+                },
+                performance = new
+                {
+                    imageQuality = user.Settings.Performance.ImageQuality,
+                    videoQuality = user.Settings.Performance.VideoQuality,
+                    cacheSize = user.Settings.Performance.CacheSize,
+                    autoOptimize = user.Settings.Performance.AutoOptimize
+                }
             });
         }
         catch (Exception ex)
@@ -92,50 +115,60 @@ public class UserSettingsController : ControllerBase
                 return NotFound(new { message = "User not found" });
             }
 
-            // Update display settings
-            if (request.DisplaySettings != null)
-            {
-                if (request.DisplaySettings.Theme != null)
-                    user.Settings.DisplaySettings.Theme = request.DisplaySettings.Theme;
-                if (request.DisplaySettings.ViewMode != null)
-                    user.Settings.DisplaySettings.ViewMode = request.DisplaySettings.ViewMode;
-                if (request.DisplaySettings.ItemsPerPage.HasValue)
-                    user.Settings.DisplaySettings.ItemsPerPage = request.DisplaySettings.ItemsPerPage.Value;
-                if (request.DisplaySettings.CardSize != null)
-                    user.Settings.DisplaySettings.CardSize = request.DisplaySettings.CardSize;
-                if (request.DisplaySettings.CompactMode.HasValue)
-                    user.Settings.DisplaySettings.CompactMode = request.DisplaySettings.CompactMode.Value;
-                if (request.DisplaySettings.EnableAnimations.HasValue)
-                    user.Settings.DisplaySettings.EnableAnimations = request.DisplaySettings.EnableAnimations.Value;
-            }
+            // Update settings using domain methods
+            if (request.DisplayMode != null)
+                user.Settings.UpdateDisplayMode(request.DisplayMode);
+            
+            if (request.ItemsPerPage.HasValue)
+                user.Settings.UpdateItemsPerPage(request.ItemsPerPage.Value);
+            
+            if (request.Theme != null)
+                user.Settings.UpdateTheme(request.Theme);
+            
+            if (request.Language != null)
+                user.Settings.UpdateLanguage(request.Language);
+            
+            if (request.Timezone != null)
+                user.Settings.UpdateTimezone(request.Timezone);
 
             // Update notification settings
-            if (request.NotificationSettings != null)
+            if (request.Notifications != null)
             {
-                if (request.NotificationSettings.EmailNotifications.HasValue)
-                    user.Settings.NotificationSettings.EmailNotifications = request.NotificationSettings.EmailNotifications.Value;
-                if (request.NotificationSettings.PushNotifications.HasValue)
-                    user.Settings.NotificationSettings.PushNotifications = request.NotificationSettings.PushNotifications.Value;
-                if (request.NotificationSettings.DesktopNotifications.HasValue)
-                    user.Settings.NotificationSettings.DesktopNotifications = request.NotificationSettings.DesktopNotifications.Value;
+                if (request.Notifications.Email.HasValue)
+                    user.Settings.Notifications.UpdateEmail(request.Notifications.Email.Value);
+                if (request.Notifications.Push.HasValue)
+                    user.Settings.Notifications.UpdatePush(request.Notifications.Push.Value);
+                if (request.Notifications.Sms.HasValue)
+                    user.Settings.Notifications.UpdateSms(request.Notifications.Sms.Value);
+                if (request.Notifications.InApp.HasValue)
+                    user.Settings.Notifications.UpdateInApp(request.Notifications.InApp.Value);
             }
 
             // Update privacy settings
-            if (request.PrivacySettings != null)
+            if (request.Privacy != null)
             {
-                if (request.PrivacySettings.ProfilePublic.HasValue)
-                    user.Settings.PrivacySettings.ProfilePublic = request.PrivacySettings.ProfilePublic.Value;
-                if (request.PrivacySettings.ShowOnlineStatus.HasValue)
-                    user.Settings.PrivacySettings.ShowOnlineStatus = request.PrivacySettings.ShowOnlineStatus.Value;
-                if (request.PrivacySettings.AllowAnalytics.HasValue)
-                    user.Settings.PrivacySettings.AllowAnalytics = request.PrivacySettings.AllowAnalytics.Value;
+                if (request.Privacy.ProfileVisibility != null)
+                    user.Settings.Privacy.UpdateProfileVisibility(request.Privacy.ProfileVisibility);
+                if (request.Privacy.ActivityVisibility != null)
+                    user.Settings.Privacy.UpdateActivityVisibility(request.Privacy.ActivityVisibility);
+                if (request.Privacy.DataSharing.HasValue)
+                    user.Settings.Privacy.UpdateDataSharing(request.Privacy.DataSharing.Value);
+                if (request.Privacy.Analytics.HasValue)
+                    user.Settings.Privacy.UpdateAnalytics(request.Privacy.Analytics.Value);
             }
 
-            // Update language and timezone
-            if (request.Language != null)
-                user.Settings.Language = request.Language;
-            if (request.Timezone != null)
-                user.Settings.Timezone = request.Timezone;
+            // Update performance settings
+            if (request.Performance != null)
+            {
+                if (request.Performance.ImageQuality != null)
+                    user.Settings.Performance.UpdateImageQuality(request.Performance.ImageQuality);
+                if (request.Performance.VideoQuality != null)
+                    user.Settings.Performance.UpdateVideoQuality(request.Performance.VideoQuality);
+                if (request.Performance.CacheSize.HasValue)
+                    user.Settings.Performance.UpdateCacheSize(request.Performance.CacheSize.Value);
+                if (request.Performance.AutoOptimize.HasValue)
+                    user.Settings.Performance.UpdateAutoOptimize(request.Performance.AutoOptimize.Value);
+            }
 
             user.UpdatedAt = DateTime.UtcNow;
             await _userRepository.UpdateAsync(user);
@@ -144,11 +177,32 @@ public class UserSettingsController : ControllerBase
 
             return Ok(new
             {
-                displaySettings = user.Settings.DisplaySettings,
-                privacySettings = user.Settings.PrivacySettings,
-                notificationSettings = user.Settings.NotificationSettings,
+                displayMode = user.Settings.DisplayMode,
+                itemsPerPage = user.Settings.ItemsPerPage,
+                theme = user.Settings.Theme,
                 language = user.Settings.Language,
-                timezone = user.Settings.Timezone
+                timezone = user.Settings.Timezone,
+                notifications = new
+                {
+                    email = user.Settings.Notifications.Email,
+                    push = user.Settings.Notifications.Push,
+                    sms = user.Settings.Notifications.Sms,
+                    inApp = user.Settings.Notifications.InApp
+                },
+                privacy = new
+                {
+                    profileVisibility = user.Settings.Privacy.ProfileVisibility,
+                    activityVisibility = user.Settings.Privacy.ActivityVisibility,
+                    dataSharing = user.Settings.Privacy.DataSharing,
+                    analytics = user.Settings.Privacy.Analytics
+                },
+                performance = new
+                {
+                    imageQuality = user.Settings.Performance.ImageQuality,
+                    videoQuality = user.Settings.Performance.VideoQuality,
+                    cacheSize = user.Settings.Performance.CacheSize,
+                    autoOptimize = user.Settings.Performance.AutoOptimize
+                }
             });
         }
         catch (Exception ex)
@@ -180,8 +234,8 @@ public class UserSettingsController : ControllerBase
                 return NotFound(new { message = "User not found" });
             }
 
-            // Reset to default settings
-            user.Settings = new UserSettings();
+            // Reset using Update method from User entity
+            user.UpdateSettings(new UserSettings());
             user.UpdatedAt = DateTime.UtcNow;
             await _userRepository.UpdateAsync(user);
 
@@ -189,11 +243,32 @@ public class UserSettingsController : ControllerBase
 
             return Ok(new
             {
-                displaySettings = user.Settings.DisplaySettings,
-                privacySettings = user.Settings.PrivacySettings,
-                notificationSettings = user.Settings.NotificationSettings,
+                displayMode = user.Settings.DisplayMode,
+                itemsPerPage = user.Settings.ItemsPerPage,
+                theme = user.Settings.Theme,
                 language = user.Settings.Language,
-                timezone = user.Settings.Timezone
+                timezone = user.Settings.Timezone,
+                notifications = new
+                {
+                    email = user.Settings.Notifications.Email,
+                    push = user.Settings.Notifications.Push,
+                    sms = user.Settings.Notifications.Sms,
+                    inApp = user.Settings.Notifications.InApp
+                },
+                privacy = new
+                {
+                    profileVisibility = user.Settings.Privacy.ProfileVisibility,
+                    activityVisibility = user.Settings.Privacy.ActivityVisibility,
+                    dataSharing = user.Settings.Privacy.DataSharing,
+                    analytics = user.Settings.Privacy.Analytics
+                },
+                performance = new
+                {
+                    imageQuality = user.Settings.Performance.ImageQuality,
+                    videoQuality = user.Settings.Performance.VideoQuality,
+                    cacheSize = user.Settings.Performance.CacheSize,
+                    autoOptimize = user.Settings.Performance.AutoOptimize
+                }
             });
         }
         catch (Exception ex)
@@ -209,34 +284,36 @@ public class UserSettingsController : ControllerBase
 /// </summary>
 public class UpdateUserSettingsRequest
 {
-    public DisplaySettingsUpdate? DisplaySettings { get; set; }
-    public NotificationSettingsUpdate? NotificationSettings { get; set; }
-    public PrivacySettingsUpdate? PrivacySettings { get; set; }
+    public string? DisplayMode { get; set; }
+    public int? ItemsPerPage { get; set; }
+    public string? Theme { get; set; }
     public string? Language { get; set; }
     public string? Timezone { get; set; }
-}
-
-public class DisplaySettingsUpdate
-{
-    public string? Theme { get; set; }
-    public string? ViewMode { get; set; }
-    public int? ItemsPerPage { get; set; }
-    public string? CardSize { get; set; }
-    public bool? CompactMode { get; set; }
-    public bool? EnableAnimations { get; set; }
+    public NotificationSettingsUpdate? Notifications { get; set; }
+    public PrivacySettingsUpdate? Privacy { get; set; }
+    public PerformanceSettingsUpdate? Performance { get; set; }
 }
 
 public class NotificationSettingsUpdate
 {
-    public bool? EmailNotifications { get; set; }
-    public bool? PushNotifications { get; set; }
-    public bool? DesktopNotifications { get; set; }
+    public bool? Email { get; set; }
+    public bool? Push { get; set; }
+    public bool? Sms { get; set; }
+    public bool? InApp { get; set; }
 }
 
 public class PrivacySettingsUpdate
 {
-    public bool? ProfilePublic { get; set; }
-    public bool? ShowOnlineStatus { get; set; }
-    public bool? AllowAnalytics { get; set; }
+    public string? ProfileVisibility { get; set; }
+    public string? ActivityVisibility { get; set; }
+    public bool? DataSharing { get; set; }
+    public bool? Analytics { get; set; }
 }
 
+public class PerformanceSettingsUpdate
+{
+    public string? ImageQuality { get; set; }
+    public string? VideoQuality { get; set; }
+    public long? CacheSize { get; set; }
+    public bool? AutoOptimize { get; set; }
+}
