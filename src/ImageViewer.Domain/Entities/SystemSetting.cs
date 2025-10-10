@@ -56,6 +56,9 @@ public class SystemSetting : BaseEntity
     [BsonElement("isActive")]
     public bool IsActive { get; private set; } = true;
 
+    [BsonElement("isEditable")]
+    public bool IsEditable { get; private set; } = true;
+
     // Navigation properties
     [BsonIgnore]
     public User? LastModifiedByUser { get; private set; }
@@ -63,7 +66,7 @@ public class SystemSetting : BaseEntity
     // Private constructor for EF Core
     private SystemSetting() { }
 
-    public static SystemSetting Create(string settingKey, string settingValue, string settingType = "String", string category = "General", string? description = null, bool isEncrypted = false, bool isSensitive = false, bool isReadOnly = false, string? defaultValue = null, string source = "System", string environment = "All")
+    public static SystemSetting Create(string settingKey, string settingValue, string settingType = "String", string category = "General", string? description = null, bool isEncrypted = false, bool isSensitive = false, bool isReadOnly = false, string? defaultValue = null, string source = "System", string environment = "All", bool isEditable = true)
     {
         if (string.IsNullOrWhiteSpace(settingKey))
             throw new ArgumentException("Setting key cannot be empty", nameof(settingKey));
@@ -88,6 +91,7 @@ public class SystemSetting : BaseEntity
             Source = source,
             Environment = environment,
             IsActive = true,
+            IsEditable = isEditable,
             Version = 1,
             ValidationRules = new Dictionary<string, object>(),
             ChangeHistory = new List<SettingChange>()
