@@ -37,6 +37,10 @@ const Settings: React.FC = () => {
     pushNotifications: true,
     profilePublic: false,
     analytics: true,
+    // Collection Detail settings
+    collectionDetailViewMode: 'grid',
+    collectionDetailCardSize: 'medium',
+    collectionDetailPageSize: 20,
   });
 
   // System settings state
@@ -63,6 +67,10 @@ const Settings: React.FC = () => {
         pushNotifications: apiSettings.notifications.push,
         profilePublic: apiSettings.privacy.profileVisibility === 'public',
         analytics: apiSettings.privacy.analytics,
+        // Collection Detail settings (from localStorage for now)
+        collectionDetailViewMode: localStorage.getItem('collectionDetailViewMode') || 'grid',
+        collectionDetailCardSize: localStorage.getItem('collectionDetailCardSize') || 'medium',
+        collectionDetailPageSize: parseInt(localStorage.getItem('collectionDetailPageSize') || '20'),
       });
     }
   }, [apiSettings]);
@@ -302,6 +310,77 @@ const Settings: React.FC = () => {
                       enabled={userSettings.analytics}
                       onChange={(enabled) => setUserSettings({ ...userSettings, analytics: enabled })}
                     />
+                  </SettingItem>
+                </SettingsSection>
+
+                {/* Collection Detail Settings */}
+                <SettingsSection
+                  title="Collection Detail Page"
+                  description="Customize how collection detail pages are displayed"
+                >
+                  <SettingItem
+                    label="Default View Mode"
+                    description="Default view mode for collection detail pages"
+                    vertical
+                  >
+                    <select
+                      value={userSettings.collectionDetailViewMode}
+                      onChange={(e) => {
+                        const newValue = e.target.value;
+                        setUserSettings({ ...userSettings, collectionDetailViewMode: newValue });
+                        localStorage.setItem('collectionDetailViewMode', newValue);
+                      }}
+                      className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="grid">Grid View</option>
+                      <option value="list">List View</option>
+                      <option value="detail">Detail View</option>
+                    </select>
+                  </SettingItem>
+
+                  <SettingItem
+                    label="Default Card Size"
+                    description="Default card size for grid view in collection detail pages"
+                    vertical
+                  >
+                    <select
+                      value={userSettings.collectionDetailCardSize}
+                      onChange={(e) => {
+                        const newValue = e.target.value;
+                        setUserSettings({ ...userSettings, collectionDetailCardSize: newValue });
+                        localStorage.setItem('collectionDetailCardSize', newValue);
+                      }}
+                      className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="mini">Mini</option>
+                      <option value="tiny">Tiny</option>
+                      <option value="small">Small</option>
+                      <option value="medium">Medium</option>
+                      <option value="large">Large</option>
+                      <option value="xlarge">XLarge</option>
+                    </select>
+                  </SettingItem>
+
+                  <SettingItem
+                    label="Default Page Size"
+                    description="Default number of items per page in collection detail pages"
+                    vertical
+                  >
+                    <select
+                      value={userSettings.collectionDetailPageSize}
+                      onChange={(e) => {
+                        const newValue = parseInt(e.target.value);
+                        setUserSettings({ ...userSettings, collectionDetailPageSize: newValue });
+                        localStorage.setItem('collectionDetailPageSize', newValue.toString());
+                      }}
+                      className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value={5}>5 items</option>
+                      <option value={10}>10 items</option>
+                      <option value={20}>20 items</option>
+                      <option value={50}>50 items</option>
+                      <option value={100}>100 items</option>
+                    </select>
                   </SettingItem>
                 </SettingsSection>
 
