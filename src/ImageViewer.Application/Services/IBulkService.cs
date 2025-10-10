@@ -54,6 +54,18 @@ public class BulkAddCollectionsRequest
     
     [JsonPropertyName("autoScan")]
     public bool? AutoScan { get; set; }
+    
+    [JsonPropertyName("createdAfter")]
+    public DateTime? CreatedAfter { get; set; }
+    
+    [JsonPropertyName("createdBefore")]
+    public DateTime? CreatedBefore { get; set; }
+    
+    [JsonPropertyName("modifiedAfter")]
+    public DateTime? ModifiedAfter { get; set; }
+    
+    [JsonPropertyName("modifiedBefore")]
+    public DateTime? ModifiedBefore { get; set; }
 }
 
 /// <summary>

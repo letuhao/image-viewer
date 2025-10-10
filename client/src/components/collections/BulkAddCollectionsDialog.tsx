@@ -29,6 +29,10 @@ const BulkAddCollectionsDialog: React.FC<BulkAddCollectionsDialogProps> = ({
     includeSubfolders: true,
     autoAdd: true,
     overwriteExisting: false,
+    createdAfter: '',
+    createdBefore: '',
+    modifiedAfter: '',
+    modifiedBefore: '',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -51,6 +55,10 @@ const BulkAddCollectionsDialog: React.FC<BulkAddCollectionsDialogProps> = ({
         includeSubfolders: true,
         autoAdd: true,
         overwriteExisting: false,
+        createdAfter: '',
+        createdBefore: '',
+        modifiedAfter: '',
+        modifiedBefore: '',
       });
     } catch (error: any) {
       const message = error.response?.data?.error || 'Failed to start bulk operation';
@@ -106,6 +114,53 @@ const BulkAddCollectionsDialog: React.FC<BulkAddCollectionsDialogProps> = ({
                 placeholder="e.g., 2024-"
               />
             </SettingItem>
+
+            {/* Date Range Filters */}
+            <div className="bg-slate-900/50 rounded-lg p-4 border border-slate-700 space-y-4">
+              <h4 className="text-sm font-semibold text-white mb-3">Date Range Filters (Optional)</h4>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <SettingItem label="Created After" vertical>
+                  <input
+                    type="datetime-local"
+                    value={formData.createdAfter}
+                    onChange={(e) => setFormData({ ...formData, createdAfter: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                  />
+                </SettingItem>
+
+                <SettingItem label="Created Before" vertical>
+                  <input
+                    type="datetime-local"
+                    value={formData.createdBefore}
+                    onChange={(e) => setFormData({ ...formData, createdBefore: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                  />
+                </SettingItem>
+
+                <SettingItem label="Modified After" vertical>
+                  <input
+                    type="datetime-local"
+                    value={formData.modifiedAfter}
+                    onChange={(e) => setFormData({ ...formData, modifiedAfter: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                  />
+                </SettingItem>
+
+                <SettingItem label="Modified Before" vertical>
+                  <input
+                    type="datetime-local"
+                    value={formData.modifiedBefore}
+                    onChange={(e) => setFormData({ ...formData, modifiedBefore: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                  />
+                </SettingItem>
+              </div>
+
+              <p className="text-xs text-slate-500">
+                Filter folders/files by creation or modification date. Leave empty to include all.
+              </p>
+            </div>
 
             <div className="space-y-4 bg-slate-900/50 rounded-lg p-4 border border-slate-700">
               <SettingItem
