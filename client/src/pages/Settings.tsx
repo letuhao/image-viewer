@@ -8,6 +8,7 @@ import SettingItem from '../components/settings/SettingItem';
 import Toggle from '../components/ui/Toggle';
 import Button from '../components/ui/Button';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
+import CacheFolderManager from '../components/settings/CacheFolderManager';
 import { useUserSettings, useUpdateUserSettings, useResetUserSettings, useSystemSettings, useBatchUpdateSystemSettings } from '../hooks/useSettings';
 import toast from 'react-hot-toast';
 
@@ -410,6 +411,31 @@ const Settings: React.FC = () => {
                         className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                       />
                     </SettingItem>
+                  </SettingsSection>
+
+                  <SettingsSection
+                    title="Cache Folders"
+                    description="Manage distributed cache storage locations"
+                  >
+                    <CacheFolderManager
+                      folders={[]}
+                      onAdd={(folder) => {
+                        console.log('Add folder:', folder);
+                        toast.success('Cache folder API not yet connected');
+                      }}
+                      onUpdate={(id, folder) => {
+                        console.log('Update folder:', id, folder);
+                        toast.success('Cache folder API not yet connected');
+                      }}
+                      onDelete={(id) => {
+                        console.log('Delete folder:', id);
+                        toast.success('Cache folder API not yet connected');
+                      }}
+                      onValidatePath={async (path) => {
+                        console.log('Validate path:', path);
+                        return true;
+                      }}
+                    />
                   </SettingsSection>
 
                   <SettingsSection
