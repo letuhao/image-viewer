@@ -278,20 +278,27 @@ public class ImagesController : ControllerBase
                 return;
             }
 
-            // Get cache folder for this collection
-            var cacheFolder = await _cacheFolderSelectionService.SelectCacheFolderForCacheAsync(collectionId);
-            if (cacheFolder == null)
+            // Build full image path
+            var imagePath = Path.Combine(collection.Path, image.RelativePath);
+
+            // Cache generation parameters
+            const int cacheWidth = 1920;
+            const int cacheHeight = 1080;
+            const string format = "jpeg";
+
+            // Get cache folder and path for this collection
+            var cachePath = await _cacheFolderSelectionService.SelectCacheFolderForCacheAsync(
+                collectionId, 
+                imageId, 
+                cacheWidth, 
+                cacheHeight, 
+                format);
+            
+            if (cachePath == null)
             {
                 _logger.LogWarning("No cache folder available, cannot queue cache generation for image {ImageId}", imageId);
                 return;
             }
-
-            // Build full image path
-            var imagePath = Path.Combine(collection.Path, image.RelativePath);
-
-            // Determine cache path
-            var cacheFileName = $"{Path.GetFileNameWithoutExtension(image.Filename)}_cache{Path.GetExtension(image.Filename)}";
-            var cachePath = Path.Combine(cacheFolder.Path, collectionId.ToString(), cacheFileName);
 
             // Create cache generation message
             var cacheMessage = new CacheGenerationMessage
@@ -300,10 +307,10 @@ public class ImagesController : ControllerBase
                 CollectionId = collectionId.ToString(),
                 ImagePath = imagePath,
                 CachePath = cachePath,
-                CacheWidth = 1920,
-                CacheHeight = 1080,
+                CacheWidth = cacheWidth,
+                CacheHeight = cacheHeight,
                 Quality = 85,
-                Format = "jpeg",
+                Format = format,
                 PreserveOriginal = false,
                 ForceRegenerate = false,
                 CreatedBy = null,
