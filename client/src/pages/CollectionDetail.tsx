@@ -15,9 +15,16 @@ import {
   FileImage, 
   HardDrive,
   Calendar,
-  Info
+  Info,
+  Grid3x3,
+  List,
+  ListTree,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
+
+type ViewMode = 'grid' | 'list' | 'detail';
 
 /**
  * Collection Detail Page
@@ -29,6 +36,7 @@ const CollectionDetail: React.FC = () => {
   const navigate = useNavigate();
   const [page, setPage] = useState(1);
   const [limit] = useState(50); // Items per page
+  const [viewMode, setViewMode] = useState<ViewMode>('grid');
   
   const { data: collection, isLoading } = useCollection(id!);
   const { data: imagesData, isLoading: imagesLoading } = useImages({
@@ -76,120 +84,239 @@ const CollectionDetail: React.FC = () => {
 
   return (
     <div className="h-full flex flex-col">
-      {/* Header */}
-      <div className="flex-shrink-0 border-b border-slate-800 bg-slate-900/50 backdrop-blur">
-        <div className="px-6 py-4">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center space-x-4">
-              <Button
-                variant="ghost"
-                icon={<ArrowLeft className="h-5 w-5" />}
-                onClick={() => navigate('/collections')}
-              >
-                Back
-              </Button>
+        {/* Compact Header */}
+        <div className="flex-shrink-0 border-b border-slate-800 bg-slate-900/50 backdrop-blur">
+          <div className="px-6 py-3">
+            {/* Main Header Row */}
+            <div className="flex items-center justify-between mb-3">
               <div className="flex items-center space-x-3">
-                {collection.type === 'archive' ? (
-                  <Archive className="h-8 w-8 text-purple-500" />
-                ) : (
-                  <Folder className="h-8 w-8 text-blue-500" />
-                )}
-                <div>
-                  <h1 className="text-2xl font-bold text-white">{collection.name}</h1>
-                  <p className="text-slate-400 text-sm">{collection.path}</p>
+                <Button
+                  variant="ghost"
+                  icon={<ArrowLeft className="h-4 w-4" />}
+                  onClick={() => navigate('/collections')}
+                  size="sm"
+                >
+                  Back
+                </Button>
+                <div className="flex items-center space-x-2">
+                  {collection.type === 'archive' ? (
+                    <Archive className="h-6 w-6 text-purple-500" />
+                  ) : (
+                    <Folder className="h-6 w-6 text-blue-500" />
+                  )}
+                  <div>
+                    <h1 className="text-lg font-bold text-white">{collection.name}</h1>
+                    <p className="text-slate-400 text-xs truncate max-w-md">{collection.path}</p>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div className="flex items-center space-x-2">
-              <Button variant="secondary" icon={<RotateCw className="h-4 w-4" />}>
-                Rescan
-              </Button>
-              <Button
-                icon={<Play className="h-4 w-4" />}
-                onClick={() => {
-                  if (images && images.length > 0) {
-                    navigate(`/collections/${id}/viewer?imageId=${images[0].id}`);
-                  }
-                }}
-                disabled={!images || images.length === 0}
-              >
-                Open Viewer
-              </Button>
-            </div>
-          </div>
-
-          {/* Metadata Cards */}
-          <div className="grid grid-cols-4 gap-4">
-            {/* Images Card */}
-            <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-4">
-              <div className="flex items-center justify-between mb-2">
-                <ImageIcon className="h-5 w-5 text-blue-400" />
-                <span className="text-xs text-slate-500">IMAGES</span>
-              </div>
-              <div className="text-2xl font-bold text-white">
-                {(collection.imageCount ?? 0).toLocaleString()}
-              </div>
-              <div className="text-xs text-slate-400 mt-1">
-                {formatBytes(collection.totalSize ?? 0)} total
+              <div className="flex items-center space-x-2">
+                <Button variant="secondary" icon={<RotateCw className="h-4 w-4" />} size="sm">
+                  Rescan
+                </Button>
+                <Button
+                  icon={<Play className="h-4 w-4" />}
+                  onClick={() => {
+                    if (images && images.length > 0) {
+                      navigate(`/collections/${id}/viewer?imageId=${images[0].id}`);
+                    }
+                  }}
+                  disabled={!images || images.length === 0}
+                  size="sm"
+                >
+                  Open Viewer
+                </Button>
               </div>
             </div>
 
-            {/* Thumbnails Card */}
-            <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-4">
-              <div className="flex items-center justify-between mb-2">
-                <FileImage className="h-5 w-5 text-green-400" />
-                <span className="text-xs text-slate-500">THUMBNAILS</span>
+            {/* Compact Metadata Row + Controls */}
+            <div className="flex items-center justify-between">
+              {/* Compact Metadata */}
+              <div className="flex items-center space-x-6">
+                <div className="flex items-center space-x-2">
+                  <ImageIcon className="h-4 w-4 text-blue-400" />
+                  <span className="text-sm font-medium text-white">{(collection.imageCount ?? 0).toLocaleString()}</span>
+                  <span className="text-xs text-slate-400">images</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <FileImage className="h-4 w-4 text-green-400" />
+                  <span className="text-sm font-medium text-white">{(collection.thumbnailCount ?? 0).toLocaleString()}</span>
+                  <span className="text-xs text-slate-400">thumbs</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <HardDrive className="h-4 w-4 text-purple-400" />
+                  <span className="text-sm font-medium text-white">{(collection.cacheImageCount ?? 0).toLocaleString()}</span>
+                  <span className="text-xs text-slate-400">cached</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Calendar className="h-4 w-4 text-orange-400" />
+                  <span className="text-xs text-slate-400">{collection.updatedAt ? formatDate(collection.updatedAt) : 'Unknown'}</span>
+                </div>
               </div>
-              <div className="text-2xl font-bold text-white">
-                {(collection.thumbnailCount ?? 0).toLocaleString()}
-              </div>
-              <div className="text-xs text-slate-400 mt-1">
-                {Math.round(((collection.thumbnailCount ?? 0) / Math.max(collection.imageCount ?? 1, 1)) * 100)}% generated
-              </div>
-            </div>
 
-            {/* Cache Card */}
-            <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-4">
-              <div className="flex items-center justify-between mb-2">
-                <HardDrive className="h-5 w-5 text-purple-400" />
-                <span className="text-xs text-slate-500">CACHE</span>
-              </div>
-              <div className="text-2xl font-bold text-white">
-                {(collection.cacheImageCount ?? 0).toLocaleString()}
-              </div>
-              <div className="text-xs text-slate-400 mt-1">
-                {Math.round(((collection.cacheImageCount ?? 0) / Math.max(collection.imageCount ?? 1, 1)) * 100)}% cached
-              </div>
-            </div>
+              {/* View Mode + Pagination Controls */}
+              <div className="flex items-center gap-2">
+                {/* Pagination Controls */}
+                {pagination && pagination.totalPages > 1 && (
+                  <div className="flex items-center gap-2 bg-slate-800 rounded-lg px-2 py-1">
+                    <button
+                      onClick={() => setPage(Math.max(1, page - 1))}
+                      disabled={!pagination.hasPrevious}
+                      className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      title="Previous Page"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </button>
 
-            {/* Info Card */}
-            <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-4">
-              <div className="flex items-center justify-between mb-2">
-                <Calendar className="h-5 w-5 text-orange-400" />
-                <span className="text-xs text-slate-500">UPDATED</span>
-              </div>
-              <div className="text-sm font-medium text-white">
-                {collection.updatedAt ? formatDate(collection.updatedAt) : 'Unknown'}
-              </div>
-              <div className="text-xs text-slate-400 mt-1">
-                Type: {collection.type ?? 'unknown'}
+                    <div className="flex items-center gap-1">
+                      <input
+                        type="number"
+                        min="1"
+                        max={pagination.totalPages}
+                        value={page}
+                        onChange={(e) => {
+                          const newPage = parseInt(e.target.value);
+                          if (newPage >= 1 && newPage <= pagination.totalPages) {
+                            setPage(newPage);
+                          }
+                        }}
+                        className="w-12 px-1 py-1 bg-slate-700 border border-slate-600 rounded text-white text-xs text-center focus:outline-none focus:ring-1 focus:ring-primary-500"
+                        title="Go to page"
+                      />
+                      <span className="text-xs text-slate-400">/</span>
+                      <span className="text-xs text-slate-400 w-6 text-center">{pagination.totalPages}</span>
+                    </div>
+
+                    <button
+                      onClick={() => setPage(page + 1)}
+                      disabled={!pagination.hasNext}
+                      className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      title="Next Page"
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
+                  </div>
+                )}
+
+                {/* View Mode Controls */}
+                <div className="flex items-center gap-1 bg-slate-800 rounded-lg p-1">
+                  <button
+                    onClick={() => setViewMode('grid')}
+                    className={`p-1.5 rounded transition-colors ${
+                      viewMode === 'grid' 
+                        ? 'bg-primary-500 text-white' 
+                        : 'text-slate-400 hover:text-white hover:bg-slate-700'
+                    }`}
+                    title="Grid View"
+                  >
+                    <Grid3x3 className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={() => setViewMode('list')}
+                    className={`p-1.5 rounded transition-colors ${
+                      viewMode === 'list' 
+                        ? 'bg-primary-500 text-white' 
+                        : 'text-slate-400 hover:text-white hover:bg-slate-700'
+                    }`}
+                    title="List View"
+                  >
+                    <List className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={() => setViewMode('detail')}
+                    className={`p-1.5 rounded transition-colors ${
+                      viewMode === 'detail' 
+                        ? 'bg-primary-500 text-white' 
+                        : 'text-slate-400 hover:text-white hover:bg-slate-700'
+                    }`}
+                    title="Detail View"
+                  >
+                    <ListTree className="h-4 w-4" />
+                  </button>
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Image Grid */}
+      {/* Image Content */}
       <div className="flex-1 overflow-y-auto px-6 py-4">
         {imagesLoading ? (
           <LoadingSpinner text="Loading images..." />
         ) : images.length > 0 ? (
-          <ImageGrid
-            collectionId={id!}
-            images={images}
-            isLoading={false}
-          />
+          <div className="space-y-4">
+            {/* View Mode Content */}
+            {viewMode === 'grid' && (
+              <ImageGrid
+                collectionId={id!}
+                images={images}
+                isLoading={false}
+              />
+            )}
+            
+            {viewMode === 'list' && (
+              <div className="space-y-2">
+                {images.map((image) => (
+                  <div key={image.id} className="flex items-center space-x-4 p-3 bg-slate-800/50 border border-slate-700 rounded-lg hover:bg-slate-800/70 transition-colors">
+                    <div className="flex-shrink-0">
+                      <img
+                        src={`/api/v1/collections/${id}/thumbnails/${image.id}`}
+                        alt={image.fileName}
+                        className="w-16 h-16 object-cover rounded border border-slate-600"
+                      />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-white truncate">{image.fileName}</p>
+                      <p className="text-xs text-slate-400">
+                        {formatBytes(image.fileSize)} • {image.width}×{image.height}
+                      </p>
+                    </div>
+                    <div className="flex-shrink-0 text-xs text-slate-500">
+                      {image.createdAt ? formatDate(image.createdAt) : 'Unknown'}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            
+            {viewMode === 'detail' && (
+              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+                {images.map((image) => (
+                  <div key={image.id} className="bg-slate-800/50 border border-slate-700 rounded-lg p-4 hover:bg-slate-800/70 transition-colors">
+                    <div className="mb-3">
+                      <img
+                        src={`/api/v1/collections/${id}/thumbnails/${image.id}`}
+                        alt={image.fileName}
+                        className="w-full h-48 object-cover rounded border border-slate-600"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <p className="text-sm font-medium text-white truncate">{image.fileName}</p>
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div>
+                          <span className="text-slate-500">Size:</span>
+                          <span className="text-white ml-1">{formatBytes(image.fileSize)}</span>
+                        </div>
+                        <div>
+                          <span className="text-slate-500">Dimensions:</span>
+                          <span className="text-white ml-1">{image.width}×{image.height}</span>
+                        </div>
+                        <div>
+                          <span className="text-slate-500">Format:</span>
+                          <span className="text-white ml-1">{image.format?.toUpperCase()}</span>
+                        </div>
+                        <div>
+                          <span className="text-slate-500">Created:</span>
+                          <span className="text-white ml-1">{image.createdAt ? formatDate(image.createdAt) : 'Unknown'}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         ) : (
           <div className="text-center py-12">
             <ImageIcon className="h-12 w-12 text-slate-600 mx-auto mb-4" />
@@ -199,70 +326,14 @@ const CollectionDetail: React.FC = () => {
         )}
       </div>
 
-      {/* Pagination */}
-      {pagination && pagination.totalPages > 1 && (
-        <div className="flex-shrink-0 border-t border-slate-800 px-6 py-4 bg-slate-900/30">
-          <div className="flex items-center justify-between">
-            <div className="text-sm text-slate-400">
+        {/* Status Bar */}
+        {pagination && (
+          <div className="flex-shrink-0 border-t border-slate-800 px-6 py-2 bg-slate-900/30">
+            <div className="text-xs text-slate-400">
               Showing {((pagination.page - 1) * limit) + 1}-{Math.min(pagination.page * limit, pagination.total)} of {pagination.total} images
             </div>
-            <div className="flex items-center space-x-3">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setPage(1)}
-                disabled={!pagination.hasPrevious}
-              >
-                First
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setPage(page - 1)}
-                disabled={!pagination.hasPrevious}
-              >
-                Previous
-              </Button>
-              
-              {/* Page Input */}
-              <div className="flex items-center space-x-2">
-                <span className="text-sm text-slate-400">Page</span>
-                <input
-                  type="number"
-                  min={1}
-                  max={pagination.totalPages}
-                  value={page}
-                  onChange={(e) => {
-                    const newPage = parseInt(e.target.value);
-                    if (newPage >= 1 && newPage <= pagination.totalPages) {
-                      setPage(newPage);
-                    }
-                  }}
-                  className="w-16 px-2 py-1 bg-slate-800 border border-slate-700 rounded text-white text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-                <span className="text-sm text-slate-400">of {pagination.totalPages}</span>
-              </div>
-              
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setPage(page + 1)}
-                disabled={!pagination.hasNext}
-              >
-                Next
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setPage(pagination.totalPages)}
-                disabled={!pagination.hasNext}
-              >
-                Last
-              </Button>
-            </div>
           </div>
-        </div>
-      )}
+        )}
     </div>
   );
 };
