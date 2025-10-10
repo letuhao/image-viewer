@@ -288,11 +288,6 @@ const Collections: React.FC = () => {
                   {compactMode ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
                 </button>
               )}
-
-              {/* Add Collection Button - Responsive text */}
-              <Button size="sm" icon={<Plus className="h-4 w-4" />}>
-                <span className="hidden sm:inline">Add</span>
-              </Button>
             </div>
           </div>
         </div>
