@@ -148,26 +148,29 @@ const Collections: React.FC = () => {
               />
             </div>
 
-            {/* Action Buttons */}
-            <div className="flex items-center gap-2 flex-shrink-0">
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={() => setShowAddDialog(true)}
-                className="flex items-center space-x-1.5"
-              >
-                <Plus className="h-4 w-4" />
-                <span className="hidden sm:inline">Add</span>
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowBulkAddDialog(true)}
-                className="flex items-center space-x-1.5"
-              >
-                <Zap className="h-4 w-4" />
-                <span className="hidden sm:inline">Bulk Add</span>
-              </Button>
+            {/* Action Button - Single with Dropdown */}
+            <div className="relative flex-shrink-0">
+              <div className="flex items-center gap-1 bg-slate-800 rounded-lg p-1">
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() => setShowAddDialog(true)}
+                  className="flex items-center space-x-1.5 rounded-md"
+                >
+                  <Plus className="h-4 w-4" />
+                  <span className="hidden sm:inline">Add</span>
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowBulkAddDialog(true)}
+                  className="flex items-center space-x-1.5 rounded-md"
+                  title="Bulk Add Collections"
+                >
+                  <Zap className="h-4 w-4" />
+                  <span className="hidden lg:inline text-xs">Bulk</span>
+                </Button>
+              </div>
             </div>
 
             {/* Right: View Controls + Pagination - Compact & Efficient */}
@@ -312,9 +315,24 @@ const Collections: React.FC = () => {
                   {search ? 'No collections found matching your search' : 'No collections yet'}
                 </p>
                 {!search && (
-                  <Button icon={<Plus className="h-4 w-4" />}>
-                    Add Your First Collection
-                  </Button>
+                  <div className="flex items-center gap-3">
+                    <Button 
+                      variant="primary"
+                      onClick={() => setShowAddDialog(true)}
+                      className="flex items-center space-x-2"
+                    >
+                      <Plus className="h-4 w-4" />
+                      <span>Add Your First Collection</span>
+                    </Button>
+                    <Button 
+                      variant="ghost"
+                      onClick={() => setShowBulkAddDialog(true)}
+                      className="flex items-center space-x-2"
+                    >
+                      <Zap className="h-4 w-4" />
+                      <span>Or Bulk Add</span>
+                    </Button>
+                  </div>
                 )}
               </CardContent>
             </Card>
