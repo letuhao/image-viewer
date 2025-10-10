@@ -129,10 +129,22 @@ public class RedisImageCacheService : IImageCacheService
         {
             var server = _redis.GetServer(_redis.GetEndPoints().First());
             var info = await server.InfoAsync("memory");
-            var stats = await server.InfoAsync("stats");
-
-            var usedMemory = long.Parse(info.First(x => x.Key == "used_memory").Value);
-            var maxMemory = long.Parse(info.First(x => x.Key == "maxmemory").Value);
+            
+            long usedMemory = 0;
+            long maxMemory = _options.MaxCacheSizeBytes;
+            
+            // Parse memory info
+            foreach (var group in info)
+            {
+                foreach (var item in group)
+                {
+                    if (item.Key == "used_memory")
+                        long.TryParse(item.Value, out usedMemory);
+                    if (item.Key == "maxmemory")
+                        long.TryParse(item.Value, out maxMemory);
+                }
+            }
+            
             var totalKeys = await server.DatabaseSizeAsync();
 
             return new CacheStatistics
@@ -150,7 +162,8 @@ public class RedisImageCacheService : IImageCacheService
             return new CacheStatistics
             {
                 HitCount = _hitCount,
-                MissCount = _missCount
+                MissCount = _missCount,
+                MaxMemoryBytes = _options.MaxCacheSizeBytes
             };
         }
     }

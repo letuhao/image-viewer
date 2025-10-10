@@ -25,7 +25,7 @@ public class RedisOptions
     /// <summary>
     /// Image cache expiration time in minutes (longer than default)
     /// </summary>
-    public int ImageCacheExpirationMinutes { get; set} = 120;
+    public int ImageCacheExpirationMinutes { get; set; } = 120;
 
     /// <summary>
     /// Enable compression for cached images
