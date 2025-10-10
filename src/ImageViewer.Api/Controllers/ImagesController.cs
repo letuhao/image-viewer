@@ -112,6 +112,28 @@ public class ImagesController : ControllerBase
     }
 
     /// <summary>
+    /// Get image metadata by collection and image ID
+    /// </summary>
+    [HttpGet("{collectionId}/{imageId}")]
+    public async Task<ActionResult<Domain.ValueObjects.ImageEmbedded>> GetImageByCollectionAndId(ObjectId collectionId, string imageId)
+    {
+        try
+        {
+            var image = await _imageService.GetEmbeddedImageByIdAsync(imageId, collectionId);
+            if (image == null)
+            {
+                return NotFound();
+            }
+            return Ok(image);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting image {ImageId} from collection {CollectionId}", imageId, collectionId);
+            return StatusCode(500, "Internal server error");
+        }
+    }
+
+    /// <summary>
     /// Get image file content
     /// </summary>
     [HttpGet("{collectionId}/{imageId}/file")]
