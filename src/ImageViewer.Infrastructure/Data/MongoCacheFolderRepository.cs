@@ -1,4 +1,5 @@
 using MongoDB.Driver;
+using MongoDB.Bson;
 using ImageViewer.Domain.Entities;
 using ImageViewer.Domain.Interfaces;
 
@@ -43,5 +44,40 @@ public class MongoCacheFolderRepository : MongoRepository<CacheFolder>, ICacheFo
         );
         var sort = Builders<CacheFolder>.Sort.Ascending(x => x.Priority);
         return await _collection.Find(filter).Sort(sort).ToListAsync();
+    }
+
+    /// <summary>
+    /// Atomically increment cache folder size using MongoDB $inc operator
+    /// Thread-safe for concurrent operations - prevents race conditions
+    /// </summary>
+    public async Task IncrementSizeAsync(ObjectId folderId, long sizeBytes)
+    {
+        var filter = Builders<CacheFolder>.Filter.Eq(x => x.Id, folderId);
+        var update = Builders<CacheFolder>.Update
+            .Inc(x => x.CurrentSizeBytes, sizeBytes)
+            .Set(x => x.UpdatedAt, DateTime.UtcNow);
+
+        await _collection.UpdateOneAsync(filter, update);
+    }
+
+    /// <summary>
+    /// Atomically decrement cache folder size using MongoDB $inc operator
+    /// Thread-safe for concurrent operations - prevents race conditions
+    /// Ensures size never goes below 0
+    /// </summary>
+    public async Task DecrementSizeAsync(ObjectId folderId, long sizeBytes)
+    {
+        var filter = Builders<CacheFolder>.Filter.Eq(x => x.Id, folderId);
+        var update = Builders<CacheFolder>.Update
+            .Inc(x => x.CurrentSizeBytes, -sizeBytes)
+            .Set(x => x.UpdatedAt, DateTime.UtcNow);
+
+        await _collection.UpdateOneAsync(filter, update);
+
+        // Ensure CurrentSizeBytes never goes negative
+        var ensureNonNegative = Builders<CacheFolder>.Update
+            .Max(x => x.CurrentSizeBytes, 0L);
+        
+        await _collection.UpdateOneAsync(filter, ensureNonNegative);
     }
 }

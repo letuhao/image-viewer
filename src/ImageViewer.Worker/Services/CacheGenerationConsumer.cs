@@ -182,6 +182,9 @@ public class CacheGenerationConsumer : BaseMessageConsumer
             // Save cache image to file system
             await File.WriteAllBytesAsync(cachePath, cacheImageData, cancellationToken);
 
+            // ATOMIC UPDATE: Increment cache folder size to prevent race conditions
+            await UpdateCacheFolderSizeAsync(cachePath, cacheImageData.Length, collectionObjectId);
+
             // Update cache info in database
             var backgroundJobService = scope.ServiceProvider.GetRequiredService<IBackgroundJobService>();
             await UpdateCacheInfoInDatabase(cacheMessage, cachePath, collectionRepository, backgroundJobService);
@@ -438,6 +441,64 @@ public class CacheGenerationConsumer : BaseMessageConsumer
             _logger.LogWarning(ex, "Failed to analyze image quality for {ImagePath}, using requested quality {Quality}", 
                 cacheMessage.ImagePath, cacheMessage.Quality);
             return cacheMessage.Quality; // Fallback to requested quality
+        }
+    }
+
+    /// <summary>
+    /// Atomically update cache folder size after saving cache image
+    /// Uses MongoDB $inc operator to prevent race conditions during concurrent operations
+    /// </summary>
+    private async Task UpdateCacheFolderSizeAsync(string cachePath, long fileSize, ObjectId collectionId)
+    {
+        try
+        {
+            // Determine which cache folder was used based on the path
+            using var scope = _serviceScopeFactory.CreateScope();
+            var cacheFolderRepository = scope.ServiceProvider.GetRequiredService<ICacheFolderRepository>();
+            
+            // Extract cache folder path from cache path
+            // CachePath format: {CacheFolderPath}/cache/{CollectionId}/{FileName}
+            var cacheFileDir = Path.GetDirectoryName(cachePath);
+            if (string.IsNullOrEmpty(cacheFileDir))
+            {
+                _logger.LogWarning("⚠️ Cannot determine cache folder from path: {Path}", cachePath);
+                return;
+            }
+            
+            // Get parent directory (remove CollectionId folder)
+            var cacheDir = Path.GetDirectoryName(cacheFileDir);
+            if (string.IsNullOrEmpty(cacheDir))
+            {
+                _logger.LogWarning("⚠️ Cannot determine cache directory from path: {Path}", cachePath);
+                return;
+            }
+            
+            // Get cache folder root (remove "cache" folder)
+            var cacheFolderPath = Path.GetDirectoryName(cacheDir);
+            if (string.IsNullOrEmpty(cacheFolderPath))
+            {
+                _logger.LogWarning("⚠️ Cannot determine cache folder root from path: {Path}", cachePath);
+                return;
+            }
+            
+            // Find cache folder by path
+            var cacheFolder = await cacheFolderRepository.GetByPathAsync(cacheFolderPath);
+            if (cacheFolder == null)
+            {
+                _logger.LogWarning("⚠️ Cache folder not found for path: {Path}", cacheFolderPath);
+                return;
+            }
+            
+            // ATOMIC INCREMENT: Thread-safe update using MongoDB $inc operator
+            await cacheFolderRepository.IncrementSizeAsync(cacheFolder.Id, fileSize);
+            
+            _logger.LogDebug("📊 Atomically incremented cache folder {Name} size by {Size} bytes", 
+                cacheFolder.Name, fileSize);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "⚠️ Failed to update cache folder size for cache image: {Path}", cachePath);
+            // Don't throw - cache is already saved, this is just statistics
         }
     }
 }

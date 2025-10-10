@@ -211,6 +211,10 @@ public class ThumbnailGenerationConsumer : BaseMessageConsumer
                 // Save thumbnail data to file
                 await File.WriteAllBytesAsync(thumbnailPath, thumbnailData, cancellationToken);
                 _logger.LogInformation("✅ Generated thumbnail: {ThumbnailPath}", thumbnailPath);
+                
+                // ATOMIC UPDATE: Increment cache folder size to prevent race conditions
+                await UpdateCacheFolderSizeAsync(thumbnailPath, thumbnailData.Length, collectionId);
+                
                 return thumbnailPath;
             }
             else
@@ -315,6 +319,64 @@ public class ThumbnailGenerationConsumer : BaseMessageConsumer
         {
             _logger.LogError(ex, "❌ Error updating thumbnail info in database for image {ImageId}", thumbnailMessage.ImageId);
             throw;
+        }
+    }
+
+    /// <summary>
+    /// Atomically update cache folder size after saving thumbnail
+    /// Uses MongoDB $inc operator to prevent race conditions during concurrent operations
+    /// </summary>
+    private async Task UpdateCacheFolderSizeAsync(string thumbnailPath, long fileSize, ObjectId collectionId)
+    {
+        try
+        {
+            // Determine which cache folder was used based on the path
+            using var scope = _serviceScopeFactory.CreateScope();
+            var cacheFolderRepository = scope.ServiceProvider.GetRequiredService<ICacheFolderRepository>();
+            
+            // Extract cache folder path from thumbnail path
+            // ThumbnailPath format: {CacheFolderPath}/thumbnails/{CollectionId}/{FileName}
+            var thumbnailDir = Path.GetDirectoryName(thumbnailPath);
+            if (string.IsNullOrEmpty(thumbnailDir))
+            {
+                _logger.LogWarning("⚠️ Cannot determine cache folder from path: {Path}", thumbnailPath);
+                return;
+            }
+            
+            // Get parent directory (remove CollectionId folder)
+            var thumbnailsDir = Path.GetDirectoryName(thumbnailDir);
+            if (string.IsNullOrEmpty(thumbnailsDir))
+            {
+                _logger.LogWarning("⚠️ Cannot determine thumbnails directory from path: {Path}", thumbnailPath);
+                return;
+            }
+            
+            // Get cache folder root (remove "thumbnails" folder)
+            var cacheFolderPath = Path.GetDirectoryName(thumbnailsDir);
+            if (string.IsNullOrEmpty(cacheFolderPath))
+            {
+                _logger.LogWarning("⚠️ Cannot determine cache folder root from path: {Path}", thumbnailPath);
+                return;
+            }
+            
+            // Find cache folder by path
+            var cacheFolder = await cacheFolderRepository.GetByPathAsync(cacheFolderPath);
+            if (cacheFolder == null)
+            {
+                _logger.LogWarning("⚠️ Cache folder not found for path: {Path}", cacheFolderPath);
+                return;
+            }
+            
+            // ATOMIC INCREMENT: Thread-safe update using MongoDB $inc operator
+            await cacheFolderRepository.IncrementSizeAsync(cacheFolder.Id, fileSize);
+            
+            _logger.LogDebug("📊 Atomically incremented cache folder {Name} size by {Size} bytes", 
+                cacheFolder.Name, fileSize);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "⚠️ Failed to update cache folder size for thumbnail: {Path}", thumbnailPath);
+            // Don't throw - thumbnail is already saved, this is just statistics
         }
     }
 }
