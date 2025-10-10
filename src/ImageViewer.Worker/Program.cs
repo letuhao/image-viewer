@@ -71,6 +71,7 @@ builder.Services.AddScoped<IBackgroundJobService, ImageViewer.Application.Servic
 builder.Services.AddScoped<IStatisticsService, StatisticsService>(); // Refactored to use embedded design
 builder.Services.AddScoped<IBulkService, BulkService>();
 builder.Services.AddScoped<IImageProcessingSettingsService, ImageProcessingSettingsService>();
+builder.Services.AddScoped<ICacheFolderSelectionService, CacheFolderSelectionService>();
 
 // Add Infrastructure Services
 // builder.Services.AddScoped<IFileScannerService, FileScannerService>(); // Removed - needs refactoring

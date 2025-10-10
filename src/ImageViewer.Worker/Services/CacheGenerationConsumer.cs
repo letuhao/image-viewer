@@ -79,15 +79,28 @@ public class CacheGenerationConsumer : BaseMessageConsumer
             var collectionRepository = scope.ServiceProvider.GetRequiredService<ICollectionRepository>();
             var settingsService = scope.ServiceProvider.GetRequiredService<IImageProcessingSettingsService>();
             
-            // Get format from settings FIRST before determining cache path
+            // Get format from settings
             var format = await settingsService.GetCacheFormatAsync();
 
-            // Determine proper cache path using cache service (with correct format extension)
-            var cachePath = await DetermineCachePath(cacheMessage, cacheService, format);
+            // Use PRE-DETERMINED cache path from message (set during job creation for distribution)
+            // OR fallback to dynamic determination if not set
+            var cachePath = cacheMessage.CachePath;
+            
             if (string.IsNullOrEmpty(cachePath))
             {
-                _logger.LogWarning("❌ Could not determine cache path for image {ImageId}", cacheMessage.ImageId);
-                return;
+                _logger.LogDebug("Cache path not pre-determined, selecting cache folder now for image {ImageId}", cacheMessage.ImageId);
+                // Fallback: Determine cache path dynamically (old behavior)
+                cachePath = await DetermineCachePath(cacheMessage, cacheService, format);
+                
+                if (string.IsNullOrEmpty(cachePath))
+                {
+                    _logger.LogWarning("❌ Could not determine cache path for image {ImageId}", cacheMessage.ImageId);
+                    return;
+                }
+            }
+            else
+            {
+                _logger.LogDebug("✅ Using pre-determined cache path: {CachePath}", cachePath);
             }
 
             // Check if cache already exists and force regeneration is disabled

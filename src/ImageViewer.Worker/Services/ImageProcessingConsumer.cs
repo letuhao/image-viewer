@@ -135,13 +135,29 @@ public class ImageProcessingConsumer : BaseMessageConsumer
             {
                 // Load cache settings from system settings (if available)
                 var systemSettingService = serviceProvider.GetService<ISystemSettingService>();
+                var imageProcessingSettingsService = serviceProvider.GetService<IImageProcessingSettingsService>();
+                var cacheFolderSelectionService = serviceProvider.GetService<ICacheFolderSelectionService>();
+                
                 int cacheQuality = 85; // Optimized for web (default)
                 string cacheFormat = "jpeg"; // Default
                 int cacheWidth = 1920; // Default
                 int cacheHeight = 1080; // Default
                 bool preserveOriginal = false; // Default
 
-                if (systemSettingService != null)
+                // Get settings from IImageProcessingSettingsService (prioritized) or fallback to SystemSettingService
+                if (imageProcessingSettingsService != null)
+                {
+                    try
+                    {
+                        cacheFormat = await imageProcessingSettingsService.GetCacheFormatAsync();
+                        cacheQuality = await imageProcessingSettingsService.GetCacheQualityAsync();
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogDebug(ex, "Failed to load settings from ImageProcessingSettingsService, trying SystemSettingService");
+                    }
+                }
+                else if (systemSettingService != null)
                 {
                     try
                     {
@@ -156,12 +172,32 @@ public class ImageProcessingConsumer : BaseMessageConsumer
                     }
                 }
 
+                // **SMART CACHE FOLDER DISTRIBUTION**: Select cache folder BEFORE enqueueing
+                var collectionObjectId = ObjectId.Parse(imageMessage.CollectionId);
+                string? cachePath = null;
+                
+                if (cacheFolderSelectionService != null)
+                {
+                    cachePath = await cacheFolderSelectionService.SelectCacheFolderForCacheAsync(
+                        collectionObjectId,
+                        embeddedImage.Id,
+                        cacheWidth,
+                        cacheHeight,
+                        cacheFormat);
+                }
+
+                if (string.IsNullOrEmpty(cachePath))
+                {
+                    _logger.LogWarning("⚠️ Failed to select cache folder for image {ImageId}, job will determine path", embeddedImage.Id);
+                    cachePath = ""; // Fallback: consumer will determine
+                }
+
                 var cacheMessage = new CacheGenerationMessage
                 {
                     ImageId = embeddedImage.Id, // Already a string
                     CollectionId = imageMessage.CollectionId, // Already a string
                     ImagePath = imageMessage.ImagePath,
-                    CachePath = "", // Will be determined by cache service
+                    CachePath = cachePath, // PRE-DETERMINED cache path for distribution
                     CacheWidth = cacheWidth,
                     CacheHeight = cacheHeight,
                     Quality = cacheQuality,
@@ -175,7 +211,7 @@ public class ImageProcessingConsumer : BaseMessageConsumer
 
                 // Queue the cache generation job
                 await messageQueueService.PublishAsync(cacheMessage, "cache.generation");
-                _logger.LogDebug("📋 Queued cache generation job for image {ImageId}", embeddedImage.Id);
+                _logger.LogDebug("📋 Queued cache generation job for image {ImageId} → {CachePath}", embeddedImage.Id, cachePath);
             }
             catch (Exception ex)
             {
