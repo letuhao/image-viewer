@@ -51,10 +51,15 @@ const ImageViewer: React.FC = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
-  const imageId = searchParams.get('imageId');
+  const initialImageId = searchParams.get('imageId');
   const { data: collection } = useCollection(collectionId!);
   const { data: imagesData } = useImages({ collectionId: collectionId!, limit: 1000 });
-  const { data: currentImage } = useImage(collectionId!, imageId!);
+  
+  // Use local state for current image ID to avoid URL changes on every navigation
+  const [currentImageId, setCurrentImageId] = useState(initialImageId || '');
+  
+  // Only fetch initial image for metadata, then use cached list
+  const { data: initialImage } = useImage(collectionId!, initialImageId!);
 
   const [zoom, setZoom] = useState(1);
   const [rotation, setRotation] = useState(0);
@@ -82,21 +87,29 @@ const ImageViewer: React.FC = () => {
   const imageContainerRef = useRef<HTMLDivElement>(null);
 
   const images = imagesData?.data || [];
-  const currentIndex = images.findIndex((img) => img.id === imageId);
+  const currentIndex = images.findIndex((img) => img.id === currentImageId);
+  const currentImage = currentIndex >= 0 ? images[currentIndex] : null;
+  
+  // Sync currentImageId with URL parameter
+  useEffect(() => {
+    if (initialImageId && initialImageId !== currentImageId) {
+      setCurrentImageId(initialImageId);
+    }
+  }, [initialImageId]);
   
   // Handle invalid currentIndex
   useEffect(() => {
-    if (images.length > 0 && currentIndex === -1 && imageId) {
-      // Image not found, navigate to first image
-      navigate(`/collections/${collectionId}/viewer?imageId=${images[0].id}`, { replace: true });
+    if (images.length > 0 && currentIndex === -1 && currentImageId) {
+      // Image not found, set to first image
+      setCurrentImageId(images[0].id);
     }
-  }, [currentIndex, images, imageId, collectionId, navigate]);
+  }, [currentIndex, images, currentImageId]);
 
   // Reset loading/error state when image changes
   useEffect(() => {
     setImageLoading(true);
     setImageError(false);
-  }, [imageId]);
+  }, [currentImageId]);
 
   // Save view mode to localStorage
   const saveViewMode = useCallback((mode: ViewMode) => {
@@ -190,14 +203,16 @@ const ImageViewer: React.FC = () => {
       }
 
       const newImageId = images[newIndex].id;
-      navigate(`/collections/${collectionId}/viewer?imageId=${newImageId}`, { replace: true });
+      
+      // Update local state instead of URL for seamless navigation
+      setCurrentImageId(newImageId);
       
       // Reset zoom, rotation, and pan when changing images
       setZoom(1);
       setRotation(0);
       setPanPosition({ x: 0, y: 0 });
     },
-    [images, currentIndex, collectionId, navigate, viewMode]
+    [images, currentIndex, viewMode]
   );
 
   // Keyboard navigation
@@ -271,7 +286,7 @@ const ImageViewer: React.FC = () => {
           const randomIndex = Math.floor(Math.random() * images.length);
           const randomImage = images[randomIndex];
           if (randomImage) {
-            navigate(`/collections/${collectionId}/viewer?imageId=${randomImage.id}`, { replace: true });
+            setCurrentImageId(randomImage.id);
           }
         } else {
           navigateToImage('next');
@@ -302,16 +317,16 @@ const ImageViewer: React.FC = () => {
 
   // Scroll to current image in scroll mode
   useEffect(() => {
-    if (navigationMode === 'scroll' && imageId && currentIndex >= 0) {
+    if (navigationMode === 'scroll' && currentImageId && currentIndex >= 0) {
       // Small delay to ensure DOM is ready
       setTimeout(() => {
-        const imageElement = document.getElementById(`image-${imageId}`);
+        const imageElement = document.getElementById(`image-${currentImageId}`);
         if (imageElement) {
           imageElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
       }, 100);
     }
-  }, [navigationMode, imageId, currentIndex]);
+  }, [navigationMode, currentImageId, currentIndex]);
 
   // Image preloading (only in paging mode)
   useEffect(() => {
@@ -343,8 +358,13 @@ const ImageViewer: React.FC = () => {
     };
   }, [currentIndex, images, collectionId]);
 
-  if (!currentImage) {
-    return <LoadingSpinner fullScreen text="Loading image..." />;
+  if (!currentImage && images.length === 0) {
+    return <LoadingSpinner fullScreen text="Loading images..." />;
+  }
+  
+  if (!currentImage && images.length > 0) {
+    // Images loaded but current not found, will auto-redirect
+    return <LoadingSpinner fullScreen text="Loading..." />;
   }
 
   return (
