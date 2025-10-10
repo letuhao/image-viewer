@@ -75,7 +75,7 @@ const BulkAddCollectionsDialog: React.FC<BulkAddCollectionsDialogProps> = ({
 
       {/* Full-screen container */}
       <div className="fixed inset-0 flex items-center justify-center p-4">
-        <Dialog.Panel className="bg-slate-800 rounded-lg border border-slate-700 w-full max-w-2xl">
+        <Dialog.Panel className="bg-slate-800 rounded-lg border border-slate-700 w-full max-w-2xl max-h-[90vh] flex flex-col">
           {/* Header */}
           <div className="flex items-center justify-between px-6 py-4 border-b border-slate-700">
             <div className="flex items-center space-x-3">
@@ -92,8 +92,9 @@ const BulkAddCollectionsDialog: React.FC<BulkAddCollectionsDialogProps> = ({
             </button>
           </div>
 
-          {/* Form */}
-          <form onSubmit={handleSubmit} className="p-6 space-y-6">
+          {/* Form - Scrollable Content */}
+          <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
+            <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6">
             <SettingItem label="Parent Folder Path" description="Parent directory containing collection folders" vertical>
               <input
                 type="text"
@@ -207,15 +208,18 @@ const BulkAddCollectionsDialog: React.FC<BulkAddCollectionsDialogProps> = ({
                 </div>
               </div>
             </div>
+            </div>
 
-            {/* Actions */}
-            <div className="flex justify-end space-x-3 pt-4">
-              <Button type="button" variant="ghost" onClick={onClose}>
-                Cancel
-              </Button>
-              <Button type="submit" variant="primary" disabled={isSubmitting}>
-                {isSubmitting ? 'Starting...' : 'Start Bulk Add'}
-              </Button>
+            {/* Actions - Fixed Footer */}
+            <div className="flex-shrink-0 border-t border-slate-700 px-6 py-4 bg-slate-900/50">
+              <div className="flex justify-end space-x-3">
+                <Button type="button" variant="ghost" onClick={onClose}>
+                  Cancel
+                </Button>
+                <Button type="submit" variant="primary" disabled={isSubmitting}>
+                  {isSubmitting ? 'Starting...' : 'Start Bulk Add'}
+                </Button>
+              </div>
             </div>
           </form>
         </Dialog.Panel>
