@@ -528,11 +528,11 @@ const ImageViewer: React.FC = () => {
       {/* Main Images */}
       <div 
         ref={imageContainerRef}
-        className="flex-1 flex items-center justify-center overflow-auto"
+        className={`flex-1 overflow-auto ${navigationMode === 'scroll' ? 'flex items-start justify-center' : 'flex items-center justify-center'}`}
       >
         {navigationMode === 'scroll' ? (
           // Scroll Mode: Show all images in a vertical list
-          <div className="flex flex-col gap-4 py-4 w-full items-center">
+          <div className="flex flex-col gap-4 py-4 w-full max-w-[100vw] items-center">
             {images.map((image, index) => (
               <div 
                 key={image.id} 
