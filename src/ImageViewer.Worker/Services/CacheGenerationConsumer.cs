@@ -183,6 +183,7 @@ public class CacheGenerationConsumer : BaseMessageConsumer
             await File.WriteAllBytesAsync(cachePath, cacheImageData, cancellationToken);
 
             // ATOMIC UPDATE: Increment cache folder size to prevent race conditions
+            var collectionObjectId = ObjectId.Parse(cacheMessage.CollectionId);
             await UpdateCacheFolderSizeAsync(cachePath, cacheImageData.Length, collectionObjectId);
 
             // Update cache info in database
