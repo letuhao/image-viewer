@@ -1,40 +1,23 @@
 import { useState } from 'react';
-import { FolderOpen, Plus, Trash2, Edit2, HardDrive, BarChart3, AlertTriangle, Check, X } from 'lucide-react';
+import { FolderOpen, Plus, Trash2, Edit2, HardDrive, BarChart3, AlertTriangle } from 'lucide-react';
 import Button from '../ui/Button';
 import SettingItem from './SettingItem';
-import toast from 'react-hot-toast';
-
-interface CacheFolder {
-  id: string;
-  name: string;
-  path: string;
-  priority: number;
-  maxSizeBytes: number | null;
-  currentSize: number;
-  fileCount: number;
-  isActive: boolean;
-}
-
-interface CacheFolderManagerProps {
-  folders?: CacheFolder[];
-  onAdd?: (folder: Omit<CacheFolder, 'id' | 'currentSize' | 'fileCount'>) => void;
-  onUpdate?: (id: string, folder: Partial<CacheFolder>) => void;
-  onDelete?: (id: string) => void;
-  onValidatePath?: (path: string) => Promise<boolean>;
-}
+import LoadingSpinner from '../ui/LoadingSpinner';
+import { useCacheFolders, useCreateCacheFolder, useUpdateCacheFolder, useDeleteCacheFolder, useValidatePath } from '../../hooks/useCacheFolders';
+import type { CacheFolder } from '../../services/cacheFoldersApi';
 
 /**
  * Cache Folder Manager Component
  * 
  * Manage cache folders for distributed caching
  */
-const CacheFolderManager: React.FC<CacheFolderManagerProps> = ({
-  folders = [],
-  onAdd,
-  onUpdate,
-  onDelete,
-  onValidatePath,
-}) => {
+const CacheFolderManager: React.FC = () => {
+  const { data, isLoading } = useCacheFolders();
+  const createMutation = useCreateCacheFolder();
+  const updateMutation = useUpdateCacheFolder();
+  const deleteMutation = useDeleteCacheFolder();
+  const validateMutation = useValidatePath();
+
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
@@ -43,6 +26,9 @@ const CacheFolderManager: React.FC<CacheFolderManagerProps> = ({
     priority: 0,
     maxSizeGB: '',
   });
+
+  const folders = data?.folders || [];
+  const summary = data?.summary;
 
   const formatBytes = (bytes: number): string => {
     if (bytes === 0) return '0 B';
@@ -71,16 +57,17 @@ const CacheFolderManager: React.FC<CacheFolderManagerProps> = ({
       path: formData.path,
       priority: formData.priority,
       maxSizeBytes: formData.maxSizeGB ? parseInt(formData.maxSizeGB) * 1024 * 1024 * 1024 : null,
-      isActive: true,
     };
 
-    if (editingId && onUpdate) {
-      onUpdate(editingId, folderData);
-    } else if (onAdd) {
-      onAdd(folderData);
+    if (editingId) {
+      updateMutation.mutate({ id: editingId, request: folderData }, {
+        onSuccess: () => resetForm()
+      });
+    } else {
+      createMutation.mutate(folderData, {
+        onSuccess: () => resetForm()
+      });
     }
-
-    resetForm();
   };
 
   const startEdit = (folder: CacheFolder) => {
@@ -94,32 +81,32 @@ const CacheFolderManager: React.FC<CacheFolderManagerProps> = ({
     setShowAddForm(false);
   };
 
-  const handleValidate = async () => {
-    if (!formData.path || !onValidatePath) return;
-    
-    const isValid = await onValidatePath(formData.path);
-    if (isValid) {
-      toast.success('Path is valid and writable');
-    } else {
-      toast.error('Path validation failed');
+  const handleValidate = () => {
+    if (!formData.path) return;
+    validateMutation.mutate(formData.path);
+  };
+
+  const handleDelete = (id: string, name: string) => {
+    if (window.confirm(`Delete cache folder "${name}"? This will remove all cached files.`)) {
+      deleteMutation.mutate(id);
     }
   };
 
-  const totalSize = folders.reduce((sum, f) => sum + f.currentSize, 0);
-  const totalFiles = folders.reduce((sum, f) => sum + f.fileCount, 0);
-  const avgPriority = folders.length > 0 ? folders.reduce((sum, f) => sum + f.priority, 0) / folders.length : 0;
+  if (isLoading) {
+    return <LoadingSpinner text="Loading cache folders..." />;
+  }
 
   return (
     <div className="space-y-6">
       {/* Summary Stats */}
-      {folders.length > 0 && (
+      {summary && folders.length > 0 && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4">
             <div className="flex items-center space-x-3">
               <FolderOpen className="h-6 w-6 text-blue-500" />
               <div>
                 <p className="text-xs text-slate-400">Total Folders</p>
-                <p className="text-xl font-bold text-white">{folders.length}</p>
+                <p className="text-xl font-bold text-white">{summary.totalFolders}</p>
               </div>
             </div>
           </div>
@@ -129,7 +116,7 @@ const CacheFolderManager: React.FC<CacheFolderManagerProps> = ({
               <BarChart3 className="h-6 w-6 text-green-500" />
               <div>
                 <p className="text-xs text-slate-400">Total Size</p>
-                <p className="text-xl font-bold text-white">{formatBytes(totalSize)}</p>
+                <p className="text-xl font-bold text-white">{formatBytes(summary.totalSize)}</p>
               </div>
             </div>
           </div>
@@ -139,7 +126,7 @@ const CacheFolderManager: React.FC<CacheFolderManagerProps> = ({
               <HardDrive className="h-6 w-6 text-purple-500" />
               <div>
                 <p className="text-xs text-slate-400">Total Files</p>
-                <p className="text-xl font-bold text-white">{totalFiles.toLocaleString()}</p>
+                <p className="text-xl font-bold text-white">{summary.totalFiles.toLocaleString()}</p>
               </div>
             </div>
           </div>
@@ -149,7 +136,7 @@ const CacheFolderManager: React.FC<CacheFolderManagerProps> = ({
               <AlertTriangle className="h-6 w-6 text-orange-500" />
               <div>
                 <p className="text-xs text-slate-400">Avg Priority</p>
-                <p className="text-xl font-bold text-white">{avgPriority.toFixed(1)}</p>
+                <p className="text-xl font-bold text-white">{summary.avgPriority.toFixed(1)}</p>
               </div>
             </div>
           </div>
@@ -198,11 +185,14 @@ const CacheFolderManager: React.FC<CacheFolderManagerProps> = ({
                   placeholder="D:\Cache\ImageCache"
                   required
                 />
-                {onValidatePath && (
-                  <Button type="button" variant="ghost" onClick={handleValidate}>
-                    Validate
-                  </Button>
-                )}
+                <Button 
+                  type="button" 
+                  variant="ghost" 
+                  onClick={handleValidate}
+                  disabled={validateMutation.isPending}
+                >
+                  {validateMutation.isPending ? 'Validating...' : 'Validate'}
+                </Button>
               </div>
             </SettingItem>
 
@@ -273,7 +263,7 @@ const CacheFolderManager: React.FC<CacheFolderManagerProps> = ({
 
                     <p className="text-sm text-slate-400 mb-3 font-mono">{folder.path}</p>
 
-                    <div className="grid grid-cols-3 gap-4 text-sm">
+                    <div className="grid grid-cols-3 gap-4 text-sm mb-3">
                       <div>
                         <span className="text-slate-500">Size: </span>
                         <span className="font-medium text-white">
@@ -296,6 +286,34 @@ const CacheFolderManager: React.FC<CacheFolderManagerProps> = ({
                         </span>
                       </div>
                     </div>
+
+                    {/* Disk Health Info */}
+                    {folder.diskInfo?.available && (
+                      <div className="mt-3 pt-3 border-t border-slate-700">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+                          <div>
+                            <span className="text-slate-500">Drive: </span>
+                            <span className="text-slate-300">{folder.diskInfo.driveType || 'Unknown'}</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-500">Format: </span>
+                            <span className="text-slate-300">{folder.diskInfo.driveFormat || 'N/A'}</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-500">Disk Free: </span>
+                            <span className="text-green-400">
+                              {folder.diskInfo.freeSpace ? formatBytes(folder.diskInfo.freeSpace) : 'N/A'}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-slate-500">Disk Used: </span>
+                            <span className={folder.diskInfo.usedPercentage && folder.diskInfo.usedPercentage > 90 ? 'text-red-400' : 'text-slate-300'}>
+                              {folder.diskInfo.usedPercentage?.toFixed(1) || '0'}%
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   <div className="flex space-x-2 ml-4">
@@ -307,13 +325,10 @@ const CacheFolderManager: React.FC<CacheFolderManagerProps> = ({
                       <Edit2 className="h-4 w-4" />
                     </button>
                     <button
-                      onClick={() => {
-                        if (window.confirm(`Delete cache folder "${folder.name}"? This will remove all cached files.`)) {
-                          onDelete?.(folder.id);
-                        }
-                      }}
+                      onClick={() => handleDelete(folder.id, folder.name)}
                       className="p-2 text-slate-400 hover:text-red-400 hover:bg-slate-700 rounded-lg transition-colors"
                       title="Delete"
+                      disabled={deleteMutation.isPending}
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>

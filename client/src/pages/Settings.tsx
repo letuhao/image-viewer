@@ -415,27 +415,9 @@ const Settings: React.FC = () => {
 
                   <SettingsSection
                     title="Cache Folders"
-                    description="Manage distributed cache storage locations"
+                    description="Manage distributed cache storage locations with real-time disk health monitoring"
                   >
-                    <CacheFolderManager
-                      folders={[]}
-                      onAdd={(folder) => {
-                        console.log('Add folder:', folder);
-                        toast.success('Cache folder API not yet connected');
-                      }}
-                      onUpdate={(id, folder) => {
-                        console.log('Update folder:', id, folder);
-                        toast.success('Cache folder API not yet connected');
-                      }}
-                      onDelete={(id) => {
-                        console.log('Delete folder:', id);
-                        toast.success('Cache folder API not yet connected');
-                      }}
-                      onValidatePath={async (path) => {
-                        console.log('Validate path:', path);
-                        return true;
-                      }}
-                    />
+                    <CacheFolderManager />
                   </SettingsSection>
 
                   <SettingsSection
