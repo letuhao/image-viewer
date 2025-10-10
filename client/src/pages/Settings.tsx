@@ -9,6 +9,7 @@ import Toggle from '../components/ui/Toggle';
 import Button from '../components/ui/Button';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { useUserSettings, useUpdateUserSettings, useResetUserSettings } from '../hooks/useSettings';
+import toast from 'react-hot-toast';
 
 const Settings: React.FC = () => {
   const { isAdmin } = useAuth();
@@ -31,6 +32,15 @@ const Settings: React.FC = () => {
     pushNotifications: true,
     profilePublic: false,
     analytics: true,
+  });
+
+  // System settings state
+  const [systemSettings, setSystemSettings] = useState({
+    cacheFormat: 'jpeg',
+    cacheQuality: 85,
+    thumbnailFormat: 'jpeg',
+    thumbnailQuality: 90,
+    thumbnailSize: 300,
   });
 
   // Sync API data with local state when it loads
@@ -77,6 +87,36 @@ const Settings: React.FC = () => {
   const handleResetSettings = () => {
     if (window.confirm('Are you sure you want to reset all settings to default?')) {
       resetSettingsMutation.mutate();
+    }
+  };
+
+  const handleSaveSystemSettings = async () => {
+    try {
+      // Use batch update API for system settings
+      const settings = [
+        { key: 'cache.default.format', value: systemSettings.cacheFormat },
+        { key: 'cache.default.quality', value: systemSettings.cacheQuality.toString() },
+        { key: 'thumbnail.default.format', value: systemSettings.thumbnailFormat },
+        { key: 'thumbnail.default.quality', value: systemSettings.thumbnailQuality.toString() },
+        { key: 'thumbnail.default.size', value: systemSettings.thumbnailSize.toString() },
+      ];
+
+      const response = await fetch('/api/v1/systemsettings/batch', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ settings }),
+      });
+
+      if (response.ok) {
+        toast.success('System settings saved successfully!');
+      } else {
+        toast.error('Failed to save system settings');
+      }
+    } catch (error) {
+      console.error('Error saving system settings:', error);
+      toast.error('Failed to save system settings');
     }
   };
 
@@ -293,7 +333,8 @@ const Settings: React.FC = () => {
                       vertical
                     >
                       <select
-                        defaultValue="jpeg"
+                        value={systemSettings.cacheFormat}
+                        onChange={(e) => setSystemSettings({ ...systemSettings, cacheFormat: e.target.value })}
                         className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                       >
                         <option value="jpeg">JPEG (Best compatibility)</option>
@@ -312,10 +353,11 @@ const Settings: React.FC = () => {
                           type="range"
                           min="0"
                           max="100"
-                          defaultValue="85"
+                          value={systemSettings.cacheQuality}
+                          onChange={(e) => setSystemSettings({ ...systemSettings, cacheQuality: parseInt(e.target.value) })}
                           className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-600"
                         />
-                        <div className="text-sm text-slate-400 text-right">85%</div>
+                        <div className="text-sm text-slate-400 text-right">{systemSettings.cacheQuality}%</div>
                       </div>
                     </SettingItem>
 
@@ -325,7 +367,8 @@ const Settings: React.FC = () => {
                       vertical
                     >
                       <select
-                        defaultValue="jpeg"
+                        value={systemSettings.thumbnailFormat}
+                        onChange={(e) => setSystemSettings({ ...systemSettings, thumbnailFormat: e.target.value })}
                         className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                       >
                         <option value="jpeg">JPEG (Best compatibility)</option>
@@ -344,10 +387,11 @@ const Settings: React.FC = () => {
                           type="range"
                           min="0"
                           max="100"
-                          defaultValue="90"
+                          value={systemSettings.thumbnailQuality}
+                          onChange={(e) => setSystemSettings({ ...systemSettings, thumbnailQuality: parseInt(e.target.value) })}
                           className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-600"
                         />
-                        <div className="text-sm text-slate-400 text-right">90%</div>
+                        <div className="text-sm text-slate-400 text-right">{systemSettings.thumbnailQuality}%</div>
                       </div>
                     </SettingItem>
 
@@ -358,7 +402,8 @@ const Settings: React.FC = () => {
                     >
                       <input
                         type="number"
-                        defaultValue="300"
+                        value={systemSettings.thumbnailSize}
+                        onChange={(e) => setSystemSettings({ ...systemSettings, thumbnailSize: parseInt(e.target.value) })}
                         className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                       />
                     </SettingItem>
@@ -402,10 +447,18 @@ const Settings: React.FC = () => {
 
                   {/* Save Button */}
                   <div className="flex justify-end space-x-3">
-                    <Button variant="ghost">
+                    <Button variant="ghost" onClick={() => {
+                      setSystemSettings({
+                        cacheFormat: 'jpeg',
+                        cacheQuality: 85,
+                        thumbnailFormat: 'jpeg',
+                        thumbnailQuality: 90,
+                        thumbnailSize: 300,
+                      });
+                    }}>
                       Reset to Defaults
                     </Button>
-                    <Button variant="primary">
+                    <Button variant="primary" onClick={handleSaveSystemSettings}>
                       Save System Settings
                     </Button>
                   </div>
