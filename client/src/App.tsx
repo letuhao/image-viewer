@@ -11,6 +11,7 @@ import Collections from './pages/Collections';
 import CollectionDetail from './pages/CollectionDetail';
 import ImageViewer from './pages/ImageViewer';
 import Settings from './pages/Settings';
+import BackgroundJobs from './pages/BackgroundJobs';
 
 // Create React Query client
 const queryClient = new QueryClient({
@@ -45,6 +46,7 @@ function App() {
               <Route path="collections" element={<Collections />} />
               <Route path="collections/:id" element={<CollectionDetail />} />
               <Route path="collections/:id/viewer" element={<ImageViewer />} />
+              <Route path="jobs" element={<BackgroundJobs />} />
               <Route path="settings" element={<Settings />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Route>
