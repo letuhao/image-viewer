@@ -172,7 +172,7 @@ public class BulkOperationDto
 {
     public string OperationType { get; set; } = string.Empty;
     public List<Guid> TargetIds { get; set; } = new List<Guid>();
-    public Dictionary<string, object> Parameters { get; set; } = new Dictionary<string, object>();
+    public Dictionary<string, object?> Parameters { get; set; } = new Dictionary<string, object?>();
     public BulkOperationProgressDto Progress { get; set; } = null!;
     public List<BulkOperationStepDto> Steps { get; set; } = new List<BulkOperationStepDto>();
 }

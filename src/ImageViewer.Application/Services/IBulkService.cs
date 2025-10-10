@@ -26,7 +26,7 @@ public class BulkAddCollectionsRequest
     public string ParentPath { get; set; } = string.Empty;
     
     [JsonPropertyName("collectionPrefix")]
-    public string CollectionPrefix { get; set; } = string.Empty;
+    public string? CollectionPrefix { get; set; }
     
     [JsonPropertyName("includeSubfolders")]
     public bool IncludeSubfolders { get; set; } = false;

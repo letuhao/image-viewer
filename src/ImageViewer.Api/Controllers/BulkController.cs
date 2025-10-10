@@ -44,7 +44,7 @@ public class BulkController : ControllerBase
             var bulkOperationDto = new BulkOperationDto
             {
                 OperationType = "BulkAddCollections",
-                Parameters = new Dictionary<string, object>
+                Parameters = new Dictionary<string, object?>
                 {
                     ["ParentPath"] = request.ParentPath,
                     ["CollectionPrefix"] = request.CollectionPrefix ?? "",
