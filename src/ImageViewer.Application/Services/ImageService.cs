@@ -403,7 +403,7 @@ public class ImageService : IImageService
             }
 
             // Find cache image for this image ID
-            var cacheImage = collection.GetCacheImageByImageId(imageId);
+            var cacheImage = collection.GetCacheImageForImage(imageId);
             if (cacheImage == null)
             {
                 _logger.LogDebug("No cache image found for {ImageId} in collection {CollectionId}", imageId, collectionId);
