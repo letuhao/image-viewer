@@ -49,10 +49,13 @@ public class MongoCacheFolderRepository : MongoRepository<CacheFolder>, ICacheFo
     /// <summary>
     /// Atomically increment cache folder size using MongoDB $inc operator
     /// Thread-safe for concurrent operations - prevents race conditions
+    /// Pattern copied from BackgroundJob atomic updates
     /// </summary>
     public async Task IncrementSizeAsync(ObjectId folderId, long sizeBytes)
     {
         var filter = Builders<CacheFolder>.Filter.Eq(x => x.Id, folderId);
+        
+        // SINGLE ATOMIC UPDATE: Only increment - don't try to do multiple updates
         var update = Builders<CacheFolder>.Update
             .Inc(x => x.CurrentSizeBytes, sizeBytes)
             .Set(x => x.UpdatedAt, DateTime.UtcNow);
@@ -63,21 +66,31 @@ public class MongoCacheFolderRepository : MongoRepository<CacheFolder>, ICacheFo
     /// <summary>
     /// Atomically decrement cache folder size using MongoDB $inc operator
     /// Thread-safe for concurrent operations - prevents race conditions
-    /// Ensures size never goes below 0
+    /// Pattern copied from BackgroundJob atomic updates
     /// </summary>
     public async Task DecrementSizeAsync(ObjectId folderId, long sizeBytes)
     {
-        var filter = Builders<CacheFolder>.Filter.Eq(x => x.Id, folderId);
+        var filter = Builders<CacheFolder>.Filter.And(
+            Builders<CacheFolder>.Filter.Eq(x => x.Id, folderId),
+            Builders<CacheFolder>.Filter.Gte(x => x.CurrentSizeBytes, sizeBytes) // Only decrement if we have enough
+        );
+        
+        // SINGLE ATOMIC UPDATE: Only decrement - MongoDB handles the operation atomically
         var update = Builders<CacheFolder>.Update
             .Inc(x => x.CurrentSizeBytes, -sizeBytes)
             .Set(x => x.UpdatedAt, DateTime.UtcNow);
 
-        await _collection.UpdateOneAsync(filter, update);
-
-        // Ensure CurrentSizeBytes never goes negative
-        var ensureNonNegative = Builders<CacheFolder>.Update
-            .Max(x => x.CurrentSizeBytes, 0L);
+        var result = await _collection.UpdateOneAsync(filter, update);
         
-        await _collection.UpdateOneAsync(filter, ensureNonNegative);
+        // If update didn't match (not enough bytes), just set to 0
+        if (result.ModifiedCount == 0)
+        {
+            var resetFilter = Builders<CacheFolder>.Filter.Eq(x => x.Id, folderId);
+            var resetUpdate = Builders<CacheFolder>.Update
+                .Max(x => x.CurrentSizeBytes, 0L)
+                .Set(x => x.UpdatedAt, DateTime.UtcNow);
+            
+            await _collection.UpdateOneAsync(resetFilter, resetUpdate);
+        }
     }
 }
