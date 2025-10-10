@@ -87,7 +87,7 @@ public class RedisImageCacheService : IImageCacheService
             };
 
             await _cache.SetAsync(key, dataToCache, cacheOptions, cancellationToken);
-            _logger.LogInformation("Cached image at key: {Key}, size: {Size} bytes, expiration: {Expiration} minutes", 
+            _logger.LogDebug("Cached image at key: {Key}, size: {Size} bytes, expiration: {Expiration} minutes", 
                 key, dataToCache.Length, _options.ImageCacheExpirationMinutes);
         }
         catch (Exception ex)
@@ -101,7 +101,7 @@ public class RedisImageCacheService : IImageCacheService
         try
         {
             await _cache.RemoveAsync(key, cancellationToken);
-            _logger.LogInformation("Removed cached image at key: {Key}", key);
+            _logger.LogDebug("Removed cached image at key: {Key}", key);
         }
         catch (Exception ex)
         {
