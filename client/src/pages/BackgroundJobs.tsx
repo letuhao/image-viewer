@@ -327,9 +327,17 @@ const BackgroundJobs: React.FC = () => {
         <div className="flex-shrink-0 border-t border-slate-800 px-6 py-4 bg-slate-900/30">
           <div className="flex items-center justify-between">
             <div className="text-sm text-slate-400">
-              Page {pagination.page} of {pagination.totalPages} ({pagination.total} total)
+              Showing {((pagination.page - 1) * 20) + 1}-{Math.min(pagination.page * 20, pagination.total)} of {pagination.total} jobs
             </div>
-            <div className="flex space-x-2">
+            <div className="flex items-center space-x-3">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setPage(1)}
+                disabled={!pagination.hasPrevious}
+              >
+                First
+              </Button>
               <Button
                 variant="ghost"
                 size="sm"
@@ -338,6 +346,26 @@ const BackgroundJobs: React.FC = () => {
               >
                 Previous
               </Button>
+              
+              {/* Page Input */}
+              <div className="flex items-center space-x-2">
+                <span className="text-sm text-slate-400">Page</span>
+                <input
+                  type="number"
+                  min={1}
+                  max={pagination.totalPages}
+                  value={page}
+                  onChange={(e) => {
+                    const newPage = parseInt(e.target.value);
+                    if (newPage >= 1 && newPage <= pagination.totalPages) {
+                      setPage(newPage);
+                    }
+                  }}
+                  className="w-16 px-2 py-1 bg-slate-800 border border-slate-700 rounded text-white text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <span className="text-sm text-slate-400">of {pagination.totalPages}</span>
+              </div>
+              
               <Button
                 variant="ghost"
                 size="sm"
@@ -345,6 +373,14 @@ const BackgroundJobs: React.FC = () => {
                 disabled={!pagination.hasNext}
               >
                 Next
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setPage(pagination.totalPages)}
+                disabled={!pagination.hasNext}
+              >
+                Last
               </Button>
             </div>
           </div>
