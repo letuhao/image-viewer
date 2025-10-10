@@ -102,15 +102,17 @@ const ImageViewer: React.FC = () => {
     localStorage.setItem('imageViewerFitToScreen', newValue.toString());
   }, [fitToScreen]);
 
-  // Get image class based on fit mode and orientation
-  const getImageClass = useCallback((image: any) => {
+  // Get image class based on fit mode and screen orientation
+  const getImageClass = useCallback(() => {
     if (!fitToScreen) {
       return "max-w-full max-h-[calc(100vh-8rem)] object-contain transition-transform duration-200";
     }
 
-    // Fit to screen mode: use 100vh for landscape, 100vw for portrait
-    const isLandscape = image.width > image.height;
-    if (isLandscape) {
+    // Fit to screen mode: use screen orientation, not image orientation
+    // Landscape screen (like 32:9 ultrawide): use 100vh (fill height)
+    // Portrait screen (like vertical monitor): use 100vw (fill width)
+    const isLandscapeScreen = window.innerWidth > window.innerHeight;
+    if (isLandscapeScreen) {
       return "h-[100vh] w-auto object-contain transition-transform duration-200";
     } else {
       return "w-[100vw] h-auto object-contain transition-transform duration-200";
@@ -536,7 +538,7 @@ const ImageViewer: React.FC = () => {
               <img
                 src={`/api/v1/images/${collectionId}/${image.id}/file`}
                 alt={image.filename}
-                className={getImageClass(image)}
+                className={getImageClass()}
                 style={{
                   transform: `rotate(${rotation}deg)`,
                 }}
