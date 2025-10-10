@@ -78,6 +78,10 @@ const ImageViewer: React.FC = () => {
 
   // Get images for current view mode
   const getVisibleImages = useCallback(() => {
+    if (images.length === 0) {
+      return [];
+    }
+
     const imagesPerView = {
       single: 1,
       double: 2,
@@ -88,7 +92,10 @@ const ImageViewer: React.FC = () => {
     const visibleImages = [];
     for (let i = 0; i < imagesPerView; i++) {
       const index = (currentIndex + i) % images.length;
-      visibleImages.push(images[index]);
+      const image = images[index];
+      if (image) {
+        visibleImages.push(image);
+      }
     }
     return visibleImages;
   }, [images, currentIndex, viewMode]);
