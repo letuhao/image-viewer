@@ -42,7 +42,20 @@ const BulkAddCollectionsDialog: React.FC<BulkAddCollectionsDialogProps> = ({
     try {
       setIsSubmitting(true);
       
-      const response = await api.post('/bulk/collections', formData);
+      // Prepare request data - convert empty strings to null for dates
+      const requestData = {
+        parentPath: formData.parentPath,
+        collectionPrefix: formData.collectionPrefix || null,
+        includeSubfolders: formData.includeSubfolders,
+        autoAdd: formData.autoAdd,
+        overwriteExisting: formData.overwriteExisting,
+        createdAfter: formData.createdAfter ? new Date(formData.createdAfter).toISOString() : null,
+        createdBefore: formData.createdBefore ? new Date(formData.createdBefore).toISOString() : null,
+        modifiedAfter: formData.modifiedAfter ? new Date(formData.modifiedAfter).toISOString() : null,
+        modifiedBefore: formData.modifiedBefore ? new Date(formData.modifiedBefore).toISOString() : null,
+      };
+      
+      const response = await api.post('/bulk/collections', requestData);
       
       toast.success('Bulk operation started! Check Background Jobs for progress.');
       onSuccess?.();
