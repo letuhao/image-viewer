@@ -201,7 +201,7 @@ const CollectionDetail: React.FC = () => {
               {/* View Mode + Pagination Controls */}
               <div className="flex items-center gap-2">
                 {/* Pagination Controls */}
-                {pagination && pagination.totalPages > 1 && (
+                {pagination && (
                   <div className="flex items-center gap-2 bg-slate-800 rounded-lg px-2 py-1">
                     <button
                       onClick={() => setPage(Math.max(1, page - 1))}

@@ -73,10 +73,17 @@ public class ImagesController : ControllerBase
     [HttpGet("collection/{collectionId}")]
     public async Task<ActionResult<PaginationResponseDto<Domain.ValueObjects.ImageEmbedded>>> GetImagesByCollection(
         ObjectId collectionId,
-        [FromQuery] PaginationRequestDto pagination)
+        [FromQuery] PaginationRequestDto pagination,
+        [FromQuery] int? limit = null)
     {
         try
         {
+            // Use limit parameter if provided, otherwise use pagination.PageSize
+            if (limit.HasValue)
+            {
+                pagination.PageSize = limit.Value;
+            }
+
             var images = await _imageService.GetEmbeddedImagesByCollectionAsync(collectionId);
             var totalCount = images.Count();
             var paginatedImages = images
