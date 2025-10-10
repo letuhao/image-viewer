@@ -277,7 +277,20 @@ const BackgroundJobs: React.FC = () => {
 
                     {/* Meta Info */}
                     <div className="flex items-center space-x-4 text-xs text-slate-500">
-                      <span>Created: {formatDistanceToNow(new Date(job.createdAt), { addSuffix: true })}</span>
+                      {job.createdAt && (
+                        <span>
+                          Created: {
+                            (() => {
+                              try {
+                                const date = new Date(job.createdAt);
+                                return isNaN(date.getTime()) ? 'Unknown' : formatDistanceToNow(date, { addSuffix: true });
+                              } catch {
+                                return 'Unknown';
+                              }
+                            })()
+                          }
+                        </span>
+                      )}
                       {job.duration && <span>Duration: {formatDuration(job.duration)}</span>}
                       {job.currentItem && <span className="text-slate-400">Current: {job.currentItem}</span>}
                     </div>
