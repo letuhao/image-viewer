@@ -103,6 +103,28 @@ builder.Services.AddSingleton<IConnection>(provider =>
 // Register message queue service
 builder.Services.AddScoped<IMessageQueueService, RabbitMQMessageQueueService>();
 
+// Configure Redis
+builder.Services.Configure<ImageViewer.Application.Options.RedisOptions>(builder.Configuration.GetSection("Redis"));
+
+// Register Redis distributed cache
+builder.Services.AddStackExchangeRedisCache(options =>
+{
+    var redisConfig = builder.Configuration.GetSection("Redis");
+    options.Configuration = redisConfig["ConnectionString"];
+    options.InstanceName = redisConfig["InstanceName"];
+});
+
+// Register Redis ConnectionMultiplexer (for advanced operations)
+builder.Services.AddSingleton<StackExchange.Redis.IConnectionMultiplexer>(provider =>
+{
+    var redisConfig = builder.Configuration.GetSection("Redis");
+    var connectionString = redisConfig["ConnectionString"];
+    return StackExchange.Redis.ConnectionMultiplexer.Connect(connectionString!);
+});
+
+// Register Redis Image Cache Service
+builder.Services.AddScoped<ImageViewer.Domain.Interfaces.IImageCacheService, ImageViewer.Infrastructure.Services.RedisImageCacheService>();
+
 // Add Application Services - New MongoDB-based services are registered in AddMongoDb extension
 // The following services are registered in ServiceCollectionExtensions.AddMongoDb():
 // - IUserService, UserService

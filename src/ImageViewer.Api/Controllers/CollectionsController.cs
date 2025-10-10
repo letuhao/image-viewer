@@ -16,11 +16,16 @@ public class CollectionsController : ControllerBase
 {
     private readonly ICollectionService _collectionService;
     private readonly ILogger<CollectionsController> _logger;
+    private readonly ImageViewer.Domain.Interfaces.IImageCacheService _imageCacheService;
 
-    public CollectionsController(ICollectionService collectionService, ILogger<CollectionsController> logger)
+    public CollectionsController(
+        ICollectionService collectionService, 
+        ILogger<CollectionsController> logger,
+        ImageViewer.Domain.Interfaces.IImageCacheService imageCacheService)
     {
         _collectionService = collectionService ?? throw new ArgumentNullException(nameof(collectionService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _imageCacheService = imageCacheService ?? throw new ArgumentNullException(nameof(imageCacheService));
     }
 
     /// <summary>
@@ -59,7 +64,7 @@ public class CollectionsController : ControllerBase
     }
 
     /// <summary>
-    /// Get thumbnail image for a collection
+    /// Get thumbnail image for a collection (with Redis caching)
     /// </summary>
     [HttpGet("{id}/thumbnails/{thumbnailId}")]
     public async Task<IActionResult> GetCollectionThumbnail(string id, string thumbnailId)
@@ -77,7 +82,20 @@ public class CollectionsController : ControllerBase
             }
 
             _logger.LogInformation("Getting thumbnail {ThumbnailId} for collection {CollectionId}", thumbnailId, id);
-            _logger.LogDebug("Thumbnail request: CollectionId={CollectionId}, ThumbnailId={ThumbnailId}", collectionId, thumbId);
+
+            // Generate cache key
+            var cacheKey = _imageCacheService.GetThumbnailCacheKey(id, thumbnailId);
+
+            // Try to get from Redis cache first
+            var cachedData = await _imageCacheService.GetCachedImageAsync(cacheKey);
+            if (cachedData != null)
+            {
+                _logger.LogDebug("Serving thumbnail {ThumbnailId} from Redis cache", thumbnailId);
+                return base.File(cachedData, "image/jpeg"); // Assume JPEG for cached thumbnails
+            }
+
+            // Cache miss - get from database and disk
+            _logger.LogDebug("Thumbnail {ThumbnailId} not in cache, loading from disk", thumbnailId);
 
             // Get the collection to find the thumbnail
             var collection = await _collectionService.GetCollectionByIdAsync(collectionId);
@@ -87,8 +105,6 @@ public class CollectionsController : ControllerBase
             }
 
             // Find the specific thumbnail
-            _logger.LogDebug("Collection has {ThumbnailCount} thumbnails", collection.Thumbnails?.Count ?? 0);
-            
             var thumbnail = collection.Thumbnails?.FirstOrDefault(t => t.Id == thumbId.ToString());
             if (thumbnail == null)
             {
@@ -96,19 +112,12 @@ public class CollectionsController : ControllerBase
                 return NotFound(new { message = "Thumbnail not found" });
             }
             
-            if (!thumbnail.IsGenerated)
+            if (!thumbnail.IsGenerated || !thumbnail.IsValid)
             {
-                _logger.LogWarning("Thumbnail {ThumbnailId} is not generated", thumbId);
-                return NotFound(new { message = "Thumbnail not generated" });
+                _logger.LogWarning("Thumbnail {ThumbnailId} is not ready (Generated: {IsGenerated}, Valid: {IsValid})", 
+                    thumbId, thumbnail.IsGenerated, thumbnail.IsValid);
+                return NotFound(new { message = "Thumbnail not available" });
             }
-            
-            if (!thumbnail.IsValid)
-            {
-                _logger.LogWarning("Thumbnail {ThumbnailId} is invalid", thumbId);
-                return NotFound(new { message = "Thumbnail is invalid" });
-            }
-            
-            _logger.LogDebug("Found thumbnail {ThumbnailId} at path: {ThumbnailPath}", thumbId, thumbnail.ThumbnailPath);
 
             // Check if thumbnail file exists
             if (!System.IO.File.Exists(thumbnail.ThumbnailPath))
@@ -117,9 +126,13 @@ public class CollectionsController : ControllerBase
                 return NotFound(new { message = "Thumbnail file not found" });
             }
 
-            // Read and return the thumbnail file
+            // Read thumbnail file
             var fileBytes = await System.IO.File.ReadAllBytesAsync(thumbnail.ThumbnailPath);
             var contentType = GetContentType(thumbnail.Format);
+
+            // Cache in Redis for future requests
+            await _imageCacheService.SetCachedImageAsync(cacheKey, fileBytes);
+            _logger.LogDebug("Cached thumbnail {ThumbnailId} in Redis", thumbnailId);
 
             // Update access statistics
             thumbnail.UpdateAccess();

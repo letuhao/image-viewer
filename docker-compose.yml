@@ -47,17 +47,29 @@ services:
       retries: 3
       start_period: 40s
 
-  # Redis Cache (Optional)
+  # Redis Cache (For Image Caching - 48GB Max Memory)
   redis:
     image: redis:7.2-alpine
     container_name: imageviewer-redis
     restart: unless-stopped
     ports:
       - "6379:6379"
+    command: >
+      redis-server
+      --maxmemory 48gb
+      --maxmemory-policy allkeys-lru
+      --save 60 1000
+      --appendonly yes
     volumes:
       - redis_data:/data
     networks:
       - imageviewer-network
+    deploy:
+      resources:
+        limits:
+          memory: 50G
+        reservations:
+          memory: 48G
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 30s
