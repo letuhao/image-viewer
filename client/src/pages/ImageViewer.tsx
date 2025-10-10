@@ -20,6 +20,8 @@ import {
   Info,
   HelpCircle,
   Shuffle,
+  Expand,
+  Scan,
 } from 'lucide-react';
 
 /**
@@ -64,6 +66,9 @@ const ImageViewer: React.FC = () => {
   const [panPosition, setPanPosition] = useState({ x: 0, y: 0 });
   const [imageLoading, setImageLoading] = useState(true);
   const [imageError, setImageError] = useState(false);
+  const [fitToScreen, setFitToScreen] = useState(() => 
+    localStorage.getItem('imageViewerFitToScreen') === 'true'
+  );
   const slideshowRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const imageContainerRef = useRef<HTMLDivElement>(null);
 
@@ -89,6 +94,28 @@ const ImageViewer: React.FC = () => {
     setViewMode(mode);
     localStorage.setItem('imageViewerViewMode', mode);
   }, []);
+
+  // Toggle fit to screen mode
+  const toggleFitToScreen = useCallback(() => {
+    const newValue = !fitToScreen;
+    setFitToScreen(newValue);
+    localStorage.setItem('imageViewerFitToScreen', newValue.toString());
+  }, [fitToScreen]);
+
+  // Get image class based on fit mode and orientation
+  const getImageClass = useCallback((image: any) => {
+    if (!fitToScreen) {
+      return "max-w-full max-h-[calc(100vh-8rem)] object-contain transition-transform duration-200";
+    }
+
+    // Fit to screen mode: use 100vh for landscape, 100vw for portrait
+    const isLandscape = image.width > image.height;
+    if (isLandscape) {
+      return "h-[100vh] w-auto object-contain transition-transform duration-200";
+    } else {
+      return "w-[100vw] h-auto object-contain transition-transform duration-200";
+    }
+  }, [fitToScreen]);
 
   // Toggle fullscreen
   const toggleFullscreen = useCallback(() => {
@@ -366,6 +393,15 @@ const ImageViewer: React.FC = () => {
               <Info className="h-5 w-5 text-white" />
             </button>
             <button
+              onClick={toggleFitToScreen}
+              className={`p-2 hover:bg-white/10 rounded-lg transition-colors ${
+                fitToScreen ? 'bg-primary-500' : ''
+              }`}
+              title={fitToScreen ? "Fit to Viewport" : "Fit to Screen (100vh/100vw)"}
+            >
+              <Expand className="h-5 w-5 text-white" />
+            </button>
+            <button
               onClick={() => setRotation((r) => (r + 90) % 360)}
               className="p-2 hover:bg-white/10 rounded-lg transition-colors"
               title="Rotate (R)"
@@ -500,7 +536,7 @@ const ImageViewer: React.FC = () => {
               <img
                 src={`/api/v1/images/${collectionId}/${image.id}/file`}
                 alt={image.filename}
-                className="max-w-full max-h-[calc(100vh-8rem)] object-contain transition-transform duration-200"
+                className={getImageClass(image)}
                 style={{
                   transform: `rotate(${rotation}deg)`,
                 }}
