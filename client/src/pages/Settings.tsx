@@ -8,7 +8,7 @@ import SettingItem from '../components/settings/SettingItem';
 import Toggle from '../components/ui/Toggle';
 import Button from '../components/ui/Button';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
-import { useUserSettings, useUpdateUserSettings, useResetUserSettings } from '../hooks/useSettings';
+import { useUserSettings, useUpdateUserSettings, useResetUserSettings, useSystemSettings, useBatchUpdateSystemSettings } from '../hooks/useSettings';
 import toast from 'react-hot-toast';
 
 const Settings: React.FC = () => {
@@ -18,6 +18,10 @@ const Settings: React.FC = () => {
   const { data: apiSettings, isLoading, error } = useUserSettings();
   const updateSettingsMutation = useUpdateUserSettings();
   const resetSettingsMutation = useResetUserSettings();
+  
+  // Fetch system settings from API
+  const { data: systemSettingsData, isLoading: systemSettingsLoading } = useSystemSettings();
+  const batchUpdateSystemSettings = useBatchUpdateSystemSettings();
   
   // Local state for form (synced with API data)
   const [userSettings, setUserSettings] = useState({
@@ -62,6 +66,24 @@ const Settings: React.FC = () => {
     }
   }, [apiSettings]);
 
+  // Sync system settings from API
+  useEffect(() => {
+    if (systemSettingsData) {
+      const settingsMap = systemSettingsData.reduce((acc, setting) => {
+        acc[setting.settingKey] = setting.settingValue;
+        return acc;
+      }, {} as Record<string, string>);
+
+      setSystemSettings({
+        cacheFormat: settingsMap['cache.default.format'] || 'jpeg',
+        cacheQuality: parseInt(settingsMap['cache.default.quality'] || '85'),
+        thumbnailFormat: settingsMap['thumbnail.default.format'] || 'jpeg',
+        thumbnailQuality: parseInt(settingsMap['thumbnail.default.quality'] || '90'),
+        thumbnailSize: parseInt(settingsMap['thumbnail.default.size'] || '300'),
+      });
+    }
+  }, [systemSettingsData]);
+
   const tabs = [
     { name: 'User Preferences', icon: User, visible: true },
     { name: 'System Settings', icon: SettingsIcon, visible: isAdmin },
@@ -90,34 +112,17 @@ const Settings: React.FC = () => {
     }
   };
 
-  const handleSaveSystemSettings = async () => {
-    try {
-      // Use batch update API for system settings
-      const settings = [
-        { key: 'cache.default.format', value: systemSettings.cacheFormat },
-        { key: 'cache.default.quality', value: systemSettings.cacheQuality.toString() },
-        { key: 'thumbnail.default.format', value: systemSettings.thumbnailFormat },
-        { key: 'thumbnail.default.quality', value: systemSettings.thumbnailQuality.toString() },
-        { key: 'thumbnail.default.size', value: systemSettings.thumbnailSize.toString() },
-      ];
+  const handleSaveSystemSettings = () => {
+    // Use batch update mutation for system settings
+    const settings = [
+      { key: 'cache.default.format', value: systemSettings.cacheFormat },
+      { key: 'cache.default.quality', value: systemSettings.cacheQuality.toString() },
+      { key: 'thumbnail.default.format', value: systemSettings.thumbnailFormat },
+      { key: 'thumbnail.default.quality', value: systemSettings.thumbnailQuality.toString() },
+      { key: 'thumbnail.default.size', value: systemSettings.thumbnailSize.toString() },
+    ];
 
-      const response = await fetch('/api/v1/systemsettings/batch', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ settings }),
-      });
-
-      if (response.ok) {
-        toast.success('System settings saved successfully!');
-      } else {
-        toast.error('Failed to save system settings');
-      }
-    } catch (error) {
-      console.error('Error saving system settings:', error);
-      toast.error('Failed to save system settings');
-    }
+    batchUpdateSystemSettings.mutate({ settings });
   };
 
   if (isLoading) {
@@ -447,19 +452,27 @@ const Settings: React.FC = () => {
 
                   {/* Save Button */}
                   <div className="flex justify-end space-x-3">
-                    <Button variant="ghost" onClick={() => {
-                      setSystemSettings({
-                        cacheFormat: 'jpeg',
-                        cacheQuality: 85,
-                        thumbnailFormat: 'jpeg',
-                        thumbnailQuality: 90,
-                        thumbnailSize: 300,
-                      });
-                    }}>
+                    <Button 
+                      variant="ghost" 
+                      onClick={() => {
+                        setSystemSettings({
+                          cacheFormat: 'jpeg',
+                          cacheQuality: 85,
+                          thumbnailFormat: 'jpeg',
+                          thumbnailQuality: 90,
+                          thumbnailSize: 300,
+                        });
+                        toast.success('System settings reset to defaults!');
+                      }}
+                    >
                       Reset to Defaults
                     </Button>
-                    <Button variant="primary" onClick={handleSaveSystemSettings}>
-                      Save System Settings
+                    <Button 
+                      variant="primary" 
+                      onClick={handleSaveSystemSettings}
+                      disabled={batchUpdateSystemSettings.isPending}
+                    >
+                      {batchUpdateSystemSettings.isPending ? 'Saving...' : 'Save System Settings'}
                     </Button>
                   </div>
                 </Tab.Panel>

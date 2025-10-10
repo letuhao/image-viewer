@@ -94,6 +94,20 @@ export const useSystemSettingsByCategory = (category: string) => {
 };
 
 /**
+ * Hook to get parsed system settings as key-value map
+ */
+export const useSystemSettingsMap = () => {
+  const { data: settings } = useSystemSettings();
+  
+  const settingsMap = settings?.reduce((acc, setting) => {
+    acc[setting.settingKey] = setting.settingValue;
+    return acc;
+  }, {} as Record<string, string>) || {};
+
+  return settingsMap;
+};
+
+/**
  * Hook to update a single system setting
  */
 export const useUpdateSystemSetting = () => {
