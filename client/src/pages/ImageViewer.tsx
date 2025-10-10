@@ -38,7 +38,7 @@ const ImageViewer: React.FC = () => {
   const [rotation, setRotation] = useState(0);
   const [isSlideshow, setIsSlideshow] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
-  const slideshowRef = useRef<NodeJS.Timeout>();
+  const slideshowRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const images = imagesData?.data || [];
   const currentIndex = images.findIndex((img) => img.id === imageId);
@@ -126,7 +126,7 @@ const ImageViewer: React.FC = () => {
   }, [isSlideshow, navigateToImage]);
 
   if (!currentImage) {
-    return <LoadingSpinner fullscreen text="Loading image..." />;
+    return <LoadingSpinner fullScreen text="Loading image..." />;
   }
 
   return (
