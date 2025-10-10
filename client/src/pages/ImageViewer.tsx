@@ -22,12 +22,18 @@ import {
   Shuffle,
   Expand,
   Scan,
+  ArrowDownUp,
 } from 'lucide-react';
 
 /**
  * View modes for the image viewer
  */
 type ViewMode = 'single' | 'double' | 'triple' | 'quad';
+
+/**
+ * Navigation modes
+ */
+type NavigationMode = 'paging' | 'scroll';
 
 /**
  * Image Viewer
@@ -69,6 +75,9 @@ const ImageViewer: React.FC = () => {
   const [fitToScreen, setFitToScreen] = useState(() => 
     localStorage.getItem('imageViewerFitToScreen') === 'true'
   );
+  const [navigationMode, setNavigationMode] = useState<NavigationMode>(() => 
+    (localStorage.getItem('imageViewerNavigationMode') as NavigationMode) || 'paging'
+  );
   const slideshowRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const imageContainerRef = useRef<HTMLDivElement>(null);
 
@@ -101,6 +110,13 @@ const ImageViewer: React.FC = () => {
     setFitToScreen(newValue);
     localStorage.setItem('imageViewerFitToScreen', newValue.toString());
   }, [fitToScreen]);
+
+  // Toggle navigation mode
+  const toggleNavigationMode = useCallback(() => {
+    const newMode: NavigationMode = navigationMode === 'paging' ? 'scroll' : 'paging';
+    setNavigationMode(newMode);
+    localStorage.setItem('imageViewerNavigationMode', newMode);
+  }, [navigationMode]);
 
   // Get image class based on fit mode and screen orientation
   const getImageClass = useCallback(() => {
@@ -339,6 +355,17 @@ const ImageViewer: React.FC = () => {
           </div>
 
           <div className="flex items-center space-x-2">
+            {/* Navigation Mode Toggle */}
+            <button
+              onClick={toggleNavigationMode}
+              className={`p-2 hover:bg-white/10 rounded-lg transition-colors ${
+                navigationMode === 'scroll' ? 'bg-primary-500' : ''
+              }`}
+              title={navigationMode === 'paging' ? 'Switch to Scroll Mode' : 'Switch to Paging Mode'}
+            >
+              <ArrowDownUp className="h-5 w-5 text-white" />
+            </button>
+
             {/* View Mode Controls */}
             <div className="flex items-center gap-1 bg-black/20 rounded-lg p-1">
               <button
@@ -490,21 +517,70 @@ const ImageViewer: React.FC = () => {
         ref={imageContainerRef}
         className="flex-1 flex items-center justify-center overflow-auto"
       >
-        <div 
-          className={`flex items-center justify-center gap-2 ${
-            viewMode === 'single' ? 'flex-col' : 
-            viewMode === 'double' ? 'flex-row' :
-            viewMode === 'triple' ? 'flex-row' :
-            'grid grid-cols-2 gap-2'
-          }`}
-          style={{
-            transform: `scale(${zoom})`,
-            transformOrigin: 'center center',
-            maxWidth: '100%',
-            maxHeight: '100%',
-          }}
-        >
-          {getVisibleImages().map((image, index) => (
+        {navigationMode === 'scroll' ? (
+          // Scroll Mode: Show all images in a vertical list
+          <div className="flex flex-col gap-4 py-4">
+            {images.map((image, index) => (
+              <div key={image.id} className="flex flex-col items-center">
+                {imageLoading && currentIndex === index && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+                    <LoadingSpinner text="Loading..." />
+                  </div>
+                )}
+                {imageError && currentIndex === index && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/50 text-white">
+                    <div className="text-center">
+                      <p className="text-red-500 text-lg mb-2">Failed to load image</p>
+                      <button
+                        onClick={() => {
+                          setImageError(false);
+                          setImageLoading(true);
+                        }}
+                        className="px-4 py-2 bg-primary-500 rounded-lg hover:bg-primary-600"
+                      >
+                        Retry
+                      </button>
+                    </div>
+                  </div>
+                )}
+                <img
+                  src={`/api/v1/images/${collectionId}/${image.id}/file`}
+                  alt={image.filename}
+                  className={getImageClass()}
+                  style={{
+                    transform: `rotate(${rotation}deg)`,
+                  }}
+                  onLoad={() => currentIndex === index && setImageLoading(false)}
+                  onError={() => {
+                    if (currentIndex === index) {
+                      setImageLoading(false);
+                      setImageError(true);
+                    }
+                  }}
+                />
+                <div className="mt-2 text-white text-sm text-center">
+                  {index + 1} / {images.length} - {image.filename}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          // Paging Mode: Show images based on view mode
+          <div 
+            className={`flex items-center justify-center gap-2 ${
+              viewMode === 'single' ? 'flex-col' : 
+              viewMode === 'double' ? 'flex-row' :
+              viewMode === 'triple' ? 'flex-row' :
+              'grid grid-cols-2 gap-2'
+            }`}
+            style={{
+              transform: `scale(${zoom})`,
+              transformOrigin: 'center center',
+              maxWidth: '100%',
+              maxHeight: '100%',
+            }}
+          >
+            {getVisibleImages().map((image, index) => (
             <div
               key={`${image.id}-${index}`}
               className={`relative ${
@@ -557,25 +633,30 @@ const ImageViewer: React.FC = () => {
                 </div>
               )}
             </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* Navigation Buttons */}
-      <button
-        onClick={() => navigateToImage('prev')}
-        className="absolute left-4 top-1/2 -translate-y-1/2 p-3 bg-black/50 hover:bg-black/70 rounded-full transition-colors"
-        title="Previous (←)"
-      >
-        <ChevronLeft className="h-8 w-8 text-white" />
-      </button>
-      <button
-        onClick={() => navigateToImage('next')}
-        className="absolute right-4 top-1/2 -translate-y-1/2 p-3 bg-black/50 hover:bg-black/70 rounded-full transition-colors"
-        title="Next (→)"
-      >
-        <ChevronRight className="h-8 w-8 text-white" />
-      </button>
+      {/* Navigation Buttons (Only in paging mode) */}
+      {navigationMode === 'paging' && (
+        <>
+          <button
+            onClick={() => navigateToImage('prev')}
+            className="absolute left-4 top-1/2 -translate-y-1/2 p-3 bg-black/50 hover:bg-black/70 rounded-full transition-colors"
+            title="Previous (←)"
+          >
+            <ChevronLeft className="h-8 w-8 text-white" />
+          </button>
+          <button
+            onClick={() => navigateToImage('next')}
+            className="absolute right-4 top-1/2 -translate-y-1/2 p-3 bg-black/50 hover:bg-black/70 rounded-full transition-colors"
+            title="Next (→)"
+          >
+            <ChevronRight className="h-8 w-8 text-white" />
+          </button>
+        </>
+      )}
 
       {/* Info Panel */}
       {showInfo && (
