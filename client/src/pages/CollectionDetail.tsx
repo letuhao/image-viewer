@@ -36,7 +36,9 @@ const CollectionDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [page, setPage] = useState(1);
-  const [limit] = useState(50); // Items per page
+  const [limit, setLimit] = useState(() => 
+    parseInt(localStorage.getItem('collectionDetailPageSize') || '20')
+  );
   const [viewMode, setViewMode] = useState<ViewMode>(() => 
     (localStorage.getItem('collectionDetailViewMode') as ViewMode) || 'grid'
   );
@@ -97,6 +99,12 @@ const CollectionDetail: React.FC = () => {
   const saveCardSize = (size: CardSize) => {
     setCardSize(size);
     localStorage.setItem('collectionDetailCardSize', size);
+  };
+
+  const savePageSize = (size: number) => {
+    setLimit(size);
+    localStorage.setItem('collectionDetailPageSize', size.toString());
+    setPage(1); // Reset to first page when changing page size
   };
 
   // Get grid classes based on card size (same as Collections page)
@@ -287,6 +295,20 @@ const CollectionDetail: React.FC = () => {
                     <option value="xlarge">XLarge</option>
                   </select>
                 )}
+
+                {/* Page Size Selector */}
+                <select
+                  value={limit}
+                  onChange={(e) => savePageSize(parseInt(e.target.value))}
+                  className="px-2 py-1.5 bg-slate-800 border border-slate-700 rounded text-white text-xs focus:outline-none focus:ring-1 focus:ring-primary-500 w-16 lg:w-20"
+                  title="Items Per Page"
+                >
+                  <option value={5}>5</option>
+                  <option value={10}>10</option>
+                  <option value={20}>20</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                </select>
               </div>
             </div>
           </div>
