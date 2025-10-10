@@ -50,11 +50,18 @@ const ImageViewer: React.FC = () => {
   const [rotation, setRotation] = useState(0);
   const [isSlideshow, setIsSlideshow] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>(() => 
     (localStorage.getItem('imageViewerViewMode') as ViewMode) || 'single'
   );
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [slideshowInterval, setSlideshowInterval] = useState(() => 
+    parseInt(localStorage.getItem('slideshowInterval') || '3000')
+  );
+  const [isShuffleMode, setIsShuffleMode] = useState(false);
+  const [panPosition, setPanPosition] = useState({ x: 0, y: 0 });
   const slideshowRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const imageContainerRef = useRef<HTMLDivElement>(null);
 
   const images = imagesData?.data || [];
   const currentIndex = images.findIndex((img) => img.id === imageId);
@@ -159,6 +166,10 @@ const ImageViewer: React.FC = () => {
         case 'i':
           setShowInfo((s) => !s);
           break;
+        case '?':
+        case 'h':
+          setShowHelp((s) => !s);
+          break;
         case ' ': 
           e.preventDefault();
           setIsSlideshow((s) => !s);
@@ -191,8 +202,15 @@ const ImageViewer: React.FC = () => {
   useEffect(() => {
     if (isSlideshow) {
       slideshowRef.current = setInterval(() => {
-        navigateToImage('next');
-      }, 3000);
+        if (isShuffleMode) {
+          // Navigate to random image
+          const randomIndex = Math.floor(Math.random() * images.length);
+          const randomImageId = images[randomIndex].id;
+          navigate(`/collections/${collectionId}/viewer?imageId=${randomImageId}`, { replace: true });
+        } else {
+          navigateToImage('next');
+        }
+      }, slideshowInterval);
     } else {
       if (slideshowRef.current) {
         clearInterval(slideshowRef.current);
@@ -204,7 +222,32 @@ const ImageViewer: React.FC = () => {
         clearInterval(slideshowRef.current);
       }
     };
-  }, [isSlideshow, navigateToImage]);
+  }, [isSlideshow, slideshowInterval, isShuffleMode, navigateToImage, images, collectionId, navigate]);
+
+  // Image preloading
+  useEffect(() => {
+    const maxPreload = parseInt(localStorage.getItem('maxPreloadImages') || '20');
+    const preloadImages: HTMLImageElement[] = [];
+
+    if (images.length > 0 && currentIndex >= 0) {
+      for (let i = 1; i <= Math.min(maxPreload, images.length - 1); i++) {
+        const nextIndex = (currentIndex + i) % images.length;
+        const nextImage = images[nextIndex];
+        if (nextImage) {
+          const img = new Image();
+          img.src = `/api/v1/images/${collectionId}/${nextImage.id}/file`;
+          preloadImages.push(img);
+        }
+      }
+    }
+
+    // Cleanup
+    return () => {
+      preloadImages.forEach(img => {
+        img.src = '';
+      });
+    };
+  }, [currentIndex, images, collectionId]);
 
   if (!currentImage) {
     return <LoadingSpinner fullScreen text="Loading image..." />;
@@ -315,25 +358,64 @@ const ImageViewer: React.FC = () => {
             >
               <Maximize2 className="h-5 w-5 text-white" />
             </button>
+
+            {/* Slideshow Controls */}
+            <div className="flex items-center gap-1 bg-black/20 rounded-lg p-1">
+              <input
+                type="number"
+                min="500"
+                max="60000"
+                step="500"
+                value={slideshowInterval}
+                onChange={(e) => {
+                  const newInterval = parseInt(e.target.value) || 3000;
+                  setSlideshowInterval(newInterval);
+                  localStorage.setItem('slideshowInterval', newInterval.toString());
+                }}
+                className="w-16 px-2 py-1 bg-slate-700 border border-slate-600 rounded text-white text-xs text-center focus:outline-none focus:ring-1 focus:ring-primary-500"
+                title="Slideshow interval (ms)"
+              />
+              <button
+                onClick={() => setIsShuffleMode(!isShuffleMode)}
+                className={`p-1.5 rounded transition-colors ${
+                  isShuffleMode ? 'bg-primary-500 text-white' : 'text-slate-300 hover:text-white hover:bg-white/10'
+                }`}
+                title="Shuffle Mode"
+              >
+                <Settings className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => setIsSlideshow(!isSlideshow)}
+                className={`p-1.5 rounded transition-colors ${
+                  isSlideshow ? 'bg-primary-500 text-white' : 'text-slate-300 hover:text-white hover:bg-white/10'
+                }`}
+                title="Slideshow (Space)"
+              >
+                {isSlideshow ? (
+                  <Pause className="h-4 w-4 text-white" />
+                ) : (
+                  <Play className="h-4 w-4 text-white" />
+                )}
+              </button>
+            </div>
+
+            {/* Help Button */}
             <button
-              onClick={() => setIsSlideshow(!isSlideshow)}
-              className={`p-2 hover:bg-white/10 rounded-lg transition-colors ${
-                isSlideshow ? 'bg-primary-500' : ''
-              }`}
-              title="Slideshow (Space)"
+              onClick={() => setShowHelp(!showHelp)}
+              className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+              title="Help"
             >
-              {isSlideshow ? (
-                <Pause className="h-5 w-5 text-white" />
-              ) : (
-                <Play className="h-5 w-5 text-white" />
-              )}
+              <Info className="h-5 w-5 text-white" />
             </button>
           </div>
         </div>
       </div>
 
       {/* Main Images */}
-      <div className="flex-1 flex items-center justify-center p-4">
+      <div 
+        ref={imageContainerRef}
+        className="flex-1 flex items-center justify-center overflow-auto"
+      >
         <div 
           className={`flex items-center justify-center gap-2 ${
             viewMode === 'single' ? 'flex-col' : 
@@ -342,7 +424,10 @@ const ImageViewer: React.FC = () => {
             'grid grid-cols-2 gap-2'
           }`}
           style={{
-            transform: `scale(${zoom})`,
+            transform: `scale(${zoom}) translate(${panPosition.x}px, ${panPosition.y}px)`,
+            transformOrigin: 'center center',
+            maxWidth: '100%',
+            maxHeight: '100%',
           }}
         >
           {getVisibleImages().map((image, index) => (
@@ -358,7 +443,7 @@ const ImageViewer: React.FC = () => {
               <img
                 src={`/api/v1/images/${collectionId}/${image.id}/file`}
                 alt={image.filename}
-                className="w-full h-full object-contain transition-transform duration-200"
+                className="max-w-full max-h-[calc(100vh-8rem)] object-contain transition-transform duration-200"
                 style={{
                   transform: `rotate(${rotation}deg)`,
                 }}
@@ -416,10 +501,25 @@ const ImageViewer: React.FC = () => {
         </div>
       )}
 
-      {/* Keyboard Shortcuts Hint */}
-      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-center text-white/60 text-sm">
-        <p>← → Navigate • Esc Close • +/- Zoom • R Rotate • I Info • Space Slideshow • 1-4 View Modes • F Fullscreen</p>
-      </div>
+      {/* Keyboard Shortcuts Help (Only show when help button clicked) */}
+      {showHelp && (
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/90 rounded-lg p-4 max-w-2xl">
+          <div className="text-white text-sm space-y-2">
+            <p className="font-bold text-center mb-2">Keyboard Shortcuts</p>
+            <div className="grid grid-cols-2 gap-x-6 gap-y-1">
+              <p>← → : Navigate</p>
+              <p>Esc : Close</p>
+              <p>+/- : Zoom</p>
+              <p>R : Rotate</p>
+              <p>I : Info</p>
+              <p>Space : Slideshow</p>
+              <p>1-4 : View Modes</p>
+              <p>F : Fullscreen</p>
+            </div>
+            <p className="text-center text-xs text-slate-400 mt-2">Press ? or click Help icon to toggle</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

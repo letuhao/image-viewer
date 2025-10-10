@@ -41,6 +41,8 @@ const Settings: React.FC = () => {
     collectionDetailViewMode: 'grid',
     collectionDetailCardSize: 'medium',
     collectionDetailPageSize: 20,
+    // Image Viewer settings
+    maxPreloadImages: 20,
   });
 
   // System settings state
@@ -71,6 +73,8 @@ const Settings: React.FC = () => {
         collectionDetailViewMode: localStorage.getItem('collectionDetailViewMode') || 'grid',
         collectionDetailCardSize: localStorage.getItem('collectionDetailCardSize') || 'medium',
         collectionDetailPageSize: parseInt(localStorage.getItem('collectionDetailPageSize') || '20'),
+        // Image Viewer settings
+        maxPreloadImages: parseInt(localStorage.getItem('maxPreloadImages') || '20'),
       });
     }
   }, [apiSettings]);
@@ -376,6 +380,34 @@ const Settings: React.FC = () => {
                         if (newValue >= 1 && newValue <= 1000) {
                           setUserSettings({ ...userSettings, collectionDetailPageSize: newValue });
                           localStorage.setItem('collectionDetailPageSize', newValue.toString());
+                        }
+                      }}
+                      className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="20"
+                    />
+                  </SettingItem>
+                </SettingsSection>
+
+                {/* Image Viewer Settings */}
+                <SettingsSection
+                  title="Image Viewer"
+                  description="Configure image viewer behavior and performance"
+                >
+                  <SettingItem
+                    label="Max Preload Images"
+                    description="Number of images to preload in background (higher = faster navigation, more memory)"
+                    vertical
+                  >
+                    <input
+                      type="number"
+                      min="1"
+                      max="100"
+                      value={userSettings.maxPreloadImages}
+                      onChange={(e) => {
+                        const newValue = parseInt(e.target.value) || 20;
+                        if (newValue >= 1 && newValue <= 100) {
+                          setUserSettings({ ...userSettings, maxPreloadImages: newValue });
+                          localStorage.setItem('maxPreloadImages', newValue.toString());
                         }
                       }}
                       className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
