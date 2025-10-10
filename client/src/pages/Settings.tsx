@@ -363,24 +363,24 @@ const Settings: React.FC = () => {
 
                   <SettingItem
                     label="Default Page Size"
-                    description="Default number of items per page in collection detail pages"
+                    description="Default number of items per page in collection detail pages (1-1000)"
                     vertical
                   >
-                    <select
+                    <input
+                      type="number"
+                      min="1"
+                      max="1000"
                       value={userSettings.collectionDetailPageSize}
                       onChange={(e) => {
-                        const newValue = parseInt(e.target.value);
-                        setUserSettings({ ...userSettings, collectionDetailPageSize: newValue });
-                        localStorage.setItem('collectionDetailPageSize', newValue.toString());
+                        const newValue = parseInt(e.target.value) || 20;
+                        if (newValue >= 1 && newValue <= 1000) {
+                          setUserSettings({ ...userSettings, collectionDetailPageSize: newValue });
+                          localStorage.setItem('collectionDetailPageSize', newValue.toString());
+                        }
                       }}
                       className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    >
-                      <option value={5}>5 items</option>
-                      <option value={10}>10 items</option>
-                      <option value={20}>20 items</option>
-                      <option value={50}>50 items</option>
-                      <option value={100}>100 items</option>
-                    </select>
+                      placeholder="20"
+                    />
                   </SettingItem>
                 </SettingsSection>
 
