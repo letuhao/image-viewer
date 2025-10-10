@@ -18,6 +18,8 @@ import {
   Layout,
   Settings,
   Info,
+  HelpCircle,
+  Shuffle,
 } from 'lucide-react';
 
 /**
@@ -60,11 +62,27 @@ const ImageViewer: React.FC = () => {
   );
   const [isShuffleMode, setIsShuffleMode] = useState(false);
   const [panPosition, setPanPosition] = useState({ x: 0, y: 0 });
+  const [imageLoading, setImageLoading] = useState(true);
+  const [imageError, setImageError] = useState(false);
   const slideshowRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const imageContainerRef = useRef<HTMLDivElement>(null);
 
   const images = imagesData?.data || [];
   const currentIndex = images.findIndex((img) => img.id === imageId);
+  
+  // Handle invalid currentIndex
+  useEffect(() => {
+    if (images.length > 0 && currentIndex === -1 && imageId) {
+      // Image not found, navigate to first image
+      navigate(`/collections/${collectionId}/viewer?imageId=${images[0].id}`, { replace: true });
+    }
+  }, [currentIndex, images, imageId, collectionId, navigate]);
+
+  // Reset loading/error state when image changes
+  useEffect(() => {
+    setImageLoading(true);
+    setImageError(false);
+  }, [imageId]);
 
   // Save view mode to localStorage
   const saveViewMode = useCallback((mode: ViewMode) => {
@@ -129,9 +147,10 @@ const ImageViewer: React.FC = () => {
       const newImageId = images[newIndex].id;
       navigate(`/collections/${collectionId}/viewer?imageId=${newImageId}`, { replace: true });
       
-      // Reset zoom and rotation when changing images
+      // Reset zoom, rotation, and pan when changing images
       setZoom(1);
       setRotation(0);
+      setPanPosition({ x: 0, y: 0 });
     },
     [images, currentIndex, collectionId, navigate, viewMode]
   );
@@ -196,17 +215,19 @@ const ImageViewer: React.FC = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [collectionId, navigate, navigateToImage]);
+  }, [collectionId, navigate, navigateToImage, saveViewMode, toggleFullscreen]);
 
   // Slideshow
   useEffect(() => {
     if (isSlideshow) {
       slideshowRef.current = setInterval(() => {
-        if (isShuffleMode) {
+        if (isShuffleMode && images.length > 0) {
           // Navigate to random image
           const randomIndex = Math.floor(Math.random() * images.length);
-          const randomImageId = images[randomIndex].id;
-          navigate(`/collections/${collectionId}/viewer?imageId=${randomImageId}`, { replace: true });
+          const randomImage = images[randomIndex];
+          if (randomImage) {
+            navigate(`/collections/${collectionId}/viewer?imageId=${randomImage.id}`, { replace: true });
+          }
         } else {
           navigateToImage('next');
         }
@@ -224,28 +245,43 @@ const ImageViewer: React.FC = () => {
     };
   }, [isSlideshow, slideshowInterval, isShuffleMode, navigateToImage, images, collectionId, navigate]);
 
+  // Listen for fullscreen changes
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
+
   // Image preloading
   useEffect(() => {
+    if (currentIndex === -1 || images.length === 0) {
+      return;
+    }
+
     const maxPreload = parseInt(localStorage.getItem('maxPreloadImages') || '20');
     const preloadImages: HTMLImageElement[] = [];
 
-    if (images.length > 0 && currentIndex >= 0) {
-      for (let i = 1; i <= Math.min(maxPreload, images.length - 1); i++) {
-        const nextIndex = (currentIndex + i) % images.length;
-        const nextImage = images[nextIndex];
-        if (nextImage) {
-          const img = new Image();
-          img.src = `/api/v1/images/${collectionId}/${nextImage.id}/file`;
-          preloadImages.push(img);
-        }
+    for (let i = 1; i <= Math.min(maxPreload, images.length - 1); i++) {
+      const nextIndex = (currentIndex + i) % images.length;
+      const nextImage = images[nextIndex];
+      if (nextImage) {
+        const img = new Image();
+        img.src = `/api/v1/images/${collectionId}/${nextImage.id}/file`;
+        preloadImages.push(img);
       }
     }
 
-    // Cleanup
+    // Cleanup - properly remove image references
     return () => {
       preloadImages.forEach(img => {
-        img.src = '';
+        img.onload = null;
+        img.onerror = null;
+        img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'; // 1x1 transparent gif
       });
+      preloadImages.length = 0;
     };
   }, [currentIndex, images, collectionId]);
 
@@ -382,7 +418,7 @@ const ImageViewer: React.FC = () => {
                 }`}
                 title="Shuffle Mode"
               >
-                <Settings className="h-4 w-4" />
+                <Shuffle className="h-4 w-4" />
               </button>
               <button
                 onClick={() => setIsSlideshow(!isSlideshow)}
@@ -403,9 +439,9 @@ const ImageViewer: React.FC = () => {
             <button
               onClick={() => setShowHelp(!showHelp)}
               className="p-2 hover:bg-white/10 rounded-lg transition-colors"
-              title="Help"
+              title="Help (? or H)"
             >
-              <Info className="h-5 w-5 text-white" />
+              <HelpCircle className="h-5 w-5 text-white" />
             </button>
           </div>
         </div>
@@ -424,7 +460,7 @@ const ImageViewer: React.FC = () => {
             'grid grid-cols-2 gap-2'
           }`}
           style={{
-            transform: `scale(${zoom}) translate(${panPosition.x}px, ${panPosition.y}px)`,
+            transform: `scale(${zoom})`,
             transformOrigin: 'center center',
             maxWidth: '100%',
             maxHeight: '100%',
@@ -440,12 +476,40 @@ const ImageViewer: React.FC = () => {
                 'w-full h-full'
               }`}
             >
+              {imageLoading && index === 0 && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+                  <LoadingSpinner text="Loading..." />
+                </div>
+              )}
+              {imageError && index === 0 && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/50 text-white">
+                  <div className="text-center">
+                    <p className="text-red-500 text-lg mb-2">Failed to load image</p>
+                    <button
+                      onClick={() => {
+                        setImageError(false);
+                        setImageLoading(true);
+                      }}
+                      className="px-4 py-2 bg-primary-500 rounded-lg hover:bg-primary-600"
+                    >
+                      Retry
+                    </button>
+                  </div>
+                </div>
+              )}
               <img
                 src={`/api/v1/images/${collectionId}/${image.id}/file`}
                 alt={image.filename}
                 className="max-w-full max-h-[calc(100vh-8rem)] object-contain transition-transform duration-200"
                 style={{
                   transform: `rotate(${rotation}deg)`,
+                }}
+                onLoad={() => index === 0 && setImageLoading(false)}
+                onError={() => {
+                  if (index === 0) {
+                    setImageLoading(false);
+                    setImageError(true);
+                  }
                 }}
               />
               {/* Image index indicator for multi-view */}
