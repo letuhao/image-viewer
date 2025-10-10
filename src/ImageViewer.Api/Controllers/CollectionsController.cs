@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using MongoDB.Bson;
 using ImageViewer.Application.Services;
+using ImageViewer.Application.Mappings;
 using ImageViewer.Domain.Exceptions;
 using ImageViewer.Domain.Enums;
 
@@ -58,7 +59,7 @@ public class CollectionsController : ControllerBase
     }
 
     /// <summary>
-    /// Get collection by ID
+    /// Get collection by ID (detailed view with all embedded data)
     /// </summary>
     [HttpGet("{id}")]
     public async Task<IActionResult> GetCollection(string id)
@@ -69,7 +70,8 @@ public class CollectionsController : ControllerBase
                 return BadRequest(new { message = "Invalid collection ID format" });
 
             var collection = await _collectionService.GetCollectionByIdAsync(collectionId);
-            return Ok(collection);
+            var detailDto = collection.ToDetailDto();
+            return Ok(detailDto);
         }
         catch (EntityNotFoundException ex)
         {
@@ -80,6 +82,45 @@ public class CollectionsController : ControllerBase
             _logger.LogError(ex, "Failed to get collection with ID {CollectionId}", id);
             return StatusCode(500, new { message = "Internal server error" });
         }
+    }
+    
+    /// <summary>
+    /// Get collection overview by ID (lightweight, no embedded data)
+    /// </summary>
+    [HttpGet("{id}/overview")]
+    public async Task<IActionResult> GetCollectionOverview(string id)
+    {
+        try
+        {
+            if (!ObjectId.TryParse(id, out var collectionId))
+                return BadRequest(new { message = "Invalid collection ID format" });
+
+            var collection = await _collectionService.GetCollectionByIdAsync(collectionId);
+            var overviewDto = collection.ToOverviewDto();
+            return Ok(overviewDto);
+        }
+        catch (EntityNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get collection overview with ID {CollectionId}", id);
+            return StatusCode(500, new { message = "Internal server error" });
+        }
+    }
+    
+    /// <summary>
+    /// TEST: Get collections list with DTOs
+    /// </summary>
+    [HttpGet("test-dto")]
+    public async Task<IActionResult> GetCollectionsTestDto()
+    {
+        _logger.LogWarning("TEST ENDPOINT CALLED");
+        var collections = await _collectionService.GetCollectionsAsync(1, 2);
+        var dtos = collections.Select(c => c.ToOverviewDto()).ToList();
+        _logger.LogWarning("Returning {Count} DTOs, first type: {Type}", dtos.Count, dtos.FirstOrDefault()?.GetType().FullName);
+        return Ok(dtos);
     }
 
     /// <summary>
@@ -130,7 +171,7 @@ public class CollectionsController : ControllerBase
     }
 
     /// <summary>
-    /// Get all collections with pagination
+    /// Get all collections with pagination (returns lightweight overview DTOs)
     /// </summary>
     [HttpGet]
     public async Task<IActionResult> GetCollections([FromQuery] int page = 1, [FromQuery] int pageSize = 20)
@@ -138,7 +179,25 @@ public class CollectionsController : ControllerBase
         try
         {
             var collections = await _collectionService.GetCollectionsAsync(page, pageSize);
-            return Ok(collections);
+            var allCollections = collections.ToList();
+            var overviewDtos = allCollections.Select(c => c.ToOverviewDto()).ToList();
+            
+            // Create paginated response
+            var totalCount = await _collectionService.GetTotalCollectionsCountAsync();
+            var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
+            
+            var response = new
+            {
+                data = overviewDtos,
+                page = page,
+                limit = pageSize,
+                total = totalCount,
+                totalPages = totalPages,
+                hasNext = page < totalPages,
+                hasPrevious = page > 1
+            };
+            
+            return Ok(response);
         }
         catch (ValidationException ex)
         {

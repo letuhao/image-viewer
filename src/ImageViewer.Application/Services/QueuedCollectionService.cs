@@ -383,6 +383,11 @@ public class QueuedCollectionService : ICollectionService
         return await _collectionService.GetCollectionsAsync(page, pageSize);
     }
 
+    public async Task<long> GetTotalCollectionsCountAsync()
+    {
+        return await _collectionService.GetTotalCollectionsCountAsync();
+    }
+
     public async Task<Collection> UpdateCollectionAsync(ObjectId id, UpdateCollectionRequest request)
     {
         return await _collectionService.UpdateCollectionAsync(id, request);

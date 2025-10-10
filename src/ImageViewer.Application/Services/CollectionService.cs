@@ -172,6 +172,19 @@ public class CollectionService : ICollectionService
         }
     }
 
+    public async Task<long> GetTotalCollectionsCountAsync()
+    {
+        try
+        {
+            return await _collectionRepository.CountAsync(Builders<Collection>.Filter.Empty);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get total collections count");
+            throw new BusinessRuleException("Failed to get total collections count", ex);
+        }
+    }
+
     public async Task<Collection> UpdateCollectionAsync(ObjectId collectionId, UpdateCollectionRequest request)
     {
         try

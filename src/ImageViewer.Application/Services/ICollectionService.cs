@@ -17,6 +17,7 @@ public interface ICollectionService
     Task<Collection?> GetCollectionByPathAsync(string path);
     Task<IEnumerable<Collection>> GetCollectionsByLibraryIdAsync(ObjectId libraryId);
     Task<IEnumerable<Collection>> GetCollectionsAsync(int page = 1, int pageSize = 20);
+    Task<long> GetTotalCollectionsCountAsync();
     Task<Collection> UpdateCollectionAsync(ObjectId collectionId, UpdateCollectionRequest request);
     Task DeleteCollectionAsync(ObjectId collectionId);
     
