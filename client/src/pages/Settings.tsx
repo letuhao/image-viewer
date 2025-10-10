@@ -1,17 +1,24 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Tab } from '@headlessui/react';
-import { User, Settings as SettingsIcon, Shield } from 'lucide-react';
+import { User, Settings as SettingsIcon } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { cn } from '../lib/utils';
 import SettingsSection from '../components/settings/SettingsSection';
 import SettingItem from '../components/settings/SettingItem';
 import Toggle from '../components/ui/Toggle';
 import Button from '../components/ui/Button';
+import LoadingSpinner from '../components/ui/LoadingSpinner';
+import { useUserSettings, useUpdateUserSettings, useResetUserSettings } from '../hooks/useSettings';
 
 const Settings: React.FC = () => {
-  const { user, isAdmin } = useAuth();
+  const { isAdmin } = useAuth();
   
-  // Temporary state for settings (will connect to API later)
+  // Fetch user settings from API
+  const { data: apiSettings, isLoading, error } = useUserSettings();
+  const updateSettingsMutation = useUpdateUserSettings();
+  const resetSettingsMutation = useResetUserSettings();
+  
+  // Local state for form (synced with API data)
   const [userSettings, setUserSettings] = useState({
     theme: 'dark',
     viewMode: 'grid',
@@ -26,15 +33,72 @@ const Settings: React.FC = () => {
     analytics: true,
   });
 
+  // Sync API data with local state when it loads
+  useEffect(() => {
+    if (apiSettings) {
+      setUserSettings({
+        theme: apiSettings.displaySettings.theme,
+        viewMode: apiSettings.displaySettings.viewMode,
+        itemsPerPage: apiSettings.displaySettings.itemsPerPage,
+        cardSize: apiSettings.displaySettings.cardSize,
+        compactMode: apiSettings.displaySettings.compactMode,
+        language: apiSettings.language,
+        enableAnimations: apiSettings.displaySettings.enableAnimations,
+        emailNotifications: apiSettings.notificationSettings.emailNotifications,
+        pushNotifications: apiSettings.notificationSettings.pushNotifications,
+        profilePublic: apiSettings.privacySettings.profilePublic,
+        analytics: apiSettings.privacySettings.allowAnalytics,
+      });
+    }
+  }, [apiSettings]);
+
   const tabs = [
     { name: 'User Preferences', icon: User, visible: true },
     { name: 'System Settings', icon: SettingsIcon, visible: isAdmin },
   ].filter(tab => tab.visible);
 
   const handleSaveSettings = () => {
-    // TODO: Connect to API
-    console.log('Saving settings:', userSettings);
+    updateSettingsMutation.mutate({
+      displaySettings: {
+        theme: userSettings.theme,
+        viewMode: userSettings.viewMode,
+        itemsPerPage: userSettings.itemsPerPage,
+        cardSize: userSettings.cardSize,
+        compactMode: userSettings.compactMode,
+        enableAnimations: userSettings.enableAnimations,
+      },
+      notificationSettings: {
+        emailNotifications: userSettings.emailNotifications,
+        pushNotifications: userSettings.pushNotifications,
+      },
+      privacySettings: {
+        profilePublic: userSettings.profilePublic,
+        allowAnalytics: userSettings.analytics,
+      },
+      language: userSettings.language,
+    });
   };
+
+  const handleResetSettings = () => {
+    if (window.confirm('Are you sure you want to reset all settings to default?')) {
+      resetSettingsMutation.mutate();
+    }
+  };
+
+  if (isLoading) {
+    return <LoadingSpinner text="Loading settings..." />;
+  }
+
+  if (error) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-red-500 text-lg">Failed to load settings</p>
+          <p className="text-slate-400 text-sm mt-2">{error.message}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-full flex flex-col">
@@ -204,11 +268,19 @@ const Settings: React.FC = () => {
 
                 {/* Save Button */}
                 <div className="flex justify-end space-x-3">
-                  <Button variant="ghost" onClick={() => console.log('Reset')}>
-                    Reset to Defaults
+                  <Button 
+                    variant="ghost" 
+                    onClick={handleResetSettings}
+                    disabled={resetSettingsMutation.isPending}
+                  >
+                    {resetSettingsMutation.isPending ? 'Resetting...' : 'Reset to Defaults'}
                   </Button>
-                  <Button variant="primary" onClick={handleSaveSettings}>
-                    Save Changes
+                  <Button 
+                    variant="primary" 
+                    onClick={handleSaveSettings}
+                    disabled={updateSettingsMutation.isPending}
+                  >
+                    {updateSettingsMutation.isPending ? 'Saving...' : 'Save Changes'}
                   </Button>
                 </div>
               </Tab.Panel>
