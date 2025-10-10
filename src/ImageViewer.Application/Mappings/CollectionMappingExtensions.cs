@@ -1,5 +1,6 @@
 using ImageViewer.Application.DTOs.Collections;
 using ImageViewer.Domain.Entities;
+using ImageViewer.Domain.ValueObjects;
 
 namespace ImageViewer.Application.Mappings;
 
@@ -8,6 +9,7 @@ public static class CollectionMappingExtensions
     /// <summary>
     /// Convert Collection entity to lightweight overview DTO (for lists)
     /// Includes thumbnail info for collection card display
+    /// NOTE: ThumbnailBase64 must be set separately using IThumbnailCacheService
     /// </summary>
     public static CollectionOverviewDto ToOverviewDto(this Collection collection)
     {
@@ -31,10 +33,19 @@ public static class CollectionMappingExtensions
             ThumbnailPath = middleThumbnail?.ThumbnailPath,
             ThumbnailImageId = middleThumbnail?.Id, // Use Thumbnail ID, not Image ID
             HasThumbnail = middleThumbnail != null,
+            ThumbnailBase64 = null, // Will be populated by controller using IThumbnailCacheService
             
             CreatedAt = collection.CreatedAt,
             UpdatedAt = collection.UpdatedAt,
         };
+    }
+    
+    /// <summary>
+    /// Get the middle thumbnail for this collection
+    /// </summary>
+    public static ThumbnailEmbedded? GetCollectionThumbnail(this Collection collection)
+    {
+        return GetMiddleThumbnail(collection.Thumbnails);
     }
 
     /// <summary>

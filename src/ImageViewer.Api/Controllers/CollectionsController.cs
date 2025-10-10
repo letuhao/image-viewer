@@ -17,15 +17,18 @@ public class CollectionsController : ControllerBase
     private readonly ICollectionService _collectionService;
     private readonly ILogger<CollectionsController> _logger;
     private readonly ImageViewer.Domain.Interfaces.IImageCacheService _imageCacheService;
+    private readonly ImageViewer.Application.Services.IThumbnailCacheService _thumbnailCacheService;
 
     public CollectionsController(
         ICollectionService collectionService, 
         ILogger<CollectionsController> logger,
-        ImageViewer.Domain.Interfaces.IImageCacheService imageCacheService)
+        ImageViewer.Domain.Interfaces.IImageCacheService imageCacheService,
+        ImageViewer.Application.Services.IThumbnailCacheService thumbnailCacheService)
     {
         _collectionService = collectionService ?? throw new ArgumentNullException(nameof(collectionService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _imageCacheService = imageCacheService ?? throw new ArgumentNullException(nameof(imageCacheService));
+        _thumbnailCacheService = thumbnailCacheService ?? throw new ArgumentNullException(nameof(thumbnailCacheService));
     }
 
     /// <summary>
@@ -269,6 +272,22 @@ public class CollectionsController : ControllerBase
             var collections = await _collectionService.GetCollectionsAsync(page, pageSize);
             var allCollections = collections.ToList();
             var overviewDtos = allCollections.Select(c => c.ToOverviewDto()).ToList();
+            
+            // Populate base64 thumbnails in parallel for instant display (highest performance)
+            var thumbnailTasks = allCollections.Select(async (collection, index) =>
+            {
+                var thumbnail = collection.GetCollectionThumbnail();
+                if (thumbnail != null)
+                {
+                    var base64 = await _thumbnailCacheService.GetThumbnailAsBase64Async(
+                        collection.Id.ToString(), 
+                        thumbnail);
+                    overviewDtos[index].ThumbnailBase64 = base64;
+                }
+            });
+            
+            await Task.WhenAll(thumbnailTasks);
+            _logger.LogDebug("Populated {Count} thumbnails as base64", overviewDtos.Count(d => d.ThumbnailBase64 != null));
             
             // Create paginated response
             var totalCount = await _collectionService.GetTotalCollectionsCountAsync();

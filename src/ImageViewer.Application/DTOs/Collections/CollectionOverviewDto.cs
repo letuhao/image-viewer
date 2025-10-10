@@ -25,6 +25,12 @@ public class CollectionOverviewDto
     public string? ThumbnailImageId { get; set; }
     public bool HasThumbnail { get; set; }
     
+    /// <summary>
+    /// Base64 encoded thumbnail for instant display (no additional HTTP request)
+    /// Format: data:image/jpeg;base64,{base64Data}
+    /// </summary>
+    public string? ThumbnailBase64 { get; set; }
+    
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 }

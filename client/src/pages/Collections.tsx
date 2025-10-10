@@ -302,15 +302,15 @@ const Collections: React.FC = () => {
                       className="cursor-pointer overflow-hidden"
                     >
                       <CardContent className={compactMode ? 'p-3' : 'p-4'}>
-                        {/* Thumbnail */}
+                        {/* Thumbnail - Instant display with Base64 (no additional HTTP request) */}
                         <div className={`${compactMode ? 'mb-2' : 'mb-3'} relative bg-slate-800 rounded-lg overflow-hidden ${compactMode ? 'aspect-square' : 'aspect-video'}`}>
-                          {collection.hasThumbnail && collection.thumbnailPath ? (
+                          {collection.thumbnailBase64 ? (
                             <img 
-                              src={`/api/v1/collections/${collection.id}/thumbnails/${collection.thumbnailImageId}`}
+                              src={collection.thumbnailBase64}
                               alt={`${collection.name} thumbnail`}
                               className="w-full h-full object-cover"
                               onError={(e) => {
-                                // Fallback to icon if thumbnail fails to load
+                                // Fallback to icon if base64 decode fails (rare)
                                 e.currentTarget.style.display = 'none';
                                 const nextElement = e.currentTarget.nextElementSibling as HTMLElement;
                                 if (nextElement) {
@@ -320,9 +320,9 @@ const Collections: React.FC = () => {
                             />
                           ) : null}
                           
-                          {/* Fallback Icon (always present but hidden when thumbnail loads) */}
+                          {/* Fallback Icon (always present but hidden when thumbnail exists) */}
                           <div 
-                            className={`absolute inset-0 flex items-center justify-center ${collection.hasThumbnail && collection.thumbnailPath ? 'hidden' : 'flex'}`}
+                            className={`absolute inset-0 flex items-center justify-center ${collection.thumbnailBase64 ? 'hidden' : 'flex'}`}
                           >
                             {collection.type === 'archive' ? (
                               <Archive className={`${compactMode ? 'h-8 w-8' : 'h-12 w-12'} text-purple-500`} />

@@ -8,7 +8,7 @@ Write-Host "━━━━━━━━━━━━━━━━━━━━━━�
 
 # Configuration
 $API_BASE_URL = "https://localhost:11001/api/v1"
-$LOG_FILE = ".\logs\log-*.txt"
+$LOG_FILE = ".\src\ImageViewer.Api\logs\log-*.txt"
 
 # Test parameters
 $COLLECTION_ID = $null

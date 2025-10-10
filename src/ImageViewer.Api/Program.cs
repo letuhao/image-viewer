@@ -125,6 +125,9 @@ builder.Services.AddSingleton<StackExchange.Redis.IConnectionMultiplexer>(provid
 // Register Redis Image Cache Service
 builder.Services.AddScoped<ImageViewer.Domain.Interfaces.IImageCacheService, ImageViewer.Infrastructure.Services.RedisImageCacheService>();
 
+// Register Thumbnail Cache Service (for Base64 encoding with Redis)
+builder.Services.AddScoped<ImageViewer.Application.Services.IThumbnailCacheService, ImageViewer.Application.Services.ThumbnailCacheService>();
+
 // Add Application Services - New MongoDB-based services are registered in AddMongoDb extension
 // The following services are registered in ServiceCollectionExtensions.AddMongoDb():
 // - IUserService, UserService

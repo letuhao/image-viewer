@@ -21,12 +21,16 @@ export interface Collection {
   thumbnailCount: number;
   cacheImageCount: number;
   totalSize: number;
-  
+
   // Thumbnail info for collection card display
   thumbnailPath?: string;
   thumbnailImageId?: string;
   hasThumbnail: boolean;
   
+  // Base64 encoded thumbnail for instant display (no additional HTTP request)
+  // Format: data:image/jpeg;base64,{base64Data}
+  thumbnailBase64?: string;
+
   createdAt: string;
   updatedAt: string;
 }
