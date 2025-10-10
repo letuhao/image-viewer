@@ -394,20 +394,31 @@ public class ImageService : IImageService
         {
             _logger.LogDebug("Getting cached image for {ImageId} from collection {CollectionId}", imageId, collectionId);
 
-            var image = await GetEmbeddedImageByIdAsync(imageId, collectionId, cancellationToken);
-            if (image?.CacheInfo == null)
+            // Get collection to check cache images
+            var collection = await _collectionRepository.GetByIdAsync(collectionId);
+            if (collection == null)
             {
-                _logger.LogWarning("Cache info not found for {ImageId} in collection {CollectionId}", imageId, collectionId);
+                _logger.LogWarning("Collection {CollectionId} not found", collectionId);
                 return null;
             }
 
-            if (!File.Exists(image.CacheInfo.CachePath))
+            // Find cache image for this image ID
+            var cacheImage = collection.GetCacheImageByImageId(imageId);
+            if (cacheImage == null)
             {
-                _logger.LogWarning("Cache file does not exist: {CachePath}", image.CacheInfo.CachePath);
+                _logger.LogDebug("No cache image found for {ImageId} in collection {CollectionId}", imageId, collectionId);
                 return null;
             }
 
-            return await File.ReadAllBytesAsync(image.CacheInfo.CachePath, cancellationToken);
+            // Check if cache file exists on disk
+            if (!File.Exists(cacheImage.CachePath))
+            {
+                _logger.LogWarning("Cache file does not exist: {CachePath} for image {ImageId}", cacheImage.CachePath, imageId);
+                return null;
+            }
+
+            _logger.LogDebug("Loading cached image from {CachePath}", cacheImage.CachePath);
+            return await File.ReadAllBytesAsync(cacheImage.CachePath, cancellationToken);
         }
         catch (Exception ex)
         {
