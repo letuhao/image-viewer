@@ -3,6 +3,10 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using RabbitMQ.Client;
+using ImageViewer.Domain.Entities;
+using ImageViewer.Domain.Enums;
+using ImageViewer.Domain.Events;
+using ImageViewer.Domain.Exceptions;
 using ImageViewer.Domain.Interfaces;
 using ImageViewer.Infrastructure.Data;
 using ImageViewer.Infrastructure.Messaging;
@@ -69,6 +73,7 @@ public class LibraryScanConsumer : BaseMessageConsumer
                 var libraryRepository = scope.ServiceProvider.GetRequiredService<ILibraryRepository>();
                 var collectionRepository = scope.ServiceProvider.GetRequiredService<ICollectionRepository>();
                 var scheduledJobRunRepository = scope.ServiceProvider.GetRequiredService<IScheduledJobRunRepository>();
+                var messageQueueService = scope.ServiceProvider.GetRequiredService<IMessageQueueService>();
 
                 // Get the library
                 var libraryId = ObjectId.Parse(scanMessage.LibraryId);
@@ -142,22 +147,63 @@ public class LibraryScanConsumer : BaseMessageConsumer
                     try
                     {
                         // Check if collection already exists for this path
-                        var existingCollections = await collectionRepository.GetAllAsync();
-                        var existingCollection = existingCollections.FirstOrDefault(c => 
-                            c.Path.Equals(folderPath, StringComparison.OrdinalIgnoreCase) && 
-                            !c.IsDeleted);
+                        Collection? existingCollection = null;
+                        try
+                        {
+                            existingCollection = await collectionRepository.GetByPathAsync(folderPath);
+                        }
+                        catch (EntityNotFoundException)
+                        {
+                            // Collection doesn't exist - this is expected for new collections
+                            existingCollection = null;
+                        }
 
                         if (existingCollection != null)
                         {
                             _logger.LogDebug("⏭️ Collection already exists for path: {Path}", folderPath);
                             skippedCount++;
+                            
+                            // TODO: Optionally trigger re-scan if ForceRescan is true
+                            // This would update existing collections with new images
                             continue;
                         }
 
-                        // TODO: Implement collection creation logic
-                        // This will be implemented later with proper collection scanning
-                        _logger.LogInformation("✅ Would create collection for: {Path}", folderPath);
+                        // Create new collection
+                        var collectionName = Path.GetFileName(folderPath) ?? folderPath;
+                        var collection = new Collection(
+                            libraryId: libraryId,
+                            name: collectionName,
+                            path: folderPath,
+                            type: CollectionType.Folder,  // Default to Folder type
+                            description: $"Auto-discovered from library: {library.Name}",
+                            createdBySystem: "LibraryScanConsumer");
+
+                        var createdCollection = await collectionRepository.CreateAsync(collection);
                         createdCount++;
+
+                        _logger.LogInformation(
+                            "✅ Created collection: {CollectionName} (ID: {CollectionId}) at path: {Path}",
+                            collectionName,
+                            createdCollection.Id,
+                            folderPath);
+
+                        // Trigger collection scan to discover images
+                        var collectionScanMessage = new CollectionScanMessage
+                        {
+                            CollectionId = createdCollection.Id.ToString(),
+                            CollectionPath = folderPath,
+                            CollectionType = CollectionType.Folder,
+                            ForceRescan = false,
+                            CreatedBy = null,
+                            CreatedBySystem = "LibraryScanConsumer",
+                            JobId = scanMessage.JobRunId  // Link to parent job for tracking
+                        };
+
+                        await messageQueueService.PublishAsync(collectionScanMessage);
+
+                        _logger.LogInformation(
+                            "📤 Published collection scan message for collection {CollectionId}",
+                            createdCollection.Id);
                     }
                     catch (Exception ex)
                     {
