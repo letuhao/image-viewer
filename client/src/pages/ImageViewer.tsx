@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useImages, useImage } from '../hooks/useImages';
 import { useCollection } from '../hooks/useCollections';
+import { useCollectionNavigation } from '../hooks/useCollectionNavigation';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import CollectionNavigationSidebar from '../components/collections/CollectionNavigationSidebar';
 import ImagePreviewSidebar from '../components/viewer/ImagePreviewSidebar';
@@ -28,6 +29,7 @@ import {
   PanelLeft,
   PanelRight,
   Images,
+  Link2,
 } from 'lucide-react';
 
 /**
@@ -57,6 +59,7 @@ const ImageViewer: React.FC = () => {
   const navigate = useNavigate();
 
   const initialImageId = searchParams.get('imageId');
+  const goToLast = searchParams.get('goToLast') === 'true';
   const { data: collection } = useCollection(collectionId!);
   const { data: imagesData } = useImages({ collectionId: collectionId!, limit: 1000 });
   
@@ -94,13 +97,30 @@ const ImageViewer: React.FC = () => {
   const [showImagePreviewSidebar, setShowImagePreviewSidebar] = useState(() => 
     localStorage.getItem('imageViewerShowPreviewSidebar') === 'true' // Default: hidden
   );
+  const [crossCollectionNav, setCrossCollectionNav] = useState(() => 
+    localStorage.getItem('imageViewerCrossCollectionNav') === 'true' // Default: disabled
+  );
   const slideshowRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const imageContainerRef = useRef<HTMLDivElement>(null);
   const preloadedImagesRef = useRef<Map<string, HTMLImageElement>>(new Map());
 
+  // Fetch collection navigation info for cross-collection navigation
+  const { data: collectionNav } = useCollectionNavigation(
+    crossCollectionNav ? collectionId : undefined
+  );
+
   const images = imagesData?.data || [];
   const currentIndex = images.findIndex((img) => img.id === currentImageId);
   const currentImage = currentIndex >= 0 ? images[currentIndex] : null;
+
+  // Handle goToLast parameter for cross-collection navigation from previous collection
+  useEffect(() => {
+    if (goToLast && images.length > 0 && !currentImageId) {
+      // Navigate to last image
+      const lastImage = images[images.length - 1];
+      setCurrentImageId(lastImage.id);
+    }
+  }, [goToLast, images, currentImageId]);
   
   // Sync currentImageId with URL parameter
   useEffect(() => {
@@ -142,6 +162,13 @@ const ImageViewer: React.FC = () => {
     setNavigationMode(newMode);
     localStorage.setItem('imageViewerNavigationMode', newMode);
   }, [navigationMode]);
+
+  // Toggle cross-collection navigation
+  const toggleCrossCollectionNav = useCallback(() => {
+    const newValue = !crossCollectionNav;
+    setCrossCollectionNav(newValue);
+    localStorage.setItem('imageViewerCrossCollectionNav', newValue.toString());
+  }, [crossCollectionNav]);
 
   // Toggle collection sidebar
   const toggleCollectionSidebar = useCallback(() => {
@@ -241,6 +268,12 @@ const ImageViewer: React.FC = () => {
     (direction: 'next' | 'prev') => {
       if (images.length === 0) return;
 
+      // Cross-collection navigation disabled in scroll mode and shuffle mode
+      const canCrossNavigate = crossCollectionNav && 
+                               navigationMode === 'paging' && 
+                               !isShuffleMode && 
+                               collectionNav;
+
       const imagesPerView = {
         single: 1,
         double: 2,
@@ -250,9 +283,34 @@ const ImageViewer: React.FC = () => {
 
       let newIndex = currentIndex;
       if (direction === 'next') {
-        newIndex = (currentIndex + imagesPerView) % images.length;
+        newIndex = currentIndex + imagesPerView;
+        
+        // Check if we need to move to next collection
+        if (newIndex >= images.length) {
+          if (canCrossNavigate && collectionNav.hasNext && collectionNav.nextCollectionId) {
+            // Navigate to first image of next collection
+            navigate(`/viewer/${collectionNav.nextCollectionId}`);
+            return;
+          } else {
+            // Wrap to beginning of current collection
+            newIndex = 0;
+          }
+        }
       } else {
-        newIndex = (currentIndex - imagesPerView + images.length) % images.length;
+        newIndex = currentIndex - imagesPerView;
+        
+        // Check if we need to move to previous collection
+        if (newIndex < 0) {
+          if (canCrossNavigate && collectionNav.hasPrevious && collectionNav.previousCollectionId) {
+            // Navigate to last image of previous collection
+            // We don't know the last image ID yet, so navigate to collection and let it load
+            navigate(`/viewer/${collectionNav.previousCollectionId}?goToLast=true`);
+            return;
+          } else {
+            // Wrap to end of current collection
+            newIndex = Math.max(0, images.length - imagesPerView);
+          }
+        }
       }
 
       const newImageId = images[newIndex].id;
@@ -265,7 +323,7 @@ const ImageViewer: React.FC = () => {
       setRotation(0);
       setPanPosition({ x: 0, y: 0 });
     },
-    [images, currentIndex, viewMode]
+    [images, currentIndex, viewMode, crossCollectionNav, navigationMode, isShuffleMode, collectionNav, navigate]
   );
 
   // Keyboard navigation
@@ -506,6 +564,26 @@ const ImageViewer: React.FC = () => {
               title={navigationMode === 'paging' ? 'Switch to Scroll Mode' : 'Switch to Paging Mode'}
             >
               <ArrowDownUp className="h-5 w-5 text-white" />
+            </button>
+
+            {/* Cross-Collection Navigation Toggle */}
+            <button
+              onClick={toggleCrossCollectionNav}
+              disabled={navigationMode === 'scroll' || isShuffleMode}
+              className={`p-2 hover:bg-white/10 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed ${
+                crossCollectionNav ? 'bg-purple-500' : ''
+              }`}
+              title={
+                navigationMode === 'scroll' 
+                  ? 'Cross-collection navigation not available in scroll mode' 
+                  : isShuffleMode
+                  ? 'Cross-collection navigation not available in shuffle mode'
+                  : crossCollectionNav 
+                  ? 'Disable cross-collection navigation (wrap within current collection)' 
+                  : 'Enable cross-collection navigation (move to prev/next collection at boundaries)'
+              }
+            >
+              <Link2 className="h-5 w-5 text-white" />
             </button>
 
             {/* View Mode Controls */}
@@ -842,7 +920,16 @@ const ImageViewer: React.FC = () => {
               <p>1-4 : View Modes</p>
               <p>F : Fullscreen</p>
             </div>
-            <p className="text-center text-xs text-slate-400 mt-2">Press ? or click Help icon to toggle</p>
+            <p className="text-center text-xs text-slate-400 mt-2">
+              Press ? or click Help icon to toggle
+            </p>
+            {crossCollectionNav && navigationMode === 'paging' && !isShuffleMode && (
+              <div className="mt-2 pt-2 border-t border-slate-700">
+                <p className="text-center text-xs text-purple-400">
+                  🔗 Cross-Collection Mode: Navigate to prev/next collection at boundaries
+                </p>
+              </div>
+            )}
           </div>
         </div>
       )}
