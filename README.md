@@ -17,7 +17,8 @@ image-viewer/
 │   ├── ImageViewer.Application/  # Application layer
 │   ├── ImageViewer.Domain/       # Domain entities & logic
 │   ├── ImageViewer.Infrastructure/ # Infrastructure & data access
-│   ├── ImageViewer.Worker/       # Background worker service
+│   ├── ImageViewer.Worker/       # RabbitMQ consumer worker
+│   ├── ImageViewer.Scheduler/    # Hangfire scheduler worker
 │   └── ImageViewer.Test/         # Unit & integration tests
 ├── docs/                         # Documentation
 │   ├── 01-requirements/          # Requirements & analysis

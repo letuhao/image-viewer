@@ -161,6 +161,41 @@ services:
       retries: 3
       start_period: 60s
 
+  # Hangfire Scheduler Worker
+  imageviewer-scheduler:
+    build:
+      context: ./src
+      dockerfile: ImageViewer.Scheduler/Dockerfile
+    container_name: imageviewer-scheduler
+    restart: unless-stopped
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - MongoDB__ConnectionString=mongodb://mongodb:27017
+      - MongoDB__DatabaseName=image_viewer
+      - Hangfire__ConnectionString=mongodb://mongodb:27017
+      - Hangfire__DatabaseName=image_viewer_hangfire
+      - Hangfire__ServerName=ImageViewer-Scheduler-Docker
+      - Hangfire__WorkerCount=5
+      - RabbitMQ__HostName=rabbitmq
+      - RabbitMQ__Port=5672
+      - RabbitMQ__UserName=guest
+      - RabbitMQ__Password=guest
+    volumes:
+      - ./logs/scheduler:/app/logs
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - imageviewer-network
+    healthcheck:
+      test: ["CMD", "pgrep", "-f", "ImageViewer.Scheduler"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
   # Nginx Reverse Proxy (Optional)
   nginx:
     image: nginx:alpine
