@@ -1,238 +1,195 @@
 # 🖼️ ImageViewer Platform
 
-A modern, high-performance image management and viewing platform built with .NET 9, featuring advanced search capabilities, real-time notifications, and comprehensive media management.
+> A modern, high-performance image management platform with advanced library organization, automated scanning, and intelligent caching. Built with .NET 9, MongoDB, RabbitMQ, and React.
 
-[![.NET 9](https://img.shields.io/badge/.NET-9.0-blue.svg)](https://dotnet.microsoft.com/download/dotnet/9.0)
-[![MongoDB](https://img.shields.io/badge/MongoDB-7.0-green.svg)](https://www.mongodb.com/)
-[![RabbitMQ](https://img.shields.io/badge/RabbitMQ-3.12-orange.svg)](https://www.rabbitmq.com/)
-[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/Tests-Passing-brightgreen.svg)](#testing)
+[![.NET 9](https://img.shields.io/badge/.NET-9.0-512BD4?logo=dotnet)](https://dotnet.microsoft.com/)
+[![MongoDB](https://img.shields.io/badge/MongoDB-7.0-47A248?logo=mongodb)](https://www.mongodb.com/)
+[![RabbitMQ](https://img.shields.io/badge/RabbitMQ-3.13-FF6600?logo=rabbitmq)](https://www.rabbitmq.com/)
+[![React](https://img.shields.io/badge/React-18-61DAFB?logo=react)](https://react.dev/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript)](https://www.typescriptlang.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-## 📁 Project Structure
+---
 
-```
-image-viewer/
-├── src/                          # Source code (.NET 9 solution)
-│   ├── ImageViewer.Api/          # REST API
-│   ├── ImageViewer.Application/  # Application layer
-│   ├── ImageViewer.Domain/       # Domain entities & logic
-│   ├── ImageViewer.Infrastructure/ # Infrastructure & data access
-│   ├── ImageViewer.Worker/       # RabbitMQ consumer worker
-│   ├── ImageViewer.Scheduler/    # Hangfire scheduler worker
-│   └── ImageViewer.Test/         # Unit & integration tests
-├── docs/                         # Documentation
-│   ├── 01-requirements/          # Requirements & analysis
-│   ├── 02-architecture/          # Architecture design
-│   ├── 03-api/                   # API documentation
-│   ├── 04-database/              # Database schema
-│   ├── 05-deployment/            # Deployment guides
-│   ├── 07-migration/             # Migration plans
-│   ├── 08-source-code-review/    # Code reviews
-│   └── 09-troubleshooting/       # Troubleshooting guides
-├── scripts/                      # Operational scripts
-│   ├── deployment/               # Deployment scripts
-│   ├── development/              # Development/testing scripts
-│   └── maintenance/              # Maintenance & cleanup scripts
-├── deployment/                   # Deployment configurations
-│   ├── docker/                   # Dockerfiles & scripts
-│   └── docker-compose/           # Docker compose configs
-├── config/                       # Configuration files
-│   ├── env.* files               # Environment configs
-│   └── appsettings files         # App settings
-├── monitoring/                   # Monitoring configs
-│   ├── prometheus/               # Prometheus config
-│   └── alertmanager/             # Alertmanager config
-├── nginx/                        # Nginx configuration
-├── _archive/                     # Archived code
-│   └── nodejs-legacy/            # Legacy Node.js implementation
-└── docker-compose.yml            # Main compose file
-```
+## ✨ Features
 
-## 🚀 Features
+### 📚 **Library Management**
+- **Multi-Library Support**: Organize collections into separate libraries
+- **Auto-Scan Scheduling**: Cron-based automatic library scanning with Hangfire
+- **Nested Collection Discovery**: Recursive folder scanning with compressed file support
+- **Library Statistics**: Real-time tracking of collections, media items, and total size
+- **Access Control**: Public/private libraries with owner-based permissions
 
-### 📁 **Media Management**
-- **Collection Management**: Organize images into libraries and collections
-- **Advanced Image Processing**: Thumbnail generation, resizing, format conversion
-- **Bulk Operations**: Import/export large image collections
-- **Cache Management**: Intelligent caching with configurable presets
-- **Compressed File Support**: ZIP file extraction and processing
+### 🗂️ **Collection Management**
+- **Folder Collections**: Scan directories for images and videos
+- **Archive Support**: ZIP, 7Z, RAR, CBZ, CBR, TAR formats
+- **Nested Collections**: Multi-level folder hierarchies
+- **Bulk Operations**: Add, scan, and process thousands of collections
+- **Auto-Discovery**: Intelligent collection detection during library scans
 
-### 🔍 **Search & Discovery**
-- **Multi-type Search**: All, Libraries, Collections, MediaItems
-- **Semantic Search**: AI-powered content discovery
-- **Visual Search**: Similar image detection (placeholder)
-- **Advanced Filtering**: Complex query building with operators
-- **Search Analytics**: Track search patterns and performance
-- **Smart Suggestions**: Auto-complete and personalized recommendations
+### 🖼️ **Advanced Image Viewer**
+- **View Modes**: Single, Double, Triple, Quad-view layouts
+- **Navigation Modes**: Paging or continuous scroll
+- **Cross-Collection Navigation**: Seamless browsing across collections
+- **Zoom & Pan**: Mouse wheel zoom (Ctrl+Wheel in scroll mode)
+- **Slideshow**: Auto-advance with configurable intervals
+- **Keyboard Shortcuts**: Full keyboard control
+- **Random Collection**: Quick discovery with Ctrl+R
+
+### ⚡ **Background Processing**
+- **Distributed Architecture**: Separate API, Worker, and Scheduler services
+- **RabbitMQ Message Queue**: Asynchronous task processing
+- **Hangfire Scheduler**: Cron-based recurring jobs
+- **Multi-Stage Jobs**: Scan → Process → Thumbnail → Cache pipeline
+- **Concurrent Processing**: Handle millions of files efficiently
+- **Atomic Statistics**: Race-condition-free aggregate updates
+
+### 💾 **Intelligent Caching**
+- **Multi-Level Cache**: Thumbnails and optimized cache images
+- **Configurable Quality**: Auto-adjust based on source image analysis
+- **Cache Folders**: Organized by priority and size limits
+- **Atomic Updates**: Thread-safe concurrent operations
+- **Statistics Tracking**: Real-time cache folder metrics
 
 ### 🔐 **Authentication & Security**
-- **JWT Authentication**: Secure token-based authentication
-- **Two-Factor Authentication (2FA)**: TOTP-based 2FA support
-- **Session Management**: Secure session handling with timeouts
-- **Device Management**: Track and manage user devices
-- **Security Alerts**: Real-time security monitoring
-- **IP Whitelisting**: Location-based access control
+- **JWT Authentication**: Secure token-based auth
+- **Role-Based Access**: Admin, LibraryManager, User roles
+- **Session Management**: Secure session handling
+- **Password Security**: Bcrypt hashing with salt
 
-### 📊 **Performance & Monitoring**
-- **Real-time Performance Metrics**: Database, cache, and processing statistics
-- **System Health Monitoring**: Comprehensive health checks
-- **Background Job Management**: Queue-based task processing
-- **Performance Optimization**: Database query optimization
-- **CDN Integration**: Content delivery network support (placeholder)
-- **Lazy Loading**: Efficient data loading strategies
-
-### 🔔 **Notifications**
-- **Real-time Notifications**: WebSocket-based instant notifications
-- **Template System**: Customizable notification templates
-- **Multi-channel Delivery**: Email, in-app, push notifications
-- **Notification Analytics**: Delivery tracking and statistics
-- **Broadcast Notifications**: System-wide announcements
-
-### 👥 **User Management**
-- **User Profiles**: Comprehensive user profile management
-- **Preferences**: Display, privacy, performance, and notification settings
-- **User Statistics**: Activity tracking and analytics
-- **Account Management**: Activation, deactivation, email verification
+---
 
 ## 🏗️ Architecture
+
+### **System Overview**
+
+```
+┌─────────────────┐      ┌──────────────────┐      ┌─────────────────┐
+│  React Frontend │─────▶│   .NET API       │─────▶│    MongoDB      │
+│  (Vite + TS)    │      │  (REST + JWT)    │      │  (Document DB)  │
+└─────────────────┘      └──────────────────┘      └─────────────────┘
+                                  │
+                                  │ Publishes Messages
+                                  ▼
+                         ┌──────────────────┐
+                         │    RabbitMQ      │
+                         │  (Message Broker)│
+                         └──────────────────┘
+                                  │
+                    ┌─────────────┴─────────────┐
+                    │                           │
+                    ▼                           ▼
+          ┌──────────────────┐        ┌──────────────────┐
+          │ Worker Service   │        │   Scheduler      │
+          │ (Consumers)      │        │   (Hangfire)     │
+          │                  │        │                  │
+          │ • LibraryScan    │        │ • Cron Jobs      │
+          │ • CollectionScan │        │ • Job Binding    │
+          │ • ImageProcess   │        │ • Auto-Sync      │
+          │ • Thumbnail Gen  │        │                  │
+          │ • Cache Gen      │        │                  │
+          └──────────────────┘        └──────────────────┘
+```
 
 ### **Clean Architecture Layers**
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    Presentation Layer                       │
-├─────────────────────────────────────────────────────────────┤
-│  ASP.NET Core Web API  │  Background Workers               │
-│  - RESTful APIs        │  - Image Processing               │
-│  - Swagger/OpenAPI     │  - Cache Generation               │
-│  - Authentication      │  - Bulk Operations                │
-│  - Rate Limiting       │  - Notification Delivery          │
-└─────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│                    Application Layer                       │
-├─────────────────────────────────────────────────────────────┤
-│  Services & DTOs                                           │
-│  - Business Logic         - Validation                     │
-│  - Command/Query Handlers - Mapping                        │
-│  - Event Handlers         - Caching                        │
-│  - Background Services    - Performance Monitoring         │
-└─────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│                      Domain Layer                          │
-├─────────────────────────────────────────────────────────────┤
-│  Entities & Interfaces                                     │
-│  - Domain Models          - Value Objects                  │
-│  - Business Rules         - Domain Events                  │
-│  - Repository Interfaces  - Domain Exceptions              │
-└─────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│                   Infrastructure Layer                     │
-├─────────────────────────────────────────────────────────────┤
-│  Data Access & External Services                           │
-│  - MongoDB Repositories   - RabbitMQ Message Queue         │
-│  - Image Processing       - File System Operations         │
-│  - Caching Services       - External API Integrations      │
-└─────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────┐
+│                    Presentation Layer                     │
+│  • ImageViewer.Api (REST API + Swagger)                  │
+│  • React Frontend (UI Components)                         │
+└────────────────────────┬─────────────────────────────────┘
+                         │
+┌────────────────────────▼─────────────────────────────────┐
+│                   Application Layer                       │
+│  • ImageViewer.Application (Services, DTOs, Mappings)    │
+│  • Use Cases, Business Logic, Validation                 │
+└────────────────────────┬─────────────────────────────────┘
+                         │
+┌────────────────────────▼─────────────────────────────────┐
+│                     Domain Layer                          │
+│  • ImageViewer.Domain (Entities, Interfaces, Events)     │
+│  • Domain Models, Business Rules, Value Objects          │
+└────────────────────────┬─────────────────────────────────┘
+                         │
+┌────────────────────────▼─────────────────────────────────┐
+│                 Infrastructure Layer                      │
+│  • ImageViewer.Infrastructure (Repositories, Services)   │
+│  • MongoDB, RabbitMQ, File System, External Services     │
+└──────────────────────────────────────────────────────────┘
 ```
 
-### **Technology Stack**
-
-- **Backend**: .NET 8, ASP.NET Core Web API
-- **Database**: MongoDB 7.0 with **Embedded Document Design**
-- **Message Queue**: RabbitMQ 3.12
-- **Authentication**: JWT with 2FA support
-- **Image Processing**: SkiaSharp
-- **Logging**: Serilog with structured logging
-- **Testing**: xUnit, Moq, FluentAssertions
-- **Documentation**: Swagger/OpenAPI
-
-### **MongoDB Embedded Design** ⭐ NEW
-
-The platform uses MongoDB's embedded document design for optimal performance:
+### **Message Flow**
 
 ```
-Collection Document {
-  images: [               ← Embedded ImageEmbedded documents
-    {
-      id, filename, size, dimensions,
-      cacheInfo: { ... }, ← Nested cache information
-      metadata: { ... }   ← Nested image metadata
-    }
-  ],
-  thumbnails: [           ← Embedded ThumbnailEmbedded documents
-    { id, path, size, ... }
-  ],
-  statistics: { ... }
-}
+Library Scan Triggered
+  ↓
+API creates ScheduledJob (orphaned initially)
+  ↓
+Scheduler syncs every 5 min
+  ↓
+Hangfire recurring job created → HangfireJobId set
+  ↓
+Cron fires → LibraryScanJobHandler
+  ↓
+Publish LibraryScanMessage → RabbitMQ
+  ↓
+Worker.LibraryScanConsumer
+  ↓
+BulkService discovers collections (folders + archives)
+  ↓
+Create Collection entities → Publish CollectionScanMessage (×N)
+  ↓
+Worker.CollectionScanConsumer
+  ↓
+Scan media files → Publish ImageProcessingMessage (×M)
+  ↓
+Worker.ImageProcessingConsumer
+  ↓
+Create embedded images → Publish ThumbnailGeneration + CacheGeneration
+  ↓
+Worker.ThumbnailGenerationConsumer + CacheGenerationConsumer
+  ↓
+Generate files → Update cache folder statistics (atomic)
+  ↓
+Complete! Library statistics updated in real-time
 ```
 
-**Benefits**:
-- ✅ **Single Query**: Get collection + all images + cache + thumbnails in one operation
-- ✅ **Atomic Updates**: Update collection and images together atomically
-- ✅ **Better Performance**: 67% fewer database round-trips
-- ✅ **Simpler Code**: No joins, no complex relationships
+---
 
 ## 🚀 Quick Start
 
-### Prerequisites
+### **Prerequisites**
 
-- [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
+- [.NET 9 SDK](https://dotnet.microsoft.com/download/dotnet/9.0)
 - [MongoDB 7.0+](https://www.mongodb.com/try/download/community)
 - [RabbitMQ 3.12+](https://www.rabbitmq.com/download.html)
-- [Docker](https://www.docker.com/get-started) (optional)
+- [Node.js 18+](https://nodejs.org/) (for frontend)
 
-### Installation
+### **Local Development (Windows)**
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/your-username/image-viewer.git
-   cd image-viewer
-   ```
+```powershell
+# 1. Clone repository
+git clone https://github.com/yourusername/image-viewer.git
+cd image-viewer
 
-2. **Set up environment variables**
-   ```bash
-   # Copy the example environment file
-   cp env.example .env
-   
-   # Edit .env with your configuration
-   JWT_SECRET_KEY=your-super-secret-jwt-key-here
-   JWT_ISSUER=ImageViewer
-   JWT_AUDIENCE=ImageViewer.Users
-   ```
+# 2. Start dependencies (Docker)
+docker-compose up -d mongodb rabbitmq
 
-3. **Start dependencies with Docker**
-   ```bash
-   # Start MongoDB and RabbitMQ
-   docker-compose up -d
-   ```
+# 3. Start all services
+.\start-all-services.bat
 
-4. **Build and run the application**
-   ```bash
-   # Build the solution
-   dotnet build
-   
-   # Run the API
-   dotnet run --project src/ImageViewer.Api
-   
-   # Run the background worker
-   dotnet run --project src/ImageViewer.Worker
-   ```
+# Services will start:
+# - API: https://localhost:11001
+# - Worker: Processing in background
+# - Scheduler: Hangfire jobs
+# - Frontend: http://localhost:3000
+```
 
-5. **Access the application**
-   - **API**: https://localhost:11001
-   - **Swagger UI**: https://localhost:11001 (root path)
-   - **Health Check**: https://localhost:11001/health
-
-### Docker Deployment
+### **Docker Deployment**
 
 ```bash
-# Build and run with Docker Compose
+# Build and start all services
 docker-compose up -d
 
 # View logs
@@ -242,319 +199,622 @@ docker-compose logs -f
 docker-compose down
 ```
 
-## 📚 API Documentation
+### **Manual Service Startup**
 
-### **Base URL**
-```
-Development: https://localhost:11001/api/v1
-Production: https://api.imageviewer.com/v1
+```powershell
+# Start API
+cd src/ImageViewer.Api
+dotnet run
+
+# Start Worker (new terminal)
+cd src/ImageViewer.Worker
+dotnet run
+
+# Start Scheduler (new terminal)
+cd src/ImageViewer.Scheduler
+dotnet run
+
+# Start Frontend (new terminal)
+cd client
+npm install
+npm run dev
 ```
 
-### **Authentication**
-All endpoints require JWT authentication except public ones:
+---
+
+## 📖 Usage Guide
+
+### **1. Create a Library**
 
 ```bash
-# Login to get token
-curl -X POST https://localhost:11001/api/v1/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"username": "admin", "password": "password"}'
-
-# Use token in subsequent requests
-curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
-  https://localhost:11001/api/v1/collections
+POST /api/v1/libraries
+{
+  "name": "My Photos",
+  "path": "D:\\Photos",
+  "ownerId": "user-id",
+  "autoScan": true  # Enable automatic scheduled scanning
+}
 ```
 
-### **Key Endpoints**
-
-#### **Collections**
-- `GET /api/v1/collections` - List all collections
-- `POST /api/v1/collections` - Create new collection
-- `GET /api/v1/collections/{id}` - Get collection details
-- `PUT /api/v1/collections/{id}` - Update collection
-- `DELETE /api/v1/collections/{id}` - Delete collection
-
-#### **Search**
-- `GET /api/v1/search` - Search across all content
-- `GET /api/v1/search/libraries` - Search libraries
-- `GET /api/v1/search/collections` - Search collections
-- `GET /api/v1/search/media` - Search media items
-
-#### **Performance**
-- `GET /api/v1/performance/metrics` - Get performance metrics
-- `GET /api/v1/performance/cache` - Get cache statistics
-- `POST /api/v1/performance/cache/clear` - Clear cache
-
-#### **Notifications**
-- `GET /api/v1/notifications` - Get user notifications
-- `POST /api/v1/notifications` - Create notification
-- `PUT /api/v1/notifications/{id}/read` - Mark as read
-
-## 🧪 Testing
-
-### **Test Coverage**
-- **Total Tests**: 587
-- **Passing**: 585 (99.7%)
-- **Skipped**: 2 (deprecated methods)
-- **Success Rate**: 100% ✅
-
-### **Running Tests**
+### **2. Trigger Manual Scan**
 
 ```bash
-# Run all tests
-dotnet test
-
-# Run specific test category
-dotnet test --filter "Category=Unit"
-dotnet test --filter "Category=Integration"
-
-# Run with coverage
-dotnet test --collect:"XPlat Code Coverage"
-
-# Run specific feature tests
-dotnet test --filter "FullyQualifiedName~Authentication"
-dotnet test --filter "FullyQualifiedName~Collections"
+POST /api/v1/libraries/{libraryId}/scan
 ```
 
-### **Test Features**
+**What Happens:**
+1. Library scanned for folders and archives
+2. Collections auto-created for discovered items
+3. Images extracted and metadata generated
+4. Thumbnails and cache generated in background
+5. Library statistics updated in real-time
 
-| Feature | Unit Tests | Integration Tests | Status |
-|---------|------------|-------------------|---------|
-| Authentication | 13 | 8 | ✅ Complete |
-| Collections | 45 | 12 | ✅ Complete |
-| Media Management | 67 | 15 | ✅ Complete |
-| Search & Discovery | 89 | 18 | ✅ Complete |
-| Notifications | 34 | 9 | ✅ Complete |
-| Performance | 19 | 6 | ✅ Complete |
-| User Management | 28 | 8 | ✅ Complete |
-| System Management | 41 | 12 | ✅ Complete |
+### **3. Browse Collections**
 
-## 📊 Performance
+- **Collections List**: `/collections`
+- **Collection Detail**: `/collections/{id}`
+- **Image Viewer**: `/viewer/{collectionId}?imageId={firstImageId}`
+- **Random Collection**: Click Shuffle icon or press `Ctrl+R`
 
-### **Target Metrics**
-- **API Response Time**: < 100ms for simple queries
-- **Image Loading**: < 500ms for thumbnails
-- **Cache Generation**: < 2s per image
-- **Database Queries**: < 50ms for indexed queries
+### **4. Image Viewer Features**
 
-### **Scalability**
-- **Concurrent Users**: 1000+ users
-- **Image Processing**: 100+ images/minute
-- **Cache Storage**: 10GB+ storage
-- **Collection Size**: 100K+ images per collection
+#### **View Modes**
+- Press `1`: Single image
+- Press `2`: Double (side-by-side)
+- Press `3`: Triple
+- Press `4`: Quad (2×2 grid)
+
+#### **Navigation**
+- `←` `→`: Previous/Next
+- `Space`: Toggle slideshow
+- `Ctrl+R`: Random collection
+- `Link` icon: Toggle cross-collection navigation
+
+#### **Zoom & Transform**
+- `+` `-`: Zoom in/out
+- `Ctrl+Wheel`: Zoom with mouse (scroll mode)
+- `R`: Rotate 90°
+- `0`: Reset zoom
+
+#### **Modes**
+- `Scroll/Page` toggle: Continuous scroll or paging
+- `Cross-Collection`: Navigate across collections seamlessly
+
+---
 
 ## 🔧 Configuration
 
 ### **Environment Variables**
 
+Create `.env` files based on environment:
+
 ```bash
 # Database
 MONGODB_CONNECTION_STRING=mongodb://localhost:27017
-MONGODB_DATABASE_NAME=image_viewer
+MONGODB_DATABASE_NAME=imageviewer
 
-# Message Queue
-RABBITMQ_HOSTNAME=localhost
+# RabbitMQ
+RABBITMQ_HOST=localhost
 RABBITMQ_PORT=5672
-RABBITMQ_USERNAME=guest
-RABBITMQ_PASSWORD=guest
+RABBITMQ_USERNAME=admin
+RABBITMQ_PASSWORD=admin123
 
-# JWT Authentication
-JWT_SECRET_KEY=your-super-secret-jwt-key-here
+# JWT
+JWT_SECRET_KEY=your-super-secret-key-min-32-chars
 JWT_ISSUER=ImageViewer
 JWT_AUDIENCE=ImageViewer.Users
-JWT_EXPIRY_HOURS=24
+JWT_EXPIRATION_MINUTES=60
 
-# Security
-MAX_FAILED_LOGIN_ATTEMPTS=5
-ACCOUNT_LOCKOUT_DURATION_MINUTES=30
-PASSWORD_MIN_LENGTH=8
-ENABLE_TWO_FACTOR=true
+# Hangfire (Scheduler)
+HANGFIRE_JOB_SYNC_INTERVAL=5  # Minutes
+
+# Cache Settings
+CACHE_FOLDER_PATH=D:\ImageViewerCache
+THUMBNAIL_WIDTH=200
+THUMBNAIL_HEIGHT=200
+CACHE_WIDTH=1920
+CACHE_HEIGHT=1080
+CACHE_QUALITY=85
 ```
 
-### **Image Processing Configuration**
+### **Hangfire Scheduler**
+
+Configure cron expressions for library auto-scan:
 
 ```json
 {
-  "ImageSizes": {
-    "Thumbnail": { "Width": 200, "Height": 200 },
-    "Small": { "Width": 400, "Height": 400 },
-    "Medium": { "Width": 800, "Height": 800 },
-    "Large": { "Width": 1200, "Height": 1200 }
+  "cronExpression": "0 2 * * *"  // Daily at 2 AM
+}
+```
+
+Common patterns:
+- `*/30 * * * *` - Every 30 minutes
+- `0 */4 * * *` - Every 4 hours
+- `0 0 * * 0` - Weekly on Sunday at midnight
+
+### **appsettings.json**
+
+```json
+{
+  "MongoDB": {
+    "ConnectionString": "mongodb://localhost:27017",
+    "DatabaseName": "imageviewer"
   },
-  "ImageCachePresets": {
-    "HighQuality": { "Quality": 95, "Compression": 0 },
-    "Balanced": { "Quality": 80, "Compression": 1 },
-    "Optimized": { "Quality": 70, "Compression": 2 }
+  "RabbitMQ": {
+    "Host": "localhost",
+    "Port": 5672,
+    "Username": "admin",
+    "Password": "admin123"
+  },
+  "Serilog": {
+    "MinimumLevel": {
+      "Default": "Information",
+      "Override": {
+        "Microsoft": "Warning",
+        "System": "Warning"
+      }
+    }
   }
 }
 ```
+
+---
+
+## 📊 Performance
+
+### **Scalability**
+
+Tested with:
+- **25,000 collections**
+- **2,000,000+ media files**
+- **Concurrent processing**: 100+ parallel operations
+- **Log optimization**: 99.35% reduction (500GB → 3GB)
+
+### **Optimizations**
+
+1. **Atomic Database Operations**
+   - MongoDB `$inc` for statistics
+   - Aggregation pipelines for complex updates
+   - No race conditions in concurrent bulk operations
+
+2. **Efficient Caching**
+   - Single-transaction size + count updates
+   - Atomic collection ID tracking
+   - Prevents inconsistency on crashes
+
+3. **Smart Logging**
+   - Per-file logs at DEBUG level
+   - Progress indicators every 50 files
+   - Production-ready log volumes
+
+4. **Message Queue**
+   - Exact-match routing (no wildcard overhead)
+   - Batch processing capabilities
+   - Dead letter queue for failed messages
+
+---
+
+## 🧪 Testing
+
+### **Run Tests**
+
+```bash
+# All tests
+dotnet test
+
+# Specific project
+dotnet test src/ImageViewer.Test
+
+# With coverage
+dotnet test /p:CollectCoverage=true
+```
+
+### **Test Categories**
+
+- **Unit Tests**: Domain logic, services
+- **Integration Tests**: Database, message queue
+- **Performance Tests**: Bulk operations, concurrent processing
+- **Contract Tests**: API endpoint validation
+
+---
+
+## 📚 API Documentation
+
+### **Base URL**
+```
+Development: https://localhost:11001/api/v1
+Production: https://your-domain.com/api/v1
+```
+
+### **Swagger UI**
+```
+https://localhost:11001/swagger
+```
+
+### **Key Endpoints**
+
+#### **Authentication**
+```http
+POST /auth/login
+POST /auth/register
+POST /auth/refresh-token
+POST /auth/enable-2fa
+```
+
+#### **Libraries**
+```http
+GET    /libraries
+POST   /libraries
+GET    /libraries/{id}
+DELETE /libraries/{id}
+POST   /libraries/{id}/scan                    # Manual scan
+POST   /libraries/{id}/recreate-job            # Recreate Hangfire job
+GET    /libraries/orphaned-jobs                # Find orphaned jobs
+DELETE /libraries/orphaned-jobs/{jobId}        # Remove orphaned job
+```
+
+#### **Collections**
+```http
+GET    /collections
+POST   /collections
+GET    /collections/{id}
+GET    /collections/{id}/navigation             # Prev/next collection IDs
+GET    /collections/{id}/siblings               # Related collections
+DELETE /collections/{id}
+```
+
+#### **Images**
+```http
+GET    /images?collectionId={id}
+GET    /images/{collectionId}/{imageId}/file
+GET    /images/{collectionId}/{imageId}/thumbnail
+GET    /images/{collectionId}/{imageId}/cache
+```
+
+#### **Random**
+```http
+GET    /random                                  # Get random collection
+```
+
+#### **Scheduled Jobs**
+```http
+GET    /scheduledjobs
+GET    /scheduledjobs/{id}
+PUT    /scheduledjobs/{id}/cron                # Update cron expression
+POST   /scheduledjobs/{id}/enable
+POST   /scheduledjobs/{id}/disable
+DELETE /scheduledjobs/{id}
+```
+
+---
+
+## 🗄️ Database Schema
+
+### **MongoDB Collections**
+
+- `libraries` - Library entities with settings and statistics
+- `collections` - Collection aggregates with embedded images
+- `scheduled_jobs` - Hangfire job definitions with LibraryId binding
+- `scheduled_job_runs` - Job execution history
+- `users` - User accounts and authentication
+- `cache_folders` - Cache folder management with atomic statistics
+
+### **Key Design Patterns**
+
+- **Embedded Documents**: Images, thumbnails, cache within collections
+- **Aggregates**: Collection as aggregate root
+- **Atomic Operations**: `$inc`, `$addToSet`, `$size` for concurrency
+- **Aggregation Pipelines**: Race-condition-free count updates
+
+---
+
+## 🔄 Background Jobs
+
+### **Job Types**
+
+1. **LibraryScan**
+   - Discovers collections in library path
+   - Creates Collection entities
+   - Updates library statistics
+   - Scheduled via cron expression
+
+2. **CollectionScan**
+   - Scans collection for media files
+   - Extracts from archives
+   - Publishes ImageProcessing messages
+   - Updates library statistics (media count, size)
+
+3. **ImageProcessing**
+   - Creates embedded image records
+   - Extracts metadata (dimensions, format, size)
+   - Publishes Thumbnail + Cache generation
+
+4. **ThumbnailGeneration**
+   - Generates preview thumbnails
+   - Updates cache folder statistics (atomic)
+   - Saved to cache folder
+
+5. **CacheGeneration**
+   - Generates optimized cache images
+   - Auto-adjusts quality based on source
+   - Updates cache folder statistics (atomic)
+
+### **Job Monitoring**
+
+- **Orphaned Job Detection**: Jobs without Hangfire binding
+- **Job Recreation**: Force re-binding to Hangfire
+- **Statistics**: Run count, success rate, errors
+- **UI Integration**: Real-time job status in library screen
+
+---
 
 ## 🚀 Deployment
 
 ### **Production Deployment**
 
-1. **Build for production**
-   ```bash
-   dotnet publish -c Release -o ./publish
-   ```
+```bash
+# Docker Compose (Recommended)
+docker-compose -f docker-compose.yml -f docker-compose.windows.yml up -d
 
-2. **Set up production environment**
-   ```bash
-   # Configure production settings
-   export ASPNETCORE_ENVIRONMENT=Production
-   export MONGODB_CONNECTION_STRING=mongodb://prod-server:27017
-   export JWT_SECRET_KEY=your-production-secret-key
-   ```
-
-3. **Deploy with Docker**
-   ```bash
-   # Build production image
-   docker build -t imageviewer:latest .
-   
-   # Run production container
-   docker run -d -p 80:80 -p 443:443 imageviewer:latest
-   ```
-
-### **Kubernetes Deployment**
-
-```yaml
-# k8s-deployment.yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: imageviewer-api
-spec:
-  replicas: 3
-  selector:
-    matchLabels:
-      app: imageviewer-api
-  template:
-    metadata:
-      labels:
-        app: imageviewer-api
-    spec:
-      containers:
-      - name: imageviewer-api
-        image: imageviewer:latest
-        ports:
-        - containerPort: 80
-        env:
-        - name: ASPNETCORE_ENVIRONMENT
-          value: "Production"
-        - name: MONGODB_CONNECTION_STRING
-          valueFrom:
-            secretKeyRef:
-              name: mongodb-secret
-              key: connection-string
+# Or use deployment scripts
+.\deploy-local.ps1          # Local deployment
+.\deploy-docker.ps1         # Docker deployment
+.\deploy-silent.ps1         # Silent background deployment
 ```
 
-## 📈 Monitoring & Logging
+### **Service Management**
+
+```powershell
+# Start services
+.\start-all-services.bat
+
+# Stop services
+.\stop-all-services.bat
+
+# Check status
+.\status-services.ps1
+
+# View logs
+.\view-logs.ps1
+```
 
 ### **Health Checks**
-- **Endpoint**: `/health`
-- **Database**: MongoDB connection status
-- **Message Queue**: RabbitMQ connection status
-- **System Resources**: Memory, CPU, disk usage
 
-### **Logging**
-- **Structured Logging**: JSON format with Serilog
-- **Log Levels**: Debug, Information, Warning, Error, Fatal
-- **Log Rotation**: Daily rotation with retention
-- **Centralized Logging**: Ready for ELK stack integration
+```bash
+# API Health
+GET https://localhost:11001/health
 
-### **Metrics**
-- **Application Metrics**: Request/response times, error rates
-- **Business Metrics**: User activity, image processing stats
-- **System Metrics**: Resource utilization, queue depths
-- **Custom Metrics**: Cache hit rates, search performance
-
-## 🤝 Contributing
-
-### **Development Setup**
-
-1. **Fork the repository**
-2. **Create a feature branch**
-   ```bash
-   git checkout -b feature/your-feature-name
-   ```
-3. **Make your changes**
-4. **Write tests** for new functionality
-5. **Run tests** to ensure everything passes
-   ```bash
-   dotnet test
-   ```
-6. **Commit your changes**
-   ```bash
-   git commit -m "Add your feature description"
-   ```
-7. **Push to your fork**
-   ```bash
-   git push origin feature/your-feature-name
-   ```
-8. **Create a Pull Request**
-
-### **Code Standards**
-
-- **C# Coding Standards**: Follow Microsoft's C# coding conventions
-- **Naming Conventions**: PascalCase for classes, camelCase for variables
-- **Documentation**: XML documentation for public APIs
-- **Testing**: Minimum 80% code coverage
-- **Error Handling**: Proper exception handling and logging
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🆘 Support
-
-### **Getting Help**
-
-1. **Check the documentation** in the `docs/` folder
-2. **Search existing issues** on GitHub
-3. **Create a new issue** with detailed information
-4. **Contact the maintainers** for urgent issues
-
-### **Issue Template**
-
-When creating an issue, please include:
-
-- **Environment**: OS, .NET version, MongoDB version
-- **Steps to reproduce**: Clear steps to reproduce the issue
-- **Expected behavior**: What you expected to happen
-- **Actual behavior**: What actually happened
-- **Logs**: Relevant log entries (remove sensitive information)
-- **Screenshots**: If applicable
-
-## 🗺️ Roadmap
-
-### **Version 1.1.0** (Current)
-- ✅ Complete API implementation
-- ✅ Comprehensive test coverage
-- ✅ Performance optimization
-- ✅ Security enhancements
-
-### **Version 1.2.0** (Planned)
-- 🔄 Advanced image processing algorithms
-- 🔄 Machine learning-based content discovery
-- 🔄 Real-time collaboration features
-- 🔄 Mobile app integration
-
-### **Version 2.0.0** (Future)
-- 🔄 Microservices architecture
-- 🔄 Cloud-native deployment
-- 🔄 Advanced analytics dashboard
-- 🔄 Multi-tenant support
-
-## 🙏 Acknowledgments
-
-- **.NET Team** for the excellent framework
-- **MongoDB** for the powerful database
-- **RabbitMQ** for reliable message queuing
-- **SkiaSharp** for image processing capabilities
-- **Serilog** for structured logging
-- **xUnit** for testing framework
+# Expected Response
+{
+  "status": "Healthy",
+  "checks": {
+    "mongodb": "Healthy",
+    "rabbitmq": "Healthy"
+  }
+}
+```
 
 ---
 
-**Built with ❤️ using .NET 8**
+## 🔍 Troubleshooting
 
-*Last updated: January 2025*
+### **Common Issues**
+
+#### **1. Orphaned Scheduled Jobs**
+
+**Symptom**: Job created but `hangfireJobId` is null
+
+**Solution**:
+```bash
+# Option 1: Wait 5 minutes for auto-sync
+# Scheduler syncs jobs every 5 minutes
+
+# Option 2: Force recreation
+POST /api/v1/libraries/{libraryId}/recreate-job
+
+# Option 3: Delete and recreate library
+DELETE /api/v1/libraries/orphaned-jobs/{jobId}
+```
+
+#### **2. Collections Not Scanned**
+
+**Symptom**: Collections created but no images
+
+**Check Worker Logs**:
+```powershell
+Get-Content src\ImageViewer.Worker\logs\*.log | Select-String "CollectionScan"
+```
+
+**Common Causes**:
+- RabbitMQ queue routing mismatch → Fixed in latest version
+- Worker not running → Start with `.\start-all-services.bat`
+- Archive extraction errors → Check archive format support
+
+#### **3. RabbitMQ Queue Issues**
+
+**Clear and recreate queues**:
+```powershell
+.\clear-rabbitmq-queues.ps1
+# Then restart Worker to recreate with correct bindings
+```
+
+#### **4. Frontend 401 Unauthorized**
+
+**Check**:
+1. Token in localStorage: `auth_token`
+2. Vite proxy: `https://localhost:11001` (not http!)
+3. API HTTPS redirect removed: `app.UseHttpsRedirection()` commented out
+4. Axios interceptor: Automatically adds `Authorization: Bearer` header
+
+---
+
+## 🛠️ Development
+
+### **Project Structure**
+
+```
+src/
+├── ImageViewer.Api/              # REST API (ASP.NET Core)
+│   ├── Controllers/              # API endpoints
+│   ├── Middleware/               # Custom middleware
+│   └── Program.cs                # API startup
+│
+├── ImageViewer.Application/      # Business Logic
+│   ├── Services/                 # Application services
+│   ├── DTOs/                     # Data transfer objects
+│   ├── Mappings/                 # Entity ↔ DTO mappings
+│   └── Interfaces/               # Service contracts
+│
+├── ImageViewer.Domain/           # Core Domain
+│   ├── Entities/                 # Domain entities
+│   ├── ValueObjects/             # Value objects
+│   ├── Events/                   # Domain events
+│   ├── Enums/                    # Enumerations
+│   └── Interfaces/               # Repository contracts
+│
+├── ImageViewer.Infrastructure/   # Infrastructure
+│   ├── Data/                     # MongoDB repositories
+│   ├── Services/                 # External services (RabbitMQ, etc.)
+│   ├── Messaging/                # Message definitions
+│   └── Extensions/               # DI extensions
+│
+├── ImageViewer.Worker/           # Background Worker
+│   └── Services/                 # RabbitMQ consumers
+│       ├── LibraryScanConsumer
+│       ├── CollectionScanConsumer
+│       ├── ImageProcessingConsumer
+│       ├── ThumbnailGenerationConsumer
+│       └── CacheGenerationConsumer
+│
+├── ImageViewer.Scheduler/        # Hangfire Scheduler
+│   ├── Jobs/                     # Job handlers
+│   │   └── LibraryScanJobHandler
+│   ├── Services/                 # Scheduler services
+│   └── SchedulerWorker.cs        # Background sync worker
+│
+└── ImageViewer.Test/             # Tests
+    ├── Unit/                     # Unit tests
+    ├── Integration/              # Integration tests
+    └── Performance/              # Performance tests
+
+client/
+├── src/
+│   ├── components/               # React components
+│   ├── pages/                    # Page components
+│   ├── services/                 # API clients
+│   ├── hooks/                    # Custom React hooks
+│   ├── contexts/                 # React contexts
+│   └── utils/                    # Utilities
+└── public/                       # Static assets
+```
+
+### **Coding Standards**
+
+#### **C# (.NET)**
+- PascalCase: Classes, Methods, Properties
+- camelCase: Variables, Parameters
+- Prefix: Interfaces with `I`, Private fields with `_`
+- Async methods end with `Async`
+- Use `ObjectId` for MongoDB IDs
+- Comments in English, Chinese, Vietnamese
+
+#### **TypeScript (React)**
+- PascalCase: Components, Interfaces
+- camelCase: Functions, variables
+- Strong typing: No `any` types
+- Functional components with hooks
+- React Query for data fetching
+
+---
+
+## 📈 Monitoring
+
+### **Hangfire Dashboard**
+
+Integrated into Library screen:
+- Job status (Active/Paused/Orphaned)
+- Cron expression editor
+- Execution statistics
+- Next run time
+- Success/failure rates
+
+### **Logs**
+
+```
+src/ImageViewer.Api/logs/        # API logs
+src/ImageViewer.Worker/logs/     # Worker logs
+src/ImageViewer.Scheduler/logs/  # Scheduler logs
+```
+
+**Log Levels**:
+- **Production**: Information (per-collection summaries + progress every 50 files)
+- **Development**: Debug (per-file details)
+- **Errors**: Always logged with full stack traces
+
+---
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit changes (`git commit -m 'Add amazing feature'`)
+4. Push to branch (`git push origin feature/amazing-feature`)
+5. Open Pull Request
+
+### **Commit Message Convention**
+
+```
+feat: Add new feature
+fix: Bug fix
+perf: Performance improvement
+docs: Documentation
+refactor: Code refactoring
+test: Add tests
+chore: Maintenance
+```
+
+---
+
+## 📝 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+---
+
+## 🙏 Acknowledgments
+
+- **SkiaSharp**: High-performance image processing
+- **Hangfire**: Background job scheduling
+- **RabbitMQ**: Message queue
+- **MongoDB**: Document database
+- **React Query**: Data fetching and caching
+- **Tailwind CSS**: Utility-first CSS
+
+---
+
+## 📞 Support
+
+For issues, questions, or feature requests:
+- 📧 Email: support@imageviewer.com
+- 🐛 Issues: [GitHub Issues](https://github.com/yourusername/image-viewer/issues)
+- 💬 Discussions: [GitHub Discussions](https://github.com/yourusername/image-viewer/discussions)
+
+---
+
+## 🗺️ Roadmap
+
+- [ ] AI-powered image tagging
+- [ ] Facial recognition and grouping
+- [ ] Video playback support
+- [ ] Mobile app (React Native)
+- [ ] Cloud storage integration (S3, Azure Blob)
+- [ ] Social features (sharing, comments)
+- [ ] Advanced search filters
+- [ ] Batch editing tools
+
+---
+
+**⭐ Star this repo if you find it useful!**
+
+Made with ❤️ by the ImageViewer team
+
