@@ -18,11 +18,16 @@ namespace ImageViewer.Api.Controllers;
 public class LibrariesController : ControllerBase
 {
     private readonly ILibraryService _libraryService;
+    private readonly IScheduledJobManagementService _scheduledJobManagementService;
     private readonly ILogger<LibrariesController> _logger;
 
-    public LibrariesController(ILibraryService libraryService, ILogger<LibrariesController> logger)
+    public LibrariesController(
+        ILibraryService libraryService,
+        IScheduledJobManagementService scheduledJobManagementService,
+        ILogger<LibrariesController> logger)
     {
         _libraryService = libraryService ?? throw new ArgumentNullException(nameof(libraryService));
+        _scheduledJobManagementService = scheduledJobManagementService ?? throw new ArgumentNullException(nameof(scheduledJobManagementService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 

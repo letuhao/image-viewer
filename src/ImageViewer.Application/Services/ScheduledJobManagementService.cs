@@ -78,6 +78,14 @@ public class ScheduledJobManagementService : IScheduledJobManagementService
     {
         try
         {
+            // Validate cron expression BEFORE creating job
+            if (!IsValidCronExpression(cronExpression))
+            {
+                var errorMsg = $"Invalid cron expression: '{cronExpression}'. Please use valid cron format (e.g., '0 2 * * *' for 2 AM daily)";
+                _logger.LogError(errorMsg);
+                throw new ArgumentException(errorMsg, nameof(cronExpression));
+            }
+
             _logger.LogInformation(
                 "Creating/updating library scan job for library {LibraryId} ({LibraryName}) with cron: {Cron}",
                 libraryId,
@@ -107,6 +115,11 @@ public class ScheduledJobManagementService : IScheduledJobManagementService
                 }
 
                 await _scheduledJobRepository.UpdateAsync(existingJob);
+                
+                _logger.LogInformation(
+                    "⚠️ Job updated. Scheduler will register it with Hangfire within {Minutes} minutes. Check HangfireJobId after {Minutes} minutes.",
+                    5, 5);
+                
                 return existingJob;
             }
             else
@@ -134,8 +147,11 @@ public class ScheduledJobManagementService : IScheduledJobManagementService
 
                 var createdJob = await _scheduledJobRepository.CreateAsync(job);
                 
-                _logger.LogInformation(
-                    "Created new scheduled job {JobId} for library {LibraryId}",
+                _logger.LogWarning(
+                    "⚠️ Created scheduled job {JobId} for library {LibraryId}. " +
+                    "IMPORTANT: Scheduler will register it with Hangfire within 5 minutes. " +
+                    "Job will remain orphaned (HangfireJobId = null) until then. " +
+                    "Check HangfireJobId after 5 minutes to confirm binding.",
                     createdJob.Id,
                     libraryId);
 
@@ -314,5 +330,42 @@ public class ScheduledJobManagementService : IScheduledJobManagementService
             _logger.LogError(ex, "Failed to get orphaned jobs");
             throw;
         }
+    
+    }
+
+    private bool IsValidCronExpression(string cronExpression)
+    {
+        if (string.IsNullOrWhiteSpace(cronExpression))
+            return false;
+
+        try
+        {
+            // Basic cron validation: should have 5 parts (minute hour day month dayOfWeek)
+            var parts = cronExpression.Trim().Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length != 5)
+            {
+                _logger.LogWarning("Cron expression '{Cron}' has {Count} parts, expected 5", cronExpression, parts.Length);
+                return false;
+            }
+
+            // Validate each part contains only allowed characters
+            foreach (var part in parts)
+            {
+                if (!System.Text.RegularExpressions.Regex.IsMatch(part, @"^[\d\*\/\-,]+$"))
+                {
+                    _logger.LogWarning("Cron expression part '{Part}' contains invalid characters", part);
+                    return false;
+                }
+            }
+
+            _logger.LogDebug("Cron expression '{Cron}' is valid", cronExpression);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error validating cron expression '{Cron}'", cronExpression);
+            return false;
+        }
     }
 }
+
