@@ -98,6 +98,8 @@ services:
       - RabbitMQ__Password=password123
       - RabbitMQ__VirtualHost=/
       - Redis__ConnectionString=redis:6379
+      - Hangfire__ConnectionString=mongodb://admin:password123@mongodb:27017/image_viewer_hangfire?authSource=admin
+      - Hangfire__DatabaseName=image_viewer_hangfire
     volumes:
       - ./logs:/app/logs
       - ./temp:/app/temp
@@ -135,6 +137,8 @@ services:
       - RabbitMQ__Password=password123
       - RabbitMQ__VirtualHost=/
       - Redis__ConnectionString=redis:6379
+      - Hangfire__ConnectionString=mongodb://admin:password123@mongodb:27017/image_viewer_hangfire?authSource=admin
+      - Hangfire__DatabaseName=image_viewer_hangfire
     volumes:
       - ./logs:/app/logs
       - ./temp:/app/temp

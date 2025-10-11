@@ -1,0 +1,21 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Hangfire.AspNetCore" Version="1.8.21" />
+    <PackageReference Include="Hangfire.Core" Version="1.8.21" />
+    <PackageReference Include="Hangfire.Mongo" Version="1.12.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ImageViewer.Domain\ImageViewer.Domain.csproj" />
+    <ProjectReference Include="..\ImageViewer.Application\ImageViewer.Application.csproj" />
+    <ProjectReference Include="..\ImageViewer.Infrastructure\ImageViewer.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>
