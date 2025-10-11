@@ -381,13 +381,15 @@ public class ThumbnailGenerationConsumer : BaseMessageConsumer
             
             // ATOMIC INCREMENT: Thread-safe update using MongoDB $inc operator
             await cacheFolderRepository.IncrementSizeAsync(cacheFolder.Id, fileSize);
+            await cacheFolderRepository.IncrementFileCountAsync(cacheFolder.Id, 1);
+            await cacheFolderRepository.AddCachedCollectionAsync(cacheFolder.Id, collectionId.ToString());
             
-            _logger.LogDebug("📊 Atomically incremented cache folder {Name} size by {Size} bytes", 
+            _logger.LogDebug("📊 Atomically incremented cache folder {Name} size by {Size} bytes, file count by 1", 
                 cacheFolder.Name, fileSize);
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "⚠️ Failed to update cache folder size for thumbnail: {Path}", thumbnailPath);
+            _logger.LogWarning(ex, "⚠️ Failed to update cache folder statistics for thumbnail: {Path}", thumbnailPath);
             // Don't throw - thumbnail is already saved, this is just statistics
         }
     }
