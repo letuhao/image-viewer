@@ -7,6 +7,7 @@ using Microsoft.Extensions.Logging;
 using ImageViewer.Domain.Events;
 using ImageViewer.Domain.Interfaces;
 using ImageViewer.Infrastructure.Data;
+using ImageViewer.Infrastructure.Messaging;
 
 namespace ImageViewer.Infrastructure.Services;
 
