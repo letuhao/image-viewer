@@ -10,6 +10,8 @@ export interface ScheduledJob {
   intervalMinutes?: number;
   isEnabled: boolean;
   parameters: Record<string, any>;
+  hangfireJobId?: string; // Null = orphaned job
+  libraryId?: string; // Reference to library
   lastRunAt?: string;
   nextRunAt?: string;
   lastRunDuration?: number;

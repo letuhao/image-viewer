@@ -124,5 +124,23 @@ export const libraryApi = {
     const response = await api.post(`/libraries/${id}/scan`);
     return response.data;
   },
+
+  // Get orphaned jobs
+  getOrphanedJobs: async (): Promise<Array<{ id: string; name: string; jobType: string; cronExpression: string; libraryId?: string }>> => {
+    const response = await api.get('/libraries/orphaned-jobs');
+    return response.data;
+  },
+
+  // Remove orphaned job
+  removeOrphanedJob: async (jobId: string): Promise<{ message: string }> => {
+    const response = await api.delete(`/libraries/orphaned-jobs/${jobId}`);
+    return response.data;
+  },
+
+  // Recreate Hangfire job for library
+  recreateJob: async (libraryId: string): Promise<{ message: string }> => {
+    const response = await api.post(`/libraries/${libraryId}/recreate-job`);
+    return response.data;
+  },
 };
 

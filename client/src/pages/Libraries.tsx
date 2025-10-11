@@ -114,6 +114,33 @@ export default function Libraries() {
     },
   });
 
+  // Delete orphaned job
+  const deleteOrphanedJobMutation = useMutation({
+    mutationFn: (jobId: string) => libraryApi.removeOrphanedJob(jobId),
+    onSuccess: () => {
+      toast.success('Orphaned job deleted successfully');
+      queryClient.invalidateQueries({ queryKey: ['scheduledJobs'] });
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to delete orphaned job');
+    },
+  });
+
+  // Recreate Hangfire job binding
+  const recreateJobMutation = useMutation({
+    mutationFn: (libraryId: string) => libraryApi.recreateJob(libraryId),
+    onSuccess: () => {
+      toast.success('Job recreation triggered. Please wait 5-10 seconds for binding...');
+      // Refresh after delay to see the updated HangfireJobId
+      setTimeout(() => {
+        queryClient.invalidateQueries({ queryKey: ['scheduledJobs'] });
+      }, 5000);
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to recreate job');
+    },
+  });
+
   // Update cron expression
   const updateCronMutation = useMutation({
     mutationFn: ({ jobId, cronExpression }: { jobId: string; cronExpression: string }) =>
@@ -427,23 +454,88 @@ export default function Libraries() {
                                     }`}>
                                       {job.isEnabled ? 'Active' : 'Paused'}
                                     </span>
+                                    {/* Orphaned Job Warning */}
+                                    {!job.hangfireJobId && (
+                                      <span className="px-2 py-0.5 rounded text-xs font-medium bg-yellow-500/20 text-yellow-400 flex items-center gap-1">
+                                        <AlertCircle className="w-3 h-3" />
+                                        Orphaned
+                                      </span>
+                                    )}
+                                    {job.hangfireJobId && (
+                                      <span className="px-2 py-0.5 rounded text-xs font-medium bg-blue-500/20 text-blue-400 flex items-center gap-1">
+                                        <CheckCircle className="w-3 h-3" />
+                                        Bound
+                                      </span>
+                                    )}
                                   </div>
                                   <div className="text-xs text-slate-500 mt-0.5">
                                     Job ID: {job.id}
+                                    {job.hangfireJobId && (
+                                      <span className="ml-2">• Hangfire: {job.hangfireJobId}</span>
+                                    )}
                                   </div>
                                 </div>
                               </div>
 
-                              <button
-                                onClick={() => setShowSchedulerDetails({
-                                  ...showSchedulerDetails,
-                                  [library.id]: !showDetails
-                                })}
-                                className="px-3 py-1 text-sm text-primary-400 hover:bg-primary-500/10 rounded transition-colors"
-                              >
-                                {showDetails ? 'Hide Dashboard' : 'Show Dashboard'}
-                              </button>
+                              <div className="flex items-center gap-2">
+                                {/* Orphaned Job Actions */}
+                                {!job.hangfireJobId && (
+                                  <>
+                                    <button
+                                      onClick={() => recreateJobMutation.mutate(library.id)}
+                                      disabled={recreateJobMutation.isPending}
+                                      className="px-3 py-1 text-xs bg-yellow-500/20 text-yellow-300 hover:bg-yellow-500/30 rounded transition-colors disabled:opacity-50 flex items-center gap-1"
+                                      title="Recreate Hangfire binding"
+                                    >
+                                      <RefreshCw className={`w-3 h-3 ${recreateJobMutation.isPending ? 'animate-spin' : ''}`} />
+                                      Recreate
+                                    </button>
+                                    <button
+                                      onClick={() => {
+                                        if (confirm('Delete this orphaned job? You can recreate it later.')) {
+                                          deleteOrphanedJobMutation.mutate(job.id);
+                                        }
+                                      }}
+                                      disabled={deleteOrphanedJobMutation.isPending}
+                                      className="px-3 py-1 text-xs bg-red-500/20 text-red-400 hover:bg-red-500/30 rounded transition-colors disabled:opacity-50 flex items-center gap-1"
+                                      title="Delete orphaned job"
+                                    >
+                                      <Trash2 className="w-3 h-3" />
+                                      Delete Job
+                                    </button>
+                                  </>
+                                )}
+                                
+                                <button
+                                  onClick={() => setShowSchedulerDetails({
+                                    ...showSchedulerDetails,
+                                    [library.id]: !showDetails
+                                  })}
+                                  className="px-3 py-1 text-sm text-primary-400 hover:bg-primary-500/10 rounded transition-colors"
+                                >
+                                  {showDetails ? 'Hide Dashboard' : 'Show Dashboard'}
+                                </button>
+                              </div>
                             </div>
+
+                            {/* Orphaned Job Warning */}
+                            {!job.hangfireJobId && (
+                              <div className="mt-3 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+                                <div className="flex items-start gap-2">
+                                  <AlertCircle className="w-4 h-4 text-yellow-400 mt-0.5 flex-shrink-0" />
+                                  <div className="text-xs text-yellow-300">
+                                    <p className="font-medium">Orphaned Job Detected</p>
+                                    <p className="text-yellow-400/80 mt-1">
+                                      This job is not bound to Hangfire yet. It will auto-bind within 5 minutes, or you can:
+                                    </p>
+                                    <ul className="list-disc list-inside mt-1 text-yellow-400/80">
+                                      <li>Click <strong>Recreate</strong> to force immediate binding</li>
+                                      <li>Click <strong>Delete Job</strong> to remove and start fresh</li>
+                                    </ul>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
 
                             {/* Always Visible: Cron Schedule */}
                             <div className="bg-slate-800/30 p-3 rounded-lg border border-slate-700/50">
