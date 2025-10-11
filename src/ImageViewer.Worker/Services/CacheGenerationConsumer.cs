@@ -117,6 +117,25 @@ public class CacheGenerationConsumer : BaseMessageConsumer
                 _logger.LogDebug("✅ Using pre-determined cache path: {CachePath}", cachePath);
             }
 
+            // Validate source image file size (prevent OOM on huge images)
+            var imageFile = new FileInfo(cacheMessage.ImagePath);
+            if (imageFile.Exists && imageFile.Length > 500 * 1024 * 1024) // 500MB limit
+            {
+                _logger.LogWarning("⚠️ Image too large ({SizeMB}MB), skipping cache generation for {ImageId}", 
+                    imageFile.Length / 1024.0 / 1024.0, cacheMessage.ImageId);
+                
+                // Track as failed in FileProcessingJobState
+                if (!string.IsNullOrEmpty(cacheMessage.JobId))
+                {
+                    var jobStateRepository = scope.ServiceProvider.GetRequiredService<IFileProcessingJobStateRepository>();
+                    _logger.LogError("Image file too large: {SizeMB}MB (max 500MB) for {ImageId}", 
+                        imageFile.Length / 1024.0 / 1024.0, cacheMessage.ImageId);
+                    await jobStateRepository.AtomicIncrementFailedAsync(cacheMessage.JobId, cacheMessage.ImageId);
+                }
+                
+                return;
+            }
+
             // Check if cache already exists and force regeneration is disabled
             if (!cacheMessage.ForceRegenerate && File.Exists(cachePath))
             {

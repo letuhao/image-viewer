@@ -32,4 +32,8 @@ public class RabbitMQOptions
     // Consumer configurations
     public int PrefetchCount { get; set; } = 10;
     public bool AutoAck { get; set; } = false;
+    
+    // Bulk operation configurations
+    public int MessageBatchSize { get; set; } = 100;
+    public int MaxQueueLength { get; set; } = 100000;
 }

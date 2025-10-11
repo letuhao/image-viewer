@@ -99,7 +99,9 @@ public class RabbitMQSetupService
             var arguments = new Dictionary<string, object>
             {
                 { "x-dead-letter-exchange", _options.DeadLetterExchange },
-                { "x-message-ttl", (int)_options.MessageTimeout.TotalMilliseconds }
+                { "x-message-ttl", (int)_options.MessageTimeout.TotalMilliseconds },
+                { "x-max-length", _options.MaxQueueLength }, // Limit queue to prevent unbounded growth
+                { "x-overflow", "reject-publish" } // Reject new messages when queue is full
             };
 
             await channel.QueueDeclareAsync(

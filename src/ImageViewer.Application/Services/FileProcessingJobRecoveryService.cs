@@ -409,6 +409,85 @@ public class FileProcessingJobRecoveryService : IFileProcessingJobRecoveryServic
         
         return Path.Combine(cacheDir, fileName);
     }
+
+    public async Task<int> RecoverStaleJobsAsync(TimeSpan timeout)
+    {
+        try
+        {
+            _logger.LogInformation("🔍 Detecting stale jobs (timeout: {Minutes} minutes)...", timeout.TotalMinutes);
+            
+            var staleJobs = await _jobStateRepository.GetStaleJobsAsync(timeout);
+            var staleJobsList = staleJobs.ToList();
+            
+            if (!staleJobsList.Any())
+            {
+                _logger.LogInformation("✅ No stale jobs found");
+                return 0;
+            }
+            
+            _logger.LogWarning("⚠️ Found {Count} stale jobs without progress for {Minutes} minutes", 
+                staleJobsList.Count, timeout.TotalMinutes);
+            
+            var recoveredCount = 0;
+            foreach (var job in staleJobsList)
+            {
+                try
+                {
+                    _logger.LogWarning("🔄 Recovering stale job {JobId} (last progress: {LastProgress})", 
+                        job.JobId, job.LastProgressAt?.ToString("yyyy-MM-dd HH:mm:ss") ?? "never");
+                    
+                    // Mark job as failed if it's been stuck too long (3x timeout)
+                    var stuckTooLong = job.LastProgressAt.HasValue && 
+                        DateTime.UtcNow.Subtract(job.LastProgressAt.Value) > TimeSpan.FromTicks(timeout.Ticks * 3);
+                    
+                    if (stuckTooLong)
+                    {
+                        await _jobStateRepository.UpdateStatusAsync(job.JobId, "Failed", 
+                            $"Job stuck without progress for {timeout.TotalMinutes * 3} minutes - marked as failed");
+                        _logger.LogError("❌ Job {JobId} stuck for too long, marked as Failed", job.JobId);
+                    }
+                    else
+                    {
+                        // Try to resume the job
+                        var resumed = await ResumeJobAsync(job.JobId);
+                        if (resumed)
+                        {
+                            recoveredCount++;
+                            _logger.LogInformation("✅ Successfully recovered stale job {JobId}", job.JobId);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "❌ Failed to recover stale job {JobId}", job.JobId);
+                }
+            }
+            
+            _logger.LogInformation("✅ Stale job recovery complete: {Recovered} recovered, {Total} total", 
+                recoveredCount, staleJobsList.Count);
+            
+            return recoveredCount;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "❌ Error during stale job recovery");
+            return 0;
+        }
+    }
+
+    public async Task<int> GetStaleJobCountAsync(TimeSpan timeout)
+    {
+        try
+        {
+            var staleJobs = await _jobStateRepository.GetStaleJobsAsync(timeout);
+            return staleJobs.Count();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting stale job count");
+            return 0;
+        }
+    }
 }
 
 // Job settings classes for JSON deserialization

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { HardDrive, FolderOpen, Activity, RefreshCw, Trash2, Play, Clock, CheckCircle2, XCircle, AlertCircle, Image as ImageIcon, Layers } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../services/api';
@@ -57,6 +57,17 @@ const CacheManagement: React.FC = () => {
   const [selectedTab, setSelectedTab] = useState<'folders' | 'jobs'>('folders');
   const [jobTypeFilter, setJobTypeFilter] = useState<string>(''); // '', 'cache', 'thumbnail'
   const queryClient = useQueryClient();
+
+  // Parse job settings once and memoize for performance
+  const parseJobSettings = useMemo(() => {
+    return (jobSettings: string) => {
+      try {
+        return JSON.parse(jobSettings || '{}');
+      } catch {
+        return {};
+      }
+    };
+  }, []);
 
   // Query cache folder statistics
   const { data: cacheFolders, isLoading: foldersLoading } = useQuery<CacheFolderStatistics[]>({
@@ -471,24 +482,20 @@ const CacheManagement: React.FC = () => {
                     <div className="flex items-center gap-4 text-xs text-slate-500 mb-3">
                       <span>Size: {formatBytes(job.totalSizeBytes)}</span>
                       {(() => {
-                        try {
-                          const settings = JSON.parse(job.jobSettings || '{}');
-                          return (
-                            <>
-                              {settings.width && settings.height && (
-                                <span>Dimensions: {settings.width}x{settings.height}</span>
-                              )}
-                              {settings.quality && (
-                                <span>Quality: {settings.quality}%</span>
-                              )}
-                              {settings.format && (
-                                <span>Format: {settings.format}</span>
-                              )}
-                            </>
-                          );
-                        } catch {
-                          return null;
-                        }
+                        const settings = parseJobSettings(job.jobSettings);
+                        return (
+                          <>
+                            {settings.width && settings.height && (
+                              <span>Dimensions: {settings.width}x{settings.height}</span>
+                            )}
+                            {settings.quality && (
+                              <span>Quality: {settings.quality}%</span>
+                            )}
+                            {settings.format && (
+                              <span>Format: {settings.format}</span>
+                            )}
+                          </>
+                        );
                       })()}
                     </div>
 

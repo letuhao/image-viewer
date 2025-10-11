@@ -47,5 +47,17 @@ public interface IFileProcessingJobRecoveryService
     /// 清理旧的已完成任务 - Dọn dẹp công việc đã hoàn thành cũ
     /// </summary>
     Task<int> CleanupOldCompletedJobsAsync(int olderThanDays = 30);
+
+    /// <summary>
+    /// Detect and recover stale jobs (jobs stuck without progress)
+    /// 检测并恢复停滞任务 - Phát hiện và khôi phục công việc bị treo
+    /// </summary>
+    Task<int> RecoverStaleJobsAsync(TimeSpan timeout);
+
+    /// <summary>
+    /// Get count of stale jobs
+    /// 获取停滞任务数量 - Lấy số lượng công việc bị treo
+    /// </summary>
+    Task<int> GetStaleJobCountAsync(TimeSpan timeout);
 }
 

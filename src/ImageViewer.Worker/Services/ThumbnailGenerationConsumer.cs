@@ -92,6 +92,25 @@ public class ThumbnailGenerationConsumer : BaseMessageConsumer
                 return;
             }
 
+            // Validate source image file size (prevent OOM on huge images)
+            var imageFile = new FileInfo(thumbnailMessage.ImagePath);
+            if (imageFile.Exists && imageFile.Length > 500 * 1024 * 1024) // 500MB limit
+            {
+                _logger.LogWarning("⚠️ Image too large ({SizeMB}MB), skipping thumbnail generation for {ImageId}", 
+                    imageFile.Length / 1024.0 / 1024.0, thumbnailMessage.ImageId);
+                
+                // Track as failed in FileProcessingJobState
+                if (!string.IsNullOrEmpty(thumbnailMessage.JobId))
+                {
+                    var jobStateRepository = scope.ServiceProvider.GetRequiredService<IFileProcessingJobStateRepository>();
+                    _logger.LogError("Image file too large: {SizeMB}MB (max 500MB) for {ImageId}", 
+                        imageFile.Length / 1024.0 / 1024.0, thumbnailMessage.ImageId);
+                    await jobStateRepository.AtomicIncrementFailedAsync(thumbnailMessage.JobId, thumbnailMessage.ImageId);
+                }
+                
+                return;
+            }
+
             // Check if thumbnail already exists in database
             var collectionId = ObjectId.Parse(thumbnailMessage.CollectionId);
             var collection = await collectionRepository.GetByIdAsync(collectionId);

@@ -18,6 +18,7 @@ namespace ImageViewer.Worker.Services;
 public class BulkOperationConsumer : BaseMessageConsumer
 {
     private readonly IServiceScopeFactory _serviceScopeFactory;
+    private readonly RabbitMQOptions _rabbitMQOptions;
 
     public BulkOperationConsumer(
         IConnection connection,
@@ -27,6 +28,7 @@ public class BulkOperationConsumer : BaseMessageConsumer
         : base(connection, options, logger, options.Value.BulkOperationQueue, "bulk-operation-consumer")
     {
         _serviceScopeFactory = serviceScopeFactory;
+        _rabbitMQOptions = options.Value;
     }
 
     protected override async Task ProcessMessageAsync(string message, CancellationToken cancellationToken)
@@ -501,8 +503,8 @@ public class BulkOperationConsumer : BaseMessageConsumer
 
                         thumbnailMessages.Add(thumbnailMessage);
                         
-                        // Publish in batches of 100 for optimal performance
-                        if (thumbnailMessages.Count >= 100)
+                        // Publish in batches for optimal performance
+                        if (thumbnailMessages.Count >= _rabbitMQOptions.MessageBatchSize)
                         {
                             await messageQueueService.PublishBatchAsync(thumbnailMessages, "thumbnail.generation");
                             _logger.LogInformation("📋 Published batch of {Count} thumbnail generation messages", thumbnailMessages.Count);
@@ -647,8 +649,8 @@ public class BulkOperationConsumer : BaseMessageConsumer
 
                         cacheMessages.Add(cacheMessage);
                         
-                        // Publish in batches of 100 for optimal performance
-                        if (cacheMessages.Count >= 100)
+                        // Publish in batches for optimal performance
+                        if (cacheMessages.Count >= _rabbitMQOptions.MessageBatchSize)
                         {
                             await messageQueueService.PublishBatchAsync(cacheMessages, "cache.generation");
                             _logger.LogInformation("📋 Published batch of {Count} cache generation messages", cacheMessages.Count);

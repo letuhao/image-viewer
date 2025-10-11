@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using ImageViewer.Application.Services;
 using ImageViewer.Application.DTOs.Cache;
 using ImageViewer.Application.Mappings;
@@ -12,6 +13,7 @@ namespace ImageViewer.Api.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/v1/[controller]")]
+[Authorize] // Require authentication for all cache operations
 public class CacheController : ControllerBase
 {
     private readonly ICacheService _cacheService;
@@ -504,6 +506,7 @@ public class CacheController : ControllerBase
     /// Resume a specific file processing job
     /// </summary>
     [HttpPost("processing-jobs/{jobId}/resume")]
+    [Authorize(Roles = "Admin,CacheManager")]
     public async Task<ActionResult> ResumeFileProcessingJob(string jobId)
     {
         try
@@ -531,6 +534,7 @@ public class CacheController : ControllerBase
     /// Recover all incomplete file processing jobs with optional filtering by job type
     /// </summary>
     [HttpPost("processing-jobs/recover")]
+    [Authorize(Roles = "Admin,CacheManager")]
     public async Task<ActionResult> RecoverFileProcessingJobs([FromQuery] string? jobType = null)
     {
         try
@@ -559,6 +563,7 @@ public class CacheController : ControllerBase
     /// Cleanup old completed file processing jobs
     /// </summary>
     [HttpDelete("processing-jobs/cleanup")]
+    [Authorize(Roles = "Admin,CacheManager")]
     public async Task<ActionResult> CleanupOldFileProcessingJobs([FromQuery] int olderThanDays = 30)
     {
         try
@@ -582,6 +587,7 @@ public class CacheController : ControllerBase
     /// Cleanup orphaned cache files in a specific cache folder
     /// </summary>
     [HttpPost("folders/{cacheFolderPath}/cleanup/cache")]
+    [Authorize(Roles = "Admin,CacheManager")]
     public async Task<ActionResult> CleanupOrphanedCacheFiles(
         string cacheFolderPath,
         [FromQuery] int olderThanDays = 7)
@@ -603,6 +609,7 @@ public class CacheController : ControllerBase
     /// Cleanup orphaned thumbnail files in a specific cache folder
     /// </summary>
     [HttpPost("folders/{cacheFolderPath}/cleanup/thumbnails")]
+    [Authorize(Roles = "Admin,CacheManager")]
     public async Task<ActionResult> CleanupOrphanedThumbnailFiles(
         string cacheFolderPath,
         [FromQuery] int olderThanDays = 7)
@@ -624,6 +631,7 @@ public class CacheController : ControllerBase
     /// Cleanup all orphaned files (cache + thumbnails) in a cache folder
     /// </summary>
     [HttpPost("folders/{cacheFolderPath}/cleanup/all")]
+    [Authorize(Roles = "Admin,CacheManager")]
     public async Task<ActionResult> CleanupAllOrphanedFiles(
         string cacheFolderPath,
         [FromQuery] int olderThanDays = 7)
@@ -650,6 +658,7 @@ public class CacheController : ControllerBase
     /// Reconcile cache folder statistics with actual disk usage
     /// </summary>
     [HttpPost("folders/{id}/reconcile")]
+    [Authorize(Roles = "Admin,CacheManager")]
     public async Task<ActionResult> ReconcileCacheFolderStatistics(string id)
     {
         try
@@ -661,6 +670,50 @@ public class CacheController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error reconciling cache folder statistics");
+            return StatusCode(500, "Internal server error");
+        }
+    }
+
+    // ============================================================================
+    // STALE JOB DETECTION & RECOVERY
+    // ============================================================================
+
+    /// <summary>
+    /// Get count of stale jobs (jobs without progress for specified timeout)
+    /// </summary>
+    [HttpGet("processing-jobs/stale")]
+    public async Task<ActionResult<object>> GetStaleJobCount([FromQuery] int timeoutMinutes = 30)
+    {
+        try
+        {
+            var timeout = TimeSpan.FromMinutes(timeoutMinutes);
+            var count = await _fileProcessingJobRecoveryService.GetStaleJobCountAsync(timeout);
+            return Ok(new { staleJobCount = count, timeoutMinutes });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting stale job count");
+            return StatusCode(500, "Internal server error");
+        }
+    }
+
+    /// <summary>
+    /// Recover all stale jobs (jobs stuck without progress)
+    /// </summary>
+    [HttpPost("processing-jobs/recover-stale")]
+    [Authorize(Roles = "Admin,CacheManager")]
+    public async Task<ActionResult> RecoverStaleJobs([FromQuery] int timeoutMinutes = 30)
+    {
+        try
+        {
+            var timeout = TimeSpan.FromMinutes(timeoutMinutes);
+            _logger.LogInformation("Recovering stale jobs (timeout: {Minutes} minutes)", timeoutMinutes);
+            var recoveredCount = await _fileProcessingJobRecoveryService.RecoverStaleJobsAsync(timeout);
+            return Ok(new { message = "Stale job recovery completed", recoveredCount, timeoutMinutes });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error recovering stale jobs");
             return StatusCode(500, "Internal server error");
         }
     }

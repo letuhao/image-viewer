@@ -34,6 +34,12 @@ public interface ICollectionRepository : IRepository<Collection>
     Task<IEnumerable<Collection>> GetTopCollectionsByActivityAsync(int limit = 10);
     Task<IEnumerable<Collection>> GetRecentCollectionsAsync(int limit = 10);
     
+    /// <summary>
+    /// Get cache statistics using optimized aggregation pipeline
+    /// 使用聚合管道获取缓存统计 - Lấy thống kê cache bằng aggregation
+    /// </summary>
+    Task<(int totalImages, int cachedImages, long totalCacheSize, int collectionsWithCache)> GetCacheStatisticsAsync();
+    
     #endregion
     
     #region Atomic Array Operations (Thread-Safe)
