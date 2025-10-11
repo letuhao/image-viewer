@@ -794,7 +794,7 @@ public class CollectionService : ICollectionService
             
             var siblings = paginatedCollections.Select(c => c.ToOverviewDto()).ToList();
 
-            // Populate thumbnails in parallel if service available
+            // Populate thumbnails and firstImageId
             if (_thumbnailCacheService != null)
             {
                 var thumbnailTasks = paginatedCollections.Select(async (collection, index) =>
@@ -808,9 +808,26 @@ public class CollectionService : ICollectionService
                         );
                         siblings[index].ThumbnailBase64 = base64;
                     }
+                    
+                    // Set firstImageId if not already set by mapping
+                    if (siblings[index].FirstImageId == null && collection.Images?.Count > 0)
+                    {
+                        siblings[index].FirstImageId = collection.Images[0].Id;
+                    }
                 });
 
                 await Task.WhenAll(thumbnailTasks);
+            }
+            else
+            {
+                // No thumbnail service, but still populate firstImageId
+                for (int i = 0; i < paginatedCollections.Count; i++)
+                {
+                    if (siblings[i].FirstImageId == null && paginatedCollections[i].Images?.Count > 0)
+                    {
+                        siblings[i].FirstImageId = paginatedCollections[i].Images[0].Id;
+                    }
+                }
             }
 
             return new DTOs.Collections.CollectionSiblingsDto
