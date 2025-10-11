@@ -387,7 +387,7 @@ const Collections: React.FC = () => {
                     >
                       <CardContent className={compactMode ? 'p-3' : 'p-4'}>
                         {/* Thumbnail - Instant display with Base64 (no additional HTTP request) */}
-                        <div className={`${compactMode ? 'mb-2' : 'mb-3'} relative bg-slate-800 rounded-lg overflow-hidden ${compactMode ? 'aspect-square' : 'aspect-[21/9]'}`}>
+                        <div className={`${compactMode ? 'mb-2' : 'mb-3'} relative bg-slate-800 rounded-lg overflow-hidden ${compactMode ? 'aspect-square' : 'aspect-[17/9]'}`}>
                           {collection.thumbnailBase64 ? (
                             <img 
                               src={collection.thumbnailBase64}

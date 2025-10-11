@@ -17,22 +17,22 @@ apiInstance.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('auth_token');
     
-    // Debug logging
-    console.log('[API Interceptor] Request URL:', config.url);
-    console.log('[API Interceptor] Token from localStorage:', token ? `${token.substring(0, 20)}...` : 'NO TOKEN');
+    // Debug logging (commented out for production)
+    // console.log('[API Interceptor] Request URL:', config.url);
+    // console.log('[API Interceptor] Token from localStorage:', token ? `${token.substring(0, 20)}...` : 'NO TOKEN');
     
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
-      console.log('[API Interceptor] Authorization header added');
+      // console.log('[API Interceptor] Authorization header added');
     } else {
       console.warn('[API Interceptor] No token found in localStorage!');
     }
     
-    // Add debug header to verify interceptor is running
-    config.headers['X-Debug-Interceptor'] = 'active';
+    // Add debug header to verify interceptor is running (can be removed in production)
+    // config.headers['X-Debug-Interceptor'] = 'active';
     
-    // Log all headers being sent
-    console.log('[API Interceptor] All headers:', config.headers);
+    // Log all headers being sent (commented out for production)
+    // console.log('[API Interceptor] All headers:', config.headers);
     
     return config;
   },

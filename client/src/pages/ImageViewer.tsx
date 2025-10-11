@@ -468,7 +468,7 @@ const ImageViewer: React.FC = () => {
       img.src = `/api/v1/images/${collectionId}/${imageId}/file`;
       
       img.onload = () => {
-        console.log(`Preloaded image ${imageId}`);
+        // console.log(`Preloaded image ${imageId}`);
       };
       
       img.onerror = () => {
