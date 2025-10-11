@@ -67,16 +67,11 @@ public class SchedulerWorker : BackgroundService
             {
                 try
                 {
-                    await schedulerService.ScheduleJobAsync(
-                        job.Id.ToString(),
-                        job.JobType,
-                        job.CronExpression,
-                        job.Parameters,
-                        stoppingToken);
+                    await schedulerService.EnableJobAsync(job.Id);
 
                     _logger.LogInformation(
                         "Registered job: {jobName} ({jobType}) with schedule: {cron}",
-                        job.JobName,
+                        job.Name,
                         job.JobType,
                         job.CronExpression);
                 }
@@ -84,7 +79,7 @@ public class SchedulerWorker : BackgroundService
                 {
                     _logger.LogError(ex, 
                         "Failed to register job: {jobName} ({jobId})", 
-                        job.JobName, 
+                        job.Name, 
                         job.Id);
                 }
             }

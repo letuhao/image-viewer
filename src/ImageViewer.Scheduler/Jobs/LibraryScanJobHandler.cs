@@ -36,7 +36,7 @@ public class LibraryScanJobHandler : ILibraryScanJobHandler
         _logger.LogInformation(
             "Starting library scan job. ScheduledJobId: {scheduledJobId}, JobName: {jobName}, RunId: {runId}",
             job.Id,
-            job.JobName,
+            job.Name,
             runId);
 
         try
@@ -82,11 +82,13 @@ public class LibraryScanJobHandler : ILibraryScanJobHandler
                 library.Path);
 
             // Create job run record
-            var jobRun = ScheduledJobRun.Create(
+            var jobRun = new ScheduledJobRun(
                 job.Id,
-                startedAt);
+                job.Name,
+                job.JobType,
+                "Scheduler");
 
-            await _jobRunRepository.AddAsync(jobRun);
+            await _jobRunRepository.CreateAsync(jobRun);
 
             // Publish library scan message to RabbitMQ
             var scanMessage = new LibraryScanMessage
@@ -96,11 +98,10 @@ public class LibraryScanJobHandler : ILibraryScanJobHandler
                 ScheduledJobId = job.Id.ToString(),
                 JobRunId = runId.ToString(),
                 ScanType = "Full", // Can be "Full" or "Incremental"
-                IncludeSubfolders = true,
-                Timestamp = DateTime.UtcNow
+                IncludeSubfolders = true
             };
 
-            await _messageQueueService.PublishAsync("library_scan_queue", scanMessage);
+            await _messageQueueService.PublishAsync(scanMessage, "library_scan_queue");
 
             _logger.LogInformation(
                 "Published library scan message for library {libraryId} to RabbitMQ. JobRunId: {runId}",
@@ -108,7 +109,12 @@ public class LibraryScanJobHandler : ILibraryScanJobHandler
                 runId);
 
             // Mark job run as completed (message published successfully)
-            jobRun.Complete("Library scan message published to queue successfully");
+            jobRun.Complete(new Dictionary<string, object>
+            {
+                { "message", "Library scan message published to queue successfully" },
+                { "libraryId", libraryId.ToString() },
+                { "runId", runId.ToString() }
+            });
             await _jobRunRepository.UpdateAsync(jobRun);
 
             var duration = (DateTime.UtcNow - startedAt).TotalMilliseconds;

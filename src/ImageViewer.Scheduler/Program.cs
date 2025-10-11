@@ -2,7 +2,10 @@ using Hangfire;
 using Hangfire.Mongo;
 using Hangfire.Mongo.Migration.Strategies;
 using Hangfire.Mongo.Migration.Strategies.Backup;
+using ImageViewer.Domain.Interfaces;
+using ImageViewer.Infrastructure.Data;
 using ImageViewer.Infrastructure.Extensions;
+using ImageViewer.Infrastructure.Services;
 using ImageViewer.Scheduler.Configuration;
 using ImageViewer.Scheduler.Jobs;
 using ImageViewer.Scheduler.Services;
@@ -91,15 +94,26 @@ public class Program
                     options.Queues = hangfireOptions.Queues;
                 });
 
-                // Register Infrastructure services (MongoDB, RabbitMQ, etc.)
-                services.AddInfrastructure(configuration);
+                // Register Infrastructure services
+                // MongoDB
+                services.AddMongoDb(configuration);
+                
+                // RabbitMQ Message Queue
+                services.Configure<RabbitMQOptions>(configuration.GetSection("RabbitMQ"));
+                services.AddSingleton<IMessageQueueService, RabbitMQMessageQueueService>();
+                services.AddHostedService<RabbitMQSetupService>();
+
+                // Register MongoDB repositories for scheduler
+                services.AddScoped<IScheduledJobRepository, MongoScheduledJobRepository>();
+                services.AddScoped<IScheduledJobRunRepository, MongoScheduledJobRunRepository>();
+                services.AddScoped<ILibraryRepository, MongoLibraryRepository>();
 
                 // Register Scheduler services
                 services.AddScoped<ISchedulerService, HangfireSchedulerService>();
                 services.AddScoped<IScheduledJobExecutor, ScheduledJobExecutor>();
                 
                 // Register job handlers
-                services.AddScoped<IScheduledJobTypeHandler, LibraryScanJobHandler>();
+                services.AddScoped<ILibraryScanJobHandler, LibraryScanJobHandler>();
 
                 // Register the background worker
                 services.AddHostedService<SchedulerWorker>();
