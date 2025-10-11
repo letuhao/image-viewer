@@ -1,6 +1,4 @@
-import axios from 'axios';
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://localhost:11001/api/v1';
+import { api } from './api';
 
 export interface Library {
   id: string;
@@ -83,37 +81,37 @@ export interface UpdateLibrarySettingsRequest {
 export const libraryApi = {
   // Get all libraries
   getAll: async (): Promise<Library[]> => {
-    const response = await axios.get(`${API_BASE_URL}/libraries`);
+    const response = await api.get('/libraries');
     return response.data;
   },
 
   // Get library by ID
   getById: async (id: string): Promise<Library> => {
-    const response = await axios.get(`${API_BASE_URL}/libraries/${id}`);
+    const response = await api.get(`/libraries/${id}`);
     return response.data;
   },
 
   // Create library
   create: async (request: CreateLibraryRequest): Promise<Library> => {
-    const response = await axios.post(`${API_BASE_URL}/libraries`, request);
+    const response = await api.post('/libraries', request);
     return response.data;
   },
 
   // Update library
   update: async (id: string, request: UpdateLibraryRequest): Promise<Library> => {
-    const response = await axios.put(`${API_BASE_URL}/libraries/${id}`, request);
+    const response = await api.put(`/libraries/${id}`, request);
     return response.data;
   },
 
   // Update library settings
   updateSettings: async (id: string, request: UpdateLibrarySettingsRequest): Promise<Library> => {
-    const response = await axios.put(`${API_BASE_URL}/libraries/${id}/settings`, request);
+    const response = await api.put(`/libraries/${id}/settings`, request);
     return response.data;
   },
 
   // Delete library
   delete: async (id: string): Promise<void> => {
-    await axios.delete(`${API_BASE_URL}/libraries/${id}`);
+    await api.delete(`/libraries/${id}`);
   },
 };
 

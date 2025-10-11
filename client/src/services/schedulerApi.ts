@@ -1,6 +1,4 @@
-import axios from 'axios';
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://localhost:11001/api/v1';
+import { api } from './api';
 
 export interface ScheduledJob {
   id: string;
@@ -52,20 +50,20 @@ export interface JobRunsResponse {
 export const schedulerApi = {
   // Get all scheduled jobs
   getAllJobs: async (): Promise<ScheduledJob[]> => {
-    const response = await axios.get(`${API_BASE_URL}/scheduledjobs`);
+    const response = await api.get('/scheduledjobs');
     return response.data;
   },
 
   // Get job by ID
   getJob: async (id: string): Promise<ScheduledJob> => {
-    const response = await axios.get(`${API_BASE_URL}/scheduledjobs/${id}`);
+    const response = await api.get(`/scheduledjobs/${id}`);
     return response.data;
   },
 
   // Get job by library ID
   getJobByLibrary: async (libraryId: string): Promise<ScheduledJob | null> => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/scheduledjobs/library/${libraryId}`);
+      const response = await api.get(`/scheduledjobs/library/${libraryId}`);
       return response.data;
     } catch (error: any) {
       if (error.response?.status === 404) {
@@ -77,22 +75,22 @@ export const schedulerApi = {
 
   // Enable job
   enableJob: async (id: string): Promise<void> => {
-    await axios.post(`${API_BASE_URL}/scheduledjobs/${id}/enable`);
+    await api.post(`/scheduledjobs/${id}/enable`);
   },
 
   // Disable job
   disableJob: async (id: string): Promise<void> => {
-    await axios.post(`${API_BASE_URL}/scheduledjobs/${id}/disable`);
+    await api.post(`/scheduledjobs/${id}/disable`);
   },
 
   // Delete job
   deleteJob: async (id: string): Promise<void> => {
-    await axios.delete(`${API_BASE_URL}/scheduledjobs/${id}`);
+    await api.delete(`/scheduledjobs/${id}`);
   },
 
   // Get job execution history
   getJobRuns: async (id: string, page: number = 1, pageSize: number = 20): Promise<JobRunsResponse> => {
-    const response = await axios.get(`${API_BASE_URL}/scheduledjobs/${id}/runs`, {
+    const response = await api.get(`/scheduledjobs/${id}/runs`, {
       params: { page, pageSize }
     });
     return response.data;
@@ -100,13 +98,13 @@ export const schedulerApi = {
 
   // Get active jobs
   getActiveJobs: async (): Promise<ScheduledJob[]> => {
-    const response = await axios.get(`${API_BASE_URL}/scheduledjobs/active`);
+    const response = await api.get('/scheduledjobs/active');
     return response.data;
   },
 
   // Get recent job runs
   getRecentRuns: async (limit: number = 50): Promise<ScheduledJobRun[]> => {
-    const response = await axios.get(`${API_BASE_URL}/scheduledjobs/runs/recent`, {
+    const response = await api.get('/scheduledjobs/runs/recent', {
       params: { limit }
     });
     return response.data;
