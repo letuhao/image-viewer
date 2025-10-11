@@ -196,3 +196,5 @@ src/src/ImageViewer.Test/obj/
 temp_extract/
 
 temp_extract2/
+
+src/ImageViewer.Scheduler/obj/
