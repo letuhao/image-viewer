@@ -128,6 +128,68 @@ public class RabbitMQMessageQueueService : IMessageQueueService, IDisposable
         await PublishAsync(message, routingKey, cancellationToken);
     }
 
+    public async Task PublishBatchAsync<T>(IEnumerable<T> messages, string? routingKey = null, CancellationToken cancellationToken = default) where T : MessageEvent
+    {
+        try
+        {
+            var messagesList = messages.ToList();
+            if (!messagesList.Any())
+            {
+                _logger.LogDebug("No messages to publish in batch");
+                return;
+            }
+
+            var options = new JsonSerializerOptions
+            {
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                WriteIndented = false
+            };
+
+            var routingKeyToUse = routingKey ?? GetDefaultRoutingKey<T>();
+            var batchCount = 0;
+
+            // Use RabbitMQ batch publishing for better performance
+            var batch = _channel.CreateBasicPublishBatch();
+
+            foreach (var message in messagesList)
+            {
+                var messageBody = JsonSerializer.SerializeToUtf8Bytes(message, options);
+                var properties = new BasicProperties
+                {
+                    Persistent = true,
+                    MessageId = message.Id.ToString(),
+                    Timestamp = new AmqpTimestamp(DateTimeOffset.UtcNow.ToUnixTimeSeconds()),
+                    CorrelationId = message.CorrelationId?.ToString(),
+                    Headers = new Dictionary<string, object>
+                    {
+                        { "MessageType", message.MessageType },
+                        { "Timestamp", message.Timestamp.ToString("O") }
+                    }
+                };
+
+                batch.Add(
+                    exchange: _options.DefaultExchange,
+                    routingKey: routingKeyToUse,
+                    mandatory: false,
+                    properties: properties,
+                    body: messageBody
+                );
+
+                batchCount++;
+            }
+
+            // Publish entire batch at once
+            await batch.PublishAsync(cancellationToken);
+
+            _logger.LogInformation("✅ Published batch of {Count} {MessageType} messages", batchCount, typeof(T).Name);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to publish batch of {MessageType} messages", typeof(T).Name);
+            throw;
+        }
+    }
+
     private string GetQueueName<T>() where T : MessageEvent
     {
         return typeof(T).Name switch

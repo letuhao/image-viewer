@@ -21,6 +21,12 @@ public interface IMessageQueueService
     /// Publish a message with priority
     /// </summary>
     Task PublishWithPriorityAsync<T>(T message, int priority, string? routingKey = null, CancellationToken cancellationToken = default) where T : MessageEvent;
+
+    /// <summary>
+    /// Publish multiple messages in a batch (optimized for performance)
+    /// 批量发布消息 - Xuất bản hàng loạt tin nhắn
+    /// </summary>
+    Task PublishBatchAsync<T>(IEnumerable<T> messages, string? routingKey = null, CancellationToken cancellationToken = default) where T : MessageEvent;
 }
 
 /// <summary>

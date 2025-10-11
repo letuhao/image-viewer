@@ -476,7 +476,9 @@ public class BulkOperationConsumer : BaseMessageConsumer
                 _logger.LogInformation("✅ Created FileProcessingJobState {JobId} for collection {CollectionId} with {Count} images",
                     jobId, collectionId, imagesNeedingThumbnails.Count);
                 
-                // Create individual thumbnail generation jobs for each image in this collection
+                // Create thumbnail generation messages in batches for better performance
+                var thumbnailMessages = new List<ThumbnailGenerationMessage>();
+                
                 foreach (var image in imagesNeedingThumbnails)
                 {
                     try
@@ -493,15 +495,27 @@ public class BulkOperationConsumer : BaseMessageConsumer
                             ScanJobId = bulkMessage.JobId // Link to parent scan job
                         };
 
-                        // Queue the thumbnail generation job
-                        await messageQueueService.PublishAsync(thumbnailMessage, "thumbnail.generation");
-                        _logger.LogDebug("📋 Queued thumbnail generation job for image {ImageId}: {Filename}", 
-                            image.Id, image.Filename);
+                        thumbnailMessages.Add(thumbnailMessage);
+                        
+                        // Publish in batches of 100 for optimal performance
+                        if (thumbnailMessages.Count >= 100)
+                        {
+                            await messageQueueService.PublishBatchAsync(thumbnailMessages, "thumbnail.generation");
+                            _logger.LogInformation("📋 Published batch of {Count} thumbnail generation messages", thumbnailMessages.Count);
+                            thumbnailMessages.Clear();
+                        }
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "❌ Failed to create thumbnail generation job for image {ImageId}", image.Id);
+                        _logger.LogError(ex, "❌ Failed to create thumbnail generation message for image {ImageId}", image.Id);
                     }
+                }
+                
+                // Publish remaining messages
+                if (thumbnailMessages.Any())
+                {
+                    await messageQueueService.PublishBatchAsync(thumbnailMessages, "thumbnail.generation");
+                    _logger.LogInformation("📋 Published final batch of {Count} thumbnail generation messages", thumbnailMessages.Count);
                 }
             }
             catch (Exception ex)
@@ -601,7 +615,9 @@ public class BulkOperationConsumer : BaseMessageConsumer
                 _logger.LogInformation("✅ Created FileProcessingJobState {JobId} for collection {CollectionId} with {Count} images",
                     jobId, collectionId, uncachedImages.Count);
                 
-                // Create individual cache generation jobs for each uncached image in this collection
+                // Create cache generation messages in batches for better performance
+                var cacheMessages = new List<CacheGenerationMessage>();
+                
                 foreach (var image in uncachedImages)
                 {
                     try
@@ -621,15 +637,27 @@ public class BulkOperationConsumer : BaseMessageConsumer
                             ScanJobId = bulkMessage.JobId // Link to parent scan job
                         };
 
-                        // Queue the cache generation job
-                        await messageQueueService.PublishAsync(cacheMessage, "cache.generation");
-                        _logger.LogDebug("📋 Queued cache generation job for image {ImageId}: {Filename}", 
-                            image.Id, image.Filename);
+                        cacheMessages.Add(cacheMessage);
+                        
+                        // Publish in batches of 100 for optimal performance
+                        if (cacheMessages.Count >= 100)
+                        {
+                            await messageQueueService.PublishBatchAsync(cacheMessages, "cache.generation");
+                            _logger.LogInformation("📋 Published batch of {Count} cache generation messages", cacheMessages.Count);
+                            cacheMessages.Clear();
+                        }
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "❌ Failed to create cache generation job for image {ImageId}", image.Id);
+                        _logger.LogError(ex, "❌ Failed to create cache generation message for image {ImageId}", image.Id);
                     }
+                }
+                
+                // Publish remaining messages
+                if (cacheMessages.Any())
+                {
+                    await messageQueueService.PublishBatchAsync(cacheMessages, "cache.generation");
+                    _logger.LogInformation("📋 Published final batch of {Count} cache generation messages", cacheMessages.Count);
                 }
             }
             catch (Exception ex)
