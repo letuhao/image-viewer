@@ -233,289 +233,298 @@ export default function Libraries() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="flex justify-between items-center mb-6">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Libraries</h1>
-            <p className="text-gray-600 mt-1">Manage your media libraries and scheduled scans</p>
+    <div className="h-full flex flex-col">
+      {/* Header Toolbar - matches Collections page style */}
+      <div className="flex-shrink-0 border-b border-slate-800 bg-slate-900/50 backdrop-blur">
+        <div className="px-6 py-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <h1 className="text-xl font-bold text-white">Libraries</h1>
+              <span className="text-sm text-slate-400 bg-slate-800 px-2 py-1 rounded-full">
+                {libraries.length}
+              </span>
+            </div>
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors"
+            >
+              <Plus className="w-5 h-5" />
+              <span>Add Library</span>
+            </button>
           </div>
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            <Plus className="w-5 h-5" />
-            Add Library
-          </button>
         </div>
+      </div>
 
-        {/* Loading State */}
-        {(librariesLoading || jobsLoading) && (
-          <div className="text-center py-12">
-            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-            <p className="mt-4 text-gray-600">Loading libraries...</p>
-          </div>
-        )}
+      {/* Content Area */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="px-6 py-6 space-y-4">
+          {/* Loading State */}
+          {(librariesLoading || jobsLoading) && (
+            <div className="text-center py-12">
+              <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary-500"></div>
+              <p className="mt-4 text-slate-400">Loading libraries...</p>
+            </div>
+          )}
 
-        {/* Libraries List */}
-        {!librariesLoading && !jobsLoading && (
-          <div className="space-y-4">
-            {libraries.length === 0 ? (
-              <div className="text-center py-12 bg-white rounded-lg shadow">
-                <FolderOpen className="w-16 h-16 mx-auto text-gray-400 mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No libraries yet</h3>
-                <p className="text-gray-600 mb-4">Create your first library to get started</p>
-                <button
-                  onClick={() => setShowCreateModal(true)}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                >
-                  <Plus className="w-5 h-5" />
-                  Add Library
-                </button>
-              </div>
-            ) : (
-              libraries.map((library) => {
-                const job = getJobForLibrary(library.id);
-                const showDetails = showSchedulerDetails[library.id] || false;
+          {/* Libraries List */}
+          {!librariesLoading && !jobsLoading && (
+            <>
+              {libraries.length === 0 ? (
+                <div className="text-center py-12 bg-slate-900 rounded-lg border border-slate-800">
+                  <FolderOpen className="w-16 h-16 mx-auto text-slate-600 mb-4" />
+                  <h3 className="text-lg font-medium text-white mb-2">No libraries yet</h3>
+                  <p className="text-slate-400 mb-4">Create your first library to get started</p>
+                  <button
+                    onClick={() => setShowCreateModal(true)}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600"
+                  >
+                    <Plus className="w-5 h-5" />
+                    Add Library
+                  </button>
+                </div>
+              ) : (
+                libraries.map((library) => {
+                  const job = getJobForLibrary(library.id);
+                  const showDetails = showSchedulerDetails[library.id] || false;
 
-                return (
-                  <div key={library.id} className="bg-white rounded-lg shadow hover:shadow-md transition-shadow">
-                    {/* Library Header */}
-                    <div className="p-6">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3">
-                            <FolderOpen className="w-6 h-6 text-blue-600" />
-                            <div>
-                              <h3 className="text-xl font-semibold text-gray-900">{library.name}</h3>
-                              <p className="text-sm text-gray-600 mt-1">{library.path}</p>
-                              {library.description && (
-                                <p className="text-sm text-gray-500 mt-1">{library.description}</p>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Statistics */}
-                          <div className="grid grid-cols-4 gap-4 mt-4">
-                            <div className="bg-gray-50 px-3 py-2 rounded">
-                              <div className="text-xs text-gray-600">Collections</div>
-                              <div className="text-lg font-semibold text-gray-900">
-                                {library.statistics?.totalCollections || 0}
-                              </div>
-                            </div>
-                            <div className="bg-gray-50 px-3 py-2 rounded">
-                              <div className="text-xs text-gray-600">Media Items</div>
-                              <div className="text-lg font-semibold text-gray-900">
-                                {library.statistics?.totalMediaItems || 0}
-                              </div>
-                            </div>
-                            <div className="bg-gray-50 px-3 py-2 rounded">
-                              <div className="text-xs text-gray-600">Total Size</div>
-                              <div className="text-lg font-semibold text-gray-900">
-                                {((library.statistics?.totalSize || 0) / 1024 / 1024 / 1024).toFixed(2)} GB
-                              </div>
-                            </div>
-                            <div className="bg-gray-50 px-3 py-2 rounded">
-                              <div className="text-xs text-gray-600">Auto Scan</div>
-                              <div className="text-lg font-semibold">
-                                <button
-                                  onClick={() => handleToggleAutoScan(library.id, library.settings.autoScan)}
-                                  className={`px-2 py-1 rounded text-xs font-medium ${
-                                    library.settings.autoScan
-                                      ? 'bg-green-100 text-green-800'
-                                      : 'bg-gray-200 text-gray-600'
-                                  }`}
-                                >
-                                  {library.settings.autoScan ? 'Enabled' : 'Disabled'}
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Actions */}
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => handleDeleteLibrary(library.id)}
-                            className="p-2 text-red-600 hover:bg-red-50 rounded transition-colors"
-                            title="Delete library"
-                          >
-                            <Trash2 className="w-5 h-5" />
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Scheduler Job Information */}
-                      {job && (
-                        <div className="mt-4 border-t pt-4">
-                          <div className="flex items-center justify-between">
+                  return (
+                    <div key={library.id} className="bg-slate-900 rounded-lg border border-slate-800 hover:border-slate-700 transition-colors">
+                      {/* Library Header */}
+                      <div className="p-6">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
                             <div className="flex items-center gap-3">
-                              <Calendar className="w-5 h-5 text-purple-600" />
+                              <FolderOpen className="w-6 h-6 text-primary-500" />
                               <div>
-                                <div className="flex items-center gap-2">
-                                  <span className="font-medium text-gray-900">Scheduled Scan</span>
-                                  <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                                    job.isEnabled ? 'bg-green-100 text-green-800' : 'bg-gray-200 text-gray-600'
-                                  }`}>
-                                    {job.isEnabled ? 'Active' : 'Inactive'}
-                                  </span>
-                                </div>
-                                <div className="text-sm text-gray-600 mt-1">
-                                  {formatCronExpression(job.cronExpression)}
-                                </div>
+                                <h3 className="text-xl font-semibold text-white">{library.name}</h3>
+                                <p className="text-sm text-slate-400 mt-1">{library.path}</p>
+                                {library.description && (
+                                  <p className="text-sm text-slate-500 mt-1">{library.description}</p>
+                                )}
                               </div>
                             </div>
 
+                            {/* Statistics */}
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4">
+                              <div className="bg-slate-800 px-3 py-2 rounded-lg">
+                                <div className="text-xs text-slate-400">Collections</div>
+                                <div className="text-lg font-semibold text-white">
+                                  {library.statistics?.totalCollections || 0}
+                                </div>
+                              </div>
+                              <div className="bg-slate-800 px-3 py-2 rounded-lg">
+                                <div className="text-xs text-slate-400">Media Items</div>
+                                <div className="text-lg font-semibold text-white">
+                                  {library.statistics?.totalMediaItems || 0}
+                                </div>
+                              </div>
+                              <div className="bg-slate-800 px-3 py-2 rounded-lg">
+                                <div className="text-xs text-slate-400">Total Size</div>
+                                <div className="text-lg font-semibold text-white">
+                                  {((library.statistics?.totalSize || 0) / 1024 / 1024 / 1024).toFixed(2)} GB
+                                </div>
+                              </div>
+                              <div className="bg-slate-800 px-3 py-2 rounded-lg">
+                                <div className="text-xs text-slate-400">Auto Scan</div>
+                                <div className="text-lg font-semibold">
+                                  <button
+                                    onClick={() => handleToggleAutoScan(library.id, library.settings.autoScan)}
+                                    className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
+                                      library.settings.autoScan
+                                        ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30'
+                                        : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
+                                    }`}
+                                  >
+                                    {library.settings.autoScan ? 'Enabled' : 'Disabled'}
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Actions */}
+                          <div className="flex items-center gap-2">
                             <button
-                              onClick={() => setShowSchedulerDetails({
-                                ...showSchedulerDetails,
-                                [library.id]: !showDetails
-                              })}
-                              className="px-3 py-1 text-sm text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                              onClick={() => handleDeleteLibrary(library.id)}
+                              className="p-2 text-red-400 hover:bg-red-500/10 rounded transition-colors"
+                              title="Delete library"
                             >
-                              {showDetails ? 'Hide Details' : 'Show Details'}
+                              <Trash2 className="w-5 h-5" />
                             </button>
                           </div>
+                        </div>
 
-                          {/* Expanded Scheduler Details */}
-                          {showDetails && (
-                            <div className="mt-4 grid grid-cols-2 gap-4 bg-gray-50 p-4 rounded-lg">
-                              {/* Execution Statistics */}
-                              <div>
-                                <h4 className="font-medium text-gray-900 mb-2">Execution Statistics</h4>
-                                <div className="space-y-2 text-sm">
-                                  <div className="flex justify-between">
-                                    <span className="text-gray-600">Total Runs:</span>
-                                    <span className="font-medium">{job.runCount}</span>
-                                  </div>
-                                  <div className="flex justify-between">
-                                    <span className="text-gray-600">Successful:</span>
-                                    <span className="font-medium text-green-600">{job.successCount}</span>
-                                  </div>
-                                  <div className="flex justify-between">
-                                    <span className="text-gray-600">Failed:</span>
-                                    <span className="font-medium text-red-600">{job.failureCount}</span>
-                                  </div>
-                                  <div className="flex justify-between">
-                                    <span className="text-gray-600">Success Rate:</span>
-                                    <span className="font-medium">
-                                      {job.runCount > 0 
-                                        ? ((job.successCount / job.runCount) * 100).toFixed(1) + '%'
-                                        : 'N/A'}
+                        {/* Scheduler Job Information */}
+                        {job && (
+                          <div className="mt-4 border-t border-slate-800 pt-4">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                <Calendar className="w-5 h-5 text-purple-400" />
+                                <div>
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-medium text-white">Scheduled Scan</span>
+                                    <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                                      job.isEnabled ? 'bg-green-500/20 text-green-400' : 'bg-slate-700 text-slate-400'
+                                    }`}>
+                                      {job.isEnabled ? 'Active' : 'Inactive'}
                                     </span>
+                                  </div>
+                                  <div className="text-sm text-slate-400 mt-1">
+                                    {formatCronExpression(job.cronExpression)}
                                   </div>
                                 </div>
                               </div>
 
-                              {/* Last Run Information */}
-                              <div>
-                                <h4 className="font-medium text-gray-900 mb-2">Last Run</h4>
-                                <div className="space-y-2 text-sm">
-                                  {job.lastRunAt ? (
-                                    <>
-                                      <div className="flex justify-between">
-                                        <span className="text-gray-600">Time:</span>
-                                        <span className="font-medium">
-                                          {formatDistanceToNow(new Date(job.lastRunAt), { addSuffix: true })}
-                                        </span>
-                                      </div>
-                                      <div className="flex justify-between items-center">
-                                        <span className="text-gray-600">Status:</span>
-                                        <span className={`flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${
-                                          getStatusColor(job.lastRunStatus)
-                                        }`}>
-                                          {getStatusIcon(job.lastRunStatus)}
-                                          {job.lastRunStatus || 'Unknown'}
-                                        </span>
-                                      </div>
-                                      {job.lastRunDuration && (
+                              <button
+                                onClick={() => setShowSchedulerDetails({
+                                  ...showSchedulerDetails,
+                                  [library.id]: !showDetails
+                                })}
+                                className="px-3 py-1 text-sm text-primary-400 hover:bg-primary-500/10 rounded transition-colors"
+                              >
+                                {showDetails ? 'Hide Details' : 'Show Details'}
+                              </button>
+                            </div>
+
+                            {/* Expanded Scheduler Details */}
+                            {showDetails && (
+                              <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4 bg-slate-800/50 p-4 rounded-lg border border-slate-700">
+                                {/* Execution Statistics */}
+                                <div>
+                                  <h4 className="font-medium text-white mb-2">Execution Statistics</h4>
+                                  <div className="space-y-2 text-sm">
+                                    <div className="flex justify-between">
+                                      <span className="text-slate-400">Total Runs:</span>
+                                      <span className="font-medium text-white">{job.runCount}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                      <span className="text-slate-400">Successful:</span>
+                                      <span className="font-medium text-green-400">{job.successCount}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                      <span className="text-slate-400">Failed:</span>
+                                      <span className="font-medium text-red-400">{job.failureCount}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                      <span className="text-slate-400">Success Rate:</span>
+                                      <span className="font-medium text-white">
+                                        {job.runCount > 0 
+                                          ? ((job.successCount / job.runCount) * 100).toFixed(1) + '%'
+                                          : 'N/A'}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Last Run Information */}
+                                <div>
+                                  <h4 className="font-medium text-white mb-2">Last Run</h4>
+                                  <div className="space-y-2 text-sm">
+                                    {job.lastRunAt ? (
+                                      <>
                                         <div className="flex justify-between">
-                                          <span className="text-gray-600">Duration:</span>
-                                          <span className="font-medium">
-                                            {(job.lastRunDuration / 1000).toFixed(2)}s
+                                          <span className="text-slate-400">Time:</span>
+                                          <span className="font-medium text-white">
+                                            {formatDistanceToNow(new Date(job.lastRunAt), { addSuffix: true })}
                                           </span>
                                         </div>
-                                      )}
-                                      {job.lastErrorMessage && (
-                                        <div className="col-span-2">
-                                          <span className="text-gray-600">Error:</span>
-                                          <div className="text-red-600 text-xs mt-1 bg-red-50 p-2 rounded">
-                                            {job.lastErrorMessage}
-                                          </div>
+                                        <div className="flex justify-between items-center">
+                                          <span className="text-slate-400">Status:</span>
+                                          <span className={`flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${
+                                            getStatusColor(job.lastRunStatus)
+                                          }`}>
+                                            {getStatusIcon(job.lastRunStatus)}
+                                            {job.lastRunStatus || 'Unknown'}
+                                          </span>
                                         </div>
-                                      )}
-                                    </>
-                                  ) : (
-                                    <p className="text-gray-500">Never executed</p>
-                                  )}
-                                </div>
-                              </div>
-
-                              {/* Next Run */}
-                              {job.nextRunAt && (
-                                <div className="col-span-2">
-                                  <div className="flex items-center gap-2 text-sm">
-                                    <Clock className="w-4 h-4 text-blue-600" />
-                                    <span className="text-gray-600">Next scheduled run:</span>
-                                    <span className="font-medium text-blue-600">
-                                      {formatDistanceToNow(new Date(job.nextRunAt), { addSuffix: true })}
-                                    </span>
+                                        {job.lastRunDuration && (
+                                          <div className="flex justify-between">
+                                            <span className="text-slate-400">Duration:</span>
+                                            <span className="font-medium text-white">
+                                              {(job.lastRunDuration / 1000).toFixed(2)}s
+                                            </span>
+                                          </div>
+                                        )}
+                                        {job.lastErrorMessage && (
+                                          <div className="col-span-2 mt-2">
+                                            <span className="text-slate-400 block mb-1">Error:</span>
+                                            <div className="text-red-400 text-xs bg-red-500/10 border border-red-500/20 p-2 rounded">
+                                              {job.lastErrorMessage}
+                                            </div>
+                                          </div>
+                                        )}
+                                      </>
+                                    ) : (
+                                      <p className="text-slate-500">Never executed</p>
+                                    )}
                                   </div>
                                 </div>
-                              )}
 
-                              {/* Actions */}
-                              <div className="col-span-2 flex gap-2 pt-2 border-t">
-                                <button
-                                  onClick={() => handleToggleJob(job.id, job.isEnabled)}
-                                  disabled={toggleJobMutation.isPending}
-                                  className={`flex items-center gap-2 px-3 py-1.5 rounded text-sm font-medium transition-colors ${
-                                    job.isEnabled
-                                      ? 'bg-orange-100 text-orange-800 hover:bg-orange-200'
-                                      : 'bg-green-100 text-green-800 hover:bg-green-200'
-                                  }`}
-                                >
-                                  {job.isEnabled ? (
-                                    <>
-                                      <PauseCircle className="w-4 h-4" />
-                                      Pause Job
-                                    </>
-                                  ) : (
-                                    <>
-                                      <PlayCircle className="w-4 h-4" />
-                                      Resume Job
-                                    </>
-                                  )}
-                                </button>
+                                {/* Next Run */}
+                                {job.nextRunAt && (
+                                  <div className="col-span-full">
+                                    <div className="flex items-center gap-2 text-sm">
+                                      <Clock className="w-4 h-4 text-primary-400" />
+                                      <span className="text-slate-400">Next scheduled run:</span>
+                                      <span className="font-medium text-primary-400">
+                                        {formatDistanceToNow(new Date(job.nextRunAt), { addSuffix: true })}
+                                      </span>
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* Actions */}
+                                <div className="col-span-full flex gap-2 pt-2 border-t border-slate-700">
+                                  <button
+                                    onClick={() => handleToggleJob(job.id, job.isEnabled)}
+                                    disabled={toggleJobMutation.isPending}
+                                    className={`flex items-center gap-2 px-3 py-1.5 rounded text-sm font-medium transition-colors ${
+                                      job.isEnabled
+                                        ? 'bg-orange-500/20 text-orange-400 hover:bg-orange-500/30'
+                                        : 'bg-green-500/20 text-green-400 hover:bg-green-500/30'
+                                    }`}
+                                  >
+                                    {job.isEnabled ? (
+                                      <>
+                                        <PauseCircle className="w-4 h-4" />
+                                        Pause Job
+                                      </>
+                                    ) : (
+                                      <>
+                                        <PlayCircle className="w-4 h-4" />
+                                        Resume Job
+                                      </>
+                                    )}
+                                  </button>
+                                </div>
                               </div>
-                            </div>
-                          )}
-                        </div>
-                      )}
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-        )}
+                  );
+                })
+              )}
+            </>
+          )}
+        </div>
       </div>
 
       {/* Create Library Modal */}
       {showCreateModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-lg shadow-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
             {/* Modal Header */}
-            <div className="flex justify-between items-center p-6 border-b sticky top-0 bg-white">
-              <h2 className="text-2xl font-bold text-gray-900">Create New Library</h2>
+            <div className="flex justify-between items-center p-6 border-b border-slate-800 sticky top-0 bg-slate-900">
+              <h2 className="text-2xl font-bold text-white">Create New Library</h2>
               <button
                 onClick={() => {
                   setShowCreateModal(false);
                   setFormData({ name: '', path: '', description: '', autoScan: true });
                   setFormErrors({});
                 }}
-                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
                 disabled={createMutation.isPending}
               >
                 <X className="w-5 h-5" />
@@ -526,8 +535,8 @@ export default function Libraries() {
             <form onSubmit={handleCreateLibrary} className="p-6 space-y-4">
               {/* Library Name */}
               <div>
-                <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
-                  Library Name <span className="text-red-500">*</span>
+                <label htmlFor="name" className="block text-sm font-medium text-slate-300 mb-1">
+                  Library Name <span className="text-red-400">*</span>
                 </label>
                 <input
                   type="text"
@@ -537,22 +546,22 @@ export default function Libraries() {
                     setFormData({ ...formData, name: e.target.value });
                     setFormErrors({ ...formErrors, name: '' });
                   }}
-                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                    formErrors.name ? 'border-red-500' : 'border-gray-300'
+                  className={`w-full px-3 py-2 bg-slate-800 border rounded-lg text-white placeholder-slate-500 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${
+                    formErrors.name ? 'border-red-500' : 'border-slate-700'
                   }`}
                   placeholder="My Media Library"
                   disabled={createMutation.isPending}
                   maxLength={100}
                 />
                 {formErrors.name && (
-                  <p className="mt-1 text-sm text-red-600">{formErrors.name}</p>
+                  <p className="mt-1 text-sm text-red-400">{formErrors.name}</p>
                 )}
               </div>
 
               {/* Library Path */}
               <div>
-                <label htmlFor="path" className="block text-sm font-medium text-gray-700 mb-1">
-                  Library Path <span className="text-red-500">*</span>
+                <label htmlFor="path" className="block text-sm font-medium text-slate-300 mb-1">
+                  Library Path <span className="text-red-400">*</span>
                 </label>
                 <input
                   type="text"
@@ -562,23 +571,23 @@ export default function Libraries() {
                     setFormData({ ...formData, path: e.target.value });
                     setFormErrors({ ...formErrors, path: '' });
                   }}
-                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                    formErrors.path ? 'border-red-500' : 'border-gray-300'
+                  className={`w-full px-3 py-2 bg-slate-800 border rounded-lg text-white placeholder-slate-500 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${
+                    formErrors.path ? 'border-red-500' : 'border-slate-700'
                   }`}
                   placeholder="D:\Media\Photos or /media/photos"
                   disabled={createMutation.isPending}
                 />
                 {formErrors.path && (
-                  <p className="mt-1 text-sm text-red-600">{formErrors.path}</p>
+                  <p className="mt-1 text-sm text-red-400">{formErrors.path}</p>
                 )}
-                <p className="mt-1 text-xs text-gray-500">
+                <p className="mt-1 text-xs text-slate-500">
                   Absolute path to the directory containing your media files
                 </p>
               </div>
 
               {/* Description */}
               <div>
-                <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="description" className="block text-sm font-medium text-slate-300 mb-1">
                   Description
                 </label>
                 <textarea
@@ -588,8 +597,8 @@ export default function Libraries() {
                     setFormData({ ...formData, description: e.target.value });
                     setFormErrors({ ...formErrors, description: '' });
                   }}
-                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                    formErrors.description ? 'border-red-500' : 'border-gray-300'
+                  className={`w-full px-3 py-2 bg-slate-800 border rounded-lg text-white placeholder-slate-500 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${
+                    formErrors.description ? 'border-red-500' : 'border-slate-700'
                   }`}
                   placeholder="Optional description of this library"
                   rows={3}
@@ -597,20 +606,20 @@ export default function Libraries() {
                   maxLength={500}
                 />
                 {formErrors.description && (
-                  <p className="mt-1 text-sm text-red-600">{formErrors.description}</p>
+                  <p className="mt-1 text-sm text-red-400">{formErrors.description}</p>
                 )}
-                <p className="mt-1 text-xs text-gray-500 text-right">
+                <p className="mt-1 text-xs text-slate-500 text-right">
                   {formData.description.length}/500
                 </p>
               </div>
 
               {/* Auto Scan Toggle */}
-              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+              <div className="flex items-center justify-between p-4 bg-slate-800/50 rounded-lg border border-slate-700">
                 <div className="flex-1">
-                  <label htmlFor="autoScan" className="text-sm font-medium text-gray-700">
+                  <label htmlFor="autoScan" className="text-sm font-medium text-white">
                     Enable Automatic Scanning
                   </label>
-                  <p className="text-xs text-gray-500 mt-1">
+                  <p className="text-xs text-slate-400 mt-1">
                     Automatically scan this library daily at 2:00 AM for new content
                   </p>
                 </div>
@@ -623,18 +632,18 @@ export default function Libraries() {
                     className="sr-only peer"
                     disabled={createMutation.isPending}
                   />
-                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                  <div className="w-11 h-6 bg-slate-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-500/30 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-600 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary-500"></div>
                 </label>
               </div>
 
               {/* Info Box */}
               {formData.autoScan && (
-                <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="p-4 bg-primary-500/10 border border-primary-500/20 rounded-lg">
                   <div className="flex items-start gap-3">
-                    <Calendar className="w-5 h-5 text-blue-600 mt-0.5" />
+                    <Calendar className="w-5 h-5 text-primary-400 mt-0.5" />
                     <div>
-                      <p className="text-sm font-medium text-blue-900">Scheduled Scan Enabled</p>
-                      <p className="text-xs text-blue-700 mt-1">
+                      <p className="text-sm font-medium text-primary-300">Scheduled Scan Enabled</p>
+                      <p className="text-xs text-primary-400/80 mt-1">
                         A scheduled job will be automatically created to scan this library daily at 2:00 AM.
                         You can modify the schedule later in the library settings.
                       </p>
@@ -644,7 +653,7 @@ export default function Libraries() {
               )}
 
               {/* Form Actions */}
-              <div className="flex gap-3 pt-4 border-t">
+              <div className="flex gap-3 pt-4 border-t border-slate-800">
                 <button
                   type="button"
                   onClick={() => {
@@ -652,14 +661,14 @@ export default function Libraries() {
                     setFormData({ name: '', path: '', description: '', autoScan: true });
                     setFormErrors({});
                   }}
-                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                  className="flex-1 px-4 py-2 border border-slate-700 text-slate-300 rounded-lg hover:bg-slate-800 transition-colors"
                   disabled={createMutation.isPending}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   disabled={createMutation.isPending}
                 >
                   {createMutation.isPending ? (
