@@ -18,6 +18,7 @@ public class CacheController : ControllerBase
     private readonly ICacheFolderRepository _cacheFolderRepository;
     private readonly ICacheJobStateRepository _cacheJobStateRepository;
     private readonly ICacheJobRecoveryService _cacheJobRecoveryService;
+    private readonly ICacheCleanupService _cacheCleanupService;
     // Unified file processing job state (cache, thumbnail, etc.)
     private readonly IFileProcessingJobStateRepository _fileProcessingJobStateRepository;
     private readonly IFileProcessingJobRecoveryService _fileProcessingJobRecoveryService;
@@ -28,6 +29,7 @@ public class CacheController : ControllerBase
         ICacheFolderRepository cacheFolderRepository,
         ICacheJobStateRepository cacheJobStateRepository,
         ICacheJobRecoveryService cacheJobRecoveryService,
+        ICacheCleanupService cacheCleanupService,
         IFileProcessingJobStateRepository fileProcessingJobStateRepository,
         IFileProcessingJobRecoveryService fileProcessingJobRecoveryService,
         ILogger<CacheController> logger)
@@ -36,6 +38,7 @@ public class CacheController : ControllerBase
         _cacheFolderRepository = cacheFolderRepository;
         _cacheJobStateRepository = cacheJobStateRepository;
         _cacheJobRecoveryService = cacheJobRecoveryService;
+        _cacheCleanupService = cacheCleanupService;
         _fileProcessingJobStateRepository = fileProcessingJobStateRepository;
         _fileProcessingJobRecoveryService = fileProcessingJobRecoveryService;
         _logger = logger;
@@ -747,6 +750,97 @@ public class CacheController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error cleaning up old file processing jobs");
+            return StatusCode(500, "Internal server error");
+        }
+    }
+
+    // ============================================================================
+    // CACHE FILE CLEANUP ENDPOINTS
+    // ============================================================================
+
+    /// <summary>
+    /// Cleanup orphaned cache files in a specific cache folder
+    /// </summary>
+    [HttpPost("folders/{cacheFolderPath}/cleanup/cache")]
+    public async Task<ActionResult> CleanupOrphanedCacheFiles(
+        string cacheFolderPath,
+        [FromQuery] int olderThanDays = 7)
+    {
+        try
+        {
+            _logger.LogInformation("Cleaning up orphaned cache files in {Path}", cacheFolderPath);
+            var deletedCount = await _cacheCleanupService.CleanupOrphanedCacheFilesAsync(cacheFolderPath, olderThanDays);
+            return Ok(new { message = "Cache cleanup completed", deletedCount });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error cleaning up orphaned cache files");
+            return StatusCode(500, "Internal server error");
+        }
+    }
+
+    /// <summary>
+    /// Cleanup orphaned thumbnail files in a specific cache folder
+    /// </summary>
+    [HttpPost("folders/{cacheFolderPath}/cleanup/thumbnails")]
+    public async Task<ActionResult> CleanupOrphanedThumbnailFiles(
+        string cacheFolderPath,
+        [FromQuery] int olderThanDays = 7)
+    {
+        try
+        {
+            _logger.LogInformation("Cleaning up orphaned thumbnail files in {Path}", cacheFolderPath);
+            var deletedCount = await _cacheCleanupService.CleanupOrphanedThumbnailFilesAsync(cacheFolderPath, olderThanDays);
+            return Ok(new { message = "Thumbnail cleanup completed", deletedCount });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error cleaning up orphaned thumbnail files");
+            return StatusCode(500, "Internal server error");
+        }
+    }
+
+    /// <summary>
+    /// Cleanup all orphaned files (cache + thumbnails) in a cache folder
+    /// </summary>
+    [HttpPost("folders/{cacheFolderPath}/cleanup/all")]
+    public async Task<ActionResult> CleanupAllOrphanedFiles(
+        string cacheFolderPath,
+        [FromQuery] int olderThanDays = 7)
+    {
+        try
+        {
+            _logger.LogInformation("Cleaning up all orphaned files in {Path}", cacheFolderPath);
+            var (cacheFiles, thumbnailFiles) = await _cacheCleanupService.CleanupOrphanedFilesAsync(cacheFolderPath, olderThanDays);
+            return Ok(new { 
+                message = "Full cleanup completed", 
+                cacheFiles, 
+                thumbnailFiles,
+                totalFiles = cacheFiles + thumbnailFiles
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error cleaning up orphaned files");
+            return StatusCode(500, "Internal server error");
+        }
+    }
+
+    /// <summary>
+    /// Reconcile cache folder statistics with actual disk usage
+    /// </summary>
+    [HttpPost("folders/{id}/reconcile")]
+    public async Task<ActionResult> ReconcileCacheFolderStatistics(string id)
+    {
+        try
+        {
+            _logger.LogInformation("Reconciling cache folder statistics for {Id}", id);
+            await _cacheCleanupService.ReconcileCacheFolderStatisticsAsync(id);
+            return Ok(new { message = "Reconciliation completed" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error reconciling cache folder statistics");
             return StatusCode(500, "Internal server error");
         }
     }
