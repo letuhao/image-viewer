@@ -8,7 +8,8 @@ import {
   Menu,
   X,
   LogOut,
-  User
+  User,
+  Library
 } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
@@ -29,6 +30,7 @@ const Header: React.FC = () => {
 
   const navItems = [
     { path: '/', icon: Home, label: 'Dashboard' },
+    { path: '/libraries', icon: Library, label: 'Libraries' },
     { path: '/collections', icon: FolderOpen, label: 'Collections' },
     { path: '/jobs', icon: Activity, label: 'Jobs' },
     { path: '/cache', icon: HardDrive, label: 'Cache' },

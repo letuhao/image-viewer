@@ -13,6 +13,7 @@ import ImageViewer from './pages/ImageViewer';
 import Settings from './pages/Settings';
 import BackgroundJobs from './pages/BackgroundJobs';
 import CacheManagement from './pages/CacheManagement';
+import Libraries from './pages/Libraries';
 
 // Create React Query client
 const queryClient = new QueryClient({
@@ -44,6 +45,7 @@ function App() {
               }
             >
               <Route index element={<Dashboard />} />
+              <Route path="libraries" element={<Libraries />} />
               <Route path="collections" element={<Collections />} />
               <Route path="collections/:id" element={<CollectionDetail />} />
               <Route path="collections/:id/viewer" element={<ImageViewer />} />
