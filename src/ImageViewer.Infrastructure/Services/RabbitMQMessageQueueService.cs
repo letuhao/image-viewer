@@ -40,40 +40,9 @@ public class RabbitMQMessageQueueService : IMessageQueueService, IDisposable
         _connection = factory.CreateConnectionAsync().GetAwaiter().GetResult();
         _channel = _connection.CreateChannelAsync().GetAwaiter().GetResult();
 
-        SetupExchangesAndQueues();
-    }
-
-    private void SetupExchangesAndQueues()
-    {
-        // Declare main exchange
-        _channel.ExchangeDeclareAsync(_options.DefaultExchange, ExchangeType.Topic, true, false).GetAwaiter().GetResult();
-
-        // Declare dead letter exchange
-        _channel.ExchangeDeclareAsync(_options.DeadLetterExchange, ExchangeType.Topic, true, false).GetAwaiter().GetResult();
-
-        // Declare queues with dead letter exchange
-        var queueArgs = new Dictionary<string, object>
-        {
-            { "x-dead-letter-exchange", _options.DeadLetterExchange },
-            { "x-message-ttl", (int)_options.MessageTimeout.TotalMilliseconds }
-        };
-
-        _channel.QueueDeclareAsync(_options.CollectionScanQueue, true, false, false, queueArgs).GetAwaiter().GetResult();
-        _channel.QueueDeclareAsync(_options.ThumbnailGenerationQueue, true, false, false, queueArgs).GetAwaiter().GetResult();
-        _channel.QueueDeclareAsync(_options.CacheGenerationQueue, true, false, false, queueArgs).GetAwaiter().GetResult();
-        _channel.QueueDeclareAsync(_options.CollectionCreationQueue, true, false, false, queueArgs).GetAwaiter().GetResult();
-        _channel.QueueDeclareAsync(_options.BulkOperationQueue, true, false, false, queueArgs).GetAwaiter().GetResult();
-        _channel.QueueDeclareAsync(_options.ImageProcessingQueue, true, false, false, queueArgs).GetAwaiter().GetResult();
-
-        // Bind queues to exchange
-        _channel.QueueBindAsync(_options.CollectionScanQueue, _options.DefaultExchange, "collection.scan").GetAwaiter().GetResult();
-        _channel.QueueBindAsync(_options.ThumbnailGenerationQueue, _options.DefaultExchange, "thumbnail.generation").GetAwaiter().GetResult();
-        _channel.QueueBindAsync(_options.CacheGenerationQueue, _options.DefaultExchange, "cache.generation").GetAwaiter().GetResult();
-        _channel.QueueBindAsync(_options.CollectionCreationQueue, _options.DefaultExchange, "collection.creation").GetAwaiter().GetResult();
-        _channel.QueueBindAsync(_options.BulkOperationQueue, _options.DefaultExchange, "bulk.operation").GetAwaiter().GetResult();
-        _channel.QueueBindAsync(_options.ImageProcessingQueue, _options.DefaultExchange, "image.processing").GetAwaiter().GetResult();
-
-        _logger.LogInformation("RabbitMQ exchanges and queues configured successfully");
+        // Note: Queue and exchange setup is now handled by RabbitMQSetupService
+        // This prevents configuration conflicts (e.g., x-max-length parameter mismatches)
+        _logger.LogDebug("RabbitMQ connection and channel established");
     }
 
     public async Task PublishAsync<T>(T message, string? routingKey = null, CancellationToken cancellationToken = default) where T : MessageEvent

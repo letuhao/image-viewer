@@ -149,6 +149,9 @@ public class RabbitMQSetupService
         
         if (!string.IsNullOrEmpty(_options.ImageProcessingQueue))
             queues.Add(_options.ImageProcessingQueue);
+        
+        if (!string.IsNullOrEmpty(_options.LibraryScanQueue))
+            queues.Add(_options.LibraryScanQueue);
 
         return queues;
     }
@@ -168,7 +171,8 @@ public class RabbitMQSetupService
             { _options.CacheGenerationQueue, "cache.generation.*" },
             { _options.CollectionCreationQueue, "collection.creation.*" },
             { _options.BulkOperationQueue, "bulk.operation.*" },
-            { _options.ImageProcessingQueue, "image.processing.*" }
+            { _options.ImageProcessingQueue, "image.processing.*" },
+            { _options.LibraryScanQueue, "library.scan.*" }
         };
 
         foreach (var binding in queueBindings)
