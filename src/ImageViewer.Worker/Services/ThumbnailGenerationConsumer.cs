@@ -78,11 +78,43 @@ public class ThumbnailGenerationConsumer : BaseMessageConsumer
                 return;
             }
 
+            // Check if thumbnail already exists in database
+            var collectionId = ObjectId.Parse(thumbnailMessage.CollectionId);
+            var collection = await collectionRepository.GetByIdAsync(collectionId);
+            if (collection != null)
+            {
+                var existingThumbnail = collection.Thumbnails?.FirstOrDefault(t =>
+                    t.ImageId == thumbnailMessage.ImageId &&
+                    t.Width == thumbnailMessage.ThumbnailWidth &&
+                    t.Height == thumbnailMessage.ThumbnailHeight
+                );
+
+                if (existingThumbnail != null && File.Exists(existingThumbnail.Path))
+                {
+                    _logger.LogInformation("📁 Thumbnail already exists for image {ImageId}, skipping generation", thumbnailMessage.ImageId);
+                    
+                    // Track as skipped in FileProcessingJobState
+                    if (!string.IsNullOrEmpty(thumbnailMessage.JobId))
+                    {
+                        try
+                        {
+                            var jobStateRepository = scope.ServiceProvider.GetRequiredService<IFileProcessingJobStateRepository>();
+                            await jobStateRepository.AtomicIncrementSkippedAsync(thumbnailMessage.JobId, thumbnailMessage.ImageId);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning(ex, "Failed to track skipped thumbnail for image {ImageId} in job {JobId}",
+                                thumbnailMessage.ImageId, thumbnailMessage.JobId);
+                        }
+                    }
+                    
+                    return;
+                }
+            }
+
             // Generate thumbnail
             try
             {
-                // Convert string CollectionId back to ObjectId for cache folder selection
-                var collectionId = ObjectId.Parse(thumbnailMessage.CollectionId);
                 
                 var thumbnailPath = await GenerateThumbnail(
                     thumbnailMessage.ImagePath, 
