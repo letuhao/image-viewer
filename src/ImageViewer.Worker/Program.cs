@@ -91,6 +91,9 @@ builder.Services.AddHostedService<RabbitMQStartupHostedService>();
 // Register centralized job monitoring service (runs every 5 seconds)
 builder.Services.AddHostedService<JobMonitoringService>();
 
+// Register file processing job recovery service (runs on startup)
+builder.Services.AddHostedService<FileProcessingJobRecoveryHostedService>();
+
 // Register consumers
 builder.Services.AddHostedService<CollectionScanConsumer>();
 builder.Services.AddHostedService<ImageProcessingConsumer>();
