@@ -5,6 +5,7 @@ import { useImages } from '../hooks/useImages';
 import Button from '../components/ui/Button';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import ImageGrid from '../components/ImageGrid';
+import CollectionNavigationSidebar from '../components/collections/CollectionNavigationSidebar';
 import { 
   ArrowLeft, 
   Play, 
@@ -132,7 +133,16 @@ const CollectionDetail: React.FC = () => {
   };
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-full flex">
+      {/* Collection Navigation Sidebar */}
+      <CollectionNavigationSidebar 
+        collectionId={id!}
+        sortBy="updatedAt"
+        sortDirection="desc"
+      />
+      
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col">
         {/* Compact Header */}
         <div className="flex-shrink-0 border-b border-slate-800 bg-slate-900/50 backdrop-blur">
           <div className="px-6 py-3">
@@ -416,6 +426,8 @@ const CollectionDetail: React.FC = () => {
             </div>
           </div>
         )}
+      </div>
+      {/* End Main Content */}
     </div>
   );
 };

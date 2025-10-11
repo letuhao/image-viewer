@@ -3,6 +3,7 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useImages, useImage } from '../hooks/useImages';
 import { useCollection } from '../hooks/useCollections';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
+import CollectionNavigationSidebar from '../components/collections/CollectionNavigationSidebar';
 import {
   X,
   ChevronLeft,
@@ -23,6 +24,7 @@ import {
   Expand,
   Scan,
   ArrowDownUp,
+  PanelLeft,
 } from 'lucide-react';
 
 /**
@@ -83,6 +85,9 @@ const ImageViewer: React.FC = () => {
   const [navigationMode, setNavigationMode] = useState<NavigationMode>(() => 
     (localStorage.getItem('imageViewerNavigationMode') as NavigationMode) || 'paging'
   );
+  const [showCollectionSidebar, setShowCollectionSidebar] = useState(() => 
+    localStorage.getItem('imageViewerShowSidebar') === 'true' // Default: hidden
+  );
   const slideshowRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const imageContainerRef = useRef<HTMLDivElement>(null);
   const preloadedImagesRef = useRef<Map<string, HTMLImageElement>>(new Map());
@@ -131,6 +136,13 @@ const ImageViewer: React.FC = () => {
     setNavigationMode(newMode);
     localStorage.setItem('imageViewerNavigationMode', newMode);
   }, [navigationMode]);
+
+  // Toggle collection sidebar
+  const toggleCollectionSidebar = useCallback(() => {
+    const newValue = !showCollectionSidebar;
+    setShowCollectionSidebar(newValue);
+    localStorage.setItem('imageViewerShowSidebar', newValue.toString());
+  }, [showCollectionSidebar]);
 
   // Get image class based on fit mode and screen orientation
   const getImageClass = useCallback(() => {
@@ -390,11 +402,35 @@ const ImageViewer: React.FC = () => {
   }
 
   return (
-    <div className="fixed inset-0 bg-black z-50 flex flex-col">
+    <div className="fixed inset-0 bg-black z-50 flex">
+      {/* Collection Navigation Sidebar (toggleable) */}
+      {showCollectionSidebar && (
+        <CollectionNavigationSidebar 
+          collectionId={collectionId!}
+          sortBy="updatedAt"
+          sortDirection="desc"
+          onNavigate={(newCollectionId) => {
+            // Navigate to new collection's first image
+            navigate(`/collections/${newCollectionId}/viewer?imageId=${newCollectionId}`);
+          }}
+        />
+      )}
+      
+      {/* Main Viewer Area */}
+      <div className="flex-1 flex flex-col">
       {/* Header */}
       <div className="absolute top-0 left-0 right-0 z-10 bg-gradient-to-b from-black/80 to-transparent p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
+            <button
+              onClick={toggleCollectionSidebar}
+              className={`p-2 hover:bg-white/10 rounded-lg transition-colors ${
+                showCollectionSidebar ? 'bg-primary-500' : ''
+              }`}
+              title={showCollectionSidebar ? 'Hide Collections' : 'Show Collections'}
+            >
+              <PanelLeft className="h-6 w-6 text-white" />
+            </button>
             <button
               onClick={() => navigate(`/collections/${collectionId}`)}
               className="p-2 hover:bg-white/10 rounded-lg transition-colors"
@@ -739,6 +775,8 @@ const ImageViewer: React.FC = () => {
           </div>
         </div>
       )}
+      </div>
+      {/* End Main Viewer Area */}
     </div>
   );
 };
