@@ -833,8 +833,8 @@ public class CollectionService : ICollectionService
             "createdat" => Builders<Collection>.Sort.Ascending(c => c.CreatedAt),
             "updatedat" => Builders<Collection>.Sort.Ascending(c => c.UpdatedAt),
             "name" => Builders<Collection>.Sort.Ascending(c => c.Name),
-            "imagecount" => Builders<Collection>.Sort.Ascending(c => c.ImageCount),
-            "totalsize" => Builders<Collection>.Sort.Ascending(c => c.TotalSize),
+            "imagecount" => Builders<Collection>.Sort.Ascending(c => c.Statistics.TotalItems),
+            "totalsize" => Builders<Collection>.Sort.Ascending(c => c.Statistics.TotalSize),
             _ => Builders<Collection>.Sort.Ascending(c => c.UpdatedAt)
         };
     }
@@ -846,8 +846,8 @@ public class CollectionService : ICollectionService
             "createdat" => Builders<Collection>.Sort.Descending(c => c.CreatedAt),
             "updatedat" => Builders<Collection>.Sort.Descending(c => c.UpdatedAt),
             "name" => Builders<Collection>.Sort.Descending(c => c.Name),
-            "imagecount" => Builders<Collection>.Sort.Descending(c => c.ImageCount),
-            "totalsize" => Builders<Collection>.Sort.Descending(c => c.TotalSize),
+            "imagecount" => Builders<Collection>.Sort.Descending(c => c.Statistics.TotalItems),
+            "totalsize" => Builders<Collection>.Sort.Descending(c => c.Statistics.TotalSize),
             _ => Builders<Collection>.Sort.Descending(c => c.UpdatedAt)
         };
     }
