@@ -19,19 +19,16 @@ public class Program
 {
     public static void Main(string[] args)
     {
-        // Configure Serilog
+        // Configure Serilog - READ FROM appsettings.json ONLY
+        var configuration = new ConfigurationBuilder()
+            .SetBasePath(Directory.GetCurrentDirectory())
+            .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+            .AddJsonFile($"appsettings.{Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production"}.json", optional: true)
+            .AddEnvironmentVariables()
+            .Build();
+
         Log.Logger = new LoggerConfiguration()
-            .MinimumLevel.Information()
-            .MinimumLevel.Override("Hangfire", Serilog.Events.LogEventLevel.Information)
-            .Enrich.FromLogContext()
-            .WriteTo.Console(
-                outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj} {Properties:j}{NewLine}{Exception}")
-            .WriteTo.File(
-                path: "logs/scheduler-.log",
-                rollingInterval: RollingInterval.Day,
-                outputTemplate: "[{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} {Level:u3}] {Message:lj} {Properties:j}{NewLine}{Exception}",
-                fileSizeLimitBytes: 100 * 1024 * 1024, // 100MB
-                retainedFileCountLimit: 7)
+            .ReadFrom.Configuration(configuration) // Read all settings from appsettings.json
             .CreateLogger();
 
         try
