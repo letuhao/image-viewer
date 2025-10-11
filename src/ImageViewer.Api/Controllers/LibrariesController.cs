@@ -2,6 +2,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MongoDB.Bson;
 using ImageViewer.Application.Services;
+using ImageViewer.Application.DTOs;
+using ImageViewer.Application.Mappings;
 using ImageViewer.Domain.Exceptions;
 using ImageViewer.Domain.Interfaces;
 
@@ -45,7 +47,8 @@ public class LibrariesController : ControllerBase
                 request.Description,
                 request.AutoScan);
             
-            return CreatedAtAction(nameof(GetLibrary), new { id = library.Id }, library);
+            var libraryDto = library.ToDto();
+            return CreatedAtAction(nameof(GetLibrary), new { id = library.Id.ToString() }, libraryDto);
         }
         catch (ValidationException ex)
         {
@@ -74,7 +77,7 @@ public class LibrariesController : ControllerBase
                 return BadRequest(new { message = "Invalid library ID format" });
 
             var library = await _libraryService.GetLibraryByIdAsync(libraryId);
-            return Ok(library);
+            return Ok(library.ToDto());
         }
         catch (EntityNotFoundException ex)
         {
@@ -140,7 +143,7 @@ public class LibrariesController : ControllerBase
         try
         {
             var library = await _libraryService.GetLibraryByPathAsync(path);
-            return Ok(library);
+            return Ok(library.ToDto());
         }
         catch (ValidationException ex)
         {
@@ -169,7 +172,7 @@ public class LibrariesController : ControllerBase
                 return BadRequest(new { message = "Invalid owner ID format" });
 
             var libraries = await _libraryService.GetLibrariesByOwnerIdAsync(ownerObjectId);
-            return Ok(libraries);
+            return Ok(libraries.ToDto());
         }
         catch (Exception ex)
         {
@@ -187,7 +190,7 @@ public class LibrariesController : ControllerBase
         try
         {
             var libraries = await _libraryService.GetPublicLibrariesAsync();
-            return Ok(libraries);
+            return Ok(libraries.ToDto());
         }
         catch (Exception ex)
         {
@@ -205,7 +208,7 @@ public class LibrariesController : ControllerBase
         try
         {
             var libraries = await _libraryService.GetLibrariesAsync(page, pageSize);
-            return Ok(libraries);
+            return Ok(libraries.ToDto());
         }
         catch (ValidationException ex)
         {
@@ -233,7 +236,7 @@ public class LibrariesController : ControllerBase
                 return BadRequest(ModelState);
 
             var library = await _libraryService.UpdateLibraryAsync(libraryId, request);
-            return Ok(library);
+            return Ok(library.ToDto());
         }
         catch (ValidationException ex)
         {
@@ -295,7 +298,7 @@ public class LibrariesController : ControllerBase
                 return BadRequest(ModelState);
 
             var library = await _libraryService.UpdateSettingsAsync(libraryId, request);
-            return Ok(library);
+            return Ok(library.ToDto());
         }
         catch (ValidationException ex)
         {
