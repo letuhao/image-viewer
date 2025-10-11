@@ -6,7 +6,8 @@ import Button from '../components/ui/Button';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import AddCollectionDialog from '../components/collections/AddCollectionDialog';
 import BulkAddCollectionsDialog from '../components/collections/BulkAddCollectionsDialog';
-import { Pagination, PaginationSettings, PaginationSettingsModal } from '../components/common/Pagination';
+import { Pagination, PaginationSettings } from '../components/common/Pagination';
+import { useUserSettings } from '../hooks/useSettings';
 import { 
   FolderOpen, 
   Archive, 
@@ -17,8 +18,7 @@ import {
   ListTree,
   Maximize2,
   Minimize2,
-  Zap,
-  Settings as SettingsIcon
+  Zap
 } from 'lucide-react';
 import type { Collection } from '../services/types';
 
@@ -57,22 +57,14 @@ const Collections: React.FC = () => {
   // Dialog states
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showBulkAddDialog, setShowBulkAddDialog] = useState(false);
-  const [showPaginationSettings, setShowPaginationSettings] = useState(false);
 
-  // Pagination settings (persisted to localStorage)
-  const [paginationSettings, setPaginationSettings] = useState<PaginationSettings>(() => {
-    const saved = localStorage.getItem('paginationSettings');
-    return saved ? JSON.parse(saved) : {
-      showFirstLast: true,
-      showPageNumbers: true,
-      pageNumbersToShow: 5,
-    };
-  });
-
-  const savePaginationSettings = useCallback((settings: PaginationSettings) => {
-    setPaginationSettings(settings);
-    localStorage.setItem('paginationSettings', JSON.stringify(settings));
-  }, []);
+  // Get pagination settings from user settings (backend)
+  const { data: userSettingsData } = useUserSettings();
+  const paginationSettings: PaginationSettings = {
+    showFirstLast: userSettingsData?.pagination?.showFirstLast ?? true,
+    showPageNumbers: userSettingsData?.pagination?.showPageNumbers ?? true,
+    pageNumbersToShow: userSettingsData?.pagination?.pageNumbersToShow ?? 5,
+  };
 
   const { data, isLoading, refetch} = useCollections({ page, limit });
 
@@ -210,15 +202,6 @@ const Collections: React.FC = () => {
                     settings={paginationSettings}
                     compact={true}
                   />
-                  
-                  {/* Pagination Settings Button */}
-                  <button
-                    onClick={() => setShowPaginationSettings(true)}
-                    className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-700 transition-colors"
-                    title="Pagination Settings"
-                  >
-                    <SettingsIcon className="h-4 w-4" />
-                  </button>
                 </div>
 
               {/* View Mode - Compact Icons Only */}
@@ -545,13 +528,6 @@ const Collections: React.FC = () => {
         onClose={() => setShowBulkAddDialog(false)}
         onSuccess={() => refetch()}
       />
-      {showPaginationSettings && (
-        <PaginationSettingsModal
-          settings={paginationSettings}
-          onSettingsChange={savePaginationSettings}
-          onClose={() => setShowPaginationSettings(false)}
-        />
-      )}
     </div>
   );
 };

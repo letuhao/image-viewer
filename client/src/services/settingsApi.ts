@@ -13,6 +13,7 @@ export interface UserSettings {
   notifications: NotificationSettings;
   privacy: PrivacySettings;
   performance: PerformanceSettings;
+  pagination: PaginationSettings;
 }
 
 export interface NotificationSettings {
@@ -36,6 +37,12 @@ export interface PerformanceSettings {
   autoOptimize: boolean;
 }
 
+export interface PaginationSettings {
+  showFirstLast: boolean;
+  showPageNumbers: boolean;
+  pageNumbersToShow: number;
+}
+
 export interface SystemSetting {
   id: string;
   settingKey: string;
@@ -57,6 +64,7 @@ export interface UpdateUserSettingsRequest {
   notifications?: Partial<NotificationSettings>;
   privacy?: Partial<PrivacySettings>;
   performance?: Partial<PerformanceSettings>;
+  pagination?: Partial<PaginationSettings>;
 }
 
 export interface UpdateSystemSettingRequest {

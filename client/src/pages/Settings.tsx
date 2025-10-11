@@ -43,6 +43,10 @@ const Settings: React.FC = () => {
     collectionDetailPageSize: 20,
     // Image Viewer settings
     maxPreloadImages: 20,
+    // Pagination settings
+    paginationShowFirstLast: true,
+    paginationShowPageNumbers: true,
+    paginationPageNumbersToShow: 5,
   });
 
   // System settings state
@@ -75,6 +79,10 @@ const Settings: React.FC = () => {
         collectionDetailPageSize: parseInt(localStorage.getItem('collectionDetailPageSize') || '20'),
         // Image Viewer settings
         maxPreloadImages: parseInt(localStorage.getItem('maxPreloadImages') || '20'),
+        // Pagination settings
+        paginationShowFirstLast: apiSettings.pagination?.showFirstLast ?? true,
+        paginationShowPageNumbers: apiSettings.pagination?.showPageNumbers ?? true,
+        paginationPageNumbersToShow: apiSettings.pagination?.pageNumbersToShow ?? 5,
       });
     }
   }, [apiSettings]);
@@ -115,6 +123,11 @@ const Settings: React.FC = () => {
       privacy: {
         profileVisibility: userSettings.profilePublic ? 'public' : 'private',
         analytics: userSettings.analytics,
+      },
+      pagination: {
+        showFirstLast: userSettings.paginationShowFirstLast,
+        showPageNumbers: userSettings.paginationShowPageNumbers,
+        pageNumbersToShow: userSettings.paginationPageNumbersToShow,
       },
     });
   };
@@ -413,6 +426,56 @@ const Settings: React.FC = () => {
                       className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                       placeholder="20"
                     />
+                  </SettingItem>
+                </SettingsSection>
+
+                {/* Pagination Settings */}
+                <SettingsSection
+                  title="Pagination Controls"
+                  description="Customize pagination controls in collection lists and detail pages"
+                >
+                  <SettingItem
+                    label="Show First/Last Buttons"
+                    description="Display buttons to jump to first and last page"
+                  >
+                    <Toggle
+                      enabled={userSettings.paginationShowFirstLast}
+                      onChange={(enabled) => setUserSettings({ ...userSettings, paginationShowFirstLast: enabled })}
+                    />
+                  </SettingItem>
+
+                  <SettingItem
+                    label="Show Page Numbers"
+                    description="Display clickable page numbers for quick navigation"
+                  >
+                    <Toggle
+                      enabled={userSettings.paginationShowPageNumbers}
+                      onChange={(enabled) => setUserSettings({ ...userSettings, paginationShowPageNumbers: enabled })}
+                    />
+                  </SettingItem>
+
+                  <SettingItem
+                    label="Page Numbers to Show"
+                    description="How many page numbers to display on each side of current page (1-10)"
+                    vertical
+                  >
+                    <input
+                      type="number"
+                      min="1"
+                      max="10"
+                      value={userSettings.paginationPageNumbersToShow}
+                      onChange={(e) => {
+                        const newValue = parseInt(e.target.value) || 5;
+                        if (newValue >= 1 && newValue <= 10) {
+                          setUserSettings({ ...userSettings, paginationPageNumbersToShow: newValue });
+                        }
+                      }}
+                      className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="5"
+                    />
+                    <p className="text-xs text-slate-500 mt-1">
+                      Example with 5: [1] [...] [45][46][47][48][49][50][51][52][53][54][55] [...] [100]
+                    </p>
                   </SettingItem>
                 </SettingsSection>
 

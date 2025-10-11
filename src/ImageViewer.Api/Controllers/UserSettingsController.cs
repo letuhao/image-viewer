@@ -80,6 +80,12 @@ public class UserSettingsController : ControllerBase
                     videoQuality = user.Settings.Performance.VideoQuality,
                     cacheSize = user.Settings.Performance.CacheSize,
                     autoOptimize = user.Settings.Performance.AutoOptimize
+                },
+                pagination = new
+                {
+                    showFirstLast = user.Settings.Pagination.ShowFirstLast,
+                    showPageNumbers = user.Settings.Pagination.ShowPageNumbers,
+                    pageNumbersToShow = user.Settings.Pagination.PageNumbersToShow
                 }
             });
         }
@@ -169,6 +175,17 @@ public class UserSettingsController : ControllerBase
                 if (request.Performance.AutoOptimize.HasValue)
                     user.Settings.Performance.UpdateAutoOptimize(request.Performance.AutoOptimize.Value);
             }
+            
+            // Update pagination settings
+            if (request.Pagination != null)
+            {
+                if (request.Pagination.ShowFirstLast.HasValue)
+                    user.Settings.Pagination.UpdateShowFirstLast(request.Pagination.ShowFirstLast.Value);
+                if (request.Pagination.ShowPageNumbers.HasValue)
+                    user.Settings.Pagination.UpdateShowPageNumbers(request.Pagination.ShowPageNumbers.Value);
+                if (request.Pagination.PageNumbersToShow.HasValue)
+                    user.Settings.Pagination.UpdatePageNumbersToShow(request.Pagination.PageNumbersToShow.Value);
+            }
 
             user.UpdatedAt = DateTime.UtcNow;
             await _userRepository.UpdateAsync(user);
@@ -202,6 +219,12 @@ public class UserSettingsController : ControllerBase
                     videoQuality = user.Settings.Performance.VideoQuality,
                     cacheSize = user.Settings.Performance.CacheSize,
                     autoOptimize = user.Settings.Performance.AutoOptimize
+                },
+                pagination = new
+                {
+                    showFirstLast = user.Settings.Pagination.ShowFirstLast,
+                    showPageNumbers = user.Settings.Pagination.ShowPageNumbers,
+                    pageNumbersToShow = user.Settings.Pagination.PageNumbersToShow
                 }
             });
         }
@@ -268,6 +291,12 @@ public class UserSettingsController : ControllerBase
                     videoQuality = user.Settings.Performance.VideoQuality,
                     cacheSize = user.Settings.Performance.CacheSize,
                     autoOptimize = user.Settings.Performance.AutoOptimize
+                },
+                pagination = new
+                {
+                    showFirstLast = user.Settings.Pagination.ShowFirstLast,
+                    showPageNumbers = user.Settings.Pagination.ShowPageNumbers,
+                    pageNumbersToShow = user.Settings.Pagination.PageNumbersToShow
                 }
             });
         }
@@ -292,6 +321,7 @@ public class UpdateUserSettingsRequest
     public NotificationSettingsUpdate? Notifications { get; set; }
     public PrivacySettingsUpdate? Privacy { get; set; }
     public PerformanceSettingsUpdate? Performance { get; set; }
+    public PaginationSettingsUpdate? Pagination { get; set; }
 }
 
 public class NotificationSettingsUpdate
@@ -316,4 +346,11 @@ public class PerformanceSettingsUpdate
     public string? VideoQuality { get; set; }
     public long? CacheSize { get; set; }
     public bool? AutoOptimize { get; set; }
+}
+
+public class PaginationSettingsUpdate
+{
+    public bool? ShowFirstLast { get; set; }
+    public bool? ShowPageNumbers { get; set; }
+    public int? PageNumbersToShow { get; set; }
 }
