@@ -109,7 +109,8 @@ public static class ServiceCollectionExtensions
         });
 
         // Register MongoDB initialization service (creates indexes on startup)
-        services.AddSingleton<MongoDbInitializationService>();
+        // Note: Scoped because it depends on IMongoDatabase which is scoped
+        services.AddScoped<MongoDbInitializationService>();
 
         // Register core repositories
         services.AddScoped<IUserRepository, UserRepository>();
