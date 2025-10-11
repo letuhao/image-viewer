@@ -57,30 +57,44 @@ public class LibraryService : ILibraryService
             var createdLibrary = await _libraryRepository.CreateAsync(library);
 
             // Create scheduled job if auto-scan is enabled and scheduler service is available
+            _logger.LogInformation(
+                "Checking scheduled job creation: AutoScan={AutoScan}, ServiceAvailable={ServiceAvailable}",
+                createdLibrary.Settings.AutoScan,
+                _scheduledJobManagementService != null);
+            
             if (createdLibrary.Settings.AutoScan && _scheduledJobManagementService != null)
             {
                 try
                 {
+                    _logger.LogInformation("Creating scheduled scan job for library {LibraryId}...", createdLibrary.Id);
+                    
                     // Default: scan every day at 2 AM
                     var cronExpression = "0 2 * * *";
-                    await _scheduledJobManagementService.CreateOrUpdateLibraryScanJobAsync(
+                    var scheduledJob = await _scheduledJobManagementService.CreateOrUpdateLibraryScanJobAsync(
                         createdLibrary.Id,
                         createdLibrary.Name,
                         cronExpression,
                         isEnabled: true);
 
                     _logger.LogInformation(
-                        "Created scheduled scan job for library {LibraryId} ({LibraryName})",
+                        "✅ Created scheduled scan job for library {LibraryId} ({LibraryName}). JobId: {JobId}, Enabled: {IsEnabled}",
                         createdLibrary.Id,
-                        createdLibrary.Name);
+                        createdLibrary.Name,
+                        scheduledJob.Id,
+                        scheduledJob.IsEnabled);
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex,
-                        "Failed to create scheduled job for library {LibraryId}, library created but job registration failed",
+                    _logger.LogError(ex,
+                        "❌ Failed to create scheduled job for library {LibraryId}, library created but job registration failed",
                         createdLibrary.Id);
                     // Don't throw - library was created successfully
                 }
+            }
+            else if (createdLibrary.Settings.AutoScan && _scheduledJobManagementService == null)
+            {
+                _logger.LogWarning(
+                    "⚠️ AutoScan enabled but IScheduledJobManagementService is not available (DI registration issue)");
             }
 
             return createdLibrary;
