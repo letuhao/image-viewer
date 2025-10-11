@@ -1,5 +1,10 @@
 import api from './api';
 
+// Debug: Verify api instance is imported correctly
+console.log('[libraryApi] api instance imported:', api);
+console.log('[libraryApi] api.defaults.baseURL:', api?.defaults?.baseURL);
+console.log('[libraryApi] api.interceptors:', api?.interceptors);
+
 export interface Library {
   id: string;
   name: string;
