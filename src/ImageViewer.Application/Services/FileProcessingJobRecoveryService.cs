@@ -256,7 +256,7 @@ public class FileProcessingJobRecoveryService : IFileProcessingJobRecoveryServic
                     CreatedBySystem = $"JobRecovery_{jobState.JobId}"
                 };
                 
-                await _messageQueueService.PublishCacheGenerationMessageAsync(cacheMessage);
+                await _messageQueueService.PublishAsync(cacheMessage, "cache.generation");
                 queuedCount++;
             }
             
@@ -299,7 +299,7 @@ public class FileProcessingJobRecoveryService : IFileProcessingJobRecoveryServic
                     ThumbnailHeight = settings.Height
                 };
                 
-                await _messageQueueService.PublishThumbnailGenerationMessageAsync(thumbnailMessage);
+                await _messageQueueService.PublishAsync(thumbnailMessage, "thumbnail.generation");
                 queuedCount++;
             }
             

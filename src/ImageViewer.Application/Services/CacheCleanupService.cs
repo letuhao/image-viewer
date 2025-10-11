@@ -74,7 +74,7 @@ public class CacheCleanupService : ICacheCleanupService
                     var isOrphaned = true;
                     foreach (var collection in collectionsList)
                     {
-                        if (collection.CacheImages.Any(c => c.ImageId == imageId && c.Path == cacheFile))
+                        if (collection.CacheImages.Any(c => c.ImageId == imageId && c.CachePath == cacheFile))
                         {
                             isOrphaned = false;
                             break;

@@ -25,22 +25,6 @@ public class CacheSummaryDto
 }
 
 /// <summary>
-/// Cache folder statistics DTO
-/// </summary>
-public class CacheFolderStatisticsDto
-{
-    public ObjectId Id { get; set; }
-    public string Name { get; set; } = string.Empty;
-    public string Path { get; set; } = string.Empty;
-    public int Priority { get; set; }
-    public long MaxSize { get; set; }
-    public long CurrentSize { get; set; }
-    public long FileCount { get; set; }
-    public bool IsActive { get; set; }
-    public DateTime LastUsed { get; set; }
-}
-
-/// <summary>
 /// Cache folder DTO
 /// </summary>
 public class CacheFolderDto

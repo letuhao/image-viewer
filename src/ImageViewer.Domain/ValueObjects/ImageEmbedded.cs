@@ -114,4 +114,40 @@ public class ImageEmbedded
         DeletedAt = null;
         UpdatedAt = DateTime.UtcNow;
     }
+
+    /// <summary>
+    /// Get full path for the image (resolves relative paths and handles ZIP entries)
+    /// 获取图片的完整路径 - Lấy đường dẫn đầy đủ
+    /// </summary>
+    public string GetFullPath(string collectionPath)
+    {
+        if (string.IsNullOrEmpty(collectionPath))
+        {
+            return RelativePath;
+        }
+
+        // Handle ZIP entries (format: "archive.zip#entry.jpg")
+        if (RelativePath.Contains("#"))
+        {
+            var parts = RelativePath.Split('#');
+            var zipPath = parts[0];
+            var entryName = parts.Length > 1 ? parts[1] : string.Empty;
+
+            // If ZIP path is not rooted, combine with collection path
+            if (!Path.IsPathRooted(zipPath))
+            {
+                zipPath = Path.Combine(collectionPath, zipPath);
+            }
+
+            return $"{zipPath}#{entryName}";
+        }
+
+        // Handle regular files
+        if (!Path.IsPathRooted(RelativePath))
+        {
+            return Path.Combine(collectionPath, RelativePath);
+        }
+
+        return RelativePath;
+    }
 }

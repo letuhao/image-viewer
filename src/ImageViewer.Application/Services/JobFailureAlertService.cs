@@ -121,12 +121,13 @@ public class JobFailureAlertService : IJobFailureAlertService
             // Send notification (if notification service is available)
             try
             {
-                await _notificationService.CreateNotificationAsync(
-                    userId: null, // System notification
-                    title: $"Job Failure Alert: {jobType} - {collectionName}",
-                    message: message,
-                    type: "error",
-                    data: new Dictionary<string, object>
+                var notificationRequest = new DTOs.Notifications.CreateNotificationRequest
+                {
+                    UserId = null, // System notification
+                    Title = $"Job Failure Alert: {jobType} - {collectionName}",
+                    Message = message,
+                    Type = "error",
+                    Data = new Dictionary<string, object>
                     {
                         { "jobId", jobId },
                         { "jobType", jobType },
@@ -134,7 +135,9 @@ public class JobFailureAlertService : IJobFailureAlertService
                         { "failedCount", failedCount },
                         { "totalCount", totalCount }
                     }
-                );
+                };
+
+                await _notificationService.CreateNotificationAsync(notificationRequest);
 
                 _logger.LogInformation("✅ Failure alert sent for job {JobId}", jobId);
             }
