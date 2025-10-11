@@ -3,6 +3,8 @@ using ImageViewer.Domain.ValueObjects;
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
+#pragma warning disable CS8618 // MongoDB entities/value objects are initialized by the driver
+
 namespace ImageViewer.Domain.Entities;
 
 /// <summary>

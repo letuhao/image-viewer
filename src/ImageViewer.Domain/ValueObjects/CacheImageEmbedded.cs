@@ -1,6 +1,8 @@
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
+#pragma warning disable CS8618 // MongoDB value objects are initialized by the driver
+
 namespace ImageViewer.Domain.ValueObjects;
 
 /// <summary>
