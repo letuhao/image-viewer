@@ -12,14 +12,13 @@ export const api = axios.create({
   },
 });
 
-// Request interceptor for adding auth tokens (future)
+// Request interceptor for adding auth tokens
 api.interceptors.request.use(
   (config) => {
-    // TODO: Add authentication token when implemented
-    // const token = localStorage.getItem('authToken');
-    // if (token) {
-    //   config.headers.Authorization = `Bearer ${token}`;
-    // }
+    const token = localStorage.getItem('auth_token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
     return config;
   },
   (error) => {
