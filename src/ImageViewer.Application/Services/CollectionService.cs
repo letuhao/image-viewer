@@ -91,7 +91,7 @@ public class CollectionService : ICollectionService
                     JobId = scanJob.JobId.ToString() // Link message to job for tracking!
                 };
                 
-                await _messageQueueService.PublishAsync(scanMessage, "collection.scan");
+                await _messageQueueService.PublishAsync(scanMessage); // Use default routing key
                 _logger.LogInformation("✅ Queued collection scan for new collection {CollectionId}: {CollectionName} (Job: {JobId})", 
                     createdCollection.Id, createdCollection.Name, scanJob.JobId);
             }
