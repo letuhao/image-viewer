@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
 using ImageViewer.Application.Services;
 using ImageViewer.Application.DTOs.Cache;
+using ImageViewer.Application.Mappings;
+using ImageViewer.Domain.Interfaces;
 using MongoDB.Bson;
 
 namespace ImageViewer.Api.Controllers;
@@ -13,11 +15,22 @@ namespace ImageViewer.Api.Controllers;
 public class CacheController : ControllerBase
 {
     private readonly ICacheService _cacheService;
+    private readonly ICacheFolderRepository _cacheFolderRepository;
+    private readonly ICacheJobStateRepository _cacheJobStateRepository;
+    private readonly ICacheJobRecoveryService _cacheJobRecoveryService;
     private readonly ILogger<CacheController> _logger;
 
-    public CacheController(ICacheService cacheService, ILogger<CacheController> logger)
+    public CacheController(
+        ICacheService cacheService,
+        ICacheFolderRepository cacheFolderRepository,
+        ICacheJobStateRepository cacheJobStateRepository,
+        ICacheJobRecoveryService cacheJobRecoveryService,
+        ILogger<CacheController> logger)
     {
         _cacheService = cacheService;
+        _cacheFolderRepository = cacheFolderRepository;
+        _cacheJobStateRepository = cacheJobStateRepository;
+        _cacheJobRecoveryService = cacheJobRecoveryService;
         _logger = logger;
     }
 
@@ -295,6 +308,228 @@ public class CacheController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting cache distribution statistics");
+            return StatusCode(500, "Internal server error");
+        }
+    }
+
+    /// <summary>
+    /// Get detailed cache folder statistics (enhanced with collection/file counts)
+    /// </summary>
+    [HttpGet("folders/statistics")]
+    public async Task<ActionResult<IEnumerable<CacheFolderStatisticsDto>>> GetCacheFolderStatistics()
+    {
+        try
+        {
+            _logger.LogInformation("Getting detailed cache folder statistics");
+            var cacheFolders = await _cacheFolderRepository.GetAllAsync();
+            var statistics = cacheFolders.ToStatisticsDtoList();
+            return Ok(statistics);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting cache folder statistics");
+            return StatusCode(500, "Internal server error");
+        }
+    }
+
+    /// <summary>
+    /// Get cache folder statistics by ID
+    /// </summary>
+    [HttpGet("folders/{id}/statistics")]
+    public async Task<ActionResult<CacheFolderStatisticsDto>> GetCacheFolderStatisticsById(string id)
+    {
+        try
+        {
+            if (!ObjectId.TryParse(id, out var objectId))
+            {
+                return BadRequest("Invalid cache folder ID");
+            }
+
+            var cacheFolder = await _cacheFolderRepository.GetByIdAsync(objectId);
+            if (cacheFolder == null)
+            {
+                return NotFound();
+            }
+
+            return Ok(cacheFolder.ToStatisticsDto());
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting cache folder statistics for {Id}", id);
+            return StatusCode(500, "Internal server error");
+        }
+    }
+
+    /// <summary>
+    /// Get all cache job states
+    /// </summary>
+    [HttpGet("jobs")]
+    public async Task<ActionResult<IEnumerable<CacheJobStateDto>>> GetCacheJobStates(
+        [FromQuery] string? status = null,
+        [FromQuery] bool includeDetails = false)
+    {
+        try
+        {
+            _logger.LogInformation("Getting cache job states (status: {Status})", status ?? "all");
+            
+            IEnumerable<Domain.Entities.CacheJobState> jobs;
+            
+            if (!string.IsNullOrEmpty(status))
+            {
+                if (status.Equals("incomplete", StringComparison.OrdinalIgnoreCase))
+                {
+                    jobs = await _cacheJobStateRepository.GetIncompleteJobsAsync();
+                }
+                else if (status.Equals("paused", StringComparison.OrdinalIgnoreCase))
+                {
+                    jobs = await _cacheJobStateRepository.GetPausedJobsAsync();
+                }
+                else
+                {
+                    // Get all and filter by status
+                    var allJobs = await _cacheJobStateRepository.GetAllAsync();
+                    jobs = allJobs.Where(j => j.Status.Equals(status, StringComparison.OrdinalIgnoreCase));
+                }
+            }
+            else
+            {
+                jobs = await _cacheJobStateRepository.GetAllAsync();
+            }
+
+            return Ok(jobs.ToDtoList(includeDetails));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting cache job states");
+            return StatusCode(500, "Internal server error");
+        }
+    }
+
+    /// <summary>
+    /// Get cache job state by job ID
+    /// </summary>
+    [HttpGet("jobs/{jobId}")]
+    public async Task<ActionResult<CacheJobStateDto>> GetCacheJobState(string jobId, [FromQuery] bool includeDetails = true)
+    {
+        try
+        {
+            var jobState = await _cacheJobStateRepository.GetByJobIdAsync(jobId);
+            if (jobState == null)
+            {
+                return NotFound();
+            }
+
+            return Ok(jobState.ToDto(includeDetails));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting cache job state for {JobId}", jobId);
+            return StatusCode(500, "Internal server error");
+        }
+    }
+
+    /// <summary>
+    /// Get cache job state by collection ID
+    /// </summary>
+    [HttpGet("jobs/collection/{collectionId}")]
+    public async Task<ActionResult<CacheJobStateDto>> GetCacheJobStateByCollection(string collectionId, [FromQuery] bool includeDetails = false)
+    {
+        try
+        {
+            var jobState = await _cacheJobStateRepository.GetByCollectionIdAsync(collectionId);
+            if (jobState == null)
+            {
+                return NotFound();
+            }
+
+            return Ok(jobState.ToDto(includeDetails));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting cache job state for collection {CollectionId}", collectionId);
+            return StatusCode(500, "Internal server error");
+        }
+    }
+
+    /// <summary>
+    /// Get resumable job IDs
+    /// </summary>
+    [HttpGet("jobs/resumable")]
+    public async Task<ActionResult<IEnumerable<string>>> GetResumableJobs()
+    {
+        try
+        {
+            var jobIds = await _cacheJobRecoveryService.GetResumableJobIdsAsync();
+            return Ok(jobIds);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting resumable jobs");
+            return StatusCode(500, "Internal server error");
+        }
+    }
+
+    /// <summary>
+    /// Resume a specific cache job
+    /// </summary>
+    [HttpPost("jobs/{jobId}/resume")]
+    public async Task<ActionResult> ResumeJob(string jobId)
+    {
+        try
+        {
+            _logger.LogInformation("Resuming cache job {JobId}", jobId);
+            var success = await _cacheJobRecoveryService.ResumeJobAsync(jobId);
+            
+            if (success)
+            {
+                return Ok(new { message = "Job resumed successfully", jobId });
+            }
+            else
+            {
+                return BadRequest(new { message = "Failed to resume job", jobId });
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error resuming job {JobId}", jobId);
+            return StatusCode(500, "Internal server error");
+        }
+    }
+
+    /// <summary>
+    /// Recover all incomplete jobs
+    /// </summary>
+    [HttpPost("jobs/recover")]
+    public async Task<ActionResult> RecoverIncompleteJobs()
+    {
+        try
+        {
+            _logger.LogInformation("Recovering all incomplete cache jobs");
+            await _cacheJobRecoveryService.RecoverIncompleteJobsAsync();
+            return Ok(new { message = "Job recovery completed" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error recovering incomplete jobs");
+            return StatusCode(500, "Internal server error");
+        }
+    }
+
+    /// <summary>
+    /// Cleanup old completed jobs
+    /// </summary>
+    [HttpDelete("jobs/cleanup")]
+    public async Task<ActionResult> CleanupOldJobs([FromQuery] int olderThanDays = 30)
+    {
+        try
+        {
+            _logger.LogInformation("Cleaning up completed jobs older than {Days} days", olderThanDays);
+            var deletedCount = await _cacheJobRecoveryService.CleanupOldCompletedJobsAsync(olderThanDays);
+            return Ok(new { message = "Cleanup completed", deletedCount });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error cleaning up old jobs");
             return StatusCode(500, "Internal server error");
         }
     }
