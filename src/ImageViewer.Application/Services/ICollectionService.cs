@@ -12,7 +12,7 @@ public interface ICollectionService
 {
     #region Collection Management
     
-    Task<Collection> CreateCollectionAsync(ObjectId libraryId, string name, string path, CollectionType type, string? description = null, string? createdBy = null, string? createdBySystem = null);
+    Task<Collection> CreateCollectionAsync(ObjectId? libraryId, string name, string path, CollectionType type, string? description = null, string? createdBy = null, string? createdBySystem = null);
     Task<Collection?> GetCollectionByIdAsync(ObjectId collectionId);
     Task<Collection?> GetCollectionByPathAsync(string path);
     Task<IEnumerable<Collection>> GetCollectionsByLibraryIdAsync(ObjectId libraryId);

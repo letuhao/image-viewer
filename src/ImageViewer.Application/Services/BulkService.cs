@@ -163,7 +163,7 @@ public class BulkService : IBulkService
         {
             // Create new collection with creator tracking
             collection = await _collectionService.CreateCollectionAsync(
-                ObjectId.Empty, // LibraryId - using Empty for now, should be provided by caller
+                request.LibraryId, // LibraryId from request - can be null for standalone collections
                 potential.Name,
                 normalizedPath,
                 potential.Type,

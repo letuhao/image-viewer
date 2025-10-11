@@ -14,7 +14,7 @@ namespace ImageViewer.Domain.Entities;
 public class Collection : BaseEntity
 {
     [BsonElement("libraryId")]
-    public ObjectId LibraryId { get; private set; }
+    public ObjectId? LibraryId { get; private set; } // Nullable - some collections may not belong to any library
     
     [BsonElement("name")]
     public string Name { get; private set; }
@@ -67,9 +67,9 @@ public class Collection : BaseEntity
         // If we initialize to new(), driver might not overwrite them
     }
 
-    public Collection(ObjectId libraryId, string name, string path, CollectionType type, string? description = null, string? createdBy = null, string? createdBySystem = null)
+    public Collection(ObjectId? libraryId, string name, string path, CollectionType type, string? description = null, string? createdBy = null, string? createdBySystem = null)
     {
-        LibraryId = libraryId;
+        LibraryId = libraryId; // Can be null for collections not belonging to any library
         Name = name ?? throw new ArgumentNullException(nameof(name));
         Description = description;
         Path = path ?? throw new ArgumentNullException(nameof(path));
@@ -90,7 +90,7 @@ public class Collection : BaseEntity
         // Set creator information
         SetCreator(createdBy, createdBySystem);
         
-        AddDomainEvent(new CollectionCreatedEvent(Id, Name, LibraryId));
+        AddDomainEvent(new CollectionCreatedEvent(Id, Name, LibraryId ?? ObjectId.Empty));
     }
 
     public void UpdateName(string name)

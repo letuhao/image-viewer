@@ -133,6 +133,7 @@ public class LibraryScanConsumer : BaseMessageConsumer
                 // BulkService has tested logic for nested folders, compressed files, etc.
                 var bulkRequest = new BulkAddCollectionsRequest
                 {
+                    LibraryId = libraryId, // Associate collections with this library
                     ParentPath = library.Path, // Use path from DB, not from message
                     IncludeSubfolders = scanMessage.IncludeSubfolders,
                     CollectionPrefix = null, // No prefix filtering for library scans

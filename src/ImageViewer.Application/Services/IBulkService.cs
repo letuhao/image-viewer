@@ -22,6 +22,9 @@ public interface IBulkService
 /// </summary>
 public class BulkAddCollectionsRequest
 {
+    [JsonPropertyName("libraryId")]
+    public ObjectId? LibraryId { get; set; } // Nullable - collections may not belong to any library
+    
     [JsonPropertyName("parentPath")]
     public string ParentPath { get; set; } = string.Empty;
     

@@ -38,7 +38,7 @@ public class CollectionService : ICollectionService
         _thumbnailCacheService = thumbnailCacheService; // Optional for unit tests
     }
 
-    public async Task<Collection> CreateCollectionAsync(ObjectId libraryId, string name, string path, CollectionType type, string? description = null, string? createdBy = null, string? createdBySystem = null)
+    public async Task<Collection> CreateCollectionAsync(ObjectId? libraryId, string name, string path, CollectionType type, string? description = null, string? createdBy = null, string? createdBySystem = null)
     {
         try
         {

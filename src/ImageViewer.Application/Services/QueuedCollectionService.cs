@@ -358,7 +358,7 @@ public class QueuedCollectionService : ICollectionService
 
     #region ICollectionService Implementation
 
-    public async Task<Collection> CreateCollectionAsync(ObjectId libraryId, string name, string path, CollectionType type, string? description = null, string? createdBy = null, string? createdBySystem = null)
+    public async Task<Collection> CreateCollectionAsync(ObjectId? libraryId, string name, string path, CollectionType type, string? description = null, string? createdBy = null, string? createdBySystem = null)
     {
         return await _collectionService.CreateCollectionAsync(libraryId, name, path, type, description, createdBy, createdBySystem);
     }
