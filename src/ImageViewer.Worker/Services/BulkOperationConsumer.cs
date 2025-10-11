@@ -407,8 +407,12 @@ public class BulkOperationConsumer : BaseMessageConsumer
         var imageProcessingSettingsService = scope.ServiceProvider.GetService<IImageProcessingSettingsService>();
         
         // Get thumbnail settings
-        var thumbnailFormat = await imageProcessingSettingsService?.GetThumbnailFormatAsync() ?? "jpeg";
-        var thumbnailQuality = await imageProcessingSettingsService?.GetThumbnailQualityAsync() ?? 90;
+        var thumbnailFormat = imageProcessingSettingsService != null 
+            ? await imageProcessingSettingsService.GetThumbnailFormatAsync() 
+            : "jpeg";
+        var thumbnailQuality = imageProcessingSettingsService != null 
+            ? await imageProcessingSettingsService.GetThumbnailQualityAsync() 
+            : 90;
         var thumbnailWidth = 300;
         var thumbnailHeight = 300;
         
@@ -540,8 +544,12 @@ public class BulkOperationConsumer : BaseMessageConsumer
         var imageProcessingSettingsService = scope.ServiceProvider.GetService<IImageProcessingSettingsService>();
         
         // Get cache settings
-        var cacheFormat = await imageProcessingSettingsService?.GetCacheFormatAsync() ?? "jpeg";
-        var cacheQuality = await imageProcessingSettingsService?.GetCacheQualityAsync() ?? 85;
+        var cacheFormat = imageProcessingSettingsService != null 
+            ? await imageProcessingSettingsService.GetCacheFormatAsync() 
+            : "jpeg";
+        var cacheQuality = imageProcessingSettingsService != null 
+            ? await imageProcessingSettingsService.GetCacheQualityAsync() 
+            : 85;
         var cacheWidth = 1920;
         var cacheHeight = 1080;
         

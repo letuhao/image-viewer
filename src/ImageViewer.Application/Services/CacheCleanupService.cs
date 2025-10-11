@@ -160,7 +160,7 @@ public class CacheCleanupService : ICacheCleanupService
                     var isOrphaned = true;
                     foreach (var collection in collectionsList)
                     {
-                        if (collection.Thumbnails.Any(t => t.ImageId == imageId && t.Path == thumbnailFile))
+                        if (collection.Thumbnails.Any(t => t.ImageId == imageId && t.ThumbnailPath == thumbnailFile))
                         {
                             isOrphaned = false;
                             break;

@@ -103,7 +103,7 @@ public class ThumbnailGenerationConsumer : BaseMessageConsumer
                     t.Height == thumbnailMessage.ThumbnailHeight
                 );
 
-                if (existingThumbnail != null && File.Exists(existingThumbnail.Path))
+                if (existingThumbnail != null && File.Exists(existingThumbnail.ThumbnailPath))
                 {
                     _logger.LogInformation("📁 Thumbnail already exists for image {ImageId}, skipping generation", thumbnailMessage.ImageId);
                     
