@@ -153,6 +153,57 @@ public class ScheduledJobsController : ControllerBase
     }
 
     /// <summary>
+    /// Update scheduled job cron expression
+    /// </summary>
+    [HttpPut("{id}/cron")]
+    public async Task<ActionResult<ScheduledJobDto>> UpdateJobCronExpression(string id, [FromBody] UpdateCronExpressionRequest request)
+    {
+        try
+        {
+            if (!ObjectId.TryParse(id, out var objectId))
+            {
+                return BadRequest(new { message = "Invalid job ID format" });
+            }
+
+            if (string.IsNullOrWhiteSpace(request.CronExpression))
+            {
+                return BadRequest(new { message = "Cron expression is required" });
+            }
+
+            // Validate cron expression format (basic validation)
+            var parts = request.CronExpression.Split(' ');
+            if (parts.Length < 5)
+            {
+                return BadRequest(new { message = "Invalid cron expression format. Expected: 'minute hour day month dayofweek'" });
+            }
+
+            // Get the job
+            var job = await _scheduledJobRepository.GetByIdAsync(objectId);
+            if (job == null)
+            {
+                return NotFound(new { message = "Scheduled job not found" });
+            }
+
+            // Update cron expression
+            job.UpdateCronExpression(request.CronExpression);
+            await _scheduledJobRepository.UpdateAsync(job);
+
+            _logger.LogInformation(
+                "Updated cron expression for job {JobId} ({JobName}) to {CronExpression}",
+                objectId,
+                job.Name,
+                request.CronExpression);
+
+            return Ok(job.ToDto());
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to update cron expression for job {JobId}", id);
+            return StatusCode(500, new { message = "Failed to update cron expression" });
+        }
+    }
+
+    /// <summary>
     /// Delete a scheduled job
     /// </summary>
     [HttpDelete("{id}")]
@@ -173,6 +224,14 @@ public class ScheduledJobsController : ControllerBase
             _logger.LogError(ex, "Failed to delete scheduled job {JobId}", id);
             return StatusCode(500, new { message = "Failed to delete scheduled job" });
         }
+    }
+
+    /// <summary>
+    /// Request model for updating cron expression
+    /// </summary>
+    public class UpdateCronExpressionRequest
+    {
+        public string CronExpression { get; set; } = string.Empty;
     }
 
     /// <summary>

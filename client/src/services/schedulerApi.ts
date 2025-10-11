@@ -109,5 +109,11 @@ export const schedulerApi = {
     });
     return response.data;
   },
+
+  // Update cron expression
+  updateCron: async (id: string, cronExpression: string): Promise<ScheduledJob> => {
+    const response = await api.put(`/scheduledjobs/${id}/cron`, { cronExpression });
+    return response.data;
+  },
 };
 

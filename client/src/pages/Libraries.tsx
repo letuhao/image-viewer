@@ -27,6 +27,8 @@ export default function Libraries() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedLibrary, setSelectedLibrary] = useState<Library | null>(null);
   const [showSchedulerDetails, setShowSchedulerDetails] = useState<Record<string, boolean>>({});
+  const [editingCron, setEditingCron] = useState<Record<string, boolean>>({});
+  const [cronInput, setCronInput] = useState<Record<string, string>>({});
   
   // Form state for creating library
   const [formData, setFormData] = useState({
@@ -112,6 +114,21 @@ export default function Libraries() {
     },
   });
 
+  // Update cron expression
+  const updateCronMutation = useMutation({
+    mutationFn: ({ jobId, cronExpression }: { jobId: string; cronExpression: string }) =>
+      schedulerApi.updateCron(jobId, cronExpression),
+    onSuccess: (updatedJob) => {
+      toast.success('Schedule updated successfully');
+      queryClient.invalidateQueries({ queryKey: ['scheduledJobs'] });
+      setEditingCron({});
+      setCronInput({});
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to update schedule');
+    },
+  });
+
   // Toggle AutoScan setting
   const toggleAutoScanMutation = useMutation({
     mutationFn: async ({ libraryId, autoScan }: { libraryId: string; autoScan: boolean }) => {
@@ -146,16 +163,36 @@ export default function Libraries() {
       if (minute === '0' && hour === '2' && dayOfMonth === '*' && month === '*' && dayOfWeek === '*') {
         return 'Daily at 2:00 AM';
       }
-      if (minute === '0' && hour === '*') {
+      if (minute === '0' && hour === '*' && dayOfMonth === '*' && month === '*' && dayOfWeek === '*') {
         return 'Every hour';
       }
-      if (minute === '*/30') {
+      if (minute === '*/30' && hour === '*' && dayOfMonth === '*' && month === '*' && dayOfWeek === '*') {
         return 'Every 30 minutes';
+      }
+      if (minute === '0' && hour === '*/6' && dayOfMonth === '*' && month === '*' && dayOfWeek === '*') {
+        return 'Every 6 hours';
+      }
+      if (minute === '0' && hour === '0' && dayOfMonth === '*' && month === '*' && dayOfWeek === '0') {
+        return 'Weekly on Sunday at midnight';
+      }
+      if (minute === '0' && hour === '0' && dayOfMonth === '1' && month === '*' && dayOfWeek === '*') {
+        return 'Monthly on the 1st at midnight';
       }
     }
     
     return cron; // Return raw cron if can't parse
   };
+
+  // Common cron expressions
+  const commonCronPatterns = [
+    { label: 'Every 30 minutes', cron: '*/30 * * * *' },
+    { label: 'Every hour', cron: '0 * * * *' },
+    { label: 'Every 6 hours', cron: '0 */6 * * *' },
+    { label: 'Daily at 2 AM', cron: '0 2 * * *' },
+    { label: 'Daily at midnight', cron: '0 0 * * *' },
+    { label: 'Weekly (Sunday midnight)', cron: '0 0 * * 0' },
+    { label: 'Monthly (1st midnight)', cron: '0 0 1 * *' },
+  ];
 
   // Get status badge color
   const getStatusColor = (status?: string): string => {
@@ -376,23 +413,23 @@ export default function Libraries() {
                           </div>
                         </div>
 
-                        {/* Scheduler Job Information */}
-                        {job && (
+                        {/* Hangfire Scheduler Dashboard */}
+                        {job ? (
                           <div className="mt-4 border-t border-slate-800 pt-4">
-                            <div className="flex items-center justify-between">
+                            <div className="flex items-center justify-between mb-3">
                               <div className="flex items-center gap-3">
                                 <Calendar className="w-5 h-5 text-purple-400" />
                                 <div>
                                   <div className="flex items-center gap-2">
-                                    <span className="font-medium text-white">Scheduled Scan</span>
+                                    <span className="font-semibold text-white">Hangfire Scheduled Job</span>
                                     <span className={`px-2 py-0.5 rounded text-xs font-medium ${
                                       job.isEnabled ? 'bg-green-500/20 text-green-400' : 'bg-slate-700 text-slate-400'
                                     }`}>
-                                      {job.isEnabled ? 'Active' : 'Inactive'}
+                                      {job.isEnabled ? 'Active' : 'Paused'}
                                     </span>
                                   </div>
-                                  <div className="text-sm text-slate-400 mt-1">
-                                    {formatCronExpression(job.cronExpression)}
+                                  <div className="text-xs text-slate-500 mt-0.5">
+                                    Job ID: {job.id}
                                   </div>
                                 </div>
                               </div>
@@ -404,8 +441,94 @@ export default function Libraries() {
                                 })}
                                 className="px-3 py-1 text-sm text-primary-400 hover:bg-primary-500/10 rounded transition-colors"
                               >
-                                {showDetails ? 'Hide Details' : 'Show Details'}
+                                {showDetails ? 'Hide Dashboard' : 'Show Dashboard'}
                               </button>
+                            </div>
+
+                            {/* Always Visible: Cron Schedule */}
+                            <div className="bg-slate-800/30 p-3 rounded-lg border border-slate-700/50">
+                              <div className="flex items-center justify-between">
+                                <div className="flex-1">
+                                  <div className="text-xs text-slate-400 mb-1">Schedule (Cron Expression)</div>
+                                  {editingCron[job.id] ? (
+                                    <div className="space-y-2">
+                                      <div className="flex items-center gap-2">
+                                        <input
+                                          type="text"
+                                          value={cronInput[job.id] || job.cronExpression || ''}
+                                          onChange={(e) => setCronInput({ ...cronInput, [job.id]: e.target.value })}
+                                          className="flex-1 px-2 py-1 bg-slate-900 border border-slate-600 rounded text-white text-sm font-mono focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                                          placeholder="0 2 * * *"
+                                        />
+                                        <button
+                                          onClick={() => {
+                                            updateCronMutation.mutate({ 
+                                              jobId: job.id, 
+                                              cronExpression: cronInput[job.id] 
+                                            });
+                                          }}
+                                          disabled={updateCronMutation.isPending}
+                                          className="px-3 py-1 bg-primary-500 text-white text-xs rounded hover:bg-primary-600 transition-colors disabled:opacity-50"
+                                        >
+                                          Save
+                                        </button>
+                                        <button
+                                          onClick={() => {
+                                            setEditingCron({ ...editingCron, [job.id]: false });
+                                            setCronInput({ ...cronInput, [job.id]: '' });
+                                          }}
+                                          className="px-3 py-1 bg-slate-700 text-slate-300 text-xs rounded hover:bg-slate-600 transition-colors"
+                                        >
+                                          Cancel
+                                        </button>
+                                      </div>
+                                      {/* Quick Select Common Patterns */}
+                                      <div className="flex flex-wrap gap-1">
+                                        {commonCronPatterns.map((pattern) => (
+                                          <button
+                                            key={pattern.cron}
+                                            type="button"
+                                            onClick={() => setCronInput({ ...cronInput, [job.id]: pattern.cron })}
+                                            className="px-2 py-0.5 text-xs bg-slate-700 text-slate-300 rounded hover:bg-slate-600 transition-colors"
+                                          >
+                                            {pattern.label}
+                                          </button>
+                                        ))}
+                                      </div>
+                                      <div className="text-xs text-slate-500">
+                                        Format: minute hour day month dayofweek (e.g., "0 2 * * *" = Daily at 2 AM)
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <div className="flex items-center justify-between">
+                                      <div>
+                                        <div className="font-mono text-sm text-primary-400">{job.cronExpression || 'Not set'}</div>
+                                        <div className="text-xs text-slate-500 mt-0.5">{formatCronExpression(job.cronExpression)}</div>
+                                      </div>
+                                      <button
+                                        onClick={() => {
+                                          setEditingCron({ ...editingCron, [job.id]: true });
+                                          setCronInput({ ...cronInput, [job.id]: job.cronExpression || '' });
+                                        }}
+                                        className="px-2 py-1 text-xs text-slate-400 hover:text-white hover:bg-slate-700 rounded transition-colors"
+                                      >
+                                        Edit
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                              
+                              {/* Next Run Time */}
+                              {job.nextRunAt && (
+                                <div className="mt-2 flex items-center gap-2 text-xs">
+                                  <Clock className="w-3 h-3 text-primary-400" />
+                                  <span className="text-slate-400">Next run:</span>
+                                  <span className="font-medium text-primary-400">
+                                    {formatDistanceToNow(new Date(job.nextRunAt), { addSuffix: true })}
+                                  </span>
+                                </div>
+                              )}
                             </div>
 
                             {/* Expanded Scheduler Details */}
@@ -522,7 +645,30 @@ export default function Libraries() {
                               </div>
                             )}
                           </div>
-                        )}
+                        ) : library.settings.autoScan ? (
+                          <div className="mt-4 border-t border-slate-800 pt-4">
+                            <div className="bg-yellow-500/10 border border-yellow-500/20 p-4 rounded-lg">
+                              <div className="flex items-start gap-3">
+                                <AlertCircle className="w-5 h-5 text-yellow-400 mt-0.5" />
+                                <div>
+                                  <p className="text-sm font-medium text-yellow-300">No Scheduled Job Found</p>
+                                  <p className="text-xs text-yellow-400/80 mt-1">
+                                    AutoScan is enabled but no Hangfire job was created. This might be a registration issue.
+                                  </p>
+                                  <div className="mt-2">
+                                    <button
+                                      onClick={() => triggerScanMutation.mutate(library.id)}
+                                      disabled={triggerScanMutation.isPending}
+                                      className="text-xs px-3 py-1.5 bg-yellow-500/20 text-yellow-300 hover:bg-yellow-500/30 rounded transition-colors"
+                                    >
+                                      Trigger Manual Scan
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ) : null}
                       </div>
                     </div>
                   );
