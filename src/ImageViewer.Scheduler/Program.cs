@@ -154,6 +154,9 @@ public class Program
                 services.Configure<RabbitMQOptions>(configuration.GetSection("RabbitMQ"));
                 services.AddSingleton<IMessageQueueService, RabbitMQMessageQueueService>();
 
+                // Register MongoDB initialization service (creates indexes on startup)
+                services.AddScoped<MongoDbInitializationService>();
+                
                 // Register MongoDB repositories for scheduler (only what's needed)
                 services.AddScoped<IScheduledJobRepository, MongoScheduledJobRepository>();
                 services.AddScoped<IScheduledJobRunRepository, MongoScheduledJobRunRepository>();
