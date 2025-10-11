@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using RabbitMQ.Client;
+using ImageViewer.Application.Services;
 using ImageViewer.Domain.Entities;
 using ImageViewer.Domain.Enums;
 using ImageViewer.Domain.Events;
@@ -74,6 +75,7 @@ public class LibraryScanConsumer : BaseMessageConsumer
                 var collectionRepository = scope.ServiceProvider.GetRequiredService<ICollectionRepository>();
                 var scheduledJobRunRepository = scope.ServiceProvider.GetRequiredService<IScheduledJobRunRepository>();
                 var messageQueueService = scope.ServiceProvider.GetRequiredService<IMessageQueueService>();
+                var bulkService = scope.ServiceProvider.GetRequiredService<IBulkService>();
 
                 // Get the library
                 var libraryId = ObjectId.Parse(scanMessage.LibraryId);
@@ -127,104 +129,44 @@ public class LibraryScanConsumer : BaseMessageConsumer
 
                 _logger.LogInformation("🔍 Scanning library folder: {Path}", scanMessage.LibraryPath);
                 
-                // Scan for potential collections
-                var collectionFolders = await ScanForCollectionsAsync(
-                    scanMessage.LibraryPath,
-                    scanMessage.IncludeSubfolders);
-
-                _logger.LogInformation(
-                    "📁 Found {Count} potential collection folders in library {LibraryId}",
-                    collectionFolders.Count,
-                    scanMessage.LibraryId);
-
-                // Create or update collections
-                var createdCount = 0;
-                var updatedCount = 0;
-                var skippedCount = 0;
-
-                foreach (var folderPath in collectionFolders)
+                // Use BulkService.BulkAddCollectionsAsync to handle collection discovery
+                // This uses the tested logic that handles nested collections, compressed files, etc.
+                var bulkRequest = new BulkAddCollectionsRequest
                 {
-                    try
-                    {
-                        // Check if collection already exists for this path
-                        Collection? existingCollection = null;
-                        try
-                        {
-                            existingCollection = await collectionRepository.GetByPathAsync(folderPath);
-                        }
-                        catch (EntityNotFoundException)
-                        {
-                            // Collection doesn't exist - this is expected for new collections
-                            existingCollection = null;
-                        }
+                    ParentPath = scanMessage.LibraryPath,
+                    LibraryId = libraryId,
+                    IncludeSubfolders = scanMessage.IncludeSubfolders,
+                    CollectionPrefix = string.Empty, // No prefix filtering for library scans
+                    AutoCreateCollections = true,
+                    GenerateThumbnails = library.Settings?.ThumbnailSettings?.Enabled ?? true,
+                    GenerateCache = library.Settings?.CacheSettings?.Enabled ?? true
+                };
 
-                        if (existingCollection != null)
-                        {
-                            _logger.LogDebug("⏭️ Collection already exists for path: {Path}", folderPath);
-                            skippedCount++;
-                            
-                            // TODO: Optionally trigger re-scan if ForceRescan is true
-                            // This would update existing collections with new images
-                            continue;
-                        }
-
-                        // Create new collection
-                        var collectionName = Path.GetFileName(folderPath) ?? folderPath;
-                        var collection = new Collection(
-                            libraryId: libraryId,
-                            name: collectionName,
-                            path: folderPath,
-                            type: CollectionType.Folder,  // Default to Folder type
-                            description: $"Auto-discovered from library: {library.Name}",
-                            createdBySystem: "LibraryScanConsumer");
-
-                        var createdCollection = await collectionRepository.CreateAsync(collection);
-                        createdCount++;
-
-                        _logger.LogInformation(
-                            "✅ Created collection: {CollectionName} (ID: {CollectionId}) at path: {Path}",
-                            collectionName,
-                            createdCollection.Id,
-                            folderPath);
-
-                        // Trigger collection scan to discover images
-                        var collectionScanMessage = new CollectionScanMessage
-                        {
-                            CollectionId = createdCollection.Id.ToString(),
-                            CollectionPath = folderPath,
-                            CollectionType = CollectionType.Folder,
-                            ForceRescan = false,
-                            CreatedBy = null,
-                            CreatedBySystem = "LibraryScanConsumer",
-                            JobId = scanMessage.JobRunId  // Link to parent job for tracking
-                        };
-
-                        await messageQueueService.PublishAsync(collectionScanMessage);
-
-                        _logger.LogInformation(
-                            "📤 Published collection scan message for collection {CollectionId}",
-                            createdCollection.Id);
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "❌ Failed to process collection folder: {Path}", folderPath);
-                    }
-                }
-
+                var result = await bulkService.BulkAddCollectionsAsync(bulkRequest, CancellationToken.None);
+                
                 _logger.LogInformation(
-                    "✅ Library scan completed. Created: {Created}, Updated: {Updated}, Skipped: {Skipped}",
-                    createdCount,
-                    updatedCount,
-                    skippedCount);
+                    "✅ Library scan completed. Total: {Total}, Created: {Created}, Skipped: {Skipped}, Errors: {Errors}",
+                    result.TotalCount,
+                    result.SuccessCount,
+                    result.SkippedCount,
+                    result.ErrorCount);
 
                 // Update job run status to completed
                 if (!string.IsNullOrEmpty(scanMessage.JobRunId))
                 {
+                    var status = result.ErrorCount > 0 ? "CompletedWithErrors" : "Completed";
+                    var statusMessage = $"Scan completed. Total: {result.TotalCount}, Created: {result.SuccessCount}, Skipped: {result.SkippedCount}, Errors: {result.ErrorCount}";
+                    
+                    if (result.Errors.Any())
+                    {
+                        statusMessage += $"\nErrors: {string.Join("; ", result.Errors)}";
+                    }
+                    
                     await UpdateJobRunStatusAsync(
                         scheduledJobRunRepository,
                         scanMessage.JobRunId,
-                        "Completed",
-                        $"Scan completed. Created: {createdCount}, Updated: {updatedCount}, Skipped: {skippedCount}");
+                        status,
+                        statusMessage);
                 }
             }
         }
@@ -232,51 +174,6 @@ public class LibraryScanConsumer : BaseMessageConsumer
         {
             _logger.LogError(ex, "❌ Error processing library scan message");
             throw;
-        }
-    }
-
-    private async Task<List<string>> ScanForCollectionsAsync(string libraryPath, bool includeSubfolders)
-    {
-        var collectionFolders = new List<string>();
-
-        try
-        {
-            var searchOption = includeSubfolders ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly;
-            
-            // Get all directories in the library path
-            var directories = Directory.GetDirectories(libraryPath, "*", searchOption);
-            
-            foreach (var directory in directories)
-            {
-                // Check if directory contains supported image files
-                var hasImages = await HasSupportedImagesAsync(directory);
-                if (hasImages)
-                {
-                    collectionFolders.Add(directory);
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "❌ Error scanning library path: {Path}", libraryPath);
-        }
-
-        return collectionFolders;
-    }
-
-    private async Task<bool> HasSupportedImagesAsync(string directoryPath)
-    {
-        var supportedExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".zip" };
-        
-        try
-        {
-            var files = Directory.GetFiles(directoryPath, "*.*", SearchOption.TopDirectoryOnly);
-            return files.Any(file => supportedExtensions.Contains(Path.GetExtension(file).ToLowerInvariant()));
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "⚠️ Error checking directory for images: {Path}", directoryPath);
-            return false;
         }
     }
 
