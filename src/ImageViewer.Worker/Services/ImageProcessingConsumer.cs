@@ -57,7 +57,7 @@ public class ImageProcessingConsumer : BaseMessageConsumer
                 return;
             }
 
-            _logger.LogInformation("🖼️ Processing image {ImageId} at path {Path}", 
+            _logger.LogDebug("🖼️ Processing image {ImageId} at path {Path}", 
                 imageMessage.ImageId, imageMessage.ImagePath);
 
             // Try to create scope, handle disposal gracefully
@@ -247,7 +247,7 @@ public class ImageProcessingConsumer : BaseMessageConsumer
     {
         try
         {
-            _logger.LogInformation("➕ Creating/updating embedded image for path {Path}", imageMessage.ImagePath);
+            _logger.LogDebug("➕ Creating/updating embedded image for path {Path}", imageMessage.ImagePath);
             
             // Extract actual image metadata if not provided
             var width = imageMessage.Width;
@@ -287,7 +287,7 @@ public class ImageProcessingConsumer : BaseMessageConsumer
                             fileSize = fileInfo.Length;
                         }
                         
-                        _logger.LogInformation("📊 Extracted metadata: {Width}x{Height}, {FileSize} bytes", 
+                        _logger.LogDebug("📊 Extracted metadata: {Width}x{Height}, {FileSize} bytes", 
                             width, height, fileSize);
                     }
                     }
@@ -329,7 +329,7 @@ public class ImageProcessingConsumer : BaseMessageConsumer
                 imageMessage.ImageFormat
             );
             
-            _logger.LogInformation("✅ Created embedded image {ImageId} for {Path}", embeddedImage.Id, imageMessage.ImagePath);
+            _logger.LogDebug("✅ Created embedded image {ImageId} for {Path}", embeddedImage.Id, imageMessage.ImagePath);
             return embeddedImage;
         }
         catch (Exception ex)

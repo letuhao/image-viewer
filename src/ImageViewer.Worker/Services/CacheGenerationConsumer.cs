@@ -172,7 +172,7 @@ public class CacheGenerationConsumer : BaseMessageConsumer
             // Check if cache already exists and force regeneration is disabled
             if (!cacheMessage.ForceRegenerate && File.Exists(cachePath))
             {
-                _logger.LogInformation("📁 Cache already exists for image {ImageId}, skipping generation", cacheMessage.ImageId);
+                _logger.LogDebug("📁 Cache already exists for image {ImageId}, skipping generation", cacheMessage.ImageId);
                 
                 // Track as skipped in FileProcessingJobState
                 if (!string.IsNullOrEmpty(cacheMessage.JobId))
@@ -192,7 +192,7 @@ public class CacheGenerationConsumer : BaseMessageConsumer
             
             if (adjustedQuality != cacheMessage.Quality)
             {
-                _logger.LogInformation("🎨 Adjusted cache quality from {RequestedQuality} to {AdjustedQuality} based on source image analysis", 
+                _logger.LogDebug("🎨 Adjusted cache quality from {RequestedQuality} to {AdjustedQuality} based on source image analysis", 
                     cacheMessage.Quality, adjustedQuality);
             }
             
@@ -419,7 +419,7 @@ public class CacheGenerationConsumer : BaseMessageConsumer
     {
         try
         {
-            _logger.LogInformation("📝 Updating cache info in database for image {ImageId}", cacheMessage.ImageId);
+            _logger.LogDebug("📝 Updating cache info in database for image {ImageId}", cacheMessage.ImageId);
             
             // Convert string back to ObjectId for database operations
             var collectionId = ObjectId.Parse(cacheMessage.CollectionId);
@@ -475,7 +475,7 @@ public class CacheGenerationConsumer : BaseMessageConsumer
                 }
             }
             
-            _logger.LogInformation("✅ Cache info updated for image {ImageId}: {CachePath}", 
+            _logger.LogDebug("✅ Cache info updated for image {ImageId}: {CachePath}", 
                 cacheMessage.ImageId, cachePath);
         }
         catch (Exception ex)

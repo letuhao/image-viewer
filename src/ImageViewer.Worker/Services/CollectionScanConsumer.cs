@@ -128,7 +128,7 @@ public class CollectionScanConsumer : BaseMessageConsumer
 
             // Scan the collection for media files
             var mediaFiles = ScanCollectionForMediaFiles(collection.Path, collection.Type);
-            _logger.LogInformation("📁 Found {FileCount} media files in collection {CollectionId}", 
+            _logger.LogDebug("📁 Found {FileCount} media files in collection {CollectionId}", 
                 mediaFiles.Count, collection.Id);
 
             // Create image processing jobs for each media file
@@ -165,7 +165,7 @@ public class CollectionScanConsumer : BaseMessageConsumer
                 }
             }
 
-            _logger.LogInformation("✅ Successfully processed collection scan for {CollectionId}, queued {JobCount} image processing jobs", 
+            _logger.LogDebug("✅ Successfully processed collection scan for {CollectionId}, queued {JobCount} image processing jobs", 
                 collection.Id, mediaFiles.Count);
 
             // Update library statistics if collection belongs to a library
@@ -288,7 +288,7 @@ public class CollectionScanConsumer : BaseMessageConsumer
                 }
             }
             
-            _logger.LogInformation("📦 Scanned archive {Archive}: found {Count} media files", 
+            _logger.LogDebug("📦 Scanned archive {Archive}: found {Count} media files", 
                 Path.GetFileName(archivePath), mediaFiles.Count);
         }
         catch (Exception ex)

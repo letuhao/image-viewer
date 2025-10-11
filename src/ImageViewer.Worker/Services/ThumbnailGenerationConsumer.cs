@@ -157,7 +157,7 @@ public class ThumbnailGenerationConsumer : BaseMessageConsumer
 
                 if (existingThumbnail != null && File.Exists(existingThumbnail.ThumbnailPath))
                 {
-                    _logger.LogInformation("📁 Thumbnail already exists for image {ImageId}, skipping generation", thumbnailMessage.ImageId);
+                    _logger.LogDebug("📁 Thumbnail already exists for image {ImageId}, skipping generation", thumbnailMessage.ImageId);
                     
                     // Track as skipped in FileProcessingJobState
                     if (!string.IsNullOrEmpty(thumbnailMessage.JobId))
@@ -355,7 +355,7 @@ public class ThumbnailGenerationConsumer : BaseMessageConsumer
             {
                 // Save thumbnail data to file
             await File.WriteAllBytesAsync(thumbnailPath, thumbnailData, cancellationToken);
-                _logger.LogInformation("✅ Generated thumbnail: {ThumbnailPath}", thumbnailPath);
+                _logger.LogDebug("✅ Generated thumbnail: {ThumbnailPath}", thumbnailPath);
                 
                 // ATOMIC UPDATE: Increment cache folder size to prevent race conditions
                 await UpdateCacheFolderSizeAsync(thumbnailPath, thumbnailData.Length, collectionId);
@@ -435,7 +435,7 @@ public class ThumbnailGenerationConsumer : BaseMessageConsumer
     {
         try
         {
-            _logger.LogInformation("📝 Updating thumbnail info in database for image {ImageId}", thumbnailMessage.ImageId);
+            _logger.LogDebug("📝 Updating thumbnail info in database for image {ImageId}", thumbnailMessage.ImageId);
             
             // Convert string back to ObjectId for database operations
             var collectionId = ObjectId.Parse(thumbnailMessage.CollectionId);
@@ -467,7 +467,7 @@ public class ThumbnailGenerationConsumer : BaseMessageConsumer
                 return;
             }
             
-            _logger.LogInformation("✅ Thumbnail info created and persisted for image {ImageId}: {ThumbnailPath}", 
+            _logger.LogDebug("✅ Thumbnail info created and persisted for image {ImageId}: {ThumbnailPath}", 
                 thumbnailMessage.ImageId, thumbnailPath);
         }
         catch (Exception ex)
