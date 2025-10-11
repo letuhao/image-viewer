@@ -95,6 +95,7 @@ builder.Services.AddHostedService<JobMonitoringService>();
 builder.Services.AddHostedService<FileProcessingJobRecoveryHostedService>();
 
 // Register consumers
+builder.Services.AddHostedService<LibraryScanConsumer>();
 builder.Services.AddHostedService<CollectionScanConsumer>();
 builder.Services.AddHostedService<ImageProcessingConsumer>();
 builder.Services.AddHostedService<ThumbnailGenerationConsumer>();

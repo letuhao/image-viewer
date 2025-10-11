@@ -19,6 +19,7 @@ public class RabbitMQOptions
     public string CollectionCreationQueue { get; set; } = "collection.creation";
     public string BulkOperationQueue { get; set; } = "bulk.operation";
     public string ImageProcessingQueue { get; set; } = "image.processing";
+    public string LibraryScanQueue { get; set; } = "library_scan_queue";
     
     // Exchange configurations
     public string DefaultExchange { get; set; } = "imageviewer.exchange";
