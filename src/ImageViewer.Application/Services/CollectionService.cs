@@ -803,8 +803,8 @@ public class CollectionService : ICollectionService
                     if (middleThumbnail != null)
                     {
                         var base64 = await _thumbnailCacheService.GetThumbnailAsBase64Async(
-                            collection.Id,
-                            middleThumbnail.Id
+                            collection.Id.ToString(),
+                            middleThumbnail
                         );
                         siblings[index].ThumbnailBase64 = base64;
                     }
