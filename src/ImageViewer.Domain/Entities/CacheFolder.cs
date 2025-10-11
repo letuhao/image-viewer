@@ -33,6 +33,22 @@ public class CacheFolder : BaseEntity
     
     [BsonElement("isActive")]
     public bool IsActive { get; private set; }
+    
+    // Enhanced statistics - 增强的统计信息 - Thống kê nâng cao
+    [BsonElement("totalCollections")]
+    public int TotalCollections { get; private set; } // Total number of collections using this cache folder
+    
+    [BsonElement("totalFiles")]
+    public int TotalFiles { get; private set; } // Total number of cached files
+    
+    [BsonElement("cachedCollectionIds")]
+    public List<string> CachedCollectionIds { get; private set; } = new(); // List of collection IDs that have cache in this folder
+    
+    [BsonElement("lastCacheGeneratedAt")]
+    public DateTime? LastCacheGeneratedAt { get; private set; } // Last time a cache was generated
+    
+    [BsonElement("lastCleanupAt")]
+    public DateTime? LastCleanupAt { get; private set; } // Last time cache was cleaned up
 
     // Navigation properties
     private readonly List<CollectionCacheBinding> _bindings = new();
@@ -160,6 +176,54 @@ public class CacheFolder : BaseEntity
     public void UpdateStatistics(long currentSize, int fileCount)
     {
         CurrentSizeBytes = currentSize;
+        TotalFiles = fileCount;
+        UpdateTimestamp();
+    }
+
+    public void IncrementFileCount(int count = 1)
+    {
+        TotalFiles += count;
+        LastCacheGeneratedAt = DateTime.UtcNow;
+        UpdateTimestamp();
+    }
+
+    public void DecrementFileCount(int count = 1)
+    {
+        TotalFiles = Math.Max(0, TotalFiles - count);
+        UpdateTimestamp();
+    }
+
+    public void AddCachedCollection(string collectionId)
+    {
+        if (string.IsNullOrEmpty(collectionId))
+            throw new ArgumentNullException(nameof(collectionId));
+
+        if (!CachedCollectionIds.Contains(collectionId))
+        {
+            CachedCollectionIds.Add(collectionId);
+            TotalCollections = CachedCollectionIds.Count;
+            UpdateTimestamp();
+        }
+    }
+
+    public void RemoveCachedCollection(string collectionId)
+    {
+        if (CachedCollectionIds.Remove(collectionId))
+        {
+            TotalCollections = CachedCollectionIds.Count;
+            UpdateTimestamp();
+        }
+    }
+
+    public void UpdateLastCacheGeneratedAt()
+    {
+        LastCacheGeneratedAt = DateTime.UtcNow;
+        UpdateTimestamp();
+    }
+
+    public void UpdateLastCleanupAt()
+    {
+        LastCleanupAt = DateTime.UtcNow;
         UpdateTimestamp();
     }
 

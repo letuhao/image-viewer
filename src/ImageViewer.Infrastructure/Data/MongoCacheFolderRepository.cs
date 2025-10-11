@@ -93,4 +93,116 @@ public class MongoCacheFolderRepository : MongoRepository<CacheFolder>, ICacheFo
             await _collection.UpdateOneAsync(resetFilter, resetUpdate);
         }
     }
+
+    /// <summary>
+    /// Atomically increment file count
+    /// </summary>
+    public async Task IncrementFileCountAsync(ObjectId folderId, int count = 1)
+    {
+        var filter = Builders<CacheFolder>.Filter.Eq(x => x.Id, folderId);
+        var update = Builders<CacheFolder>.Update
+            .Inc(x => x.TotalFiles, count)
+            .Set(x => x.LastCacheGeneratedAt, DateTime.UtcNow)
+            .Set(x => x.UpdatedAt, DateTime.UtcNow);
+
+        await _collection.UpdateOneAsync(filter, update);
+    }
+
+    /// <summary>
+    /// Atomically decrement file count
+    /// </summary>
+    public async Task DecrementFileCountAsync(ObjectId folderId, int count = 1)
+    {
+        var filter = Builders<CacheFolder>.Filter.And(
+            Builders<CacheFolder>.Filter.Eq(x => x.Id, folderId),
+            Builders<CacheFolder>.Filter.Gte(x => x.TotalFiles, count)
+        );
+        
+        var update = Builders<CacheFolder>.Update
+            .Inc(x => x.TotalFiles, -count)
+            .Set(x => x.UpdatedAt, DateTime.UtcNow);
+
+        var result = await _collection.UpdateOneAsync(filter, update);
+        
+        // If update didn't match, just set to 0
+        if (result.ModifiedCount == 0)
+        {
+            var resetFilter = Builders<CacheFolder>.Filter.Eq(x => x.Id, folderId);
+            var resetUpdate = Builders<CacheFolder>.Update
+                .Max(x => x.TotalFiles, 0)
+                .Set(x => x.UpdatedAt, DateTime.UtcNow);
+            
+            await _collection.UpdateOneAsync(resetFilter, resetUpdate);
+        }
+    }
+
+    /// <summary>
+    /// Add a collection to the cached collections list
+    /// </summary>
+    public async Task AddCachedCollectionAsync(ObjectId folderId, string collectionId)
+    {
+        var filter = Builders<CacheFolder>.Filter.Eq(x => x.Id, folderId);
+        var update = Builders<CacheFolder>.Update
+            .AddToSet(x => x.CachedCollectionIds, collectionId)
+            .Set(x => x.UpdatedAt, DateTime.UtcNow);
+
+        await _collection.UpdateOneAsync(filter, update);
+        
+        // Recalculate total collections (count of unique collection IDs)
+        var folder = await GetByIdAsync(folderId);
+        if (folder != null)
+        {
+            var countUpdate = Builders<CacheFolder>.Update
+                .Set(x => x.TotalCollections, folder.CachedCollectionIds.Count);
+            await _collection.UpdateOneAsync(filter, countUpdate);
+        }
+    }
+
+    /// <summary>
+    /// Remove a collection from the cached collections list
+    /// </summary>
+    public async Task RemoveCachedCollectionAsync(ObjectId folderId, string collectionId)
+    {
+        var filter = Builders<CacheFolder>.Filter.Eq(x => x.Id, folderId);
+        var update = Builders<CacheFolder>.Update
+            .Pull(x => x.CachedCollectionIds, collectionId)
+            .Set(x => x.UpdatedAt, DateTime.UtcNow);
+
+        await _collection.UpdateOneAsync(filter, update);
+        
+        // Recalculate total collections
+        var folder = await GetByIdAsync(folderId);
+        if (folder != null)
+        {
+            var countUpdate = Builders<CacheFolder>.Update
+                .Set(x => x.TotalCollections, folder.CachedCollectionIds.Count);
+            await _collection.UpdateOneAsync(filter, countUpdate);
+        }
+    }
+
+    /// <summary>
+    /// Update last cache generated timestamp
+    /// </summary>
+    public async Task UpdateLastCacheGeneratedAsync(ObjectId folderId)
+    {
+        var filter = Builders<CacheFolder>.Filter.Eq(x => x.Id, folderId);
+        var update = Builders<CacheFolder>.Update
+            .Set(x => x.LastCacheGeneratedAt, DateTime.UtcNow)
+            .Set(x => x.UpdatedAt, DateTime.UtcNow);
+
+        await _collection.UpdateOneAsync(filter, update);
+    }
+
+    /// <summary>
+    /// Update last cleanup timestamp
+    /// </summary>
+    public async Task UpdateLastCleanupAsync(ObjectId folderId)
+    {
+        var filter = Builders<CacheFolder>.Filter.Eq(x => x.Id, folderId);
+        var update = Builders<CacheFolder>.Update
+            .Set(x => x.LastCleanupAt, DateTime.UtcNow)
+            .Set(x => x.UpdatedAt, DateTime.UtcNow);
+
+        await _collection.UpdateOneAsync(filter, update);
+    }
 }

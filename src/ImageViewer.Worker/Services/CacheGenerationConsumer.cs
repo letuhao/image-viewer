@@ -107,6 +107,14 @@ public class CacheGenerationConsumer : BaseMessageConsumer
             if (!cacheMessage.ForceRegenerate && File.Exists(cachePath))
             {
                 _logger.LogInformation("📁 Cache already exists for image {ImageId}, skipping generation", cacheMessage.ImageId);
+                
+                // Track as skipped in CacheJobState
+                if (!string.IsNullOrEmpty(cacheMessage.JobId))
+                {
+                    var cacheJobStateRepository = scope.ServiceProvider.GetRequiredService<ICacheJobStateRepository>();
+                    await cacheJobStateRepository.AtomicIncrementSkippedAsync(cacheMessage.JobId, cacheMessage.ImageId);
+                }
+                
                 return;
             }
 
@@ -195,13 +203,23 @@ public class CacheGenerationConsumer : BaseMessageConsumer
             // Save cache image to file system
             await File.WriteAllBytesAsync(cachePath, cacheImageData, cancellationToken);
 
-            // ATOMIC UPDATE: Increment cache folder size to prevent race conditions
+            // ATOMIC UPDATE: Increment cache folder size and file count to prevent race conditions
             var collectionObjectId = ObjectId.Parse(cacheMessage.CollectionId);
             await UpdateCacheFolderSizeAsync(cachePath, cacheImageData.Length, collectionObjectId);
 
             // Update cache info in database
             var backgroundJobService = scope.ServiceProvider.GetRequiredService<IBackgroundJobService>();
             await UpdateCacheInfoInDatabase(cacheMessage, cachePath, collectionRepository, backgroundJobService);
+            
+            // Track progress in CacheJobState if jobId is present
+            if (!string.IsNullOrEmpty(cacheMessage.JobId))
+            {
+                var cacheJobStateRepository = scope.ServiceProvider.GetRequiredService<ICacheJobStateRepository>();
+                await cacheJobStateRepository.AtomicIncrementCompletedAsync(
+                    cacheMessage.JobId, 
+                    cacheMessage.ImageId, 
+                    cacheImageData.Length);
+            }
 
             _logger.LogDebug("✅ Cache generated for image {ImageId} at path {CachePath} with dimensions {Width}x{Height}", 
                 cacheMessage.ImageId, cachePath, cacheMessage.CacheWidth, cacheMessage.CacheHeight);
@@ -231,8 +249,25 @@ public class CacheGenerationConsumer : BaseMessageConsumer
                 PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
                 WriteIndented = false
             };
-            _logger.LogError(ex, "Error processing cache generation message for image {ImageId}", 
-                JsonSerializer.Deserialize<CacheGenerationMessage>(message, options)?.ImageId);
+            var cacheMsg = JsonSerializer.Deserialize<CacheGenerationMessage>(message, options);
+            _logger.LogError(ex, "Error processing cache generation message for image {ImageId}", cacheMsg?.ImageId);
+            
+            // Track as failed in CacheJobState
+            if (cacheMsg != null && !string.IsNullOrEmpty(cacheMsg.JobId))
+            {
+                try
+                {
+                    using var errorScope = _serviceScopeFactory.CreateScope();
+                    var cacheJobStateRepository = errorScope.ServiceProvider.GetRequiredService<ICacheJobStateRepository>();
+                    await cacheJobStateRepository.AtomicIncrementFailedAsync(cacheMsg.JobId, cacheMsg.ImageId);
+                }
+                catch (Exception trackEx)
+                {
+                    _logger.LogWarning(trackEx, "Failed to track error for image {ImageId} in job {JobId}", 
+                        cacheMsg.ImageId, cacheMsg.JobId);
+                }
+            }
+            
             throw;
         }
     }
@@ -516,13 +551,15 @@ public class CacheGenerationConsumer : BaseMessageConsumer
             
             // ATOMIC INCREMENT: Thread-safe update using MongoDB $inc operator
             await cacheFolderRepository.IncrementSizeAsync(cacheFolder.Id, fileSize);
+            await cacheFolderRepository.IncrementFileCountAsync(cacheFolder.Id, 1);
+            await cacheFolderRepository.AddCachedCollectionAsync(cacheFolder.Id, collectionId.ToString());
             
-            _logger.LogDebug("📊 Atomically incremented cache folder {Name} size by {Size} bytes", 
+            _logger.LogDebug("📊 Atomically incremented cache folder {Name} size by {Size} bytes, file count by 1", 
                 cacheFolder.Name, fileSize);
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "⚠️ Failed to update cache folder size for cache image: {Path}", cachePath);
+            _logger.LogWarning(ex, "⚠️ Failed to update cache folder statistics for cache image: {Path}", cachePath);
             // Don't throw - cache is already saved, this is just statistics
         }
     }
