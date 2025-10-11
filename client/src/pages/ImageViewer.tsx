@@ -426,10 +426,14 @@ const ImageViewer: React.FC = () => {
           collectionId={collectionId!}
           sortBy="updatedAt"
           sortDirection="desc"
-          onNavigate={(newCollectionId) => {
-            // Navigate to collection detail page instead of viewer
-            // User can then click "Open Viewer" button from detail page
-            navigate(`/collections/${newCollectionId}`);
+          onNavigate={(newCollectionId, firstImageId) => {
+            // Navigate directly to viewer with first image if available
+            if (firstImageId) {
+              navigate(`/collections/${newCollectionId}/viewer?imageId=${firstImageId}`, { replace: true });
+            } else {
+              // Fallback to collection detail if no firstImageId
+              navigate(`/collections/${newCollectionId}`);
+            }
           }}
         />
       )}

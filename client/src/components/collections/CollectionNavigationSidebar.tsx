@@ -8,7 +8,7 @@ interface CollectionNavigationSidebarProps {
   collectionId: string;
   sortBy?: string;
   sortDirection?: string;
-  onNavigate?: (collectionId: string) => void;
+  onNavigate?: (collectionId: string, firstImageId?: string) => void;
 }
 
 /**
@@ -39,9 +39,9 @@ const CollectionNavigationSidebar: React.FC<CollectionNavigationSidebarProps> = 
     sortDirection
   );
 
-  const handleCollectionClick = (id: string) => {
+  const handleCollectionClick = (id: string, firstImageId?: string) => {
     if (onNavigate) {
-      onNavigate(id);
+      onNavigate(id, firstImageId);
     } else {
       navigate(`/collections/${id}`);
     }
@@ -107,7 +107,7 @@ const CollectionNavigationSidebar: React.FC<CollectionNavigationSidebarProps> = 
           return (
             <button
               key={collection.id}
-              onClick={() => handleCollectionClick(collection.id)}
+              onClick={() => handleCollectionClick(collection.id, collection.firstImageId)}
               className={`w-full group relative overflow-hidden rounded-lg transition-all ${
                 isActive 
                   ? 'ring-2 ring-primary-500 shadow-lg shadow-primary-500/50' 

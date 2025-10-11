@@ -35,6 +35,9 @@ public static class CollectionMappingExtensions
             HasThumbnail = middleThumbnail != null,
             ThumbnailBase64 = null, // Will be populated by controller using IThumbnailCacheService
             
+            // First image ID for direct viewer navigation (avoid redundant API call)
+            FirstImageId = collection.Images?.FirstOrDefault()?.Id,
+            
             CreatedAt = collection.CreatedAt,
             UpdatedAt = collection.UpdatedAt,
         };

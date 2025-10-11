@@ -31,6 +31,9 @@ export interface Collection {
   // Format: data:image/jpeg;base64,{base64Data}
   thumbnailBase64?: string;
 
+  // First image ID for direct viewer navigation
+  firstImageId?: string;
+
   createdAt: string;
   updatedAt: string;
 }

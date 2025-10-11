@@ -31,6 +31,11 @@ public class CollectionOverviewDto
     /// </summary>
     public string? ThumbnailBase64 { get; set; }
     
+    /// <summary>
+    /// First image ID in the collection for direct viewer navigation
+    /// </summary>
+    public string? FirstImageId { get; set; }
+    
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
 }
