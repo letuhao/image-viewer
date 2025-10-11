@@ -133,7 +133,6 @@ public class CacheFoldersController : ControllerBase
                 try
                 {
                     Directory.CreateDirectory(request.Path);
-                    canCreate = true;
                     canWrite = true;
                     Directory.Delete(request.Path); // Clean up test directory
                 }
