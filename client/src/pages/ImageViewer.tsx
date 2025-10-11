@@ -334,10 +334,19 @@ const ImageViewer: React.FC = () => {
       return;
     }
 
-    const maxPreload = parseInt(localStorage.getItem('maxPreloadImages') || '20');
+    // Only preload immediate next images based on view mode
+    const imagesPerView = {
+      single: 1,
+      double: 2,
+      triple: 3,
+      quad: 4,
+    }[viewMode];
+    
+    // Preload next set of images (same count as current view)
+    const preloadCount = imagesPerView;
     const preloadImages: HTMLImageElement[] = [];
 
-    for (let i = 1; i <= Math.min(maxPreload, images.length - 1); i++) {
+    for (let i = 1; i <= Math.min(preloadCount, images.length - 1); i++) {
       const nextIndex = (currentIndex + i) % images.length;
       const nextImage = images[nextIndex];
       if (nextImage) {
@@ -356,7 +365,7 @@ const ImageViewer: React.FC = () => {
       });
       preloadImages.length = 0;
     };
-  }, [currentIndex, images, collectionId]);
+  }, [currentIndex, images, collectionId, viewMode]);
 
   if (!currentImage && images.length === 0) {
     return <LoadingSpinner fullScreen text="Loading images..." />;
