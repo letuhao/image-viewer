@@ -360,10 +360,18 @@ public class BulkService : IBulkService
         {
             var imageExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".tiff", ".svg" };
             
-            // IMPORTANT: Use AllDirectories to find images in nested folders!
-            // This ensures that collections with nested image structures are detected
-            // Example: L:\test\collection1\images\*.jpg will be found
-            var files = Directory.GetFiles(directory, "*", SearchOption.AllDirectories);
+            // CRITICAL FIX: Use TopDirectoryOnly to check ONLY direct children
+            // We want LEAF folders only (folders that directly contain images)
+            // NOT intermediate folders that have subfolders with images
+            // 
+            // Example structure:
+            // L:\EMedia\AI_Generated\         ← NO images directly here → NOT a collection
+            //   └── AiASAG\                   ← Images here → IS a collection
+            //       └── image1.jpg
+            //
+            // Before fix: Both AI_Generated AND AiASAG were added as collections (wrong!)
+            // After fix: Only AiASAG is added as a collection (correct!)
+            var files = Directory.GetFiles(directory, "*", SearchOption.TopDirectoryOnly);
             
             return Task.FromResult(files.Any(file => 
                 imageExtensions.Contains(Path.GetExtension(file).ToLowerInvariant())));
