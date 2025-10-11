@@ -101,34 +101,30 @@ Write-Host ""
 Write-Info "Starting services (visible console windows)..."
 Write-Host ""
 
-# Start API
+# Start API (use cmd to keep window open)
 Write-Info "  [1/4] Starting API Server..."
-Start-Process -FilePath "dotnet" -ArgumentList "run --no-build -c Release" `
-    -WorkingDirectory "$PWD\src\ImageViewer.Api" `
+Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$PWD\src\ImageViewer.Api'; dotnet run -c Release" `
     -WindowStyle Normal
 
 Start-Sleep -Seconds 5
 
 # Start Worker
 Write-Info "  [2/4] Starting Worker..."
-Start-Process -FilePath "dotnet" -ArgumentList "run --no-build -c Release" `
-    -WorkingDirectory "$PWD\src\ImageViewer.Worker" `
+Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$PWD\src\ImageViewer.Worker'; dotnet run -c Release" `
     -WindowStyle Normal
 
 Start-Sleep -Seconds 3
 
 # Start Scheduler
 Write-Info "  [3/4] Starting Scheduler..."
-Start-Process -FilePath "dotnet" -ArgumentList "run --no-build -c Release" `
-    -WorkingDirectory "$PWD\src\ImageViewer.Scheduler" `
+Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$PWD\src\ImageViewer.Scheduler'; dotnet run -c Release" `
     -WindowStyle Normal
 
 Start-Sleep -Seconds 3
 
 # Start Frontend
 Write-Info "  [4/4] Starting Frontend..."
-Start-Process -FilePath "npm" -ArgumentList "run dev" `
-    -WorkingDirectory "$PWD\client" `
+Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$PWD\client'; npm run dev" `
     -WindowStyle Normal
 
 Write-Host ""

@@ -6,13 +6,47 @@ PowerShell scripts for running ImageViewer platform locally without Docker.
 
 ## 📋 Available Scripts
 
+### **PowerShell Scripts** (Full-featured)
+
 | Script | Purpose | Usage |
 |--------|---------|-------|
 | **quick-start.ps1** | First-time setup + start | `.\quick-start.ps1` |
-| **start-all-services.ps1** | Start all services | `.\start-all-services.ps1` |
+| **start-all-services.ps1** | Start all services (hidden) | `.\start-all-services.ps1` |
+| **start-all-services.ps1 -Visible** | Start with visible windows | `.\start-all-services.ps1 -Visible` |
+| **start-all-services-safe.ps1** | Antivirus-friendly version | `.\start-all-services-safe.ps1` |
 | **stop-all-services.ps1** | Stop all services | `.\stop-all-services.ps1` |
 | **status-services.ps1** | Check service status | `.\status-services.ps1` |
 | **view-logs.ps1** | View service logs | `.\view-logs.ps1` |
+
+### **Batch Scripts** (Maximum compatibility)
+
+| Script | Purpose | Usage |
+|--------|---------|-------|
+| **start-all-services.bat** | Start all services (CMD) | `start-all-services.bat` |
+| **stop-all-services.bat** | Stop all services (CMD) | `stop-all-services.bat` |
+
+---
+
+## 🛡️ **Antivirus Issues?**
+
+If PowerShell scripts are blocked:
+
+1. **Use .bat version** (works on all systems):
+   ```batch
+   start-all-services.bat
+   ```
+
+2. **Use -Visible flag** (PowerShell, shows windows):
+   ```powershell
+   .\start-all-services.ps1 -Visible
+   ```
+
+3. **Add exception** (best UX, requires admin):
+   ```
+   Windows Security → Exclusions → Add folder → image-viewer
+   ```
+
+See **ANTIVIRUS_GUIDE.md** for complete troubleshooting.
 
 ---
 
