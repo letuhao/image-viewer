@@ -101,12 +101,14 @@ public class Program
                 // RabbitMQ Message Queue
                 services.Configure<RabbitMQOptions>(configuration.GetSection("RabbitMQ"));
                 services.AddSingleton<IMessageQueueService, RabbitMQMessageQueueService>();
-                services.AddHostedService<RabbitMQSetupService>();
+                
+                // RabbitMQ Setup - run manually in startup, not as hosted service
+                // services.AddHostedService<RabbitMQSetupService>(); // Not a hosted service
 
                 // Register MongoDB repositories for scheduler
                 services.AddScoped<IScheduledJobRepository, MongoScheduledJobRepository>();
                 services.AddScoped<IScheduledJobRunRepository, MongoScheduledJobRunRepository>();
-                services.AddScoped<ILibraryRepository, MongoLibraryRepository>();
+                services.AddScoped<ILibraryRepository, LibraryRepository>();
 
                 // Register Scheduler services
                 services.AddScoped<ISchedulerService, HangfireSchedulerService>();
