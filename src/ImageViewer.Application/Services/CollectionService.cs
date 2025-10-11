@@ -7,6 +7,7 @@ using ImageViewer.Domain.Enums;
 using ImageViewer.Domain.Exceptions;
 using ImageViewer.Domain.Events;
 using ImageViewer.Application.DTOs.BackgroundJobs;
+using ImageViewer.Application.Mappings;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -714,4 +715,142 @@ public class CollectionService : ICollectionService
             throw new BusinessRuleException($"Failed to get collections by type '{type}'", ex);
         }
     }
+
+    #region Collection Navigation
+
+    public async Task<DTOs.Collections.CollectionNavigationDto> GetCollectionNavigationAsync(ObjectId collectionId, string sortBy = "updatedAt", string sortDirection = "desc")
+    {
+        try
+        {
+            _logger.LogInformation("Getting navigation info for collection {CollectionId} with sort {SortBy} {SortDirection}", collectionId, sortBy, sortDirection);
+
+            // Get all collections sorted
+            var allCollections = (await GetSortedCollectionsAsync(sortBy, sortDirection)).ToList();
+            
+            // Find current collection position
+            var currentPosition = allCollections.FindIndex(c => c.Id == collectionId);
+            
+            if (currentPosition == -1)
+            {
+                throw new BusinessRuleException($"Collection {collectionId} not found in sorted list");
+            }
+
+            // Get previous and next collection IDs
+            var previousCollectionId = currentPosition > 0 
+                ? allCollections[currentPosition - 1].Id.ToString() 
+                : null;
+            
+            var nextCollectionId = currentPosition < allCollections.Count - 1 
+                ? allCollections[currentPosition + 1].Id.ToString() 
+                : null;
+
+            return new DTOs.Collections.CollectionNavigationDto
+            {
+                PreviousCollectionId = previousCollectionId,
+                NextCollectionId = nextCollectionId,
+                CurrentPosition = currentPosition + 1, // 1-based for display
+                TotalCollections = allCollections.Count,
+                HasPrevious = currentPosition > 0,
+                HasNext = currentPosition < allCollections.Count - 1
+            };
+        }
+        catch (Exception ex) when (!(ex is BusinessRuleException))
+        {
+            _logger.LogError(ex, "Failed to get navigation info for collection {CollectionId}", collectionId);
+            throw new BusinessRuleException($"Failed to get navigation info for collection", ex);
+        }
+    }
+
+    public async Task<DTOs.Collections.CollectionSiblingsDto> GetCollectionSiblingsAsync(ObjectId collectionId, int page = 1, int pageSize = 20, string sortBy = "updatedAt", string sortDirection = "desc")
+    {
+        try
+        {
+            _logger.LogInformation("Getting siblings for collection {CollectionId} (page {Page}, size {PageSize})", collectionId, page, pageSize);
+
+            // Get all collections sorted
+            var allCollections = (await GetSortedCollectionsAsync(sortBy, sortDirection)).ToList();
+            
+            // Find current collection position
+            var currentPosition = allCollections.FindIndex(c => c.Id == collectionId);
+            
+            if (currentPosition == -1)
+            {
+                throw new BusinessRuleException($"Collection {collectionId} not found in sorted list");
+            }
+
+            // Get paginated siblings
+            var skip = (page - 1) * pageSize;
+            var siblings = allCollections
+                .Skip(skip)
+                .Take(pageSize)
+                .Select(c => c.ToOverviewDto())
+                .ToList();
+
+            return new DTOs.Collections.CollectionSiblingsDto
+            {
+                Siblings = siblings,
+                CurrentPosition = currentPosition + 1, // 1-based
+                TotalCount = allCollections.Count
+            };
+        }
+        catch (Exception ex) when (!(ex is BusinessRuleException))
+        {
+            _logger.LogError(ex, "Failed to get siblings for collection {CollectionId}", collectionId);
+            throw new BusinessRuleException($"Failed to get siblings for collection", ex);
+        }
+    }
+
+    public async Task<IEnumerable<Collection>> GetSortedCollectionsAsync(string sortBy = "updatedAt", string sortDirection = "desc", int? limit = null)
+    {
+        try
+        {
+            _logger.LogDebug("Getting sorted collections by {SortBy} {SortDirection}", sortBy, sortDirection);
+
+            // Build sort definition based on sortBy field
+            var sortDefinition = sortDirection.ToLower() == "asc" 
+                ? BuildAscendingSortDefinition(sortBy)
+                : BuildDescendingSortDefinition(sortBy);
+
+            // Get collections with sorting
+            return await _collectionRepository.FindAsync(
+                Builders<Collection>.Filter.Eq(c => c.IsDeleted, false),
+                sortDefinition,
+                limit ?? 1000,
+                0
+            );
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get sorted collections");
+            throw new BusinessRuleException($"Failed to get sorted collections", ex);
+        }
+    }
+
+    private SortDefinition<Collection> BuildAscendingSortDefinition(string sortBy)
+    {
+        return sortBy.ToLower() switch
+        {
+            "createdat" => Builders<Collection>.Sort.Ascending(c => c.CreatedAt),
+            "updatedat" => Builders<Collection>.Sort.Ascending(c => c.UpdatedAt),
+            "name" => Builders<Collection>.Sort.Ascending(c => c.Name),
+            "imagecount" => Builders<Collection>.Sort.Ascending(c => c.ImageCount),
+            "totalsize" => Builders<Collection>.Sort.Ascending(c => c.TotalSize),
+            _ => Builders<Collection>.Sort.Ascending(c => c.UpdatedAt)
+        };
+    }
+
+    private SortDefinition<Collection> BuildDescendingSortDefinition(string sortBy)
+    {
+        return sortBy.ToLower() switch
+        {
+            "createdat" => Builders<Collection>.Sort.Descending(c => c.CreatedAt),
+            "updatedat" => Builders<Collection>.Sort.Descending(c => c.UpdatedAt),
+            "name" => Builders<Collection>.Sort.Descending(c => c.Name),
+            "imagecount" => Builders<Collection>.Sort.Descending(c => c.ImageCount),
+            "totalsize" => Builders<Collection>.Sort.Descending(c => c.TotalSize),
+            _ => Builders<Collection>.Sort.Descending(c => c.UpdatedAt)
+        };
+    }
+
+    #endregion
 }

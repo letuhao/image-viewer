@@ -730,6 +730,74 @@ public class CollectionsController : ControllerBase
             _ => "image/jpeg" // Default fallback
         };
     }
+
+    #region Collection Navigation
+
+    /// <summary>
+    /// Get navigation info for a collection (previous/next IDs and position)
+    /// </summary>
+    [HttpGet("{id}/navigation")]
+    public async Task<IActionResult> GetCollectionNavigation(
+        string id,
+        [FromQuery] string sortBy = "updatedAt",
+        [FromQuery] string sortDirection = "desc")
+    {
+        try
+        {
+            if (!ObjectId.TryParse(id, out var collectionId))
+            {
+                return BadRequest(new { message = "Invalid collection ID format" });
+            }
+
+            var navigation = await _collectionService.GetCollectionNavigationAsync(collectionId, sortBy, sortDirection);
+            return Ok(navigation);
+        }
+        catch (BusinessRuleException ex)
+        {
+            _logger.LogWarning(ex, "Business rule violation getting navigation for collection {CollectionId}", id);
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get navigation for collection {CollectionId}", id);
+            return StatusCode(500, new { message = "Internal server error" });
+        }
+    }
+
+    /// <summary>
+    /// Get sibling collections for navigation sidebar
+    /// </summary>
+    [HttpGet("{id}/siblings")]
+    public async Task<IActionResult> GetCollectionSiblings(
+        string id,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        [FromQuery] string sortBy = "updatedAt",
+        [FromQuery] string sortDirection = "desc")
+    {
+        try
+        {
+            if (!ObjectId.TryParse(id, out var collectionId))
+            {
+                return BadRequest(new { message = "Invalid collection ID format" });
+            }
+
+            var siblings = await _collectionService.GetCollectionSiblingsAsync(collectionId, page, pageSize, sortBy, sortDirection);
+            return Ok(siblings);
+        }
+        catch (BusinessRuleException ex)
+        {
+            _logger.LogWarning(ex, "Business rule violation getting siblings for collection {CollectionId}", id);
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get siblings for collection {CollectionId}", id);
+            return StatusCode(500, new { message = "Internal server error" });
+        }
+    }
+
+    #endregion
 }
 
 /// <summary>

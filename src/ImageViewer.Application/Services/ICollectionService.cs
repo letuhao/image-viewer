@@ -62,6 +62,25 @@ public interface ICollectionService
     Task<IEnumerable<Collection>> GetCollectionsByTypeAsync(CollectionType type, int page = 1, int pageSize = 20);
     
     #endregion
+    
+    #region Collection Navigation
+    
+    /// <summary>
+    /// Get navigation info for a collection (previous/next collection IDs and position)
+    /// </summary>
+    Task<DTOs.Collections.CollectionNavigationDto> GetCollectionNavigationAsync(ObjectId collectionId, string sortBy = "updatedAt", string sortDirection = "desc");
+    
+    /// <summary>
+    /// Get sibling collections (all collections in the same sorted list)
+    /// </summary>
+    Task<DTOs.Collections.CollectionSiblingsDto> GetCollectionSiblingsAsync(ObjectId collectionId, int page = 1, int pageSize = 20, string sortBy = "updatedAt", string sortDirection = "desc");
+    
+    /// <summary>
+    /// Get sorted collections with default system sorting
+    /// </summary>
+    Task<IEnumerable<Collection>> GetSortedCollectionsAsync(string sortBy = "updatedAt", string sortDirection = "desc", int? limit = null);
+    
+    #endregion
 }
 
 /// <summary>
