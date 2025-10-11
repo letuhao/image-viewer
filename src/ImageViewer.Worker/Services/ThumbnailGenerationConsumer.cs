@@ -114,6 +114,25 @@ public class ThumbnailGenerationConsumer : BaseMessageConsumer
                         }
                     }
                     
+                    // Track progress in FileProcessingJobState if jobId is present
+                    if (!string.IsNullOrEmpty(thumbnailMessage.JobId))
+                    {
+                        try
+                        {
+                            var jobStateRepository = scope.ServiceProvider.GetRequiredService<IFileProcessingJobStateRepository>();
+                            var fileInfo = new FileInfo(thumbnailPath);
+                            await jobStateRepository.AtomicIncrementCompletedAsync(
+                                thumbnailMessage.JobId, 
+                                thumbnailMessage.ImageId,
+                                fileInfo.Length);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning(ex, "Failed to track thumbnail progress for image {ImageId} in job {JobId}", 
+                                thumbnailMessage.ImageId, thumbnailMessage.JobId);
+                        }
+                    }
+                    
                     // Batched logging - log every 50 files
                     int currentCount;
                     lock (_counterLock)
@@ -140,6 +159,21 @@ public class ThumbnailGenerationConsumer : BaseMessageConsumer
             catch (Exception ex)
             {
                 _logger.LogError(ex, "❌ Failed to generate thumbnail for image {ImageId}", thumbnailMessage.ImageId);
+                
+                // Track as failed in FileProcessingJobState
+                if (!string.IsNullOrEmpty(thumbnailMessage.JobId))
+                {
+                    try
+                    {
+                        var jobStateRepository = scope.ServiceProvider.GetRequiredService<IFileProcessingJobStateRepository>();
+                        await jobStateRepository.AtomicIncrementFailedAsync(thumbnailMessage.JobId, thumbnailMessage.ImageId);
+                    }
+                    catch (Exception trackEx)
+                    {
+                        _logger.LogWarning(trackEx, "Failed to track thumbnail error for image {ImageId} in job {JobId}", 
+                            thumbnailMessage.ImageId, thumbnailMessage.JobId);
+                    }
+                }
             }
             } // Close using (scope) block
         }

@@ -108,11 +108,11 @@ public class CacheGenerationConsumer : BaseMessageConsumer
             {
                 _logger.LogInformation("📁 Cache already exists for image {ImageId}, skipping generation", cacheMessage.ImageId);
                 
-                // Track as skipped in CacheJobState
+                // Track as skipped in FileProcessingJobState
                 if (!string.IsNullOrEmpty(cacheMessage.JobId))
                 {
-                    var cacheJobStateRepository = scope.ServiceProvider.GetRequiredService<ICacheJobStateRepository>();
-                    await cacheJobStateRepository.AtomicIncrementSkippedAsync(cacheMessage.JobId, cacheMessage.ImageId);
+                    var jobStateRepository = scope.ServiceProvider.GetRequiredService<IFileProcessingJobStateRepository>();
+                    await jobStateRepository.AtomicIncrementSkippedAsync(cacheMessage.JobId, cacheMessage.ImageId);
                 }
                 
                 return;
@@ -211,11 +211,11 @@ public class CacheGenerationConsumer : BaseMessageConsumer
             var backgroundJobService = scope.ServiceProvider.GetRequiredService<IBackgroundJobService>();
             await UpdateCacheInfoInDatabase(cacheMessage, cachePath, collectionRepository, backgroundJobService);
             
-            // Track progress in CacheJobState if jobId is present
+            // Track progress in FileProcessingJobState if jobId is present
             if (!string.IsNullOrEmpty(cacheMessage.JobId))
             {
-                var cacheJobStateRepository = scope.ServiceProvider.GetRequiredService<ICacheJobStateRepository>();
-                await cacheJobStateRepository.AtomicIncrementCompletedAsync(
+                var jobStateRepository = scope.ServiceProvider.GetRequiredService<IFileProcessingJobStateRepository>();
+                await jobStateRepository.AtomicIncrementCompletedAsync(
                     cacheMessage.JobId, 
                     cacheMessage.ImageId, 
                     cacheImageData.Length);
@@ -252,14 +252,14 @@ public class CacheGenerationConsumer : BaseMessageConsumer
             var cacheMsg = JsonSerializer.Deserialize<CacheGenerationMessage>(message, options);
             _logger.LogError(ex, "Error processing cache generation message for image {ImageId}", cacheMsg?.ImageId);
             
-            // Track as failed in CacheJobState
+            // Track as failed in FileProcessingJobState
             if (cacheMsg != null && !string.IsNullOrEmpty(cacheMsg.JobId))
             {
                 try
                 {
                     using var errorScope = _serviceScopeFactory.CreateScope();
-                    var cacheJobStateRepository = errorScope.ServiceProvider.GetRequiredService<ICacheJobStateRepository>();
-                    await cacheJobStateRepository.AtomicIncrementFailedAsync(cacheMsg.JobId, cacheMsg.ImageId);
+                    var jobStateRepository = errorScope.ServiceProvider.GetRequiredService<IFileProcessingJobStateRepository>();
+                    await jobStateRepository.AtomicIncrementFailedAsync(cacheMsg.JobId, cacheMsg.ImageId);
                 }
                 catch (Exception trackEx)
                 {
