@@ -109,6 +109,23 @@ public class MongoCacheFolderRepository : MongoRepository<CacheFolder>, ICacheFo
     }
 
     /// <summary>
+    /// Atomically increment cache statistics (size and file count) in SINGLE transaction
+    /// 在单个事务中原子增加缓存统计信息（大小和文件数） - Tăng thống kê bộ nhớ cache nguyên tử trong một giao dịch
+    /// Thread-safe for concurrent bulk operations
+    /// </summary>
+    public async Task IncrementCacheStatisticsAsync(ObjectId folderId, long sizeBytes, int fileCount = 1)
+    {
+        var filter = Builders<CacheFolder>.Filter.Eq(x => x.Id, folderId);
+        var update = Builders<CacheFolder>.Update
+            .Inc(x => x.CurrentSizeBytes, sizeBytes)
+            .Inc(x => x.TotalFiles, fileCount)
+            .Set(x => x.LastCacheGeneratedAt, DateTime.UtcNow)
+            .Set(x => x.UpdatedAt, DateTime.UtcNow);
+
+        await _collection.UpdateOneAsync(filter, update);
+    }
+
+    /// <summary>
     /// Atomically decrement file count
     /// </summary>
     public async Task DecrementFileCountAsync(ObjectId folderId, int count = 1)
@@ -137,25 +154,42 @@ public class MongoCacheFolderRepository : MongoRepository<CacheFolder>, ICacheFo
     }
 
     /// <summary>
-    /// Add a collection to the cached collections list
+    /// Atomically add collection to cached collections and update count
+    /// 原子地添加集合到缓存集合列表并更新计数 - Thêm bộ sưu tập vào danh sách bộ nhớ cache và cập nhật số đếm nguyên tử
+    /// Uses MongoDB aggregation pipeline for ATOMIC count calculation - NO race condition!
     /// </summary>
     public async Task AddCachedCollectionAsync(ObjectId folderId, string collectionId)
     {
         var filter = Builders<CacheFolder>.Filter.Eq(x => x.Id, folderId);
-        var update = Builders<CacheFolder>.Update
-            .AddToSet(x => x.CachedCollectionIds, collectionId)
-            .Set(x => x.UpdatedAt, DateTime.UtcNow);
-
-        await _collection.UpdateOneAsync(filter, update);
         
-        // Recalculate total collections (count of unique collection IDs)
-        var folder = await GetByIdAsync(folderId);
-        if (folder != null)
-        {
-            var countUpdate = Builders<CacheFolder>.Update
-                .Set(x => x.TotalCollections, folder.CachedCollectionIds.Count);
-            await _collection.UpdateOneAsync(filter, countUpdate);
-        }
+        // Use aggregation pipeline update (MongoDB 4.2+) for atomic operations
+        // $addToSet equivalent + $size for atomic count - all in ONE operation
+        var pipelineStage = @"{
+            $set: {
+                cachedCollectionIds: { 
+                    $cond: {
+                        if: { $in: ['" + collectionId + @"', { $ifNull: ['$cachedCollectionIds', []] }] },
+                        then: { $ifNull: ['$cachedCollectionIds', []] },
+                        else: { $concatArrays: [{ $ifNull: ['$cachedCollectionIds', []] }, ['" + collectionId + @"']] }
+                    }
+                },
+                totalCollections: {
+                    $size: {
+                        $cond: {
+                            if: { $in: ['" + collectionId + @"', { $ifNull: ['$cachedCollectionIds', []] }] },
+                            then: { $ifNull: ['$cachedCollectionIds', []] },
+                            else: { $concatArrays: [{ $ifNull: ['$cachedCollectionIds', []] }, ['" + collectionId + @"']] }
+                        }
+                    }
+                },
+                updatedAt: '$$NOW'
+            }
+        }";
+
+        var pipeline = new EmptyPipelineDefinition<CacheFolder>()
+            .AppendStage<CacheFolder, CacheFolder, CacheFolder>(pipelineStage);
+
+        await _collection.UpdateOneAsync(filter, pipeline);
     }
 
     /// <summary>

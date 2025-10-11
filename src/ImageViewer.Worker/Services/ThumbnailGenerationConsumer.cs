@@ -522,12 +522,11 @@ public class ThumbnailGenerationConsumer : BaseMessageConsumer
                 return;
             }
             
-            // ATOMIC INCREMENT: Thread-safe update using MongoDB $inc operator
-            await cacheFolderRepository.IncrementSizeAsync(cacheFolder.Id, fileSize);
-            await cacheFolderRepository.IncrementFileCountAsync(cacheFolder.Id, 1);
+            // ATOMIC INCREMENT: Thread-safe update in SINGLE transaction
+            await cacheFolderRepository.IncrementCacheStatisticsAsync(cacheFolder.Id, fileSize, 1);
             await cacheFolderRepository.AddCachedCollectionAsync(cacheFolder.Id, collectionId.ToString());
             
-            _logger.LogDebug("📊 Atomically incremented cache folder {Name} size by {Size} bytes, file count by 1", 
+            _logger.LogDebug("📊 Atomically incremented cache folder {Name} size by {Size} bytes, file count by 1 (single transaction)", 
                 cacheFolder.Name, fileSize);
         }
         catch (Exception ex)

@@ -44,7 +44,14 @@ public interface ICacheFolderRepository : IRepository<CacheFolder>
     Task DecrementFileCountAsync(ObjectId folderId, int count = 1);
 
     /// <summary>
-    /// Add a collection to the cached collections list
+    /// Atomically increment cache statistics (size and file count) in single transaction
+    /// 在单个事务中原子增加缓存统计信息（大小和文件数） - Tăng thống kê bộ nhớ cache nguyên tử (kích thước và số tệp) trong một giao dịch
+    /// </summary>
+    Task IncrementCacheStatisticsAsync(ObjectId folderId, long sizeBytes, int fileCount = 1);
+
+    /// <summary>
+    /// Add a collection to the cached collections list (atomically updates TotalCollections)
+    /// 添加集合到缓存集合列表（原子更新集合总数） - Thêm bộ sưu tập vào danh sách bộ sưu tập được lưu trong bộ nhớ cache (cập nhật tổng số nguyên tử)
     /// </summary>
     Task AddCachedCollectionAsync(ObjectId folderId, string collectionId);
 
