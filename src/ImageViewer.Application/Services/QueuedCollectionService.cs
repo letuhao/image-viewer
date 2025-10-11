@@ -474,4 +474,23 @@ public class QueuedCollectionService : ICollectionService
     }
 
     #endregion
+
+    #region Collection Navigation
+
+    public async Task<DTOs.Collections.CollectionNavigationDto> GetCollectionNavigationAsync(ObjectId collectionId, string sortBy = "updatedAt", string sortDirection = "desc")
+    {
+        return await _collectionService.GetCollectionNavigationAsync(collectionId, sortBy, sortDirection);
+    }
+
+    public async Task<DTOs.Collections.CollectionSiblingsDto> GetCollectionSiblingsAsync(ObjectId collectionId, int page = 1, int pageSize = 20, string sortBy = "updatedAt", string sortDirection = "desc")
+    {
+        return await _collectionService.GetCollectionSiblingsAsync(collectionId, page, pageSize, sortBy, sortDirection);
+    }
+
+    public async Task<IEnumerable<Collection>> GetSortedCollectionsAsync(string sortBy = "updatedAt", string sortDirection = "desc", int? limit = null)
+    {
+        return await _collectionService.GetSortedCollectionsAsync(sortBy, sortDirection, limit);
+    }
+
+    #endregion
 }

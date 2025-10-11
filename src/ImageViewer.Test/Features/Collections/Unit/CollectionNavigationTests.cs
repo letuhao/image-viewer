@@ -201,10 +201,12 @@ public class CollectionNavigationTests
     {
         var collections = new List<Collection>();
         var baseDate = DateTime.UtcNow.AddDays(-count);
+        var libraryId = ObjectId.GenerateNewId();
 
         for (int i = 0; i < count; i++)
         {
-            var collection = Collection.Create(
+            var collection = new Collection(
+                libraryId: libraryId,
                 name: $"Test Collection {i + 1}",
                 path: $"C:\\Test\\Collection{i + 1}",
                 type: CollectionType.Folder,
