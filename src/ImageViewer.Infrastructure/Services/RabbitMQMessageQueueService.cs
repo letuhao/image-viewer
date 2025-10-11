@@ -69,14 +69,20 @@ public class RabbitMQMessageQueueService : IMessageQueueService, IDisposable
                 { "Timestamp", message.Timestamp.ToString("O") }
             };
 
-            _channel.BasicPublishAsync(
+            var actualRoutingKey = routingKey ?? GetDefaultRoutingKey<T>();
+            
+            _logger.LogInformation("Publishing message: Type={MessageType}, ID={MessageId}, Exchange={Exchange}, RoutingKey={RoutingKey}, Queue={Queue}", 
+                message.MessageType, message.Id, _options.DefaultExchange, actualRoutingKey, queueName);
+
+            await _channel.BasicPublishAsync(
                 exchange: _options.DefaultExchange,
-                routingKey: routingKey ?? GetDefaultRoutingKey<T>(),
+                routingKey: actualRoutingKey,
                 mandatory: false,
                 basicProperties: properties,
-                body: messageBody).GetAwaiter().GetResult();
+                body: messageBody);
 
-            _logger.LogDebug("Published message {MessageType} with ID {MessageId}", message.MessageType, message.Id);
+            _logger.LogInformation("✓ Published successfully: {MessageType} with ID {MessageId} to {Exchange} via {RoutingKey}", 
+                message.MessageType, message.Id, _options.DefaultExchange, actualRoutingKey);
         }
         catch (Exception ex)
         {
