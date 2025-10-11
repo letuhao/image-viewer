@@ -85,6 +85,7 @@ const ImageViewer: React.FC = () => {
   );
   const slideshowRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const imageContainerRef = useRef<HTMLDivElement>(null);
+  const preloadedImagesRef = useRef<Map<string, HTMLImageElement>>(new Map());
 
   const images = imagesData?.data || [];
   const currentIndex = images.findIndex((img) => img.id === currentImageId);
@@ -328,44 +329,56 @@ const ImageViewer: React.FC = () => {
     }
   }, [navigationMode, currentImageId, currentIndex]);
 
-  // Image preloading (only in paging mode)
+  // Image preloading with persistent cache (only in paging mode)
   useEffect(() => {
     if (navigationMode === 'scroll' || currentIndex === -1 || images.length === 0) {
       return;
     }
 
-    // Only preload immediate next images based on view mode
-    const imagesPerView = {
-      single: 1,
-      double: 2,
-      triple: 3,
-      quad: 4,
-    }[viewMode];
-    
-    // Preload next set of images (same count as current view)
-    const preloadCount = imagesPerView;
-    const preloadImages: HTMLImageElement[] = [];
+    const maxPreload = parseInt(localStorage.getItem('maxPreloadImages') || '20');
+    const preloadCache = preloadedImagesRef.current;
 
-    for (let i = 1; i <= Math.min(preloadCount, images.length - 1); i++) {
+    // Determine which images to preload (next N images from current position)
+    const imagesToPreload: string[] = [];
+    for (let i = 1; i <= Math.min(maxPreload, images.length - 1); i++) {
       const nextIndex = (currentIndex + i) % images.length;
       const nextImage = images[nextIndex];
-      if (nextImage) {
-        const img = new Image();
-        img.src = `/api/v1/images/${collectionId}/${nextImage.id}/file`;
-        preloadImages.push(img);
+      if (nextImage && !preloadCache.has(nextImage.id)) {
+        imagesToPreload.push(nextImage.id);
       }
     }
 
-    // Cleanup - properly remove image references
-    return () => {
-      preloadImages.forEach(img => {
+    // Preload only new images (not already in cache)
+    imagesToPreload.forEach(imageId => {
+      const img = new Image();
+      img.src = `/api/v1/images/${collectionId}/${imageId}/file`;
+      
+      img.onload = () => {
+        console.log(`Preloaded image ${imageId}`);
+      };
+      
+      img.onerror = () => {
+        console.warn(`Failed to preload image ${imageId}`);
+        preloadCache.delete(imageId);
+      };
+      
+      preloadCache.set(imageId, img);
+    });
+
+    // Cleanup: Remove old images that are too far from current position
+    const minKeepIndex = Math.max(0, currentIndex - 10);
+    const maxKeepIndex = Math.min(images.length - 1, currentIndex + maxPreload + 10);
+    
+    preloadCache.forEach((img, imageId) => {
+      const imgIndex = images.findIndex(i => i.id === imageId);
+      if (imgIndex !== -1 && (imgIndex < minKeepIndex || imgIndex > maxKeepIndex)) {
         img.onload = null;
         img.onerror = null;
-        img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'; // 1x1 transparent gif
-      });
-      preloadImages.length = 0;
-    };
-  }, [currentIndex, images, collectionId, viewMode]);
+        img.src = '';
+        preloadCache.delete(imageId);
+      }
+    });
+  }, [currentIndex, images, collectionId, navigationMode]);
 
   if (!currentImage && images.length === 0) {
     return <LoadingSpinner fullScreen text="Loading images..." />;
