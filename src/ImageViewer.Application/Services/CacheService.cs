@@ -52,7 +52,6 @@ public class CacheService : ICacheService
             int totalCachedImages = 0;
             long totalCacheSize = 0;
             int totalValidCache = 0;
-            int totalExpiredCache = 0;
 
             foreach (var collection in collectionsList)
             {

@@ -79,7 +79,7 @@ public class Library : BaseEntity
         Description = newDescription ?? string.Empty;
         UpdateTimestamp();
         
-        AddDomainEvent(new LibraryDescriptionChangedEvent(Id, newDescription));
+        AddDomainEvent(new LibraryDescriptionChangedEvent(Id, newDescription ?? string.Empty));
     }
 
     public void UpdatePath(string newPath)

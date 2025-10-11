@@ -126,7 +126,6 @@ public class CacheFoldersController : ControllerBase
 
             // Check if directory exists or can be created
             var directoryExists = Directory.Exists(request.Path);
-            var canCreate = false;
             var canWrite = false;
 
             if (!directoryExists)
