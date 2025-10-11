@@ -4,7 +4,7 @@ import axios from 'axios';
 const API_BASE_URL = '/api/v1';
 
 // Create axios instance with default config
-export const api = axios.create({
+const apiInstance = axios.create({
   baseURL: API_BASE_URL,
   timeout: 30000,
   headers: {
@@ -13,7 +13,7 @@ export const api = axios.create({
 });
 
 // Request interceptor for adding auth tokens
-api.interceptors.request.use(
+apiInstance.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('auth_token');
     
@@ -43,7 +43,7 @@ api.interceptors.request.use(
 );
 
 // Response interceptor for error handling
-api.interceptors.response.use(
+apiInstance.interceptors.response.use(
   (response) => response,
   (error) => {
     // Handle common errors
@@ -81,5 +81,8 @@ api.interceptors.response.use(
   }
 );
 
-export default api;
+// Export the configured instance (with interceptors attached)
+// IMPORTANT: Export AFTER interceptors are registered to ensure they're included
+export const api = apiInstance;
+export default apiInstance;
 
