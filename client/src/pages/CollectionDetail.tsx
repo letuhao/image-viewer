@@ -6,6 +6,8 @@ import Button from '../components/ui/Button';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import ImageGrid from '../components/ImageGrid';
 import CollectionNavigationSidebar from '../components/collections/CollectionNavigationSidebar';
+import { Pagination, PaginationSettings } from '../components/common/Pagination';
+import { useUserSettings } from '../hooks/useSettings';
 import { 
   ArrowLeft, 
   Play, 
@@ -19,9 +21,7 @@ import {
   Info,
   Grid3x3,
   List,
-  ListTree,
-  ChevronLeft,
-  ChevronRight
+  ListTree
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -46,6 +46,14 @@ const CollectionDetail: React.FC = () => {
   const [cardSize, setCardSize] = useState<CardSize>(() => 
     (localStorage.getItem('collectionDetailCardSize') as CardSize) || 'medium'
   );
+  
+  // Get pagination settings from user settings (backend)
+  const { data: userSettingsData } = useUserSettings();
+  const paginationSettings: PaginationSettings = {
+    showFirstLast: userSettingsData?.pagination?.showFirstLast ?? true,
+    showPageNumbers: userSettingsData?.pagination?.showPageNumbers ?? true,
+    pageNumbersToShow: userSettingsData?.pagination?.pageNumbersToShow ?? 5,
+  };
   
   const { data: collection, isLoading } = useCollection(id!);
   const { data: imagesData, isLoading: imagesLoading } = useImages({
@@ -218,42 +226,15 @@ const CollectionDetail: React.FC = () => {
               <div className="flex items-center gap-2">
                 {/* Pagination Controls */}
                 <div className="flex items-center gap-2 bg-slate-800 rounded-lg px-2 py-1">
-                    <button
-                      onClick={() => setPage(Math.max(1, page - 1))}
-                      disabled={!pagination?.hasPrevious}
-                      className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                      title="Previous Page"
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                    </button>
-
-                    <div className="flex items-center gap-1">
-                      <input
-                        type="number"
-                        min="1"
-                        max={pagination?.totalPages || 1}
-                        value={page}
-                        onChange={(e) => {
-                          const newPage = parseInt(e.target.value);
-                          if (newPage >= 1 && newPage <= (pagination?.totalPages || 1)) {
-                            setPage(newPage);
-                          }
-                        }}
-                        className="w-12 px-1 py-1 bg-slate-700 border border-slate-600 rounded text-white text-xs text-center focus:outline-none focus:ring-1 focus:ring-primary-500"
-                        title="Go to page"
-                      />
-                      <span className="text-xs text-slate-400">/</span>
-                      <span className="text-xs text-slate-400 w-6 text-center">{pagination?.totalPages || 1}</span>
-                    </div>
-
-                    <button
-                      onClick={() => setPage(page + 1)}
-                      disabled={!pagination?.hasNext}
-                      className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                      title="Next Page"
-                    >
-                      <ChevronRight className="h-4 w-4" />
-                    </button>
+                    <Pagination
+                      currentPage={page}
+                      totalPages={pagination?.totalPages || 1}
+                      onPageChange={setPage}
+                      hasPrevious={pagination?.hasPrevious}
+                      hasNext={pagination?.hasNext}
+                      settings={paginationSettings}
+                      compact={true}
+                    />
                 </div>
 
                 {/* View Mode Controls */}
