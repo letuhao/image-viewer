@@ -164,15 +164,16 @@ public class RabbitMQSetupService
         _logger.LogDebug("Binding queues to exchanges...");
 
         // Bind main queues to default exchange
+        // Use exact match routing keys - no wildcards needed for simplicity
         var queueBindings = new Dictionary<string, string>
         {
-            { _options.CollectionScanQueue, "collection.scan.*" },
-            { _options.ThumbnailGenerationQueue, "thumbnail.generation.*" },
-            { _options.CacheGenerationQueue, "cache.generation.*" },
-            { _options.CollectionCreationQueue, "collection.creation.*" },
-            { _options.BulkOperationQueue, "bulk.operation.*" },
-            { _options.ImageProcessingQueue, "image.processing.*" },
-            { _options.LibraryScanQueue, "library.scan" } // Exact match, no wildcard
+            { _options.CollectionScanQueue, "collection.scan" },
+            { _options.ThumbnailGenerationQueue, "thumbnail.generation" },
+            { _options.CacheGenerationQueue, "cache.generation" },
+            { _options.CollectionCreationQueue, "collection.creation" },
+            { _options.BulkOperationQueue, "bulk.operation" },
+            { _options.ImageProcessingQueue, "image.processing" },
+            { _options.LibraryScanQueue, "library.scan" }
         };
 
         foreach (var binding in queueBindings)
