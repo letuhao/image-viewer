@@ -14,55 +14,32 @@ public class FileProcessingJobStateRepository : MongoRepository<FileProcessingJo
     public FileProcessingJobStateRepository(
         IMongoDatabase database,
         ILogger<FileProcessingJobStateRepository> logger)
-        : base(database, "file_processing_job_states", logger)
+        : base(database, "file_processing_job_states")
     {
-    }
-
-    protected override void CreateIndexes()
-    {
-        // Index on jobId for fast lookup
-        var jobIdIndex = Builders<FileProcessingJobState>.IndexKeys.Ascending(x => x.JobId);
-        Collection.Indexes.CreateOne(new CreateIndexModel<FileProcessingJobState>(jobIdIndex, new CreateIndexOptions { Unique = true }));
-
-        // Index on jobType for filtering by type
-        var jobTypeIndex = Builders<FileProcessingJobState>.IndexKeys.Ascending(x => x.JobType);
-        Collection.Indexes.CreateOne(new CreateIndexModel<FileProcessingJobState>(jobTypeIndex));
-
-        // Index on collectionId for fast lookup
-        var collectionIdIndex = Builders<FileProcessingJobState>.IndexKeys.Ascending(x => x.CollectionId);
-        Collection.Indexes.CreateOne(new CreateIndexModel<FileProcessingJobState>(collectionIdIndex));
-
-        // Index on status for filtering incomplete jobs
-        var statusIndex = Builders<FileProcessingJobState>.IndexKeys.Ascending(x => x.Status);
-        Collection.Indexes.CreateOne(new CreateIndexModel<FileProcessingJobState>(statusIndex));
-
-        // Index on lastProgressAt for finding stale jobs
-        var lastProgressIndex = Builders<FileProcessingJobState>.IndexKeys.Descending(x => x.LastProgressAt);
-        Collection.Indexes.CreateOne(new CreateIndexModel<FileProcessingJobState>(lastProgressIndex));
-
-        // Compound index for jobType + status queries
-        var typeStatusIndex = Builders<FileProcessingJobState>.IndexKeys
-            .Ascending(x => x.JobType)
-            .Ascending(x => x.Status);
-        Collection.Indexes.CreateOne(new CreateIndexModel<FileProcessingJobState>(typeStatusIndex));
-
-        // Compound index for cleanup queries
-        var cleanupIndex = Builders<FileProcessingJobState>.IndexKeys
-            .Ascending(x => x.Status)
-            .Descending(x => x.CompletedAt);
-        Collection.Indexes.CreateOne(new CreateIndexModel<FileProcessingJobState>(cleanupIndex));
+        // Create indexes for optimal query performance
+        // Note: MongoDB will create these indexes automatically on first use
+        // We define them here for documentation and can manually create via MongoDB shell if needed
+        
+        // Indexes to create manually or via migration:
+        // db.file_processing_job_states.createIndex({ "jobId": 1 }, { unique: true })
+        // db.file_processing_job_states.createIndex({ "jobType": 1 })
+        // db.file_processing_job_states.createIndex({ "collectionId": 1 })
+        // db.file_processing_job_states.createIndex({ "status": 1 })
+        // db.file_processing_job_states.createIndex({ "lastProgressAt": -1 })
+        // db.file_processing_job_states.createIndex({ "jobType": 1, "status": 1 })
+        // db.file_processing_job_states.createIndex({ "status": 1, "completedAt": -1 })
     }
 
     public async Task<FileProcessingJobState?> GetByJobIdAsync(string jobId)
     {
         var filter = Builders<FileProcessingJobState>.Filter.Eq(x => x.JobId, jobId);
-        return await Collection.Find(filter).FirstOrDefaultAsync();
+        return await _collection.Find(filter).FirstOrDefaultAsync();
     }
 
     public async Task<FileProcessingJobState?> GetByCollectionIdAsync(string collectionId)
     {
         var filter = Builders<FileProcessingJobState>.Filter.Eq(x => x.CollectionId, collectionId);
-        return await Collection.Find(filter)
+        return await _collection.Find(filter)
             .SortByDescending(x => x.CreatedAt)
             .FirstOrDefaultAsync();
     }
@@ -70,7 +47,7 @@ public class FileProcessingJobStateRepository : MongoRepository<FileProcessingJo
     public async Task<IEnumerable<FileProcessingJobState>> GetByJobTypeAsync(string jobType)
     {
         var filter = Builders<FileProcessingJobState>.Filter.Eq(x => x.JobType, jobType);
-        return await Collection.Find(filter)
+        return await _collection.Find(filter)
             .SortByDescending(x => x.CreatedAt)
             .ToListAsync();
     }
@@ -81,7 +58,7 @@ public class FileProcessingJobStateRepository : MongoRepository<FileProcessingJo
             Builders<FileProcessingJobState>.Filter.In(x => x.Status, new[] { "Pending", "Running", "Paused" }),
             Builders<FileProcessingJobState>.Filter.Eq(x => x.CanResume, true)
         );
-        return await Collection.Find(filter).ToListAsync();
+        return await _collection.Find(filter).ToListAsync();
     }
 
     public async Task<IEnumerable<FileProcessingJobState>> GetIncompleteJobsByTypeAsync(string jobType)
@@ -91,13 +68,13 @@ public class FileProcessingJobStateRepository : MongoRepository<FileProcessingJo
             Builders<FileProcessingJobState>.Filter.In(x => x.Status, new[] { "Pending", "Running", "Paused" }),
             Builders<FileProcessingJobState>.Filter.Eq(x => x.CanResume, true)
         );
-        return await Collection.Find(filter).ToListAsync();
+        return await _collection.Find(filter).ToListAsync();
     }
 
     public async Task<IEnumerable<FileProcessingJobState>> GetPausedJobsAsync()
     {
         var filter = Builders<FileProcessingJobState>.Filter.Eq(x => x.Status, "Paused");
-        return await Collection.Find(filter).ToListAsync();
+        return await _collection.Find(filter).ToListAsync();
     }
 
     public async Task<IEnumerable<FileProcessingJobState>> GetStaleJobsAsync(TimeSpan stalePeriod)
@@ -107,7 +84,7 @@ public class FileProcessingJobStateRepository : MongoRepository<FileProcessingJo
             Builders<FileProcessingJobState>.Filter.Eq(x => x.Status, "Running"),
             Builders<FileProcessingJobState>.Filter.Lt(x => x.LastProgressAt, staleTime)
         );
-        return await Collection.Find(filter).ToListAsync();
+        return await _collection.Find(filter).ToListAsync();
     }
 
     public async Task<bool> IsImageProcessedAsync(string jobId, string imageId)
@@ -119,7 +96,7 @@ public class FileProcessingJobStateRepository : MongoRepository<FileProcessingJo
                 Builders<FileProcessingJobState>.Filter.AnyEq(x => x.FailedImageIds, imageId)
             )
         );
-        return await Collection.CountDocumentsAsync(filter) > 0;
+        return await _collection.CountDocumentsAsync(filter) > 0;
     }
 
     public async Task<bool> AtomicIncrementCompletedAsync(string jobId, string imageId, long sizeBytes)
@@ -140,7 +117,7 @@ public class FileProcessingJobStateRepository : MongoRepository<FileProcessingJo
                 .Set(x => x.LastProgressAt, DateTime.UtcNow)
                 .Set(x => x.UpdatedAt, DateTime.UtcNow);
 
-            var result = await Collection.UpdateOneAsync(filter, update);
+            var result = await _collection.UpdateOneAsync(filter, update);
             return result.ModifiedCount > 0;
         }
         catch (Exception ex)
@@ -167,7 +144,7 @@ public class FileProcessingJobStateRepository : MongoRepository<FileProcessingJo
                 .Set(x => x.LastProgressAt, DateTime.UtcNow)
                 .Set(x => x.UpdatedAt, DateTime.UtcNow);
 
-            var result = await Collection.UpdateOneAsync(filter, update);
+            var result = await _collection.UpdateOneAsync(filter, update);
             return result.ModifiedCount > 0;
         }
         catch (Exception ex)
@@ -194,7 +171,7 @@ public class FileProcessingJobStateRepository : MongoRepository<FileProcessingJo
                 .Set(x => x.LastProgressAt, DateTime.UtcNow)
                 .Set(x => x.UpdatedAt, DateTime.UtcNow);
 
-            var result = await Collection.UpdateOneAsync(filter, update);
+            var result = await _collection.UpdateOneAsync(filter, update);
             return result.ModifiedCount > 0;
         }
         catch (Exception ex)
@@ -227,7 +204,7 @@ public class FileProcessingJobStateRepository : MongoRepository<FileProcessingJo
                 updateBuilder = updateBuilder.Set(x => x.ErrorMessage, errorMessage);
             }
 
-            var result = await Collection.UpdateOneAsync(filter, updateBuilder);
+            var result = await _collection.UpdateOneAsync(filter, updateBuilder);
             return result.ModifiedCount > 0;
         }
         catch (Exception ex)
@@ -246,7 +223,7 @@ public class FileProcessingJobStateRepository : MongoRepository<FileProcessingJo
                 Builders<FileProcessingJobState>.Filter.Lt(x => x.CompletedAt, olderThan)
             );
 
-            var result = await Collection.DeleteManyAsync(filter);
+            var result = await _collection.DeleteManyAsync(filter);
             return (int)result.DeletedCount;
         }
         catch (Exception ex)

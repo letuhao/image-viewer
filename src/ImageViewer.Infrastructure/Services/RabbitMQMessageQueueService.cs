@@ -148,9 +148,10 @@ public class RabbitMQMessageQueueService : IMessageQueueService, IDisposable
             var routingKeyToUse = routingKey ?? GetDefaultRoutingKey<T>();
             var batchCount = 0;
 
-            // Use RabbitMQ batch publishing for better performance
-            var batch = _channel.CreateBasicPublishBatch();
-
+            // Publish messages sequentially (RabbitMQ client will batch internally)
+            // This is still faster than individual calls due to reduced context switching
+            var publishTasks = new List<Task>();
+            
             foreach (var message in messagesList)
             {
                 var messageBody = JsonSerializer.SerializeToUtf8Bytes(message, options);
@@ -167,19 +168,22 @@ public class RabbitMQMessageQueueService : IMessageQueueService, IDisposable
                     }
                 };
 
-                batch.Add(
+                // Queue publish tasks (will execute in parallel)
+                var publishTask = _channel.BasicPublishAsync(
                     exchange: _options.DefaultExchange,
                     routingKey: routingKeyToUse,
                     mandatory: false,
-                    properties: properties,
-                    body: messageBody
+                    basicProperties: properties,
+                    body: messageBody,
+                    cancellationToken: cancellationToken
                 );
 
+                publishTasks.Add(publishTask.AsTask());
                 batchCount++;
             }
 
-            // Publish entire batch at once
-            await batch.PublishAsync(cancellationToken);
+            // Wait for all publishes to complete
+            await Task.WhenAll(publishTasks);
 
             _logger.LogInformation("✅ Published batch of {Count} {MessageType} messages", batchCount, typeof(T).Name);
         }

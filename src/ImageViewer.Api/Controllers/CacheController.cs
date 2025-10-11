@@ -378,30 +378,30 @@ public class CacheController : ControllerBase
     {
         try
         {
-            _logger.LogInformation("Getting cache job states (status: {Status})", status ?? "all");
+            _logger.LogInformation("Getting file processing job states (status: {Status})", status ?? "all");
             
-            IEnumerable<Domain.Entities.CacheJobState> jobs;
+            IEnumerable<Domain.Entities.FileProcessingJobState> jobs;
             
             if (!string.IsNullOrEmpty(status))
             {
                 if (status.Equals("incomplete", StringComparison.OrdinalIgnoreCase))
                 {
-                    jobs = await _cacheJobStateRepository.GetIncompleteJobsAsync();
+                    jobs = await _fileProcessingJobStateRepository.GetIncompleteJobsAsync();
                 }
                 else if (status.Equals("paused", StringComparison.OrdinalIgnoreCase))
                 {
-                    jobs = await _cacheJobStateRepository.GetPausedJobsAsync();
+                    jobs = await _fileProcessingJobStateRepository.GetPausedJobsAsync();
                 }
                 else
                 {
                     // Get all and filter by status
-                    var allJobs = await _cacheJobStateRepository.GetAllAsync();
+                    var allJobs = await _fileProcessingJobStateRepository.GetAllAsync();
                     jobs = allJobs.Where(j => j.Status.Equals(status, StringComparison.OrdinalIgnoreCase));
                 }
             }
             else
             {
-                jobs = await _cacheJobStateRepository.GetAllAsync();
+                jobs = await _fileProcessingJobStateRepository.GetAllAsync();
             }
 
             return Ok(jobs.ToDtoList(includeDetails));
@@ -417,11 +417,11 @@ public class CacheController : ControllerBase
     /// Get cache job state by job ID
     /// </summary>
     [HttpGet("jobs/{jobId}")]
-    public async Task<ActionResult<CacheJobStateDto>> GetCacheJobState(string jobId, [FromQuery] bool includeDetails = true)
+    public async Task<ActionResult<FileProcessingJobStateDto>> GetCacheJobState(string jobId, [FromQuery] bool includeDetails = true)
     {
         try
         {
-            var jobState = await _cacheJobStateRepository.GetByJobIdAsync(jobId);
+            var jobState = await _fileProcessingJobStateRepository.GetByJobIdAsync(jobId);
             if (jobState == null)
             {
                 return NotFound();
@@ -440,11 +440,11 @@ public class CacheController : ControllerBase
     /// Get cache job state by collection ID
     /// </summary>
     [HttpGet("jobs/collection/{collectionId}")]
-    public async Task<ActionResult<CacheJobStateDto>> GetCacheJobStateByCollection(string collectionId, [FromQuery] bool includeDetails = false)
+    public async Task<ActionResult<FileProcessingJobStateDto>> GetCacheJobStateByCollection(string collectionId, [FromQuery] bool includeDetails = false)
     {
         try
         {
-            var jobState = await _cacheJobStateRepository.GetByCollectionIdAsync(collectionId);
+            var jobState = await _fileProcessingJobStateRepository.GetByCollectionIdAsync(collectionId);
             if (jobState == null)
             {
                 return NotFound();
@@ -467,7 +467,7 @@ public class CacheController : ControllerBase
     {
         try
         {
-            var jobIds = await _cacheJobRecoveryService.GetResumableJobIdsAsync();
+            var jobIds = await _fileProcessingJobRecoveryService.GetResumableJobIdsAsync();
             return Ok(jobIds);
         }
         catch (Exception ex)
@@ -486,7 +486,7 @@ public class CacheController : ControllerBase
         try
         {
             _logger.LogInformation("Resuming cache job {JobId}", jobId);
-            var success = await _cacheJobRecoveryService.ResumeJobAsync(jobId);
+            var success = await _fileProcessingJobRecoveryService.ResumeJobAsync(jobId);
             
             if (success)
             {
@@ -513,7 +513,7 @@ public class CacheController : ControllerBase
         try
         {
             _logger.LogInformation("Recovering all incomplete cache jobs");
-            await _cacheJobRecoveryService.RecoverIncompleteJobsAsync();
+            await _fileProcessingJobRecoveryService.RecoverIncompleteJobsAsync();
             return Ok(new { message = "Job recovery completed" });
         }
         catch (Exception ex)
@@ -532,7 +532,7 @@ public class CacheController : ControllerBase
         try
         {
             _logger.LogInformation("Cleaning up completed jobs older than {Days} days", olderThanDays);
-            var deletedCount = await _cacheJobRecoveryService.CleanupOldCompletedJobsAsync(olderThanDays);
+            var deletedCount = await _fileProcessingJobRecoveryService.CleanupOldCompletedJobsAsync(olderThanDays);
             return Ok(new { message = "Cleanup completed", deletedCount });
         }
         catch (Exception ex)
