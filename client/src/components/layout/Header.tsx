@@ -1,4 +1,4 @@
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   Home, 
   FolderOpen, 
@@ -9,10 +9,13 @@ import {
   X,
   LogOut,
   User,
-  Library
+  Library,
+  Shuffle
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
+import { randomApi } from '../../services/randomApi';
+import toast from 'react-hot-toast';
 
 /**
  * Header Component
@@ -25,8 +28,10 @@ import { useAuth } from '../../contexts/AuthContext';
  */
 const Header: React.FC = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const { user, logout } = useAuth();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isRandomLoading, setIsRandomLoading] = useState(false);
 
   const navItems = [
     { path: '/', icon: Home, label: 'Dashboard' },
@@ -44,16 +49,66 @@ const Header: React.FC = () => {
     return location.pathname.startsWith(path);
   };
 
+  // Handle random collection
+  const handleRandomCollection = async () => {
+    setIsRandomLoading(true);
+    try {
+      const randomCollection = await randomApi.getRandomCollection();
+      
+      // Check if we're in Image Viewer screen
+      const isImageViewerScreen = location.pathname.includes('/viewer/');
+      
+      if (isImageViewerScreen && randomCollection.firstImageId) {
+        // Stay in Image Viewer, navigate to first image of random collection
+        navigate(`/viewer/${randomCollection.id}?imageId=${randomCollection.firstImageId}`);
+        toast.success(`Random: ${randomCollection.name}`);
+      } else {
+        // Navigate to collection detail screen
+        navigate(`/collections/${randomCollection.id}`);
+        toast.success(`Random collection: ${randomCollection.name}`);
+      }
+    } catch (error: any) {
+      toast.error(error.response?.data?.message || 'Failed to get random collection');
+    } finally {
+      setIsRandomLoading(false);
+    }
+  };
+
+  // Keyboard shortcut: Ctrl+R for random
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'r') {
+        e.preventDefault();
+        handleRandomCollection();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [location.pathname]); // Re-attach when pathname changes
+
   return (
     <header className="h-14 border-b border-slate-800 bg-slate-900 flex-shrink-0">
       <div className="h-full px-4 flex items-center justify-between">
-        {/* Logo / Brand */}
-        <Link to="/" className="flex items-center space-x-2 hover:opacity-80 transition-opacity">
-          <Activity className="h-6 w-6 text-blue-500" />
-          <span className="font-semibold text-lg text-white hidden sm:inline">
-            ImageViewer
-          </span>
-        </Link>
+        {/* Left Section: Logo + Random Button */}
+        <div className="flex items-center gap-3">
+          <Link to="/" className="flex items-center space-x-2 hover:opacity-80 transition-opacity">
+            <Activity className="h-6 w-6 text-blue-500" />
+            <span className="font-semibold text-lg text-white hidden sm:inline">
+              ImageViewer
+            </span>
+          </Link>
+
+          {/* Random Collection Button */}
+          <button
+            onClick={handleRandomCollection}
+            disabled={isRandomLoading}
+            className="p-2 text-purple-400 hover:bg-purple-500/10 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Random Collection (Ctrl+R)"
+          >
+            <Shuffle className={`h-5 w-5 ${isRandomLoading ? 'animate-spin' : ''}`} />
+          </button>
+        </div>
 
         {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center space-x-1">

@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using ImageViewer.Application.Services;
+using ImageViewer.Application.DTOs.Collections;
+using ImageViewer.Application.Mappings;
 using ImageViewer.Domain.Entities;
 
 namespace ImageViewer.Api.Controllers;
@@ -25,7 +27,7 @@ public class RandomController : ControllerBase
     /// Get random collection
     /// </summary>
     [HttpGet]
-    public async Task<ActionResult<RandomCollectionResponse>> GetRandomCollection()
+    public async Task<ActionResult<CollectionOverviewDto>> GetRandomCollection()
     {
         try
         {
@@ -49,14 +51,10 @@ public class RandomController : ControllerBase
             _logger.LogInformation("Selected random collection {CollectionId} with name {CollectionName}", 
                 randomCollection.Id, randomCollection.Name);
             
-            var response = new RandomCollectionResponse
-            {
-                Collection = randomCollection,
-                TotalCollections = activeCollections.Count,
-                SelectedIndex = randomIndex
-            };
+            // Convert to DTO with proper serialization
+            var dto = randomCollection.ToOverviewDto();
             
-            return Ok(response);
+            return Ok(dto);
         }
         catch (Exception ex)
         {
@@ -64,11 +62,4 @@ public class RandomController : ControllerBase
             return StatusCode(500, "Internal server error");
         }
     }
-}
-
-public class RandomCollectionResponse
-{
-    public Collection Collection { get; set; } = null!;
-    public int TotalCollections { get; set; }
-    public int SelectedIndex { get; set; }
 }
