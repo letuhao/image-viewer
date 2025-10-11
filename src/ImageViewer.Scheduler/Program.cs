@@ -2,6 +2,7 @@ using Hangfire;
 using Hangfire.Mongo;
 using Hangfire.Mongo.Migration.Strategies;
 using Hangfire.Mongo.Migration.Strategies.Backup;
+using ImageViewer.Domain.Entities;
 using ImageViewer.Domain.Interfaces;
 using ImageViewer.Infrastructure.Configuration;
 using ImageViewer.Infrastructure.Data;
@@ -113,6 +114,25 @@ public class Program
                     var client = provider.GetRequiredService<IMongoClient>();
                     var options = provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<MongoDbOptions>>().Value;
                     return client.GetDatabase(options.DatabaseName);
+                });
+                
+                // Register MongoDB collections needed by Scheduler
+                services.AddScoped<IMongoCollection<Library>>(provider =>
+                {
+                    var database = provider.GetRequiredService<IMongoDatabase>();
+                    return database.GetCollection<Library>("libraries");
+                });
+                
+                services.AddScoped<IMongoCollection<ScheduledJob>>(provider =>
+                {
+                    var database = provider.GetRequiredService<IMongoDatabase>();
+                    return database.GetCollection<ScheduledJob>("scheduled_jobs");
+                });
+                
+                services.AddScoped<IMongoCollection<ScheduledJobRun>>(provider =>
+                {
+                    var database = provider.GetRequiredService<IMongoDatabase>();
+                    return database.GetCollection<ScheduledJobRun>("scheduled_job_runs");
                 });
                 
                 // RabbitMQ Message Queue
