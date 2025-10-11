@@ -4,6 +4,17 @@
 # This script starts all ImageViewer services in silent mode (background)
 # No Docker required - runs everything locally
 #
+# ANTIVIRUS NOTE:
+# This script may be flagged by antivirus software because it:
+# - Stops/starts processes programmatically
+# - Runs processes in background
+# - Reads process information
+# These are LEGITIMATE administrative tasks for development.
+# 
+# If blocked, add exception in your antivirus for:
+# - This script: start-all-services.ps1
+# - Or the entire folder: image-viewer/
+#
 # Prerequisites:
 # - .NET 9 SDK installed
 # - Node.js installed (for frontend)
@@ -13,6 +24,7 @@
 #
 # Usage:
 #   .\start-all-services.ps1
+#   .\start-all-services.ps1 -Visible  (show console windows instead of hidden)
 #
 # To stop all services:
 #   .\stop-all-services.ps1
@@ -20,7 +32,8 @@
 
 param(
     [switch]$SkipBuild = $false,
-    [switch]$Verbose = $false
+    [switch]$Verbose = $false,
+    [switch]$Visible = $false  # Show console windows instead of hidden (safer for antivirus)
 )
 
 # Configuration
@@ -236,8 +249,11 @@ Write-Info "Step 5/7: Starting backend services..."
 # Start API
 Write-Info "  • Starting API server (port 11001)..."
 Push-Location src/ImageViewer.Api
+
+$windowStyle = if ($Visible) { "Normal" } else { "Hidden" }
+
 $apiProcess = Start-Process -FilePath "dotnet" -ArgumentList "run --no-build -c Release" `
-    -WindowStyle Hidden -PassThru -RedirectStandardOutput "../../logs/api/output.log" `
+    -WindowStyle $windowStyle -PassThru -RedirectStandardOutput "../../logs/api/output.log" `
     -RedirectStandardError "../../logs/api/error.log"
 Pop-Location
 
@@ -255,7 +271,7 @@ Start-Sleep -Seconds 3  # Give API time to initialize
 Write-Info "  • Starting Worker (RabbitMQ consumer)..."
 Push-Location src/ImageViewer.Worker
 $workerProcess = Start-Process -FilePath "dotnet" -ArgumentList "run --no-build -c Release" `
-    -WindowStyle Hidden -PassThru -RedirectStandardOutput "../../logs/worker/output.log" `
+    -WindowStyle $windowStyle -PassThru -RedirectStandardOutput "../../logs/worker/output.log" `
     -RedirectStandardError "../../logs/worker/error.log"
 Pop-Location
 
@@ -272,7 +288,7 @@ Start-Sleep -Seconds 2
 Write-Info "  • Starting Scheduler (Hangfire worker)..."
 Push-Location src/ImageViewer.Scheduler
 $schedulerProcess = Start-Process -FilePath "dotnet" -ArgumentList "run --no-build -c Release" `
-    -WindowStyle Hidden -PassThru -RedirectStandardOutput "../../logs/scheduler/output.log" `
+    -WindowStyle $windowStyle -PassThru -RedirectStandardOutput "../../logs/scheduler/output.log" `
     -RedirectStandardError "../../logs/scheduler/error.log"
 Pop-Location
 
@@ -292,7 +308,7 @@ Write-Info "Step 6/7: Starting frontend development server..."
 
 Push-Location client
 $frontendProcess = Start-Process -FilePath "npm" -ArgumentList "run dev" `
-    -WindowStyle Hidden -PassThru -RedirectStandardOutput "../logs/frontend/output.log" `
+    -WindowStyle $windowStyle -PassThru -RedirectStandardOutput "../logs/frontend/output.log" `
     -RedirectStandardError "../logs/frontend/error.log"
 Pop-Location
 
