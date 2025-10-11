@@ -6,19 +6,19 @@ import Button from '../components/ui/Button';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import AddCollectionDialog from '../components/collections/AddCollectionDialog';
 import BulkAddCollectionsDialog from '../components/collections/BulkAddCollectionsDialog';
+import { Pagination, PaginationSettings, PaginationSettingsModal } from '../components/common/Pagination';
 import { 
   FolderOpen, 
   Archive, 
   Plus, 
   Search, 
-  ChevronLeft, 
-  ChevronRight,
   Grid3x3,
   List,
   ListTree,
   Maximize2,
   Minimize2,
-  Zap
+  Zap,
+  Settings as SettingsIcon
 } from 'lucide-react';
 import type { Collection } from '../services/types';
 
@@ -57,8 +57,24 @@ const Collections: React.FC = () => {
   // Dialog states
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showBulkAddDialog, setShowBulkAddDialog] = useState(false);
+  const [showPaginationSettings, setShowPaginationSettings] = useState(false);
 
-  const { data, isLoading, refetch } = useCollections({ page, limit });
+  // Pagination settings (persisted to localStorage)
+  const [paginationSettings, setPaginationSettings] = useState<PaginationSettings>(() => {
+    const saved = localStorage.getItem('paginationSettings');
+    return saved ? JSON.parse(saved) : {
+      showFirstLast: true,
+      showPageNumbers: true,
+      pageNumbersToShow: 5,
+    };
+  });
+
+  const savePaginationSettings = useCallback((settings: PaginationSettings) => {
+    setPaginationSettings(settings);
+    localStorage.setItem('paginationSettings', JSON.stringify(settings));
+  }, []);
+
+  const { data, isLoading, refetch} = useCollections({ page, limit });
 
   // Filter collections by search query
   const filteredCollections = data?.data?.filter((collection) =>
@@ -185,44 +201,23 @@ const Collections: React.FC = () => {
             <div className="flex items-center gap-2 lg:gap-3 flex-shrink-0">
               {/* Pagination Controls - Compact */}
               <div className="flex items-center gap-2 bg-slate-800 rounded-lg px-2 py-1">
-                  {/* Previous Button */}
+                  <Pagination
+                    currentPage={page}
+                    totalPages={data?.totalPages || 1}
+                    onPageChange={setPage}
+                    hasPrevious={data?.hasPrevious}
+                    hasNext={data?.hasNext}
+                    settings={paginationSettings}
+                    compact={true}
+                  />
+                  
+                  {/* Pagination Settings Button */}
                   <button
-                    onClick={() => setPage(p => Math.max(1, p - 1))}
-                    disabled={!data?.hasPrevious}
-                    className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                    title="Previous Page"
+                    onClick={() => setShowPaginationSettings(true)}
+                    className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-700 transition-colors"
+                    title="Pagination Settings"
                   >
-                    <ChevronLeft className="h-4 w-4" />
-                  </button>
-
-                  {/* Page Number Input */}
-                  <div className="flex items-center gap-1">
-                    <input
-                      type="number"
-                      min="1"
-                      max={data?.totalPages || 1}
-                      value={page}
-                      onChange={(e) => {
-                        const newPage = parseInt(e.target.value);
-                        if (newPage >= 1 && newPage <= (data?.totalPages || 1)) {
-                          setPage(newPage);
-                        }
-                      }}
-                      className="w-12 px-1 py-1 bg-slate-700 border border-slate-600 rounded text-white text-xs text-center focus:outline-none focus:ring-1 focus:ring-primary-500"
-                      title="Go to page"
-                    />
-                    <span className="text-xs text-slate-400">/</span>
-                    <span className="text-xs text-slate-400 w-6 text-center">{data?.totalPages || 1}</span>
-                  </div>
-
-                  {/* Next Button */}
-                  <button
-                    onClick={() => setPage(p => p + 1)}
-                    disabled={!data?.hasNext}
-                    className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                    title="Next Page"
-                  >
-                    <ChevronRight className="h-4 w-4" />
+                    <SettingsIcon className="h-4 w-4" />
                   </button>
                 </div>
 
@@ -550,6 +545,13 @@ const Collections: React.FC = () => {
         onClose={() => setShowBulkAddDialog(false)}
         onSuccess={() => refetch()}
       />
+      {showPaginationSettings && (
+        <PaginationSettingsModal
+          settings={paginationSettings}
+          onSettingsChange={savePaginationSettings}
+          onClose={() => setShowPaginationSettings(false)}
+        />
+      )}
     </div>
   );
 };
