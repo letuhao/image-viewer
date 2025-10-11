@@ -301,9 +301,21 @@ public class CollectionScanConsumer : BaseMessageConsumer
     {
         try
         {
-            var files = Directory.GetFiles(directoryPath, "*", SearchOption.AllDirectories);
+            // REQUIREMENT: Only scan DIRECT files in the collection folder
+            // DO NOT include files from subfolders or zip files
+            // Subfolders and zip files are separate collections
+            var files = Directory.GetFiles(directoryPath, "*", SearchOption.TopDirectoryOnly);
             foreach (var file in files)
             {
+                // Skip zip files - they are standalone collections, not part of this folder collection
+                var extension = Path.GetExtension(file).ToLowerInvariant();
+                if (extension == ".zip" || extension == ".cbz" || extension == ".cbr" || 
+                    extension == ".7z" || extension == ".rar" || extension == ".tar")
+                {
+                    _logger.LogDebug("Skipping zip file {File} - it's a standalone collection", file);
+                    continue;
+                }
+                
                 if (IsMediaFile(file))
                 {
                     var fileInfo = new FileInfo(file);
@@ -317,6 +329,9 @@ public class CollectionScanConsumer : BaseMessageConsumer
                     });
                 }
             }
+            
+            _logger.LogDebug("📁 Scanned directory {Directory}: found {Count} direct media files (excluding subfolders and zip files)", 
+                directoryPath, mediaFiles.Count);
         }
         catch (Exception ex)
         {
