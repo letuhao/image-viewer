@@ -127,27 +127,30 @@ public class LibraryScanConsumer : BaseMessageConsumer
                     return;
                 }
 
-                _logger.LogInformation("🔍 Scanning library folder: {Path}", scanMessage.LibraryPath);
+                _logger.LogInformation("🔍 Scanning library folder: {Path}", library.Path);
                 
-                // Use BulkService.BulkAddCollectionsAsync to handle collection discovery
-                // This uses the tested logic that handles nested collections, compressed files, etc.
+                // Use BulkService to discover and create collections
+                // BulkService has tested logic for nested folders, compressed files, etc.
                 var bulkRequest = new BulkAddCollectionsRequest
                 {
-                    ParentPath = scanMessage.LibraryPath,
-                    LibraryId = libraryId,
+                    ParentPath = library.Path, // Use path from DB, not from message
                     IncludeSubfolders = scanMessage.IncludeSubfolders,
-                    CollectionPrefix = string.Empty, // No prefix filtering for library scans
-                    AutoCreateCollections = true,
-                    GenerateThumbnails = library.Settings?.ThumbnailSettings?.Enabled ?? true,
-                    GenerateCache = library.Settings?.CacheSettings?.Enabled ?? true
+                    CollectionPrefix = null, // No prefix filtering for library scans
+                    AutoAdd = false, // We don't auto-add, we control creation
+                    OverwriteExisting = false, // Don't overwrite existing collections
+                    AutoScan = library.Settings?.AutoScan ?? false,
+                    EnableCache = library.Settings?.CacheSettings?.Enabled ?? true,
+                    ThumbnailWidth = library.Settings?.ThumbnailSettings?.Width,
+                    ThumbnailHeight = library.Settings?.ThumbnailSettings?.Height
                 };
 
                 var result = await bulkService.BulkAddCollectionsAsync(bulkRequest, CancellationToken.None);
                 
                 _logger.LogInformation(
-                    "✅ Library scan completed. Total: {Total}, Created: {Created}, Skipped: {Skipped}, Errors: {Errors}",
-                    result.TotalCount,
-                    result.SuccessCount,
+                    "✅ Library scan completed. Total: {Total}, Created: {Created}, Updated: {Updated}, Skipped: {Skipped}, Errors: {Errors}",
+                    result.TotalProcessed,
+                    result.CreatedCount,
+                    result.UpdatedCount,
                     result.SkippedCount,
                     result.ErrorCount);
 
@@ -155,7 +158,7 @@ public class LibraryScanConsumer : BaseMessageConsumer
                 if (!string.IsNullOrEmpty(scanMessage.JobRunId))
                 {
                     var status = result.ErrorCount > 0 ? "CompletedWithErrors" : "Completed";
-                    var statusMessage = $"Scan completed. Total: {result.TotalCount}, Created: {result.SuccessCount}, Skipped: {result.SkippedCount}, Errors: {result.ErrorCount}";
+                    var statusMessage = $"Scan completed. Total: {result.TotalProcessed}, Created: {result.CreatedCount}, Skipped: {result.SkippedCount}, Errors: {result.ErrorCount}";
                     
                     if (result.Errors.Any())
                     {
