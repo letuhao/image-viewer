@@ -155,6 +155,22 @@ public class LibraryScanConsumer : BaseMessageConsumer
                     result.SkippedCount,
                     result.ErrorCount);
 
+                // Update library statistics: increment collection count and update last scan date
+                if (result.CreatedCount > 0)
+                {
+                    await libraryRepository.IncrementLibraryStatisticsAsync(
+                        libraryId, 
+                        collectionCount: result.CreatedCount, 
+                        mediaItemCount: 0, // Will be updated when collections are scanned
+                        sizeBytes: 0); // Will be updated when collections are scanned
+                    
+                    _logger.LogInformation("📊 Updated library {LibraryId} statistics: +{Count} collections", 
+                        libraryId, result.CreatedCount);
+                }
+
+                // Always update last scan date
+                await libraryRepository.UpdateLastScanDateAsync(libraryId);
+
                 // Update job run status to completed
                 if (!string.IsNullOrEmpty(scanMessage.JobRunId))
                 {

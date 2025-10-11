@@ -232,4 +232,59 @@ public class LibraryRepository : MongoRepository<Library>, ILibraryRepository
             throw new RepositoryException("Failed to get recent libraries", ex);
         }
     }
+
+    /// <summary>
+    /// Atomically increment library statistics in SINGLE transaction
+    /// 在单个事务中原子增加库统计信息 - Tăng thống kê thư viện nguyên tử trong một giao dịch
+    /// Thread-safe for concurrent bulk operations
+    /// </summary>
+    public async Task IncrementLibraryStatisticsAsync(ObjectId libraryId, long collectionCount = 0, long mediaItemCount = 0, long sizeBytes = 0)
+    {
+        try
+        {
+            var filter = Builders<Library>.Filter.Eq(x => x.Id, libraryId);
+            var update = Builders<Library>.Update
+                .Inc("statistics.totalCollections", collectionCount)
+                .Inc("statistics.totalMediaItems", mediaItemCount)
+                .Inc("statistics.totalSize", sizeBytes)
+                .Set("statistics.lastActivity", DateTime.UtcNow)
+                .Set(x => x.UpdatedAt, DateTime.UtcNow);
+
+            await _collection.UpdateOneAsync(filter, update);
+            
+            _logger.LogDebug("📊 Atomically incremented library {LibraryId} stats: +{Collections} collections, +{MediaItems} items, +{Size} bytes", 
+                libraryId, collectionCount, mediaItemCount, sizeBytes);
+        }
+        catch (MongoException ex)
+        {
+            _logger.LogError(ex, "Failed to increment library statistics for {LibraryId}", libraryId);
+            throw new RepositoryException($"Failed to increment library statistics for {libraryId}", ex);
+        }
+    }
+
+    /// <summary>
+    /// Atomically update last scan date and increment scan count
+    /// 原子更新最后扫描日期并增加扫描计数 - Cập nhật ngày quét cuối cùng và tăng số lần quét nguyên tử
+    /// </summary>
+    public async Task UpdateLastScanDateAsync(ObjectId libraryId)
+    {
+        try
+        {
+            var filter = Builders<Library>.Filter.Eq(x => x.Id, libraryId);
+            var update = Builders<Library>.Update
+                .Set("statistics.lastScanDate", DateTime.UtcNow)
+                .Inc("statistics.scanCount", 1)
+                .Set("statistics.lastActivity", DateTime.UtcNow)
+                .Set(x => x.UpdatedAt, DateTime.UtcNow);
+
+            await _collection.UpdateOneAsync(filter, update);
+            
+            _logger.LogDebug("📊 Updated library {LibraryId} last scan date", libraryId);
+        }
+        catch (MongoException ex)
+        {
+            _logger.LogError(ex, "Failed to update last scan date for library {LibraryId}", libraryId);
+            throw new RepositoryException($"Failed to update last scan date for library {libraryId}", ex);
+        }
+    }
 }

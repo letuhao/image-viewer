@@ -71,6 +71,7 @@ public class CollectionScanConsumer : BaseMessageConsumer
             var collectionService = scope.ServiceProvider.GetRequiredService<ICollectionService>();
             var messageQueueService = scope.ServiceProvider.GetRequiredService<IMessageQueueService>();
             var backgroundJobService = scope.ServiceProvider.GetRequiredService<IBackgroundJobService>();
+            var libraryRepository = scope.ServiceProvider.GetRequiredService<ILibraryRepository>();
 
             // Get the collection (convert string CollectionId back to ObjectId)
             var collectionId = ObjectId.Parse(scanMessage.CollectionId);
@@ -166,6 +167,30 @@ public class CollectionScanConsumer : BaseMessageConsumer
 
             _logger.LogInformation("✅ Successfully processed collection scan for {CollectionId}, queued {JobCount} image processing jobs", 
                 collection.Id, mediaFiles.Count);
+
+            // Update library statistics if collection belongs to a library
+            if (collection.LibraryId.HasValue && collection.LibraryId.Value != ObjectId.Empty)
+            {
+                try
+                {
+                    // Calculate total size of discovered media files
+                    var totalSize = mediaFiles.Sum(f => f.FileSize);
+                    
+                    await libraryRepository.IncrementLibraryStatisticsAsync(
+                        collection.LibraryId.Value,
+                        collectionCount: 0, // Already incremented during library scan
+                        mediaItemCount: mediaFiles.Count,
+                        sizeBytes: totalSize);
+                    
+                    _logger.LogInformation("📊 Updated library {LibraryId} statistics: +{Count} media items, +{Size} bytes", 
+                        collection.LibraryId.Value, mediaFiles.Count, totalSize);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "⚠️ Failed to update library statistics for collection {CollectionId}", collection.Id);
+                    // Don't throw - collection scan completed successfully, this is just metadata
+                }
+            }
             
             // Update SCAN stage to Completed and initialize THUMBNAIL and CACHE stages
             if (!string.IsNullOrEmpty(scanMessage.JobId))

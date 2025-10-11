@@ -32,7 +32,19 @@ public interface ILibraryRepository : IRepository<Library>
     Task<ImageViewer.Domain.ValueObjects.LibraryStatistics> GetLibraryStatisticsAsync();
     Task<IEnumerable<Library>> GetTopLibrariesByActivityAsync(int limit = 10);
     Task<IEnumerable<Library>> GetRecentLibrariesAsync(int limit = 10);
-    
+
+    /// <summary>
+    /// Atomically increment library statistics (collections, media items, size) in single transaction
+    /// 在单个事务中原子增加库统计信息 - Tăng thống kê thư viện nguyên tử trong một giao dịch
+    /// </summary>
+    Task IncrementLibraryStatisticsAsync(ObjectId libraryId, long collectionCount = 0, long mediaItemCount = 0, long sizeBytes = 0);
+
+    /// <summary>
+    /// Atomically update last scan date and increment scan count
+    /// 原子更新最后扫描日期并增加扫描计数 - Cập nhật ngày quét cuối cùng và tăng số lần quét nguyên tử
+    /// </summary>
+    Task UpdateLastScanDateAsync(ObjectId libraryId);
+
     #endregion
 }
 
