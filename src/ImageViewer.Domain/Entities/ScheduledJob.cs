@@ -71,6 +71,9 @@ public class ScheduledJob : BaseEntity
     
     [BsonElement("hangfireJobId")]
     public string? HangfireJobId { get; private set; } // Reference to Hangfire's internal job ID
+    
+    [BsonElement("libraryId")]
+    public ObjectId? LibraryId { get; private set; } // Reference to Library entity - can be null for non-library jobs
 
     // Private constructor for MongoDB
     private ScheduledJob() { }
@@ -153,6 +156,12 @@ public class ScheduledJob : BaseEntity
     public void SetHangfireJobId(string hangfireJobId)
     {
         HangfireJobId = hangfireJobId;
+        UpdateTimestamp();
+    }
+
+    public void SetLibraryId(ObjectId? libraryId)
+    {
+        LibraryId = libraryId;
         UpdateTimestamp();
     }
 

@@ -14,6 +14,8 @@ public class ScheduledJobDto
     public int? IntervalMinutes { get; set; }
     public bool IsEnabled { get; set; }
     public Dictionary<string, object> Parameters { get; set; } = new();
+    public string? HangfireJobId { get; set; } // Null = orphaned, not bound to Hangfire
+    public string? LibraryId { get; set; } // Reference to Library - can be null for non-library jobs
     
     // Execution statistics
     public DateTime? LastRunAt { get; set; }

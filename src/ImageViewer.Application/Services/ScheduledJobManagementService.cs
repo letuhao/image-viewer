@@ -133,7 +133,10 @@ public class ScheduledJobManagementService : IScheduledJobManagementService
                     intervalMinutes: null,
                     description: $"Automatic scan for library: {libraryName}");
 
-                // Add library ID to parameters
+                // Set library ID on the job entity directly
+                job.SetLibraryId(libraryId);
+
+                // Also add to parameters for backward compatibility and filtering
                 var parameters = new Dictionary<string, object>
                 {
                     { "LibraryId", libraryId.ToString() }

@@ -10,6 +10,20 @@ public static class ScheduledJobMappingExtensions
 {
     public static ScheduledJobDto ToDto(this ScheduledJob job)
     {
+        // Convert Parameters, ensuring ObjectIds are serialized as strings
+        var parameters = new Dictionary<string, object>();
+        foreach (var kvp in job.Parameters)
+        {
+            if (kvp.Value is MongoDB.Bson.ObjectId objectId)
+            {
+                parameters[kvp.Key] = objectId.ToString();
+            }
+            else
+            {
+                parameters[kvp.Key] = kvp.Value;
+            }
+        }
+
         return new ScheduledJobDto
         {
             Id = job.Id.ToString(),
@@ -20,7 +34,9 @@ public static class ScheduledJobMappingExtensions
             CronExpression = job.CronExpression,
             IntervalMinutes = job.IntervalMinutes,
             IsEnabled = job.IsEnabled,
-            Parameters = new Dictionary<string, object>(job.Parameters),
+            Parameters = parameters,
+            HangfireJobId = job.HangfireJobId, // Null if not bound to Hangfire
+            LibraryId = job.LibraryId?.ToString(), // Convert ObjectId to string
             LastRunAt = job.LastRunAt,
             NextRunAt = job.NextRunAt,
             LastRunDuration = job.LastRunDuration,
