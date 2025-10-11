@@ -387,4 +387,14 @@ public class Collection : BaseEntity
         Thumbnails.RemoveAll(t => !t.IsValid);
         UpdatedAt = DateTime.UtcNow;
     }
+
+    /// <summary>
+    /// Get full path for an image (resolves relative paths and handles ZIP entries)
+    /// 获取图片的完整路径 - Lấy đường dẫn đầy đủ cho hình ảnh
+    /// </summary>
+    public string GetFullImagePath(ImageEmbedded image)
+    {
+        if (image == null) throw new ArgumentNullException(nameof(image));
+        return image.GetFullPath(this.Path);
+    }
 }
