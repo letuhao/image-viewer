@@ -18,6 +18,9 @@ public class CacheController : ControllerBase
     private readonly ICacheFolderRepository _cacheFolderRepository;
     private readonly ICacheJobStateRepository _cacheJobStateRepository;
     private readonly ICacheJobRecoveryService _cacheJobRecoveryService;
+    // Unified file processing job state (cache, thumbnail, etc.)
+    private readonly IFileProcessingJobStateRepository _fileProcessingJobStateRepository;
+    private readonly IFileProcessingJobRecoveryService _fileProcessingJobRecoveryService;
     private readonly ILogger<CacheController> _logger;
 
     public CacheController(
@@ -25,12 +28,16 @@ public class CacheController : ControllerBase
         ICacheFolderRepository cacheFolderRepository,
         ICacheJobStateRepository cacheJobStateRepository,
         ICacheJobRecoveryService cacheJobRecoveryService,
+        IFileProcessingJobStateRepository fileProcessingJobStateRepository,
+        IFileProcessingJobRecoveryService fileProcessingJobRecoveryService,
         ILogger<CacheController> logger)
     {
         _cacheService = cacheService;
         _cacheFolderRepository = cacheFolderRepository;
         _cacheJobStateRepository = cacheJobStateRepository;
         _cacheJobRecoveryService = cacheJobRecoveryService;
+        _fileProcessingJobStateRepository = fileProcessingJobStateRepository;
+        _fileProcessingJobRecoveryService = fileProcessingJobRecoveryService;
         _logger = logger;
     }
 
@@ -530,6 +537,216 @@ public class CacheController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error cleaning up old jobs");
+            return StatusCode(500, "Internal server error");
+        }
+    }
+
+    // ============================================================================
+    // UNIFIED FILE PROCESSING JOB ENDPOINTS (cache, thumbnail, etc.)
+    // ============================================================================
+
+    /// <summary>
+    /// Get all file processing job states with optional filtering by job type
+    /// </summary>
+    [HttpGet("processing-jobs")]
+    public async Task<ActionResult<IEnumerable<FileProcessingJobStateDto>>> GetFileProcessingJobs(
+        [FromQuery] string? jobType = null,
+        [FromQuery] string? status = null,
+        [FromQuery] bool includeDetails = false)
+    {
+        try
+        {
+            _logger.LogInformation("Getting file processing jobs (jobType: {JobType}, status: {Status})", 
+                jobType ?? "all", status ?? "all");
+            
+            IEnumerable<Domain.Entities.FileProcessingJobState> jobs;
+            
+            if (!string.IsNullOrEmpty(status))
+            {
+                if (status.Equals("incomplete", StringComparison.OrdinalIgnoreCase))
+                {
+                    jobs = !string.IsNullOrEmpty(jobType)
+                        ? await _fileProcessingJobStateRepository.GetIncompleteJobsByTypeAsync(jobType)
+                        : await _fileProcessingJobStateRepository.GetIncompleteJobsAsync();
+                }
+                else if (status.Equals("paused", StringComparison.OrdinalIgnoreCase))
+                {
+                    var pausedJobs = await _fileProcessingJobStateRepository.GetPausedJobsAsync();
+                    jobs = !string.IsNullOrEmpty(jobType)
+                        ? pausedJobs.Where(j => j.JobType.Equals(jobType, StringComparison.OrdinalIgnoreCase))
+                        : pausedJobs;
+                }
+                else
+                {
+                    var allJobs = await _fileProcessingJobStateRepository.GetAllAsync();
+                    jobs = allJobs.Where(j => j.Status.Equals(status, StringComparison.OrdinalIgnoreCase));
+                    
+                    if (!string.IsNullOrEmpty(jobType))
+                    {
+                        jobs = jobs.Where(j => j.JobType.Equals(jobType, StringComparison.OrdinalIgnoreCase));
+                    }
+                }
+            }
+            else if (!string.IsNullOrEmpty(jobType))
+            {
+                jobs = await _fileProcessingJobStateRepository.GetByJobTypeAsync(jobType);
+            }
+            else
+            {
+                jobs = await _fileProcessingJobStateRepository.GetAllAsync();
+            }
+
+            return Ok(jobs.ToDtoList(includeDetails));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting file processing jobs");
+            return StatusCode(500, "Internal server error");
+        }
+    }
+
+    /// <summary>
+    /// Get file processing job state by job ID
+    /// </summary>
+    [HttpGet("processing-jobs/{jobId}")]
+    public async Task<ActionResult<FileProcessingJobStateDto>> GetFileProcessingJob(
+        string jobId, 
+        [FromQuery] bool includeDetails = true)
+    {
+        try
+        {
+            var jobState = await _fileProcessingJobStateRepository.GetByJobIdAsync(jobId);
+            if (jobState == null)
+            {
+                return NotFound();
+            }
+
+            return Ok(jobState.ToDto(includeDetails));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting file processing job {JobId}", jobId);
+            return StatusCode(500, "Internal server error");
+        }
+    }
+
+    /// <summary>
+    /// Get file processing job state by collection ID (most recent)
+    /// </summary>
+    [HttpGet("processing-jobs/collection/{collectionId}")]
+    public async Task<ActionResult<FileProcessingJobStateDto>> GetFileProcessingJobByCollection(
+        string collectionId, 
+        [FromQuery] bool includeDetails = false)
+    {
+        try
+        {
+            var jobState = await _fileProcessingJobStateRepository.GetByCollectionIdAsync(collectionId);
+            if (jobState == null)
+            {
+                return NotFound();
+            }
+
+            return Ok(jobState.ToDto(includeDetails));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting file processing job for collection {CollectionId}", collectionId);
+            return StatusCode(500, "Internal server error");
+        }
+    }
+
+    /// <summary>
+    /// Get resumable file processing job IDs with optional filtering by job type
+    /// </summary>
+    [HttpGet("processing-jobs/resumable")]
+    public async Task<ActionResult<IEnumerable<string>>> GetResumableFileProcessingJobs(
+        [FromQuery] string? jobType = null)
+    {
+        try
+        {
+            var jobIds = !string.IsNullOrEmpty(jobType)
+                ? await _fileProcessingJobRecoveryService.GetResumableJobIdsByTypeAsync(jobType)
+                : await _fileProcessingJobRecoveryService.GetResumableJobIdsAsync();
+            
+            return Ok(jobIds);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting resumable file processing jobs");
+            return StatusCode(500, "Internal server error");
+        }
+    }
+
+    /// <summary>
+    /// Resume a specific file processing job
+    /// </summary>
+    [HttpPost("processing-jobs/{jobId}/resume")]
+    public async Task<ActionResult> ResumeFileProcessingJob(string jobId)
+    {
+        try
+        {
+            _logger.LogInformation("Resuming file processing job {JobId}", jobId);
+            var success = await _fileProcessingJobRecoveryService.ResumeJobAsync(jobId);
+            
+            if (success)
+            {
+                return Ok(new { message = "Job resumed successfully", jobId });
+            }
+            else
+            {
+                return BadRequest(new { message = "Failed to resume job", jobId });
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error resuming file processing job {JobId}", jobId);
+            return StatusCode(500, "Internal server error");
+        }
+    }
+
+    /// <summary>
+    /// Recover all incomplete file processing jobs with optional filtering by job type
+    /// </summary>
+    [HttpPost("processing-jobs/recover")]
+    public async Task<ActionResult> RecoverFileProcessingJobs([FromQuery] string? jobType = null)
+    {
+        try
+        {
+            _logger.LogInformation("Recovering incomplete file processing jobs (jobType: {JobType})", jobType ?? "all");
+            
+            if (!string.IsNullOrEmpty(jobType))
+            {
+                await _fileProcessingJobRecoveryService.RecoverIncompleteJobsByTypeAsync(jobType);
+            }
+            else
+            {
+                await _fileProcessingJobRecoveryService.RecoverIncompleteJobsAsync();
+            }
+            
+            return Ok(new { message = "Job recovery completed", jobType = jobType ?? "all" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error recovering file processing jobs");
+            return StatusCode(500, "Internal server error");
+        }
+    }
+
+    /// <summary>
+    /// Cleanup old completed file processing jobs
+    /// </summary>
+    [HttpDelete("processing-jobs/cleanup")]
+    public async Task<ActionResult> CleanupOldFileProcessingJobs([FromQuery] int olderThanDays = 30)
+    {
+        try
+        {
+            _logger.LogInformation("Cleaning up completed file processing jobs older than {Days} days", olderThanDays);
+            var deletedCount = await _fileProcessingJobRecoveryService.CleanupOldCompletedJobsAsync(olderThanDays);
+            return Ok(new { message = "Cleanup completed", deletedCount });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error cleaning up old file processing jobs");
             return StatusCode(500, "Internal server error");
         }
     }
