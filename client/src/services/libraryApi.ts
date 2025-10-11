@@ -8,12 +8,31 @@ export interface Library {
   description: string;
   path: string;
   ownerId: string;
+  isPublic: boolean;
+  isActive: boolean;
   settings: LibrarySettings;
-  metadata: any;
+  metadata: LibraryMetadata;
   statistics: LibraryStatistics;
+  watchInfo: WatchInfo;
   createdAt: string;
   updatedAt: string;
   isDeleted: boolean;
+  createdBy?: string;
+  updatedBy?: string;
+}
+
+export interface LibraryMetadata {
+  description?: string;
+  tags: string[];
+  categories: string[];
+  customFields: Record<string, any>;
+}
+
+export interface WatchInfo {
+  isWatching: boolean;
+  watchPath?: string;
+  watchFilters: string[];
+  lastWatchEvent?: string;
 }
 
 export interface LibrarySettings {
@@ -39,6 +58,7 @@ export interface LibraryStatistics {
 export interface CreateLibraryRequest {
   name: string;
   path: string;
+  ownerId: string;  // Required by backend
   description?: string;
   autoScan?: boolean;
 }

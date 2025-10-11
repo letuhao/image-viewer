@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { libraryApi, Library } from '../services/libraryApi';
 import { schedulerApi, ScheduledJob } from '../services/schedulerApi';
+import { useAuth } from '../contexts/AuthContext';
+import toast from 'react-hot-toast';
 import { 
   FolderOpen, 
   Plus, 
@@ -13,15 +15,27 @@ import {
   Clock,
   CheckCircle,
   XCircle,
-  AlertCircle
+  AlertCircle,
+  X
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
 export default function Libraries() {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [selectedLibrary, setSelectedLibrary] = useState<Library | null>(null);
   const [showSchedulerDetails, setShowSchedulerDetails] = useState<Record<string, boolean>>({});
+  
+  // Form state for creating library
+  const [formData, setFormData] = useState({
+    name: '',
+    path: '',
+    description: '',
+    autoScan: true
+  });
+  
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   // Fetch libraries
   const { data: libraries = [], isLoading: librariesLoading } = useQuery({
@@ -36,12 +50,33 @@ export default function Libraries() {
     refetchInterval: 30000, // Refresh every 30 seconds
   });
 
+  // Create library mutation
+  const createMutation = useMutation({
+    mutationFn: libraryApi.create,
+    onSuccess: () => {
+      toast.success('Library created successfully!');
+      queryClient.invalidateQueries({ queryKey: ['libraries'] });
+      queryClient.invalidateQueries({ queryKey: ['scheduledJobs'] });
+      setShowCreateModal(false);
+      // Reset form
+      setFormData({ name: '', path: '', description: '', autoScan: true });
+      setFormErrors({});
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to create library');
+    },
+  });
+
   // Delete library mutation
   const deleteMutation = useMutation({
     mutationFn: libraryApi.delete,
     onSuccess: () => {
+      toast.success('Library deleted successfully');
       queryClient.invalidateQueries({ queryKey: ['libraries'] });
       queryClient.invalidateQueries({ queryKey: ['scheduledJobs'] });
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to delete library');
     },
   });
 
@@ -54,8 +89,12 @@ export default function Libraries() {
         await schedulerApi.disableJob(jobId);
       }
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
+      toast.success(variables.enable ? 'Job enabled' : 'Job disabled');
       queryClient.invalidateQueries({ queryKey: ['scheduledJobs'] });
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to update job status');
     },
   });
 
@@ -64,9 +103,13 @@ export default function Libraries() {
     mutationFn: async ({ libraryId, autoScan }: { libraryId: string; autoScan: boolean }) => {
       await libraryApi.updateSettings(libraryId, { autoScan });
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
+      toast.success(variables.autoScan ? 'Auto-scan enabled' : 'Auto-scan disabled');
       queryClient.invalidateQueries({ queryKey: ['libraries'] });
       queryClient.invalidateQueries({ queryKey: ['scheduledJobs'] });
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to update setting');
     },
   });
 
@@ -128,6 +171,51 @@ export default function Libraries() {
       default:
         return <AlertCircle className="w-4 h-4" />;
     }
+  };
+
+  // Form validation
+  const validateForm = (): boolean => {
+    const errors: Record<string, string> = {};
+    
+    if (!formData.name.trim()) {
+      errors.name = 'Library name is required';
+    } else if (formData.name.length > 100) {
+      errors.name = 'Name must be 100 characters or less';
+    }
+    
+    if (!formData.path.trim()) {
+      errors.path = 'Library path is required';
+    }
+    
+    if (formData.description && formData.description.length > 500) {
+      errors.description = 'Description must be 500 characters or less';
+    }
+    
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  // Form submission
+  const handleCreateLibrary = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!validateForm()) {
+      toast.error('Please fix form errors');
+      return;
+    }
+    
+    if (!user?.id) {
+      toast.error('User not authenticated');
+      return;
+    }
+
+    createMutation.mutate({
+      name: formData.name,
+      path: formData.path,
+      ownerId: user.id,
+      description: formData.description || '',
+      autoScan: formData.autoScan
+    });
   };
 
   const handleDeleteLibrary = async (libraryId: string) => {
@@ -414,18 +502,177 @@ export default function Libraries() {
         )}
       </div>
 
-      {/* Create Library Modal (TODO: Implement) */}
+      {/* Create Library Modal */}
       {showCreateModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full">
-            <h2 className="text-xl font-bold mb-4">Create Library</h2>
-            <p className="text-gray-600">Library creation UI coming soon...</p>
-            <button
-              onClick={() => setShowCreateModal(false)}
-              className="mt-4 px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300"
-            >
-              Close
-            </button>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+            {/* Modal Header */}
+            <div className="flex justify-between items-center p-6 border-b sticky top-0 bg-white">
+              <h2 className="text-2xl font-bold text-gray-900">Create New Library</h2>
+              <button
+                onClick={() => {
+                  setShowCreateModal(false);
+                  setFormData({ name: '', path: '', description: '', autoScan: true });
+                  setFormErrors({});
+                }}
+                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                disabled={createMutation.isPending}
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <form onSubmit={handleCreateLibrary} className="p-6 space-y-4">
+              {/* Library Name */}
+              <div>
+                <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
+                  Library Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  id="name"
+                  value={formData.name}
+                  onChange={(e) => {
+                    setFormData({ ...formData, name: e.target.value });
+                    setFormErrors({ ...formErrors, name: '' });
+                  }}
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                    formErrors.name ? 'border-red-500' : 'border-gray-300'
+                  }`}
+                  placeholder="My Media Library"
+                  disabled={createMutation.isPending}
+                  maxLength={100}
+                />
+                {formErrors.name && (
+                  <p className="mt-1 text-sm text-red-600">{formErrors.name}</p>
+                )}
+              </div>
+
+              {/* Library Path */}
+              <div>
+                <label htmlFor="path" className="block text-sm font-medium text-gray-700 mb-1">
+                  Library Path <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  id="path"
+                  value={formData.path}
+                  onChange={(e) => {
+                    setFormData({ ...formData, path: e.target.value });
+                    setFormErrors({ ...formErrors, path: '' });
+                  }}
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                    formErrors.path ? 'border-red-500' : 'border-gray-300'
+                  }`}
+                  placeholder="D:\Media\Photos or /media/photos"
+                  disabled={createMutation.isPending}
+                />
+                {formErrors.path && (
+                  <p className="mt-1 text-sm text-red-600">{formErrors.path}</p>
+                )}
+                <p className="mt-1 text-xs text-gray-500">
+                  Absolute path to the directory containing your media files
+                </p>
+              </div>
+
+              {/* Description */}
+              <div>
+                <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
+                  Description
+                </label>
+                <textarea
+                  id="description"
+                  value={formData.description}
+                  onChange={(e) => {
+                    setFormData({ ...formData, description: e.target.value });
+                    setFormErrors({ ...formErrors, description: '' });
+                  }}
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                    formErrors.description ? 'border-red-500' : 'border-gray-300'
+                  }`}
+                  placeholder="Optional description of this library"
+                  rows={3}
+                  disabled={createMutation.isPending}
+                  maxLength={500}
+                />
+                {formErrors.description && (
+                  <p className="mt-1 text-sm text-red-600">{formErrors.description}</p>
+                )}
+                <p className="mt-1 text-xs text-gray-500 text-right">
+                  {formData.description.length}/500
+                </p>
+              </div>
+
+              {/* Auto Scan Toggle */}
+              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                <div className="flex-1">
+                  <label htmlFor="autoScan" className="text-sm font-medium text-gray-700">
+                    Enable Automatic Scanning
+                  </label>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Automatically scan this library daily at 2:00 AM for new content
+                  </p>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer ml-4">
+                  <input
+                    type="checkbox"
+                    id="autoScan"
+                    checked={formData.autoScan}
+                    onChange={(e) => setFormData({ ...formData, autoScan: e.target.checked })}
+                    className="sr-only peer"
+                    disabled={createMutation.isPending}
+                  />
+                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                </label>
+              </div>
+
+              {/* Info Box */}
+              {formData.autoScan && (
+                <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="flex items-start gap-3">
+                    <Calendar className="w-5 h-5 text-blue-600 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-medium text-blue-900">Scheduled Scan Enabled</p>
+                      <p className="text-xs text-blue-700 mt-1">
+                        A scheduled job will be automatically created to scan this library daily at 2:00 AM.
+                        You can modify the schedule later in the library settings.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Form Actions */}
+              <div className="flex gap-3 pt-4 border-t">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowCreateModal(false);
+                    setFormData({ name: '', path: '', description: '', autoScan: true });
+                    setFormErrors({});
+                  }}
+                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                  disabled={createMutation.isPending}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={createMutation.isPending}
+                >
+                  {createMutation.isPending ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      Creating...
+                    </span>
+                  ) : (
+                    'Create Library'
+                  )}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
