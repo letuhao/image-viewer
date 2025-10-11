@@ -246,22 +246,34 @@ const BackgroundJobs: React.FC = () => {
                     )}
 
                     {/* Stages */}
-                    {job.stages && Object.keys(job.stages).length > 0 && (
+                    {job.stages && typeof job.stages === 'object' && Object.keys(job.stages).length > 0 && (
                       <div className="mb-3 grid grid-cols-3 gap-2">
-                        {Object.entries(job.stages).map(([stageName, stage]) => (
-                          <div key={stageName} className="bg-slate-700/50 rounded px-2 py-1.5 border border-slate-600/50">
-                            <div className="flex items-center justify-between">
-                              <span className="text-xs font-medium text-slate-300 capitalize">{stageName}</span>
-                              <span className="text-xs text-slate-400">{stage.progress}%</span>
+                        {Object.entries(job.stages).map(([stageName, stage]: [string, any]) => {
+                          // Handle different stage data structures
+                          const progress = stage?.percentage ?? stage?.progress ?? 0;
+                          const completed = stage?.completed ?? 0;
+                          const total = stage?.total ?? 0;
+                          
+                          return (
+                            <div key={stageName} className="bg-slate-700/50 rounded px-2 py-1.5 border border-slate-600/50">
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs font-medium text-slate-300 capitalize">{stageName}</span>
+                                <span className="text-xs text-slate-400">{Math.round(progress)}%</span>
+                              </div>
+                              <div className="w-full bg-slate-600 rounded-full h-1 mt-1">
+                                <div
+                                  className="bg-blue-400 h-1 rounded-full transition-all"
+                                  style={{ width: `${Math.round(progress)}%` }}
+                                />
+                              </div>
+                              {total > 0 && (
+                                <div className="text-xs text-slate-500 mt-0.5">
+                                  {completed} / {total}
+                                </div>
+                              )}
                             </div>
-                            <div className="w-full bg-slate-600 rounded-full h-1 mt-1">
-                              <div
-                                className="bg-blue-400 h-1 rounded-full transition-all"
-                                style={{ width: `${stage.progress}%` }}
-                              />
-                            </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     )}
 
