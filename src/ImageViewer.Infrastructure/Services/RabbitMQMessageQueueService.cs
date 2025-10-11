@@ -173,6 +173,7 @@ public class RabbitMQMessageQueueService : IMessageQueueService, IDisposable
             nameof(CollectionCreationMessage) => _options.CollectionCreationQueue,
             nameof(BulkOperationMessage) => _options.BulkOperationQueue,
             nameof(ImageProcessingMessage) => _options.ImageProcessingQueue,
+            nameof(LibraryScanMessage) => _options.LibraryScanQueue,
             _ => _options.ImageProcessingQueue
         };
     }
@@ -187,6 +188,7 @@ public class RabbitMQMessageQueueService : IMessageQueueService, IDisposable
             nameof(CollectionCreationMessage) => "collection.creation",
             nameof(BulkOperationMessage) => "bulk.operation",
             nameof(ImageProcessingMessage) => "image.processing",
+            nameof(LibraryScanMessage) => "library.scan",
             _ => "image.processing"
         };
     }
