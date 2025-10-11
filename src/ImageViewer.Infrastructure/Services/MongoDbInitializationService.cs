@@ -391,20 +391,26 @@ public class MongoDbInitializationService
 
     private async Task CreateSystemSettingIndexesAsync(CancellationToken cancellationToken)
     {
-        var collection = _database.GetCollection<MongoDB.Bson.BsonDocument>("system_settings");
-        var indexKeys = Builders<MongoDB.Bson.BsonDocument>.IndexKeys;
+        var collection = _database.GetCollection<SystemSetting>("system_settings");
+        var indexKeys = Builders<SystemSetting>.IndexKeys;
         
-        var indexes = new List<CreateIndexModel<MongoDB.Bson.BsonDocument>>
+        var indexes = new List<CreateIndexModel<SystemSetting>>
         {
-            // Key lookup
-            new CreateIndexModel<MongoDB.Bson.BsonDocument>(
-                indexKeys.Ascending("key"),
-                new CreateIndexOptions { Name = "idx_key_system_settings", Unique = true, Background = true }
+            // SettingKey lookup - unique constraint
+            new CreateIndexModel<SystemSetting>(
+                indexKeys.Ascending(s => s.SettingKey),
+                new CreateIndexOptions { Name = "idx_settingKey_system_settings", Unique = true, Background = true }
+            ),
+            
+            // Category filter - for grouping settings by category
+            new CreateIndexModel<SystemSetting>(
+                indexKeys.Ascending(s => s.Category),
+                new CreateIndexOptions { Name = "idx_category_system_settings", Background = true }
             )
         };
 
         await collection.Indexes.CreateManyAsync(indexes, cancellationToken);
-        _logger.LogDebug("✓ Created 1 index for system_settings");
+        _logger.LogDebug("✓ Created 2 indexes for system_settings");
     }
 }
 

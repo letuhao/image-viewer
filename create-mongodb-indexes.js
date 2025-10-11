@@ -272,10 +272,17 @@ print("\nCreating indexes for 'system_settings' collection...");
 
 // 1. Setting key lookup (for configuration queries)
 db.system_settings.createIndex(
-    { "key": 1 },
-    { name: "idx_key_system_settings", unique: true, background: true }
+    { "settingKey": 1 },
+    { name: "idx_settingKey_system_settings", unique: true, background: true }
 );
-print("✓ Created index: key (unique)");
+print("✓ Created index: settingKey (unique)");
+
+// 2. Category filter (for grouping settings)
+db.system_settings.createIndex(
+    { "category": 1 },
+    { name: "idx_category_system_settings", background: true }
+);
+print("✓ Created index: category");
 
 // ============================================================================
 // Summary
@@ -289,8 +296,8 @@ print("  ✓ Cache Folders: 3 indexes");
 print("  ✓ Scheduled Jobs: 4 indexes");
 print("  ✓ Background Jobs: 3 indexes");
 print("  ✓ Refresh Tokens: 3 indexes (including TTL)");
-print("  ✓ System Settings: 1 index");
-print("\nTotal: 31 indexes");
+print("  ✓ System Settings: 2 indexes");
+print("\nTotal: 32 indexes");
 print("\n⚠️  IMPORTANT: All indexes created with background:true to avoid blocking");
 print("    Check index build progress: db.currentOp({ op: 'command', 'command.createIndexes': { $exists: true } })\n");
 
