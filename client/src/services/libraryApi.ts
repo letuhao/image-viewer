@@ -118,5 +118,11 @@ export const libraryApi = {
   delete: async (id: string): Promise<void> => {
     await api.delete(`/libraries/${id}`);
   },
+
+  // Trigger manual scan
+  triggerScan: async (id: string): Promise<{ message: string; libraryId: string; libraryName: string; libraryPath: string }> => {
+    const response = await api.post(`/libraries/${id}/scan`);
+    return response.data;
+  },
 };
 

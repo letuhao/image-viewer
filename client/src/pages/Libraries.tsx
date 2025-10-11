@@ -16,7 +16,8 @@ import {
   CheckCircle,
   XCircle,
   AlertCircle,
-  X
+  X,
+  RefreshCw
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -95,6 +96,19 @@ export default function Libraries() {
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.message || 'Failed to update job status');
+    },
+  });
+
+  // Trigger manual scan
+  const triggerScanMutation = useMutation({
+    mutationFn: libraryApi.triggerScan,
+    onSuccess: (data) => {
+      toast.success(`Scan triggered for ${data.libraryName}`);
+      queryClient.invalidateQueries({ queryKey: ['libraries'] });
+      queryClient.invalidateQueries({ queryKey: ['scheduledJobs'] });
+    },
+    onError: (error: any) => {
+      toast.error(error.response?.data?.message || 'Failed to trigger scan');
     },
   });
 
@@ -344,6 +358,14 @@ export default function Libraries() {
 
                           {/* Actions */}
                           <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => triggerScanMutation.mutate(library.id)}
+                              disabled={triggerScanMutation.isPending}
+                              className="p-2 text-primary-400 hover:bg-primary-500/10 rounded transition-colors disabled:opacity-50"
+                              title="Scan now"
+                            >
+                              <RefreshCw className={`w-5 h-5 ${triggerScanMutation.isPending ? 'animate-spin' : ''}`} />
+                            </button>
                             <button
                               onClick={() => handleDeleteLibrary(library.id)}
                               className="p-2 text-red-400 hover:bg-red-500/10 rounded transition-colors"

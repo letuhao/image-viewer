@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using MongoDB.Bson;
 using ImageViewer.Application.Services;
 using ImageViewer.Domain.Exceptions;
+using ImageViewer.Domain.Interfaces;
 
 namespace ImageViewer.Api.Controllers;
 
@@ -83,6 +84,50 @@ public class LibrariesController : ControllerBase
         {
             _logger.LogError(ex, "Failed to get library with ID {LibraryId}", id);
             return StatusCode(500, new { message = "Internal server error" });
+        }
+    }
+
+    /// <summary>
+    /// Manually trigger library scan
+    /// </summary>
+    [HttpPost("{id}/scan")]
+    public async Task<IActionResult> TriggerLibraryScan(string id)
+    {
+        try
+        {
+            if (!ObjectId.TryParse(id, out var libraryId))
+                return BadRequest(new { message = "Invalid library ID format" });
+
+            // Get library to verify it exists
+            var library = await _libraryService.GetLibraryByIdAsync(libraryId);
+            if (library == null)
+                return NotFound(new { message = "Library not found" });
+
+            // Publish scan message directly to RabbitMQ
+            var messageQueueService = HttpContext.RequestServices.GetRequiredService<IMessageQueueService>();
+            var scanMessage = new ImageViewer.Infrastructure.Messaging.LibraryScanMessage
+            {
+                LibraryId = libraryId.ToString(),
+                LibraryPath = library.Path,
+                ScanType = "Manual",
+                IncludeSubfolders = true
+            };
+
+            await messageQueueService.PublishAsync(scanMessage, "library_scan_queue");
+
+            _logger.LogInformation("Manually triggered scan for library {LibraryId}", libraryId);
+            
+            return Ok(new { 
+                message = "Library scan triggered successfully",
+                libraryId = id,
+                libraryName = library.Name,
+                libraryPath = library.Path
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to trigger library scan for {LibraryId}", id);
+            return StatusCode(500, new { message = "Failed to trigger library scan" });
         }
     }
 
