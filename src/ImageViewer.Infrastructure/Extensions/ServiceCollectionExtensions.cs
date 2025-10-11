@@ -184,6 +184,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<INotificationService, NotificationService>();
         services.AddScoped<IUserPreferencesService, UserPreferencesService>();
         services.AddScoped<ICacheService, CacheService>(); // Refactored to use embedded design
+        services.AddScoped<ICacheJobRecoveryService, CacheJobRecoveryService>(); // Cache job recovery and resumption
         services.AddScoped<IStatisticsService, StatisticsService>(); // Refactored to use embedded design
         services.AddScoped<IPerformanceService, PerformanceService>(); // Stub implementation
         services.AddScoped<ISecurityService, SecurityService>();
