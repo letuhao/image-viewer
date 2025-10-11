@@ -119,7 +119,11 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ITagRepository, MongoTagRepository>();
         services.AddScoped<ICollectionTagRepository, MongoCollectionTagRepository>();
         services.AddScoped<ICacheFolderRepository, MongoCacheFolderRepository>();
-        services.AddScoped<ICacheJobStateRepository, CacheJobStateRepository>();
+        // Unified file processing job state (cache, thumbnail, compression, etc.)
+        services.AddScoped<IFileProcessingJobStateRepository, FileProcessingJobStateRepository>();
+        // Legacy cache job state repository (kept for backward compatibility, uses same implementation)
+        services.AddScoped<ICacheJobStateRepository>(sp => 
+            new CacheJobStateRepositoryAdapter(sp.GetRequiredService<IFileProcessingJobStateRepository>()));
         // services.AddScoped<IThumbnailInfoRepository, MongoThumbnailInfoRepository>(); // Removed - use embedded ThumbnailEmbedded
         services.AddScoped<IViewSessionRepository, MongoViewSessionRepository>();
         services.AddScoped<IBackgroundJobRepository, MongoBackgroundJobRepository>();
