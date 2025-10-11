@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useCollection } from '../hooks/useCollections';
 import { useImages } from '../hooks/useImages';
@@ -36,7 +36,14 @@ type CardSize = 'mini' | 'tiny' | 'small' | 'medium' | 'large' | 'xlarge';
 const CollectionDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [page, setPage] = useState(1);
+  
+  // Restore page from sessionStorage for THIS specific collection
+  const sessionKey = `collectionDetail_${id}_page`;
+  const [page, setPage] = useState(() => {
+    const savedPage = sessionStorage.getItem(sessionKey);
+    return savedPage ? parseInt(savedPage) : 1;
+  });
+  
   const [limit, setLimit] = useState(() => 
     parseInt(localStorage.getItem('collectionDetailPageSize') || '20')
   );
@@ -61,6 +68,34 @@ const CollectionDetail: React.FC = () => {
     page,
     limit,
   });
+
+  // Save current page to sessionStorage whenever it changes (per collection)
+  useEffect(() => {
+    sessionStorage.setItem(sessionKey, page.toString());
+  }, [page, sessionKey]);
+
+  // Restore scroll position when returning to this collection
+  useEffect(() => {
+    const scrollKey = `collectionDetail_${id}_scroll`;
+    const savedScrollPosition = sessionStorage.getItem(scrollKey);
+    if (savedScrollPosition) {
+      // Delay scroll restoration to ensure DOM is ready
+      setTimeout(() => {
+        window.scrollTo(0, parseInt(savedScrollPosition));
+      }, 100);
+    }
+
+    // Save scroll position before leaving the page
+    const handleScroll = () => {
+      sessionStorage.setItem(scrollKey, window.scrollY.toString());
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+    };
+  }, [id]);
 
   if (isLoading) {
     return <LoadingSpinner text="Loading collection..." />;

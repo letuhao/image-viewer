@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCollections } from '../hooks/useCollections';
 import { Card, CardContent } from '../components/ui/Card';
@@ -37,8 +37,17 @@ type CardSize = 'mini' | 'tiny' | 'small' | 'medium' | 'large' | 'xlarge';
  */
 const Collections: React.FC = () => {
   const navigate = useNavigate();
-  const [page, setPage] = useState(1);
-  const [search, setSearch] = useState('');
+  
+  // Restore page and search from sessionStorage when returning to this screen
+  const [page, setPage] = useState(() => {
+    const savedPage = sessionStorage.getItem('collectionsCurrentPage');
+    return savedPage ? parseInt(savedPage) : 1;
+  });
+  
+  const [search, setSearch] = useState(() => {
+    return sessionStorage.getItem('collectionsSearchQuery') || '';
+  });
+  
   const [limit, setLimit] = useState(() => 
     parseInt(localStorage.getItem('collectionsPageSize') || '100')
   );
@@ -67,6 +76,38 @@ const Collections: React.FC = () => {
   };
 
   const { data, isLoading, refetch} = useCollections({ page, limit });
+
+  // Save current page to sessionStorage whenever it changes
+  useEffect(() => {
+    sessionStorage.setItem('collectionsCurrentPage', page.toString());
+  }, [page]);
+
+  // Save search query to sessionStorage whenever it changes
+  useEffect(() => {
+    sessionStorage.setItem('collectionsSearchQuery', search);
+  }, [search]);
+
+  // Restore scroll position when returning to this page
+  useEffect(() => {
+    const savedScrollPosition = sessionStorage.getItem('collectionsScrollPosition');
+    if (savedScrollPosition) {
+      // Delay scroll restoration to ensure DOM is ready
+      setTimeout(() => {
+        window.scrollTo(0, parseInt(savedScrollPosition));
+      }, 100);
+    }
+
+    // Save scroll position before leaving the page
+    const handleScroll = () => {
+      sessionStorage.setItem('collectionsScrollPosition', window.scrollY.toString());
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+    };
+  }, []);
 
   // Filter collections by search query
   const filteredCollections = data?.data?.filter((collection) =>
