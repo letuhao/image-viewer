@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { HardDrive, FolderOpen, Activity, RefreshCw, Trash2, Play, Clock, CheckCircle2, XCircle, AlertCircle } from 'lucide-react';
+import { HardDrive, FolderOpen, Activity, RefreshCw, Trash2, Play, Clock, CheckCircle2, XCircle, AlertCircle, Image as ImageIcon, Layers } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../services/api';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
@@ -27,9 +27,10 @@ interface CacheFolderStatistics {
   updatedAt: string;
 }
 
-interface CacheJobState {
+interface FileProcessingJobState {
   id: string;
   jobId: string;
+  jobType: string; // "cache", "thumbnail", "both"
   collectionId: string;
   collectionName?: string;
   status: string;
@@ -39,13 +40,10 @@ interface CacheJobState {
   skippedImages: number;
   remainingImages: number;
   progress: number;
-  cacheFolderId?: string;
-  cacheFolderPath?: string;
+  outputFolderId?: string;
+  outputFolderPath?: string;
   totalSizeBytes: number;
-  cacheWidth: number;
-  cacheHeight: number;
-  quality: number;
-  format: string;
+  jobSettings: string; // JSON string
   startedAt?: string;
   completedAt?: string;
   lastProgressAt?: string;
@@ -57,6 +55,7 @@ interface CacheJobState {
 
 const CacheManagement: React.FC = () => {
   const [selectedTab, setSelectedTab] = useState<'folders' | 'jobs'>('folders');
+  const [jobTypeFilter, setJobTypeFilter] = useState<string>(''); // '', 'cache', 'thumbnail'
   const queryClient = useQueryClient();
 
   // Query cache folder statistics
@@ -69,11 +68,12 @@ const CacheManagement: React.FC = () => {
     refetchInterval: 30000, // Refresh every 30 seconds
   });
 
-  // Query cache job states
-  const { data: cacheJobs, isLoading: jobsLoading } = useQuery<CacheJobState[]>({
-    queryKey: ['cacheJobStates'],
+  // Query file processing job states (unified: cache + thumbnail)
+  const { data: processingJobs, isLoading: jobsLoading } = useQuery<FileProcessingJobState[]>({
+    queryKey: ['fileProcessingJobs', jobTypeFilter],
     queryFn: async () => {
-      const response = await api.get('/cache/jobs');
+      const params = jobTypeFilter ? { jobType: jobTypeFilter } : {};
+      const response = await api.get('/cache/processing-jobs', { params });
       return response.data;
     },
     refetchInterval: 5000, // Refresh every 5 seconds
@@ -81,9 +81,10 @@ const CacheManagement: React.FC = () => {
 
   // Query resumable jobs
   const { data: resumableJobs } = useQuery<string[]>({
-    queryKey: ['resumableJobs'],
+    queryKey: ['resumableJobs', jobTypeFilter],
     queryFn: async () => {
-      const response = await api.get('/cache/jobs/resumable');
+      const params = jobTypeFilter ? { jobType: jobTypeFilter } : {};
+      const response = await api.get('/cache/processing-jobs/resumable', { params });
       return response.data;
     },
     refetchInterval: 10000,
@@ -92,11 +93,11 @@ const CacheManagement: React.FC = () => {
   // Mutation to resume a job
   const resumeJobMutation = useMutation({
     mutationFn: async (jobId: string) => {
-      const response = await api.post(`/cache/jobs/${jobId}/resume`);
+      const response = await api.post(`/cache/processing-jobs/${jobId}/resume`);
       return response.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['cacheJobStates'] });
+      queryClient.invalidateQueries({ queryKey: ['fileProcessingJobs'] });
       queryClient.invalidateQueries({ queryKey: ['resumableJobs'] });
     },
   });
@@ -104,11 +105,12 @@ const CacheManagement: React.FC = () => {
   // Mutation to recover all incomplete jobs
   const recoverJobsMutation = useMutation({
     mutationFn: async () => {
-      const response = await api.post('/cache/jobs/recover');
+      const params = jobTypeFilter ? { jobType: jobTypeFilter } : {};
+      const response = await api.post('/cache/processing-jobs/recover', null, { params });
       return response.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['cacheJobStates'] });
+      queryClient.invalidateQueries({ queryKey: ['fileProcessingJobs'] });
       queryClient.invalidateQueries({ queryKey: ['resumableJobs'] });
     },
   });
@@ -116,11 +118,11 @@ const CacheManagement: React.FC = () => {
   // Mutation to cleanup old jobs
   const cleanupJobsMutation = useMutation({
     mutationFn: async (olderThanDays: number) => {
-      const response = await api.delete(`/cache/jobs/cleanup?olderThanDays=${olderThanDays}`);
+      const response = await api.delete(`/cache/processing-jobs/cleanup?olderThanDays=${olderThanDays}`);
       return response.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['cacheJobStates'] });
+      queryClient.invalidateQueries({ queryKey: ['fileProcessingJobs'] });
     },
   });
 
@@ -163,6 +165,45 @@ const CacheManagement: React.FC = () => {
         return 'bg-orange-500/20 text-orange-400 border-orange-500/30';
       default:
         return 'bg-slate-500/20 text-slate-400 border-slate-500/30';
+    }
+  };
+
+  const getJobTypeIcon = (jobType: string) => {
+    switch (jobType.toLowerCase()) {
+      case 'cache':
+        return <HardDrive className="h-4 w-4 text-blue-400" />;
+      case 'thumbnail':
+        return <ImageIcon className="h-4 w-4 text-purple-400" />;
+      case 'both':
+        return <Layers className="h-4 w-4 text-cyan-400" />;
+      default:
+        return <Activity className="h-4 w-4 text-slate-400" />;
+    }
+  };
+
+  const getJobTypeColor = (jobType: string) => {
+    switch (jobType.toLowerCase()) {
+      case 'cache':
+        return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
+      case 'thumbnail':
+        return 'bg-purple-500/20 text-purple-400 border-purple-500/30';
+      case 'both':
+        return 'bg-cyan-500/20 text-cyan-400 border-cyan-500/30';
+      default:
+        return 'bg-slate-500/20 text-slate-400 border-slate-500/30';
+    }
+  };
+
+  const getJobTypeLabel = (jobType: string) => {
+    switch (jobType.toLowerCase()) {
+      case 'cache':
+        return 'Cache';
+      case 'thumbnail':
+        return 'Thumbnail';
+      case 'both':
+        return 'Cache + Thumbnail';
+      default:
+        return jobType;
     }
   };
 
@@ -225,7 +266,7 @@ const CacheManagement: React.FC = () => {
               }`}
             >
               <Activity className="h-4 w-4 inline mr-2" />
-              Cache Jobs ({cacheJobs?.length || 0})
+              Processing Jobs ({processingJobs?.length || 0})
               {resumableJobs && resumableJobs.length > 0 && (
                 <span className="ml-2 px-1.5 py-0.5 text-xs bg-orange-500/20 text-orange-400 rounded">
                   {resumableJobs.length} resumable
@@ -343,7 +384,22 @@ const CacheManagement: React.FC = () => {
 
         {selectedTab === 'jobs' && (
           <div className="space-y-4">
-            {cacheJobs?.map((job) => (
+            {/* Job Type Filter */}
+            <div className="flex items-center gap-4 mb-4">
+              <label className="text-sm text-slate-400">Filter by Job Type:</label>
+              <select
+                value={jobTypeFilter}
+                onChange={(e) => setJobTypeFilter(e.target.value)}
+                className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">All Types</option>
+                <option value="cache">Cache Only</option>
+                <option value="thumbnail">Thumbnail Only</option>
+                <option value="both">Both</option>
+              </select>
+            </div>
+
+            {processingJobs?.map((job) => (
               <div
                 key={job.id}
                 className="bg-slate-800 border border-slate-700 rounded-lg p-6 hover:border-slate-600 transition-colors"
@@ -355,6 +411,10 @@ const CacheManagement: React.FC = () => {
                       <h3 className="text-lg font-semibold text-white">
                         {job.collectionName || `Collection ${job.collectionId.substring(0, 8)}`}
                       </h3>
+                      <span className={`px-2 py-0.5 text-xs rounded border flex items-center gap-1 ${getJobTypeColor(job.jobType)}`}>
+                        {getJobTypeIcon(job.jobType)}
+                        {getJobTypeLabel(job.jobType)}
+                      </span>
                       <span className={`px-2 py-0.5 text-xs rounded border ${getStatusColor(job.status)}`}>
                         {job.status}
                       </span>
@@ -410,9 +470,26 @@ const CacheManagement: React.FC = () => {
                     {/* Additional Info */}
                     <div className="flex items-center gap-4 text-xs text-slate-500 mb-3">
                       <span>Size: {formatBytes(job.totalSizeBytes)}</span>
-                      <span>Cache: {job.cacheWidth}x{job.cacheHeight}</span>
-                      <span>Quality: {job.quality}%</span>
-                      <span>Format: {job.format}</span>
+                      {(() => {
+                        try {
+                          const settings = JSON.parse(job.jobSettings || '{}');
+                          return (
+                            <>
+                              {settings.width && settings.height && (
+                                <span>Dimensions: {settings.width}x{settings.height}</span>
+                              )}
+                              {settings.quality && (
+                                <span>Quality: {settings.quality}%</span>
+                              )}
+                              {settings.format && (
+                                <span>Format: {settings.format}</span>
+                              )}
+                            </>
+                          );
+                        } catch {
+                          return null;
+                        }
+                      })()}
                     </div>
 
                     {/* Timestamps */}
@@ -460,12 +537,16 @@ const CacheManagement: React.FC = () => {
               </div>
             ))}
 
-            {!cacheJobs || cacheJobs.length === 0 && (
+            {!processingJobs || processingJobs.length === 0 ? (
               <div className="text-center py-12">
                 <Activity className="h-12 w-12 text-slate-600 mx-auto mb-4" />
-                <p className="text-slate-400">No cache jobs found</p>
+                <p className="text-slate-400">
+                  {jobTypeFilter 
+                    ? `No ${jobTypeFilter} jobs found` 
+                    : 'No processing jobs found'}
+                </p>
               </div>
-            )}
+            ) : null}
           </div>
         )}
       </div>
