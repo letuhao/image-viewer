@@ -49,13 +49,17 @@ const CollectionNavigationSidebar: React.FC<CollectionNavigationSidebarProps> = 
 
   const handlePrevious = () => {
     if (navigationData?.previousCollectionId) {
-      handleCollectionClick(navigationData.previousCollectionId);
+      // Find firstImageId from siblings data
+      const prevCollection = siblingsData?.siblings.find((c: any) => c.id === navigationData.previousCollectionId);
+      handleCollectionClick(navigationData.previousCollectionId, prevCollection?.firstImageId);
     }
   };
 
   const handleNext = () => {
     if (navigationData?.nextCollectionId) {
-      handleCollectionClick(navigationData.nextCollectionId);
+      // Find firstImageId from siblings data
+      const nextCollection = siblingsData?.siblings.find((c: any) => c.id === navigationData.nextCollectionId);
+      handleCollectionClick(navigationData.nextCollectionId, nextCollection?.firstImageId);
     }
   };
 
