@@ -22,13 +22,20 @@ public class CollectionService : ICollectionService
     private readonly IMessageQueueService _messageQueueService;
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<CollectionService> _logger;
+    private readonly IThumbnailCacheService? _thumbnailCacheService;
 
-    public CollectionService(ICollectionRepository collectionRepository, IMessageQueueService messageQueueService, IServiceProvider serviceProvider, ILogger<CollectionService> logger)
+    public CollectionService(
+        ICollectionRepository collectionRepository, 
+        IMessageQueueService messageQueueService, 
+        IServiceProvider serviceProvider, 
+        ILogger<CollectionService> logger,
+        IThumbnailCacheService? thumbnailCacheService = null)
     {
         _collectionRepository = collectionRepository ?? throw new ArgumentNullException(nameof(collectionRepository));
         _messageQueueService = messageQueueService ?? throw new ArgumentNullException(nameof(messageQueueService));
         _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _thumbnailCacheService = thumbnailCacheService; // Optional for unit tests
     }
 
     public async Task<Collection> CreateCollectionAsync(ObjectId libraryId, string name, string path, CollectionType type, string? description = null, string? createdBy = null, string? createdBySystem = null)
@@ -780,11 +787,31 @@ public class CollectionService : ICollectionService
 
             // Get paginated siblings
             var skip = (page - 1) * pageSize;
-            var siblings = allCollections
+            var paginatedCollections = allCollections
                 .Skip(skip)
                 .Take(pageSize)
-                .Select(c => c.ToOverviewDto())
                 .ToList();
+            
+            var siblings = paginatedCollections.Select(c => c.ToOverviewDto()).ToList();
+
+            // Populate thumbnails in parallel if service available
+            if (_thumbnailCacheService != null)
+            {
+                var thumbnailTasks = paginatedCollections.Select(async (collection, index) =>
+                {
+                    var middleThumbnail = collection.GetCollectionThumbnail();
+                    if (middleThumbnail != null)
+                    {
+                        var base64 = await _thumbnailCacheService.GetThumbnailAsBase64Async(
+                            collection.Id,
+                            middleThumbnail.Id
+                        );
+                        siblings[index].ThumbnailBase64 = base64;
+                    }
+                });
+
+                await Task.WhenAll(thumbnailTasks);
+            }
 
             return new DTOs.Collections.CollectionSiblingsDto
             {
