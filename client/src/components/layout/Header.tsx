@@ -4,6 +4,7 @@ import {
   FolderOpen, 
   Settings, 
   Activity,
+  HardDrive,
   Menu,
   X,
   LogOut,
@@ -30,6 +31,7 @@ const Header: React.FC = () => {
     { path: '/', icon: Home, label: 'Dashboard' },
     { path: '/collections', icon: FolderOpen, label: 'Collections' },
     { path: '/jobs', icon: Activity, label: 'Jobs' },
+    { path: '/cache', icon: HardDrive, label: 'Cache' },
     { path: '/settings', icon: Settings, label: 'Settings' },
   ];
 
