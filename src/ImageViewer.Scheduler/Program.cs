@@ -3,8 +3,8 @@ using Hangfire.Mongo;
 using Hangfire.Mongo.Migration.Strategies;
 using Hangfire.Mongo.Migration.Strategies.Backup;
 using ImageViewer.Domain.Interfaces;
+using ImageViewer.Infrastructure.Configuration;
 using ImageViewer.Infrastructure.Data;
-using ImageViewer.Infrastructure.Extensions;
 using ImageViewer.Infrastructure.Services;
 using ImageViewer.Scheduler.Configuration;
 using ImageViewer.Scheduler.Jobs;
@@ -95,17 +95,31 @@ public class Program
                 });
 
                 // Register Infrastructure services
-                // MongoDB
-                services.AddMongoDb(configuration);
+                // MongoDB (manual registration - Scheduler only needs specific services)
+                services.Configure<MongoDbOptions>(options =>
+                {
+                    options.ConnectionString = configuration["MongoDb:ConnectionString"] ?? "mongodb://localhost:27017";
+                    options.DatabaseName = configuration["MongoDb:DatabaseName"] ?? "image_viewer";
+                });
+                
+                services.AddSingleton<IMongoClient>(provider =>
+                {
+                    var options = provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<MongoDbOptions>>().Value;
+                    return new MongoClient(options.ConnectionString);
+                });
+                
+                services.AddScoped<IMongoDatabase>(provider =>
+                {
+                    var client = provider.GetRequiredService<IMongoClient>();
+                    var options = provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<MongoDbOptions>>().Value;
+                    return client.GetDatabase(options.DatabaseName);
+                });
                 
                 // RabbitMQ Message Queue
                 services.Configure<RabbitMQOptions>(configuration.GetSection("RabbitMQ"));
                 services.AddSingleton<IMessageQueueService, RabbitMQMessageQueueService>();
-                
-                // RabbitMQ Setup - run manually in startup, not as hosted service
-                // services.AddHostedService<RabbitMQSetupService>(); // Not a hosted service
 
-                // Register MongoDB repositories for scheduler
+                // Register MongoDB repositories for scheduler (only what's needed)
                 services.AddScoped<IScheduledJobRepository, MongoScheduledJobRepository>();
                 services.AddScoped<IScheduledJobRunRepository, MongoScheduledJobRunRepository>();
                 services.AddScoped<ILibraryRepository, LibraryRepository>();

@@ -198,3 +198,5 @@ temp_extract/
 temp_extract2/
 
 src/ImageViewer.Scheduler/obj/
+
+src/ImageViewer.Scheduler/bin/
