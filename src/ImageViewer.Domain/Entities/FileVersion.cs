@@ -33,7 +33,7 @@ public class FileVersion : BaseEntity
     public string VersionType { get; private set; } = string.Empty; // "original", "thumbnail", "preview", "backup", "processed"
 
     [BsonElement("createdBy")]
-    public ObjectId? CreatedBy { get; private set; }
+    public new ObjectId? CreatedBy { get; private set; }
 
     [BsonElement("creationReason")]
     public string CreationReason { get; private set; } = string.Empty; // "upload", "backup", "processing", "manual"

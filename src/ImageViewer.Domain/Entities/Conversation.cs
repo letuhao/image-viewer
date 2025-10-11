@@ -45,7 +45,7 @@ public class Conversation : BaseEntity
     public Dictionary<ObjectId, int> UnreadCount { get; private set; } = new();
 
     [BsonElement("createdBy")]
-    public ObjectId CreatedBy { get; private set; }
+    public new ObjectId CreatedBy { get; private set; }
 
     // Navigation properties
     [BsonIgnore]

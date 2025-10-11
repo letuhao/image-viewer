@@ -81,7 +81,7 @@ public class BackupHistory : BaseEntity
     public Dictionary<string, object> Metadata { get; private set; } = new();
 
     [BsonElement("createdBy")]
-    public ObjectId? CreatedBy { get; private set; }
+    public new ObjectId? CreatedBy { get; private set; }
 
     [BsonElement("scheduledBackupId")]
     public ObjectId? ScheduledBackupId { get; private set; }

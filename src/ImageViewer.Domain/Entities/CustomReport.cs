@@ -99,7 +99,7 @@ public class CustomReport : BaseEntity
     public Dictionary<string, object> Metadata { get; private set; } = new();
 
     [BsonElement("createdBy")]
-    public ObjectId CreatedBy { get; private set; }
+    public new ObjectId CreatedBy { get; private set; }
 
     [BsonElement("lastModifiedBy")]
     public ObjectId? LastModifiedBy { get; private set; }

@@ -78,7 +78,7 @@ public class RewardAchievement : BaseEntity
     public List<string> Tags { get; private set; } = new();
 
     [BsonElement("createdBy")]
-    public ObjectId? CreatedBy { get; private set; }
+    public new ObjectId? CreatedBy { get; private set; }
 
     [BsonElement("totalEarned")]
     public int TotalEarned { get; private set; } = 0;

@@ -102,7 +102,7 @@ public class MediaProcessingJob : BaseEntity
     public Dictionary<string, object> Metadata { get; private set; } = new();
 
     [BsonElement("createdBy")]
-    public ObjectId? CreatedBy { get; private set; }
+    public new ObjectId? CreatedBy { get; private set; }
 
     [BsonElement("userId")]
     public ObjectId? UserId { get; private set; }

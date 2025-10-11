@@ -99,7 +99,7 @@ public class DistributionNode : BaseEntity
     public List<string> SupportedFormats { get; private set; } = new();
 
     [BsonElement("createdBy")]
-    public ObjectId? CreatedBy { get; private set; }
+    public new ObjectId? CreatedBy { get; private set; }
 
     [BsonElement("parentNodeId")]
     public ObjectId? ParentNodeId { get; private set; }

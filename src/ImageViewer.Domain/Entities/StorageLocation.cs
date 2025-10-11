@@ -66,7 +66,7 @@ public class StorageLocation : BaseEntity
     public int Priority { get; private set; } = 0; // Higher number = higher priority
 
     [BsonElement("createdBy")]
-    public ObjectId CreatedBy { get; private set; }
+    public new ObjectId CreatedBy { get; private set; }
 
     // Navigation properties
     [BsonIgnore]

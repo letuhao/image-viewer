@@ -60,7 +60,7 @@ public class SystemMaintenance : BaseEntity
     public ObjectId? AssignedTo { get; private set; }
 
     [BsonElement("createdBy")]
-    public ObjectId CreatedBy { get; private set; }
+    public new ObjectId CreatedBy { get; private set; }
 
     [BsonElement("completedBy")]
     public ObjectId? CompletedBy { get; private set; }

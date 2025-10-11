@@ -93,7 +93,7 @@ public class ContentSimilarity : BaseEntity
     public DateTime? LastUsed { get; private set; }
 
     [BsonElement("createdBy")]
-    public ObjectId? CreatedBy { get; private set; }
+    public new ObjectId? CreatedBy { get; private set; }
 
     // Navigation properties
     [BsonIgnore]

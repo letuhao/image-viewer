@@ -93,7 +93,7 @@ public class UserPremiumFeature : BaseEntity
     public string? Notes { get; private set; }
 
     [BsonElement("createdBy")]
-    public ObjectId? CreatedBy { get; private set; }
+    public new ObjectId? CreatedBy { get; private set; }
 
     [BsonElement("giftFromUserId")]
     public ObjectId? GiftFromUserId { get; private set; }

@@ -42,7 +42,7 @@ public class DownloadLink : BaseEntity
     public DateTime? LastDownloadedAt { get; private set; }
 
     [BsonElement("createdBy")]
-    public ObjectId CreatedBy { get; private set; }
+    public new ObjectId CreatedBy { get; private set; }
 
     [BsonElement("collectionId")]
     public ObjectId? CollectionId { get; private set; }

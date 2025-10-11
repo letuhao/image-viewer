@@ -99,7 +99,7 @@ public class PremiumFeature : BaseEntity
     public Dictionary<string, object> Metadata { get; private set; } = new();
 
     [BsonElement("createdBy")]
-    public ObjectId? CreatedBy { get; private set; }
+    public new ObjectId? CreatedBy { get; private set; }
 
     [BsonElement("parentFeatureId")]
     public ObjectId? ParentFeatureId { get; private set; }
