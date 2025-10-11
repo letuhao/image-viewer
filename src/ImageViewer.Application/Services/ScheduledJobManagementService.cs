@@ -40,6 +40,21 @@ public interface IScheduledJobManagementService
     /// Get scheduled job by library ID
     /// </summary>
     Task<ScheduledJob?> GetJobByLibraryIdAsync(ObjectId libraryId);
+
+    /// <summary>
+    /// Remove orphaned job (job without Hangfire binding)
+    /// </summary>
+    Task RemoveOrphanedJobAsync(ObjectId jobId);
+
+    /// <summary>
+    /// Recreate Hangfire job for scheduled job
+    /// </summary>
+    Task RecreateHangfireJobAsync(ObjectId jobId);
+
+    /// <summary>
+    /// Get all orphaned jobs (jobs without HangfireJobId)
+    /// </summary>
+    Task<List<ScheduledJob>> GetOrphanedJobsAsync();
 }
 
 public class ScheduledJobManagementService : IScheduledJobManagementService
@@ -220,5 +235,84 @@ public class ScheduledJobManagementService : IScheduledJobManagementService
             throw;
         }
     }
-}
 
+
+    public async Task RemoveOrphanedJobAsync(ObjectId jobId)
+    {
+        try
+        {
+            var job = await _scheduledJobRepository.GetByIdAsync(jobId);
+            if (job == null)
+            {
+                _logger.LogWarning("Scheduled job {JobId} not found", jobId);
+                return;
+            }
+
+            if (!string.IsNullOrEmpty(job.HangfireJobId))
+            {
+                _logger.LogWarning("Job {JobId} has Hangfire binding {HangfireJobId}, not orphaned", jobId, job.HangfireJobId);
+                throw new InvalidOperationException($"Job {jobId} is not orphaned - it has Hangfire binding: {job.HangfireJobId}");
+            }
+
+            await _scheduledJobRepository.DeleteAsync(jobId);
+            _logger.LogInformation("Removed orphaned job {JobId} ({JobName})", jobId, job.Name);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to remove orphaned job {JobId}", jobId);
+            throw;
+        }
+    }
+
+    public async Task RecreateHangfireJobAsync(ObjectId jobId)
+    {
+        try
+        {
+            var job = await _scheduledJobRepository.GetByIdAsync(jobId);
+            if (job == null)
+            {
+                _logger.LogWarning("Scheduled job {JobId} not found", jobId);
+                throw new InvalidOperationException($"Job {jobId} not found");
+            }
+
+            // Disable and re-enable to force Hangfire registration
+            // This will trigger the scheduler to pick it up and bind it
+            job.Disable();
+            await _scheduledJobRepository.UpdateAsync(job);
+            
+            _logger.LogInformation("Disabled job {JobId} for recreation", jobId);
+            
+            // Wait a moment for the scheduler to process the disable
+            await Task.Delay(500);
+            
+            job.Enable();
+            await _scheduledJobRepository.UpdateAsync(job);
+            
+            _logger.LogInformation("Re-enabled job {JobId} to trigger Hangfire binding", jobId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to recreate Hangfire job for {JobId}", jobId);
+            throw;
+        }
+    }
+
+    public async Task<List<ScheduledJob>> GetOrphanedJobsAsync()
+    {
+        try
+        {
+            var allJobs = await _scheduledJobRepository.GetAllAsync();
+            var orphanedJobs = allJobs
+                .Where(j => !j.IsDeleted && string.IsNullOrEmpty(j.HangfireJobId))
+                .ToList();
+
+            _logger.LogInformation("Found {Count} orphaned jobs", orphanedJobs.Count);
+            return orphanedJobs;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get orphaned jobs");
+            throw;
+        }
+    }
+}

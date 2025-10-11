@@ -624,6 +624,90 @@ public class LibrariesController : ControllerBase
             return StatusCode(500, new { message = "Internal server error" });
         }
     }
+
+    /// <summary>
+    /// Get orphaned jobs (jobs without Hangfire binding)
+    /// </summary>
+    [HttpGet("orphaned-jobs")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> GetOrphanedJobs()
+    {
+        try
+        {
+            var orphanedJobs = await _scheduledJobManagementService.GetOrphanedJobsAsync();
+            
+            var result = orphanedJobs.Select(j => new OrphanedJobDto
+            {
+                Id = j.Id.ToString(),
+                Name = j.Name,
+                JobType = j.JobType,
+                CronExpression = j.CronExpression ?? string.Empty,
+                LibraryId = j.Parameters.ContainsKey("LibraryId") ? j.Parameters["LibraryId"].ToString() : null
+            }).ToList();
+
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get orphaned jobs");
+            return StatusCode(500, new { message = "Internal server error" });
+        }
+    }
+
+    /// <summary>
+    /// Remove orphaned job
+    /// </summary>
+    [HttpDelete("orphaned-jobs/{id}")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> RemoveOrphanedJob(string id)
+    {
+        try
+        {
+            if (!ObjectId.TryParse(id, out var jobId))
+                return BadRequest(new { message = "Invalid job ID format" });
+
+            await _scheduledJobManagementService.RemoveOrphanedJobAsync(jobId);
+
+            return Ok(new { message = "Orphaned job removed successfully" });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to remove orphaned job {JobId}", id);
+            return StatusCode(500, new { message = "Internal server error" });
+        }
+    }
+
+    /// <summary>
+    /// Recreate Hangfire job for library
+    /// </summary>
+    [HttpPost("{id}/recreate-job")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> RecreateLibraryJob(string id)
+    {
+        try
+        {
+            if (!ObjectId.TryParse(id, out var libraryId))
+                return BadRequest(new { message = "Invalid library ID format" });
+
+            // Get the scheduled job for this library
+            var job = await _scheduledJobManagementService.GetJobByLibraryIdAsync(libraryId);
+            if (job == null)
+                return NotFound(new { message = "No scheduled job found for this library" });
+
+            await _scheduledJobManagementService.RecreateHangfireJobAsync(job.Id);
+
+            return Ok(new { message = "Hangfire job recreated successfully. Wait 5-10 seconds for binding." });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to recreate Hangfire job for library {LibraryId}", id);
+            return StatusCode(500, new { message = "Internal server error" });
+        }
+    }
 }
 
 /// <summary>
@@ -644,4 +728,16 @@ public class CreateLibraryRequest
 public class SetPublicRequest
 {
     public bool IsPublic { get; set; }
+}
+
+/// <summary>
+/// Orphaned job info
+/// </summary>
+public class OrphanedJobDto
+{
+    public string Id { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public string JobType { get; set; } = string.Empty;
+    public string CronExpression { get; set; } = string.Empty;
+    public string? LibraryId { get; set; }
 }
