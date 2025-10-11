@@ -427,8 +427,9 @@ const ImageViewer: React.FC = () => {
           sortBy="updatedAt"
           sortDirection="desc"
           onNavigate={(newCollectionId) => {
-            // Navigate to new collection's first image
-            navigate(`/collections/${newCollectionId}/viewer?imageId=${newCollectionId}`);
+            // Navigate to collection detail page instead of viewer
+            // User can then click "Open Viewer" button from detail page
+            navigate(`/collections/${newCollectionId}`);
           }}
         />
       )}
