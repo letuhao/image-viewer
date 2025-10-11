@@ -24,6 +24,7 @@
   <ItemGroup>
     <ProjectReference Include="..\ImageViewer.Application\ImageViewer.Application.csproj" />
     <ProjectReference Include="..\ImageViewer.Infrastructure\ImageViewer.Infrastructure.csproj" />
+    <ProjectReference Include="..\ImageViewer.Scheduler\ImageViewer.Scheduler.csproj" />
   </ItemGroup>
 
 </Project>

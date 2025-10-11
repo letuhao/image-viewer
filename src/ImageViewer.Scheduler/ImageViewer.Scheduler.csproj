@@ -10,6 +10,7 @@
     <PackageReference Include="Hangfire.AspNetCore" Version="1.8.21" />
     <PackageReference Include="Hangfire.Core" Version="1.8.21" />
     <PackageReference Include="Hangfire.Mongo" Version="1.12.1" />
+    <PackageReference Include="NCrontab" Version="3.4.0" />
   </ItemGroup>
 
   <ItemGroup>

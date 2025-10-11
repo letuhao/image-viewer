@@ -194,6 +194,20 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ISecurityService, SecurityService>();
         services.AddScoped<IWindowsDriveService, WindowsDriveService>();
         services.AddScoped<ISystemSettingService, SystemSettingService>();
+        
+        // Scheduler repositories
+        services.AddScoped<IScheduledJobRepository>(provider =>
+        {
+            var database = provider.GetRequiredService<IMongoDatabase>();
+            var logger = provider.GetRequiredService<ILogger<MongoScheduledJobRepository>>();
+            return new MongoScheduledJobRepository(database, logger);
+        });
+        services.AddScoped<IScheduledJobRunRepository>(provider =>
+        {
+            var database = provider.GetRequiredService<IMongoDatabase>();
+            var logger = provider.GetRequiredService<ILogger<MongoScheduledJobRunRepository>>();
+            return new MongoScheduledJobRunRepository(database, logger);
+        });
 
         // Register infrastructure services
         services.AddScoped<IJwtService, JwtService>();

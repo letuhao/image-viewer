@@ -8,6 +8,9 @@ using Microsoft.AspNetCore.Hosting;
 using ImageViewer.Application.Options;
 using Microsoft.Extensions.Options;
 using ImageViewer.Infrastructure.Extensions;
+using ImageViewer.Scheduler.Extensions;
+using ImageViewer.Scheduler.Configuration;
+using Hangfire;
 using RabbitMQ.Client;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -128,6 +131,9 @@ builder.Services.AddScoped<ImageViewer.Domain.Interfaces.IImageCacheService, Ima
 // Register Thumbnail Cache Service (for Base64 encoding with Redis)
 builder.Services.AddScoped<ImageViewer.Application.Services.IThumbnailCacheService, ImageViewer.Application.Services.ThumbnailCacheService>();
 
+// Add Hangfire Scheduler with Dashboard
+builder.Services.AddHangfireDashboard(builder.Configuration);
+
 // Add Application Services - New MongoDB-based services are registered in AddMongoDb extension
 // The following services are registered in ServiceCollectionExtensions.AddMongoDb():
 // - IUserService, UserService
@@ -216,6 +222,14 @@ app.UseSession();
 app.UseCors("AllowAll");
 app.UseAuthentication();
 app.UseAuthorization();
+
+// Add Hangfire Dashboard (accessible at /hangfire)
+app.UseHangfireDashboard("/hangfire", new DashboardOptions
+{
+    Authorization = new[] { new HangfireDashboardAuthorizationFilter() },
+    DashboardTitle = "ImageViewer Scheduler Dashboard",
+    StatsPollingInterval = 2000 // 2 seconds
+});
 
 app.MapControllers();
 app.MapHealthChecks("/health");
