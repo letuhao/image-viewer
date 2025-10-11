@@ -183,12 +183,12 @@ public class ThumbnailGenerationConsumer : BaseMessageConsumer
             {
                 
                 var thumbnailPath = await GenerateThumbnail(
-                    thumbnailMessage.ImagePath, 
-                    thumbnailMessage.ThumbnailWidth, 
-                    thumbnailMessage.ThumbnailHeight,
+                thumbnailMessage.ImagePath,
+                thumbnailMessage.ThumbnailWidth,
+                thumbnailMessage.ThumbnailHeight,
                     imageProcessingService,
                     collectionId,
-                    cancellationToken);
+                cancellationToken);
 
                 if (!string.IsNullOrEmpty(thumbnailPath))
                 {
@@ -354,7 +354,7 @@ public class ThumbnailGenerationConsumer : BaseMessageConsumer
             if (thumbnailData != null && thumbnailData.Length > 0)
             {
                 // Save thumbnail data to file
-                await File.WriteAllBytesAsync(thumbnailPath, thumbnailData, cancellationToken);
+            await File.WriteAllBytesAsync(thumbnailPath, thumbnailData, cancellationToken);
                 _logger.LogInformation("✅ Generated thumbnail: {ThumbnailPath}", thumbnailPath);
                 
                 // ATOMIC UPDATE: Increment cache folder size to prevent race conditions

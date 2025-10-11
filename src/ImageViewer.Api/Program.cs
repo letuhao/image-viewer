@@ -142,6 +142,7 @@ builder.Services.AddHangfireDashboard(builder.Configuration);
 // - IMediaItemService, MediaItemService
 
 // Legacy services (to be removed in future phases)
+builder.Services.AddScoped<ILibraryService, LibraryService>();
 builder.Services.AddScoped<IImageService, ImageService>();
 builder.Services.AddScoped<ICacheService, CacheService>(); // Refactored to use embedded design
 builder.Services.AddScoped<ITagService, TagService>();

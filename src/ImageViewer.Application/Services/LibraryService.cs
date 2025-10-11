@@ -27,7 +27,7 @@ public class LibraryService : ILibraryService
         _scheduledJobManagementService = scheduledJobManagementService; // Optional for backward compatibility
     }
 
-    public async Task<Library> CreateLibraryAsync(string name, string path, ObjectId ownerId, string description = "")
+    public async Task<Library> CreateLibraryAsync(string name, string path, ObjectId ownerId, string description = "", bool autoScan = false)
     {
         try
         {
@@ -45,6 +45,15 @@ public class LibraryService : ILibraryService
 
             // Create new library
             var library = new Library(name, path, ownerId, description);
+            
+            // Set AutoScan if requested (must be done before saving)
+            if (autoScan)
+            {
+                var settings = new LibrarySettings();
+                settings.UpdateAutoScan(true);
+                library.UpdateSettings(settings);
+            }
+            
             var createdLibrary = await _libraryRepository.CreateAsync(library);
 
             // Create scheduled job if auto-scan is enabled and scheduler service is available

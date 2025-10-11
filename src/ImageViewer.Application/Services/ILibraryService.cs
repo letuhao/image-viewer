@@ -11,7 +11,7 @@ public interface ILibraryService
 {
     #region Library Management
     
-    Task<Library> CreateLibraryAsync(string name, string path, ObjectId ownerId, string description = "");
+    Task<Library> CreateLibraryAsync(string name, string path, ObjectId ownerId, string description = "", bool autoScan = false);
     Task<Library> GetLibraryByIdAsync(ObjectId libraryId);
     Task<Library> GetLibraryByPathAsync(string path);
     Task<IEnumerable<Library>> GetLibrariesByOwnerIdAsync(ObjectId ownerId);

@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MongoDB.Bson;
 using ImageViewer.Application.Services;
@@ -10,6 +11,7 @@ namespace ImageViewer.Api.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/v1/[controller]")]
+[Authorize]  // Require authentication for all library operations
 public class LibrariesController : ControllerBase
 {
     private readonly ILibraryService _libraryService;
@@ -35,7 +37,13 @@ public class LibrariesController : ControllerBase
             if (!ObjectId.TryParse(request.OwnerId, out var ownerId))
                 return BadRequest(new { message = "Invalid owner ID format" });
 
-            var library = await _libraryService.CreateLibraryAsync(request.Name, request.Path, ownerId, request.Description);
+            var library = await _libraryService.CreateLibraryAsync(
+                request.Name, 
+                request.Path, 
+                ownerId, 
+                request.Description,
+                request.AutoScan);
+            
             return CreatedAtAction(nameof(GetLibrary), new { id = library.Id }, library);
         }
         catch (ValidationException ex)
@@ -205,6 +213,7 @@ public class LibrariesController : ControllerBase
     /// Delete library
     /// </summary>
     [HttpDelete("{id}")]
+    [Authorize(Roles = "Admin,LibraryManager")]
     public async Task<IActionResult> DeleteLibrary(string id)
     {
         try
@@ -573,6 +582,7 @@ public class CreateLibraryRequest
     public string Path { get; set; } = string.Empty;
     public string OwnerId { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
+    public bool AutoScan { get; set; } = false;
 }
 
 /// <summary>
