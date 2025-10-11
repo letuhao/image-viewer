@@ -121,9 +121,6 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ICacheFolderRepository, MongoCacheFolderRepository>();
         // Unified file processing job state (cache, thumbnail, compression, etc.)
         services.AddScoped<IFileProcessingJobStateRepository, FileProcessingJobStateRepository>();
-        // Legacy cache job state repository (kept for backward compatibility, uses same implementation)
-        services.AddScoped<ICacheJobStateRepository>(sp => 
-            new CacheJobStateRepositoryAdapter(sp.GetRequiredService<IFileProcessingJobStateRepository>()));
         // services.AddScoped<IThumbnailInfoRepository, MongoThumbnailInfoRepository>(); // Removed - use embedded ThumbnailEmbedded
         services.AddScoped<IViewSessionRepository, MongoViewSessionRepository>();
         services.AddScoped<IBackgroundJobRepository, MongoBackgroundJobRepository>();
@@ -192,9 +189,6 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IJobFailureAlertService, JobFailureAlertService>(); // Job failure monitoring and alerts
         // Unified file processing job recovery (cache, thumbnail, etc.)
         services.AddScoped<IFileProcessingJobRecoveryService, FileProcessingJobRecoveryService>();
-        // Legacy cache job recovery (kept for backward compatibility, wraps FileProcessingJobRecoveryService)
-        services.AddScoped<ICacheJobRecoveryService>(sp => 
-            new CacheJobRecoveryServiceAdapter(sp.GetRequiredService<IFileProcessingJobRecoveryService>()));
         services.AddScoped<IStatisticsService, StatisticsService>(); // Refactored to use embedded design
         services.AddScoped<IPerformanceService, PerformanceService>(); // Stub implementation
         services.AddScoped<ISecurityService, SecurityService>();

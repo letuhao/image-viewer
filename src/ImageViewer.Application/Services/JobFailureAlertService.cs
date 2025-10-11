@@ -1,5 +1,7 @@
 using ImageViewer.Domain.Interfaces;
+using ImageViewer.Domain.Enums;
 using Microsoft.Extensions.Logging;
+using MongoDB.Bson;
 
 namespace ImageViewer.Application.Services;
 
@@ -121,13 +123,14 @@ public class JobFailureAlertService : IJobFailureAlertService
             // Send notification (if notification service is available)
             try
             {
-                var notificationRequest = new DTOs.Notifications.CreateNotificationRequest
+                var notificationRequest = new CreateNotificationRequest
                 {
-                    UserId = null, // System notification
+                    UserId = ObjectId.Empty, // System notification (no specific user)
                     Title = $"Job Failure Alert: {jobType} - {collectionName}",
                     Message = message,
-                    Type = "error",
-                    Data = new Dictionary<string, object>
+                    Type = NotificationType.System,
+                    Priority = NotificationPriority.High,
+                    Metadata = new Dictionary<string, object>
                     {
                         { "jobId", jobId },
                         { "jobType", jobType },

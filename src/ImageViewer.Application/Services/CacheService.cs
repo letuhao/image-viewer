@@ -4,6 +4,7 @@ using ImageViewer.Domain.Entities;
 using ImageViewer.Domain.Interfaces;
 using ImageViewer.Domain.ValueObjects;
 using ImageViewer.Application.DTOs.Cache;
+using ImageViewer.Application.Mappings;
 using ImageViewer.Application.Options;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -78,18 +79,7 @@ public class CacheService : ICacheService
                     : 0
             };
 
-            var folderStats = cacheFoldersList.Select(cf => new CacheFolderStatisticsDto
-            {
-                Id = cf.Id,
-                Name = cf.Name,
-                Path = cf.Path,
-                CurrentSize = cf.CurrentSize,
-                MaxSize = cf.MaxSizeBytes,
-                FileCount = 0, // Will be calculated dynamically
-                Priority = cf.Priority,
-                IsActive = cf.IsActive,
-                LastUsed = DateTime.UtcNow // TODO: Track last used from cache access
-            }).ToList();
+            var folderStats = cacheFoldersList.Select(cf => cf.ToStatisticsDto()).ToList();
 
             return new CacheStatisticsDto
             {

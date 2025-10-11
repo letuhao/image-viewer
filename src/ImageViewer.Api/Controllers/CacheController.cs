@@ -16,8 +16,6 @@ public class CacheController : ControllerBase
 {
     private readonly ICacheService _cacheService;
     private readonly ICacheFolderRepository _cacheFolderRepository;
-    private readonly ICacheJobStateRepository _cacheJobStateRepository;
-    private readonly ICacheJobRecoveryService _cacheJobRecoveryService;
     private readonly ICacheCleanupService _cacheCleanupService;
     // Unified file processing job state (cache, thumbnail, etc.)
     private readonly IFileProcessingJobStateRepository _fileProcessingJobStateRepository;
@@ -27,8 +25,6 @@ public class CacheController : ControllerBase
     public CacheController(
         ICacheService cacheService,
         ICacheFolderRepository cacheFolderRepository,
-        ICacheJobStateRepository cacheJobStateRepository,
-        ICacheJobRecoveryService cacheJobRecoveryService,
         ICacheCleanupService cacheCleanupService,
         IFileProcessingJobStateRepository fileProcessingJobStateRepository,
         IFileProcessingJobRecoveryService fileProcessingJobRecoveryService,
@@ -36,8 +32,6 @@ public class CacheController : ControllerBase
     {
         _cacheService = cacheService;
         _cacheFolderRepository = cacheFolderRepository;
-        _cacheJobStateRepository = cacheJobStateRepository;
-        _cacheJobRecoveryService = cacheJobRecoveryService;
         _cacheCleanupService = cacheCleanupService;
         _fileProcessingJobStateRepository = fileProcessingJobStateRepository;
         _fileProcessingJobRecoveryService = fileProcessingJobRecoveryService;
@@ -370,11 +364,15 @@ public class CacheController : ControllerBase
         }
     }
 
+    // ============================================================================
+    // UNIFIED FILE PROCESSING JOB ENDPOINTS (cache, thumbnail, etc.)
+    // ============================================================================
+
     /// <summary>
-    /// Get all cache job states
+    /// Get all file processing job states with optional filtering by job type
     /// </summary>
-    [HttpGet("jobs")]
-    public async Task<ActionResult<IEnumerable<CacheJobStateDto>>> GetCacheJobStates(
+    [HttpGet("processing-jobs")]
+    public async Task<ActionResult<IEnumerable<FileProcessingJobStateDto>>> GetFileProcessingJobs(
         [FromQuery] string? status = null,
         [FromQuery] bool includeDetails = false)
     {

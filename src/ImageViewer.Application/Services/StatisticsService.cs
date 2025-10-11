@@ -296,12 +296,12 @@ public class StatisticsService : IStatisticsService
             var cacheStatistics = await _cacheService.GetCacheStatisticsAsync();
             var cacheFolders = cacheStatistics.CacheFolders.Select(cf => new CacheFolderStorageDto
             {
-                Id = cf.Id,
+                Id = ObjectId.Parse(cf.Id),
                 Name = cf.Name,
                 Path = cf.Path,
-                MaxSize = cf.MaxSize,
-                CurrentSize = cf.CurrentSize,
-                UsagePercentage = cf.MaxSize > 0 ? (double)cf.CurrentSize / cf.MaxSize * 100 : 0
+                MaxSize = cf.MaxSizeBytes,
+                CurrentSize = cf.CurrentSizeBytes,
+                UsagePercentage = cf.UsagePercentage
             }).ToList();
 
             return new StorageStatisticsDto
