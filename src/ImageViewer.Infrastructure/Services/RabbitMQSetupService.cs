@@ -172,7 +172,7 @@ public class RabbitMQSetupService
             { _options.CollectionCreationQueue, "collection.creation.*" },
             { _options.BulkOperationQueue, "bulk.operation.*" },
             { _options.ImageProcessingQueue, "image.processing.*" },
-            { _options.LibraryScanQueue, "library.scan.*" }
+            { _options.LibraryScanQueue, "library.scan" } // Exact match, no wildcard
         };
 
         foreach (var binding in queueBindings)
