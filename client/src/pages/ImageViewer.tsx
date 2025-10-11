@@ -4,6 +4,7 @@ import { useImages, useImage } from '../hooks/useImages';
 import { useCollection } from '../hooks/useCollections';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import CollectionNavigationSidebar from '../components/collections/CollectionNavigationSidebar';
+import ImagePreviewSidebar from '../components/viewer/ImagePreviewSidebar';
 import {
   X,
   ChevronLeft,
@@ -25,6 +26,8 @@ import {
   Scan,
   ArrowDownUp,
   PanelLeft,
+  PanelRight,
+  Images,
 } from 'lucide-react';
 
 /**
@@ -88,6 +91,9 @@ const ImageViewer: React.FC = () => {
   const [showCollectionSidebar, setShowCollectionSidebar] = useState(() => 
     localStorage.getItem('imageViewerShowSidebar') === 'true' // Default: hidden
   );
+  const [showImagePreviewSidebar, setShowImagePreviewSidebar] = useState(() => 
+    localStorage.getItem('imageViewerShowPreviewSidebar') === 'true' // Default: hidden
+  );
   const slideshowRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const imageContainerRef = useRef<HTMLDivElement>(null);
   const preloadedImagesRef = useRef<Map<string, HTMLImageElement>>(new Map());
@@ -143,6 +149,13 @@ const ImageViewer: React.FC = () => {
     setShowCollectionSidebar(newValue);
     localStorage.setItem('imageViewerShowSidebar', newValue.toString());
   }, [showCollectionSidebar]);
+
+  // Toggle image preview sidebar
+  const toggleImagePreviewSidebar = useCallback(() => {
+    const newValue = !showImagePreviewSidebar;
+    setShowImagePreviewSidebar(newValue);
+    localStorage.setItem('imageViewerShowPreviewSidebar', newValue.toString());
+  }, [showImagePreviewSidebar]);
 
   // Get image class based on fit mode and screen orientation
   const getImageClass = useCallback(() => {
@@ -262,6 +275,10 @@ const ImageViewer: React.FC = () => {
         case 'h':
           setShowHelp((s) => !s);
           break;
+        case 't':
+        case 'T':
+          toggleImagePreviewSidebar();
+          break;
         case ' ': 
           e.preventDefault();
           setIsSlideshow((s) => !s);
@@ -288,7 +305,7 @@ const ImageViewer: React.FC = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [collectionId, navigate, navigateToImage, saveViewMode, toggleFullscreen]);
+  }, [collectionId, navigate, navigateToImage, saveViewMode, toggleFullscreen, toggleImagePreviewSidebar]);
 
   // Slideshow
   useEffect(() => {
@@ -417,7 +434,9 @@ const ImageViewer: React.FC = () => {
       )}
       
       {/* Main Viewer Area */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex">
+        {/* Image Display Area */}
+        <div className="flex-1 flex flex-col">
       {/* Header */}
       <div className="absolute top-0 left-0 right-0 z-10 bg-gradient-to-b from-black/80 to-transparent p-4">
         <div className="flex items-center justify-between">
@@ -590,6 +609,17 @@ const ImageViewer: React.FC = () => {
                 )}
               </button>
             </div>
+
+            {/* Image Preview Sidebar Toggle */}
+            <button
+              onClick={toggleImagePreviewSidebar}
+              className={`p-2 hover:bg-white/10 rounded-lg transition-colors ${
+                showImagePreviewSidebar ? 'bg-primary-500' : ''
+              }`}
+              title={showImagePreviewSidebar ? 'Hide Thumbnails (T)' : 'Show Thumbnails (T)'}
+            >
+              <Images className="h-5 w-5 text-white" />
+            </button>
 
             {/* Help Button */}
             <button
@@ -767,6 +797,7 @@ const ImageViewer: React.FC = () => {
               <p>+/- : Zoom</p>
               <p>R : Rotate</p>
               <p>I : Info</p>
+              <p>T : Thumbnails</p>
               <p>Space : Slideshow</p>
               <p>1-4 : View Modes</p>
               <p>F : Fullscreen</p>
@@ -775,6 +806,18 @@ const ImageViewer: React.FC = () => {
           </div>
         </div>
       )}
+        </div>
+        {/* End Image Display Area */}
+        
+        {/* Image Preview Sidebar (thumbnails strip on right) */}
+        {showImagePreviewSidebar && (
+          <ImagePreviewSidebar
+            images={images}
+            currentImageId={currentImageId}
+            collectionId={collectionId!}
+            onImageClick={(imageId) => setCurrentImageId(imageId)}
+          />
+        )}
       </div>
       {/* End Main Viewer Area */}
     </div>
