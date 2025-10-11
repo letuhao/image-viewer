@@ -21,6 +21,7 @@ namespace ImageViewer.Worker.Services;
 public class CacheGenerationConsumer : BaseMessageConsumer
 {
     private readonly IServiceScopeFactory _serviceScopeFactory;
+    private readonly RabbitMQOptions _rabbitMQOptions;
     private int _processedCount = 0;
     private readonly object _counterLock = new object();
 
@@ -32,6 +33,7 @@ public class CacheGenerationConsumer : BaseMessageConsumer
         : base(connection, options, logger, "cache.generation", "cache-generation-consumer")
     {
         _serviceScopeFactory = serviceScopeFactory;
+        _rabbitMQOptions = options.Value;
     }
 
     protected override async Task ProcessMessageAsync(string message, CancellationToken cancellationToken)
@@ -118,22 +120,53 @@ public class CacheGenerationConsumer : BaseMessageConsumer
             }
 
             // Validate source image file size (prevent OOM on huge images)
-            var imageFile = new FileInfo(cacheMessage.ImagePath);
-            if (imageFile.Exists && imageFile.Length > 500 * 1024 * 1024) // 500MB limit
+            long fileSize = 0;
+            long maxSize = 0;
+            
+            if (ArchiveFileHelper.IsArchiveEntryPath(cacheMessage.ImagePath))
             {
-                _logger.LogWarning("⚠️ Image too large ({SizeMB}MB), skipping cache generation for {ImageId}", 
-                    imageFile.Length / 1024.0 / 1024.0, cacheMessage.ImageId);
+                // ZIP entry - get uncompressed size without extraction
+                fileSize = ArchiveFileHelper.GetArchiveEntrySize(cacheMessage.ImagePath, _logger);
+                maxSize = _rabbitMQOptions.MaxZipEntrySizeBytes; // 20GB for ZIP entries
                 
-                // Track as failed in FileProcessingJobState
-                if (!string.IsNullOrEmpty(cacheMessage.JobId))
+                if (fileSize > maxSize)
                 {
-                    var jobStateRepository = scope.ServiceProvider.GetRequiredService<IFileProcessingJobStateRepository>();
-                    _logger.LogError("Image file too large: {SizeMB}MB (max 500MB) for {ImageId}", 
-                        imageFile.Length / 1024.0 / 1024.0, cacheMessage.ImageId);
-                    await jobStateRepository.AtomicIncrementFailedAsync(cacheMessage.JobId, cacheMessage.ImageId);
+                    _logger.LogWarning("⚠️ ZIP entry too large ({SizeGB}GB), skipping cache generation for {ImageId}", 
+                        fileSize / 1024.0 / 1024.0 / 1024.0, cacheMessage.ImageId);
+                    
+                    if (!string.IsNullOrEmpty(cacheMessage.JobId))
+                    {
+                        var jobStateRepository = scope.ServiceProvider.GetRequiredService<IFileProcessingJobStateRepository>();
+                        _logger.LogError("ZIP entry too large: {SizeGB}GB (max {MaxGB}GB) for {ImageId}", 
+                            fileSize / 1024.0 / 1024.0 / 1024.0, maxSize / 1024.0 / 1024.0 / 1024.0, cacheMessage.ImageId);
+                        await jobStateRepository.AtomicIncrementFailedAsync(cacheMessage.JobId, cacheMessage.ImageId);
+                    }
+                    
+                    return;
                 }
+            }
+            else
+            {
+                // Regular file - check file size on disk
+                var imageFile = new FileInfo(cacheMessage.ImagePath);
+                fileSize = imageFile.Exists ? imageFile.Length : 0;
+                maxSize = _rabbitMQOptions.MaxImageSizeBytes; // 500MB for regular files
                 
-                return;
+                if (fileSize > maxSize)
+                {
+                    _logger.LogWarning("⚠️ Image file too large ({SizeMB}MB), skipping cache generation for {ImageId}", 
+                        fileSize / 1024.0 / 1024.0, cacheMessage.ImageId);
+                    
+                    if (!string.IsNullOrEmpty(cacheMessage.JobId))
+                    {
+                        var jobStateRepository = scope.ServiceProvider.GetRequiredService<IFileProcessingJobStateRepository>();
+                        _logger.LogError("Image file too large: {SizeMB}MB (max {MaxMB}MB) for {ImageId}", 
+                            fileSize / 1024.0 / 1024.0, maxSize / 1024.0 / 1024.0, cacheMessage.ImageId);
+                        await jobStateRepository.AtomicIncrementFailedAsync(cacheMessage.JobId, cacheMessage.ImageId);
+                    }
+                    
+                    return;
+                }
             }
 
             // Check if cache already exists and force regeneration is disabled

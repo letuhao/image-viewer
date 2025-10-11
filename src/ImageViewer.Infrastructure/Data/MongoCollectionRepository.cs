@@ -128,44 +128,88 @@ public class MongoCollectionRepository : MongoRepository<Collection>, ICollectio
     public async Task<(int totalImages, int cachedImages, long totalCacheSize, int collectionsWithCache)> GetCacheStatisticsAsync()
     {
         // Use MongoDB aggregation pipeline for optimal performance (10-100x faster than client-side iteration)
+        // Updated to use Collection.CacheImages array instead of deprecated Image.CacheInfo
         var pipeline = new BsonDocument[]
         {
             // Stage 1: Match non-deleted collections
             new BsonDocument("$match", new BsonDocument("isDeleted", false)),
             
-            // Stage 2: Unwind images array
+            // Stage 2: Project to prepare data for statistics
+            new BsonDocument("$project", new BsonDocument
+            {
+                { "_id", 1 },
+                { "images", 1 },
+                { "cacheImages", 1 }
+            }),
+            
+            // Stage 3: Add computed field for image statistics
+            new BsonDocument("$addFields", new BsonDocument
+            {
+                { "activeImages", new BsonDocument("$filter", new BsonDocument
+                    {
+                        { "input", "$images" },
+                        { "as", "img" },
+                        { "cond", new BsonDocument("$eq", new BsonArray { "$$img.isDeleted", false }) }
+                    })
+                }
+            }),
+            
+            // Stage 4: Unwind active images array
             new BsonDocument("$unwind", new BsonDocument
             {
-                { "path", "$images" },
+                { "path", "$activeImages" },
                 { "preserveNullAndEmptyArrays", false }
             }),
             
-            // Stage 3: Match non-deleted images only
-            new BsonDocument("$match", new BsonDocument("images.isDeleted", false)),
+            // Stage 5: Add lookup to check if image has cache entry in CacheImages array
+            new BsonDocument("$addFields", new BsonDocument
+            {
+                { "hasCacheEntry", new BsonDocument("$in", new BsonArray 
+                    { 
+                        "$activeImages.id", 
+                        new BsonDocument("$ifNull", new BsonArray { "$cacheImages.imageId", new BsonArray() })
+                    })
+                },
+                { "cacheEntry", new BsonDocument("$arrayElemAt", new BsonArray
+                    {
+                        new BsonDocument("$filter", new BsonDocument
+                        {
+                            { "input", new BsonDocument("$ifNull", new BsonArray { "$cacheImages", new BsonArray() }) },
+                            { "as", "cache" },
+                            { "cond", new BsonDocument("$eq", new BsonArray { "$$cache.imageId", "$activeImages.id" }) }
+                        }),
+                        0
+                    })
+                }
+            }),
             
-            // Stage 4: Group and calculate statistics
+            // Stage 6: Group and calculate final statistics
             new BsonDocument("$group", new BsonDocument
             {
                 { "_id", BsonNull.Value },
                 { "totalImages", new BsonDocument("$sum", 1) },
                 { "cachedImages", new BsonDocument("$sum", new BsonDocument("$cond", new BsonArray 
                     { 
-                        new BsonDocument("$ne", new BsonArray { "$images.cacheInfo", BsonNull.Value }), 
+                        "$hasCacheEntry",
                         1, 
                         0 
                     })) 
                 },
-                { "totalCacheSize", new BsonDocument("$sum", new BsonDocument("$ifNull", new BsonArray { "$images.cacheInfo.cacheSize", 0 })) },
+                { "totalCacheSize", new BsonDocument("$sum", new BsonDocument("$ifNull", new BsonArray { "$cacheEntry.fileSize", 0 })) },
                 { "collectionsWithCache", new BsonDocument("$addToSet", new BsonDocument("$cond", new BsonArray
                     {
-                        new BsonDocument("$ne", new BsonArray { "$images.cacheInfo", BsonNull.Value }),
+                        new BsonDocument("$and", new BsonArray
+                        {
+                            new BsonDocument("$ne", new BsonArray { "$cacheImages", BsonNull.Value }),
+                            new BsonDocument("$gt", new BsonArray { new BsonDocument("$size", new BsonDocument("$ifNull", new BsonArray { "$cacheImages", new BsonArray() })), 0 })
+                        }),
                         "$_id",
                         BsonNull.Value
                     }))
                 }
             }),
             
-            // Stage 5: Project final results
+            // Stage 7: Project final results
             new BsonDocument("$project", new BsonDocument
             {
                 { "_id", 0 },

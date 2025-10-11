@@ -20,6 +20,7 @@ namespace ImageViewer.Worker.Services;
 public class ThumbnailGenerationConsumer : BaseMessageConsumer
 {
     private readonly IServiceScopeFactory _serviceScopeFactory;
+    private readonly RabbitMQOptions _rabbitMQOptions;
     private int _processedCount = 0;
     private readonly object _counterLock = new object();
 
@@ -31,6 +32,7 @@ public class ThumbnailGenerationConsumer : BaseMessageConsumer
         : base(connection, options, logger, "thumbnail.generation", "thumbnail-generation-consumer")
     {
         _serviceScopeFactory = serviceScopeFactory;
+        _rabbitMQOptions = options.Value;
     }
 
     protected override async Task ProcessMessageAsync(string message, CancellationToken cancellationToken)
@@ -93,22 +95,53 @@ public class ThumbnailGenerationConsumer : BaseMessageConsumer
             }
 
             // Validate source image file size (prevent OOM on huge images)
-            var imageFile = new FileInfo(thumbnailMessage.ImagePath);
-            if (imageFile.Exists && imageFile.Length > 500 * 1024 * 1024) // 500MB limit
+            long fileSize = 0;
+            long maxSize = 0;
+            
+            if (ArchiveFileHelper.IsArchiveEntryPath(thumbnailMessage.ImagePath))
             {
-                _logger.LogWarning("⚠️ Image too large ({SizeMB}MB), skipping thumbnail generation for {ImageId}", 
-                    imageFile.Length / 1024.0 / 1024.0, thumbnailMessage.ImageId);
+                // ZIP entry - get uncompressed size without extraction
+                fileSize = ArchiveFileHelper.GetArchiveEntrySize(thumbnailMessage.ImagePath, _logger);
+                maxSize = _rabbitMQOptions.MaxZipEntrySizeBytes; // 20GB for ZIP entries
                 
-                // Track as failed in FileProcessingJobState
-                if (!string.IsNullOrEmpty(thumbnailMessage.JobId))
+                if (fileSize > maxSize)
                 {
-                    var jobStateRepository = scope.ServiceProvider.GetRequiredService<IFileProcessingJobStateRepository>();
-                    _logger.LogError("Image file too large: {SizeMB}MB (max 500MB) for {ImageId}", 
-                        imageFile.Length / 1024.0 / 1024.0, thumbnailMessage.ImageId);
-                    await jobStateRepository.AtomicIncrementFailedAsync(thumbnailMessage.JobId, thumbnailMessage.ImageId);
+                    _logger.LogWarning("⚠️ ZIP entry too large ({SizeGB}GB), skipping thumbnail generation for {ImageId}", 
+                        fileSize / 1024.0 / 1024.0 / 1024.0, thumbnailMessage.ImageId);
+                    
+                    if (!string.IsNullOrEmpty(thumbnailMessage.JobId))
+                    {
+                        var jobStateRepository = scope.ServiceProvider.GetRequiredService<IFileProcessingJobStateRepository>();
+                        _logger.LogError("ZIP entry too large: {SizeGB}GB (max {MaxGB}GB) for {ImageId}", 
+                            fileSize / 1024.0 / 1024.0 / 1024.0, maxSize / 1024.0 / 1024.0 / 1024.0, thumbnailMessage.ImageId);
+                        await jobStateRepository.AtomicIncrementFailedAsync(thumbnailMessage.JobId, thumbnailMessage.ImageId);
+                    }
+                    
+                    return;
                 }
+            }
+            else
+            {
+                // Regular file - check file size on disk
+                var imageFile = new FileInfo(thumbnailMessage.ImagePath);
+                fileSize = imageFile.Exists ? imageFile.Length : 0;
+                maxSize = _rabbitMQOptions.MaxImageSizeBytes; // 500MB for regular files
                 
-                return;
+                if (fileSize > maxSize)
+                {
+                    _logger.LogWarning("⚠️ Image file too large ({SizeMB}MB), skipping thumbnail generation for {ImageId}", 
+                        fileSize / 1024.0 / 1024.0, thumbnailMessage.ImageId);
+                    
+                    if (!string.IsNullOrEmpty(thumbnailMessage.JobId))
+                    {
+                        var jobStateRepository = scope.ServiceProvider.GetRequiredService<IFileProcessingJobStateRepository>();
+                        _logger.LogError("Image file too large: {SizeMB}MB (max {MaxMB}MB) for {ImageId}", 
+                            fileSize / 1024.0 / 1024.0, maxSize / 1024.0 / 1024.0, thumbnailMessage.ImageId);
+                        await jobStateRepository.AtomicIncrementFailedAsync(thumbnailMessage.JobId, thumbnailMessage.ImageId);
+                    }
+                    
+                    return;
+                }
             }
 
             // Check if thumbnail already exists in database

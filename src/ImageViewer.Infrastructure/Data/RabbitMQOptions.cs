@@ -36,4 +36,8 @@ public class RabbitMQOptions
     // Bulk operation configurations
     public int MessageBatchSize { get; set; } = 100;
     public int MaxQueueLength { get; set; } = 100000;
+    
+    // Image processing limits
+    public long MaxImageSizeBytes { get; set; } = 500 * 1024 * 1024; // 500MB default for regular images
+    public long MaxZipEntrySizeBytes { get; set; } = 20L * 1024 * 1024 * 1024; // 20GB for ZIP entries
 }

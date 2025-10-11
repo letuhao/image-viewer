@@ -73,6 +73,52 @@ public static class ArchiveFileHelper
     }
 
     /// <summary>
+    /// Get the uncompressed size of an archive entry without extracting it
+    /// Path format: archive.zip#entry.png
+    /// </summary>
+    public static long GetArchiveEntrySize(string archiveEntryPath, ILogger? logger = null)
+    {
+        try
+        {
+            var parts = archiveEntryPath.Split('#', 2);
+            if (parts.Length != 2)
+            {
+                logger?.LogWarning("Invalid archive entry path format: {Path}", archiveEntryPath);
+                return 0;
+            }
+
+            var archivePath = parts[0];
+            var entryName = parts[1];
+
+            if (!File.Exists(archivePath))
+            {
+                logger?.LogWarning("Archive file not found: {Path}", archivePath);
+                return 0;
+            }
+
+            // Use SharpCompress to get entry metadata without extraction
+            using var archive = ArchiveFactory.Open(archivePath);
+            var entry = archive.Entries.FirstOrDefault(e => 
+                !e.IsDirectory && 
+                (e.Key == entryName || e.Key.Replace('\\', '/') == entryName.Replace('\\', '/')));
+            
+            if (entry == null)
+            {
+                logger?.LogWarning("Entry {Entry} not found in archive {Archive}", entryName, archivePath);
+                return 0;
+            }
+
+            // Return uncompressed size
+            return entry.Size;
+        }
+        catch (Exception ex)
+        {
+            logger?.LogError(ex, "Error getting archive entry size: {Path}", archiveEntryPath);
+            return 0;
+        }
+    }
+
+    /// <summary>
     /// Split archive entry path into archive file path and entry name
     /// </summary>
     public static (string archivePath, string entryName) SplitArchiveEntryPath(string archiveEntryPath)
