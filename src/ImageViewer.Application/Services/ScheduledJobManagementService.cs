@@ -108,7 +108,7 @@ public class ScheduledJobManagementService : IScheduledJobManagementService
                 // Add library ID to parameters
                 var parameters = new Dictionary<string, object>
                 {
-                    { "LibraryId", libraryId }
+                    { "LibraryId", libraryId.ToString() }
                 };
                 job.UpdateParameters(parameters);
 

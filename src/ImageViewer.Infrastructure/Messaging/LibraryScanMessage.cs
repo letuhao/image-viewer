@@ -14,5 +14,10 @@ public class LibraryScanMessage : MessageEvent
     public string JobRunId { get; set; } = string.Empty;
     public string ScanType { get; set; } = "Full"; // Full or Incremental
     public bool IncludeSubfolders { get; set; } = true;
+
+    public LibraryScanMessage()
+    {
+        MessageType = "LibraryScan";
+    }
 }
 

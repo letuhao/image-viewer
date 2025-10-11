@@ -116,9 +116,13 @@ public class LibrariesController : ControllerBase
                 IncludeSubfolders = true
             };
 
+            _logger.LogInformation("About to publish LibraryScanMessage: LibraryId={LibraryId}, MessageType={MessageType}, MessageId={MessageId}", 
+                scanMessage.LibraryId, scanMessage.MessageType, scanMessage.Id);
+
             // Publish to the exchange (not directly to queue) - queue is bound with routing key pattern
             await messageQueueService.PublishAsync(scanMessage);
 
+            _logger.LogInformation("Published LibraryScanMessage successfully");
             _logger.LogInformation("Manually triggered scan for library {LibraryId}", libraryId);
             
             return Ok(new { 
