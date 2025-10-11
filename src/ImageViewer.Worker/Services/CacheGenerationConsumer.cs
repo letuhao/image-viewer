@@ -79,6 +79,20 @@ public class CacheGenerationConsumer : BaseMessageConsumer
             var collectionRepository = scope.ServiceProvider.GetRequiredService<ICollectionRepository>();
             var settingsService = scope.ServiceProvider.GetRequiredService<IImageProcessingSettingsService>();
             
+            // Update progress heartbeat to show job is actively processing
+            if (!string.IsNullOrEmpty(cacheMessage.JobId))
+            {
+                try
+                {
+                    var jobStateRepository = scope.ServiceProvider.GetRequiredService<IFileProcessingJobStateRepository>();
+                    await jobStateRepository.UpdateStatusAsync(cacheMessage.JobId, "Running");
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogDebug(ex, "Failed to update progress heartbeat for job {JobId}", cacheMessage.JobId);
+                }
+            }
+            
             // Get format from settings
             var format = await settingsService.GetCacheFormatAsync();
 

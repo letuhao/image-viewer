@@ -71,6 +71,20 @@ public class ThumbnailGenerationConsumer : BaseMessageConsumer
             var imageProcessingService = scope.ServiceProvider.GetRequiredService<IImageProcessingService>();
             var collectionRepository = scope.ServiceProvider.GetRequiredService<ICollectionRepository>();
 
+            // Update progress heartbeat to show job is actively processing
+            if (!string.IsNullOrEmpty(thumbnailMessage.JobId))
+            {
+                try
+                {
+                    var jobStateRepository = scope.ServiceProvider.GetRequiredService<IFileProcessingJobStateRepository>();
+                    await jobStateRepository.UpdateStatusAsync(thumbnailMessage.JobId, "Running");
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogDebug(ex, "Failed to update progress heartbeat for job {JobId}", thumbnailMessage.JobId);
+                }
+            }
+
             // Check if image file exists
             if (!File.Exists(thumbnailMessage.ImagePath) && !thumbnailMessage.ImagePath.Contains("#"))
             {
