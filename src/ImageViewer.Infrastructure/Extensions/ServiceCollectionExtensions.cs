@@ -114,6 +114,8 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ISessionRepository, MongoSessionRepository>();
         services.AddScoped<ILibraryRepository, LibraryRepository>();
         services.AddScoped<ICollectionRepository, MongoCollectionRepository>();
+        services.AddScoped<IScheduledJobRepository, MongoScheduledJobRepository>();
+        services.AddScoped<IScheduledJobRunRepository, MongoScheduledJobRunRepository>();
         services.AddScoped<IMediaItemRepository, MediaItemRepository>();
         // services.AddScoped<IImageRepository, MongoImageRepository>(); // Removed - use embedded ImageEmbedded
         services.AddScoped<ITagRepository, MongoTagRepository>();

@@ -150,6 +150,7 @@ builder.Services.AddScoped<IStatisticsService, StatisticsService>(); // Refactor
 builder.Services.AddScoped<IBulkService, BulkService>();
 builder.Services.AddScoped<IImageProcessingSettingsService, ImageProcessingSettingsService>();
 builder.Services.AddScoped<ICacheFolderSelectionService, CacheFolderSelectionService>();
+builder.Services.AddScoped<IScheduledJobManagementService, ScheduledJobManagementService>();
 
 // Add Infrastructure Services
 // builder.Services.AddScoped<IFileScannerService, FileScannerService>(); // Removed - needs refactoring

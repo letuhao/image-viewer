@@ -14,12 +14,17 @@ namespace ImageViewer.Application.Services;
 public class LibraryService : ILibraryService
 {
     private readonly ILibraryRepository _libraryRepository;
+    private readonly IScheduledJobManagementService? _scheduledJobManagementService;
     private readonly ILogger<LibraryService> _logger;
 
-    public LibraryService(ILibraryRepository libraryRepository, ILogger<LibraryService> logger)
+    public LibraryService(
+        ILibraryRepository libraryRepository,
+        ILogger<LibraryService> logger,
+        IScheduledJobManagementService? scheduledJobManagementService = null)
     {
         _libraryRepository = libraryRepository ?? throw new ArgumentNullException(nameof(libraryRepository));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _scheduledJobManagementService = scheduledJobManagementService; // Optional for backward compatibility
     }
 
     public async Task<Library> CreateLibraryAsync(string name, string path, ObjectId ownerId, string description = "")
@@ -40,7 +45,36 @@ public class LibraryService : ILibraryService
 
             // Create new library
             var library = new Library(name, path, ownerId, description);
-            return await _libraryRepository.CreateAsync(library);
+            var createdLibrary = await _libraryRepository.CreateAsync(library);
+
+            // Create scheduled job if auto-scan is enabled and scheduler service is available
+            if (createdLibrary.Settings.AutoScan && _scheduledJobManagementService != null)
+            {
+                try
+                {
+                    // Default: scan every day at 2 AM
+                    var cronExpression = "0 2 * * *";
+                    await _scheduledJobManagementService.CreateOrUpdateLibraryScanJobAsync(
+                        createdLibrary.Id,
+                        createdLibrary.Name,
+                        cronExpression,
+                        isEnabled: true);
+
+                    _logger.LogInformation(
+                        "Created scheduled scan job for library {LibraryId} ({LibraryName})",
+                        createdLibrary.Id,
+                        createdLibrary.Name);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex,
+                        "Failed to create scheduled job for library {LibraryId}, library created but job registration failed",
+                        createdLibrary.Id);
+                    // Don't throw - library was created successfully
+                }
+            }
+
+            return createdLibrary;
         }
         catch (Exception ex) when (!(ex is ValidationException || ex is DuplicateEntityException))
         {
@@ -177,7 +211,33 @@ public class LibraryService : ILibraryService
         try
         {
             var library = await GetLibraryByIdAsync(libraryId);
+            
+            // Delete the library
             await _libraryRepository.DeleteAsync(libraryId);
+
+            // Delete associated scheduled job if scheduler service is available
+            if (_scheduledJobManagementService != null)
+            {
+                try
+                {
+                    var existingJob = await _scheduledJobManagementService.GetJobByLibraryIdAsync(libraryId);
+                    if (existingJob != null)
+                    {
+                        await _scheduledJobManagementService.DeleteJobAsync(existingJob.Id);
+                        _logger.LogInformation(
+                            "Deleted scheduled job {JobId} for library {LibraryId}",
+                            existingJob.Id,
+                            libraryId);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex,
+                        "Failed to delete scheduled job for library {LibraryId}, library deleted but job cleanup failed",
+                        libraryId);
+                    // Don't throw - library was deleted successfully
+                }
+            }
         }
         catch (Exception ex) when (!(ex is EntityNotFoundException))
         {
@@ -191,6 +251,7 @@ public class LibraryService : ILibraryService
         try
         {
             var library = await GetLibraryByIdAsync(libraryId);
+            var oldAutoScan = library.Settings.AutoScan;
             
             var newSettings = new LibrarySettings();
             
@@ -235,7 +296,54 @@ public class LibraryService : ILibraryService
                 newSettings.UpdateCacheSettings(request.CacheSettings);
             
             library.UpdateSettings(newSettings);
-            return await _libraryRepository.UpdateAsync(library);
+            var updatedLibrary = await _libraryRepository.UpdateAsync(library);
+
+            // Handle scheduled job based on AutoScan setting change
+            if (_scheduledJobManagementService != null && request.AutoScan.HasValue && request.AutoScan.Value != oldAutoScan)
+            {
+                try
+                {
+                    var existingJob = await _scheduledJobManagementService.GetJobByLibraryIdAsync(libraryId);
+                    
+                    if (request.AutoScan.Value)
+                    {
+                        // AutoScan enabled - create or enable job
+                        if (existingJob != null)
+                        {
+                            await _scheduledJobManagementService.EnableJobAsync(existingJob.Id);
+                            _logger.LogInformation("Enabled scheduled job for library {LibraryId}", libraryId);
+                        }
+                        else
+                        {
+                            var cronExpression = "0 2 * * *"; // Default: 2 AM daily
+                            await _scheduledJobManagementService.CreateOrUpdateLibraryScanJobAsync(
+                                libraryId,
+                                updatedLibrary.Name,
+                                cronExpression,
+                                isEnabled: true);
+                            _logger.LogInformation("Created scheduled job for library {LibraryId}", libraryId);
+                        }
+                    }
+                    else
+                    {
+                        // AutoScan disabled - disable job
+                        if (existingJob != null)
+                        {
+                            await _scheduledJobManagementService.DisableJobAsync(existingJob.Id);
+                            _logger.LogInformation("Disabled scheduled job for library {LibraryId}", libraryId);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex,
+                        "Failed to update scheduled job for library {LibraryId}, settings updated but job synchronization failed",
+                        libraryId);
+                    // Don't throw - settings were updated successfully
+                }
+            }
+
+            return updatedLibrary;
         }
         catch (Exception ex) when (!(ex is EntityNotFoundException))
         {
