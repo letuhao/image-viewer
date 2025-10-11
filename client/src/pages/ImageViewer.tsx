@@ -157,6 +157,33 @@ const ImageViewer: React.FC = () => {
     localStorage.setItem('imageViewerShowPreviewSidebar', newValue.toString());
   }, [showImagePreviewSidebar]);
 
+  // Handle mouse wheel for zoom (Ctrl+Wheel)
+  const handleWheel = useCallback((e: WheelEvent) => {
+    // Only zoom when Ctrl key is pressed
+    if (e.ctrlKey || e.metaKey) {
+      e.preventDefault();
+      
+      const zoomDelta = e.deltaY > 0 ? -0.1 : 0.1;
+      setZoom((prevZoom) => {
+        const newZoom = Math.max(0.5, Math.min(5, prevZoom + zoomDelta));
+        return Math.round(newZoom * 10) / 10; // Round to 1 decimal
+      });
+    }
+  }, []);
+
+  // Add wheel event listener for zoom in scroll mode
+  useEffect(() => {
+    const container = imageContainerRef.current;
+    if (!container) return;
+
+    // Add passive: false to allow preventDefault for Ctrl+Wheel
+    container.addEventListener('wheel', handleWheel, { passive: false });
+
+    return () => {
+      container.removeEventListener('wheel', handleWheel);
+    };
+  }, [handleWheel]);
+
   // Get image class based on fit mode and screen orientation
   const getImageClass = useCallback(() => {
     if (!fitToScreen) {
@@ -559,7 +586,12 @@ const ImageViewer: React.FC = () => {
             >
               <ZoomOut className="h-5 w-5 text-white" />
             </button>
-            <span className="text-white text-sm px-2">{Math.round(zoom * 100)}%</span>
+            <span 
+              className="text-white text-sm px-2" 
+              title={navigationMode === 'scroll' ? 'Ctrl+Wheel to zoom in scroll mode' : 'Zoom level'}
+            >
+              {Math.round(zoom * 100)}%
+            </span>
             <button
               onClick={() => setZoom((z) => Math.min(z + 0.25, 5))}
               className="p-2 hover:bg-white/10 rounded-lg transition-colors"
@@ -661,7 +693,9 @@ const ImageViewer: React.FC = () => {
                   alt={image.filename}
                   className={getImageClass()}
                   style={{
-                    transform: `rotate(${rotation}deg)`,
+                    transform: `scale(${zoom}) rotate(${rotation}deg)`,
+                    transformOrigin: 'center center',
+                    transition: 'transform 0.2s ease-out',
                   }}
                   loading="lazy"
                 />
@@ -800,6 +834,7 @@ const ImageViewer: React.FC = () => {
               <p>← → : Navigate</p>
               <p>Esc : Close</p>
               <p>+/- : Zoom</p>
+              <p>Ctrl+Wheel : Zoom (Scroll Mode)</p>
               <p>R : Rotate</p>
               <p>I : Info</p>
               <p>T : Thumbnails</p>
