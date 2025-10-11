@@ -50,5 +50,10 @@ public class HangfireOptions
     /// Job expiration time (days) - how long to keep completed jobs
     /// </summary>
     public int JobExpirationDays { get; set; } = 7;
+    
+    /// <summary>
+    /// Job synchronization interval (minutes) - how often to check database for new/updated jobs
+    /// </summary>
+    public int JobSynchronizationInterval { get; set; } = 5;
 }
 

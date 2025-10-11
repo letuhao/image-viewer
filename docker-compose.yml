@@ -176,6 +176,7 @@ services:
       - Hangfire__DatabaseName=image_viewer_hangfire
       - Hangfire__ServerName=ImageViewer-Scheduler-Docker
       - Hangfire__WorkerCount=5
+      - Hangfire__JobSynchronizationInterval=5
       - RabbitMQ__HostName=rabbitmq
       - RabbitMQ__Port=5672
       - RabbitMQ__UserName=guest
