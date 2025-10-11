@@ -227,6 +227,22 @@ app.UseHangfireDashboard("/hangfire", new DashboardOptions
 app.MapControllers();
 app.MapHealthChecks("/health");
 
+// Initialize MongoDB indexes on startup
+using (var scope = app.Services.CreateScope())
+{
+    try
+    {
+        var mongoInitService = scope.ServiceProvider.GetRequiredService<ImageViewer.Infrastructure.Services.MongoDbInitializationService>();
+        await mongoInitService.InitializeAsync();
+        Log.Information("✅ MongoDB indexes initialized");
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "❌ Failed to initialize MongoDB indexes");
+        // Continue startup even if index creation fails
+    }
+}
+
 // Set up RabbitMQ queues and exchanges on startup
 using (var scope = app.Services.CreateScope())
 {

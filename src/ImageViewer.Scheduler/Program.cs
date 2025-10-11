@@ -34,7 +34,25 @@ public class Program
         try
         {
             Log.Information("Starting ImageViewer Scheduler");
-            CreateHostBuilder(args).Build().Run();
+            var host = CreateHostBuilder(args).Build();
+            
+            // Initialize MongoDB indexes on startup
+            using (var scope = host.Services.CreateScope())
+            {
+                try
+                {
+                    var mongoInitService = scope.ServiceProvider.GetRequiredService<ImageViewer.Infrastructure.Services.MongoDbInitializationService>();
+                    mongoInitService.InitializeAsync().GetAwaiter().GetResult();
+                    Log.Information("✅ MongoDB indexes initialized");
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, "❌ Failed to initialize MongoDB indexes");
+                    // Continue startup even if index creation fails
+                }
+            }
+            
+            host.Run();
         }
         catch (Exception ex)
         {

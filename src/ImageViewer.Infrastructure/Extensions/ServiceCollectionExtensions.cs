@@ -108,6 +108,9 @@ public static class ServiceCollectionExtensions
             return new MongoDbContext(database);
         });
 
+        // Register MongoDB initialization service (creates indexes on startup)
+        services.AddSingleton<MongoDbInitializationService>();
+
         // Register core repositories
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IRefreshTokenRepository, MongoRefreshTokenRepository>();
