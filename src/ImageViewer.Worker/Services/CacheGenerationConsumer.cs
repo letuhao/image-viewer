@@ -274,6 +274,17 @@ public class CacheGenerationConsumer : BaseMessageConsumer
                     using var errorScope = _serviceScopeFactory.CreateScope();
                     var jobStateRepository = errorScope.ServiceProvider.GetRequiredService<IFileProcessingJobStateRepository>();
                     await jobStateRepository.AtomicIncrementFailedAsync(cacheMsg.JobId, cacheMsg.ImageId);
+                    
+                    // Check failure threshold and alert if needed (every 10 failures)
+                    var jobState = await jobStateRepository.GetByJobIdAsync(cacheMsg.JobId);
+                    if (jobState != null && jobState.FailedImages % 10 == 0 && jobState.FailedImages > 0)
+                    {
+                        var alertService = errorScope.ServiceProvider.GetService<IJobFailureAlertService>();
+                        if (alertService != null)
+                        {
+                            await alertService.CheckAndAlertAsync(cacheMsg.JobId, failureThreshold: 0.1);
+                        }
+                    }
                 }
                 catch (Exception trackEx)
                 {

@@ -189,6 +189,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IUserPreferencesService, UserPreferencesService>();
         services.AddScoped<ICacheService, CacheService>(); // Refactored to use embedded design
         services.AddScoped<ICacheCleanupService, CacheCleanupService>(); // Cache and thumbnail cleanup
+        services.AddScoped<IJobFailureAlertService, JobFailureAlertService>(); // Job failure monitoring and alerts
         // Unified file processing job recovery (cache, thumbnail, etc.)
         services.AddScoped<IFileProcessingJobRecoveryService, FileProcessingJobRecoveryService>();
         // Legacy cache job recovery (kept for backward compatibility, wraps FileProcessingJobRecoveryService)

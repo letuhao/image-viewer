@@ -213,6 +213,17 @@ public class ThumbnailGenerationConsumer : BaseMessageConsumer
                     {
                         var jobStateRepository = scope.ServiceProvider.GetRequiredService<IFileProcessingJobStateRepository>();
                         await jobStateRepository.AtomicIncrementFailedAsync(thumbnailMessage.JobId, thumbnailMessage.ImageId);
+                        
+                        // Check failure threshold and alert if needed (every 10 failures)
+                        var jobState = await jobStateRepository.GetByJobIdAsync(thumbnailMessage.JobId);
+                        if (jobState != null && jobState.FailedImages % 10 == 0 && jobState.FailedImages > 0)
+                        {
+                            var alertService = scope.ServiceProvider.GetService<IJobFailureAlertService>();
+                            if (alertService != null)
+                            {
+                                await alertService.CheckAndAlertAsync(thumbnailMessage.JobId, failureThreshold: 0.1);
+                            }
+                        }
                     }
                     catch (Exception trackEx)
                     {

@@ -35,6 +35,11 @@ public abstract class BaseMessageConsumer : BackgroundService
         _consumerTag = consumerTag;
 
         _channel = _connection.CreateChannelAsync().GetAwaiter().GetResult();
+        
+        // Set prefetch count to limit concurrent message processing
+        // This prevents overwhelming system resources (CPU, disk I/O, memory)
+        // PrefetchCount=10 means: Process max 10 messages concurrently per consumer
+        // Lower = safer (less resource usage), Higher = faster (more throughput)
         _channel.BasicQosAsync(0, (ushort)_options.PrefetchCount, false).GetAwaiter().GetResult();
     }
 
