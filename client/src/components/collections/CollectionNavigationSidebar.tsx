@@ -100,53 +100,71 @@ const CollectionNavigationSidebar: React.FC<CollectionNavigationSidebarProps> = 
         )}
       </div>
 
-      {/* Siblings List */}
-      <div className="flex-1 overflow-y-auto">
+      {/* Siblings List - Card View with Thumbnails */}
+      <div className="flex-1 overflow-y-auto p-3 space-y-3">
         {siblingsData?.siblings.map((collection: any) => {
           const isActive = collection.id === collectionId;
           return (
             <button
               key={collection.id}
               onClick={() => handleCollectionClick(collection.id)}
-              className={`w-full p-3 border-b border-slate-800 hover:bg-slate-800/50 transition-colors text-left ${
-                isActive ? 'bg-primary-500/20 border-l-4 border-l-primary-500' : ''
+              className={`w-full group relative overflow-hidden rounded-lg transition-all ${
+                isActive 
+                  ? 'ring-2 ring-primary-500 shadow-lg shadow-primary-500/50' 
+                  : 'hover:ring-2 hover:ring-slate-600'
               }`}
             >
-              <div className="flex items-start gap-2">
-                {/* Collection Icon */}
-                <div className="flex-shrink-0 mt-0.5">
-                  {collection.type === 'archive' ? (
-                    <Archive className="h-4 w-4 text-purple-400" />
-                  ) : (
-                    <Folder className="h-4 w-4 text-blue-400" />
-                  )}
-                </div>
+              {/* Thumbnail Background */}
+              <div className="relative aspect-video bg-slate-800">
+                {collection.thumbnailBase64 ? (
+                  <img
+                    src={collection.thumbnailBase64}
+                    alt={collection.name}
+                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                    loading="lazy"
+                  />
+                ) : (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    {collection.type === 'archive' ? (
+                      <Archive className="h-10 w-10 text-slate-600" />
+                    ) : (
+                      <Folder className="h-10 w-10 text-slate-600" />
+                    )}
+                  </div>
+                )}
+                
+                {/* Current Badge */}
+                {isActive && (
+                  <div className="absolute top-2 right-2 px-2 py-1 bg-primary-500 text-white text-xs font-bold rounded">
+                    Current
+                  </div>
+                )}
 
-                {/* Collection Info */}
-                <div className="flex-1 min-w-0">
-                  <p
-                    className={`text-sm font-medium truncate ${
-                      isActive ? 'text-primary-400' : 'text-white'
-                    }`}
-                  >
-                    {collection.name}
-                  </p>
-                  <p className="text-xs text-slate-400 mt-0.5">
+                {/* Gradient Overlay */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
+                
+                {/* Collection Info Overlay */}
+                <div className="absolute bottom-0 left-0 right-0 p-2">
+                  <div className="flex items-center gap-1 mb-1">
+                    {collection.type === 'archive' ? (
+                      <Archive className="h-3 w-3 text-purple-400 flex-shrink-0" />
+                    ) : (
+                      <Folder className="h-3 w-3 text-blue-400 flex-shrink-0" />
+                    )}
+                    <p
+                      className={`text-xs font-semibold truncate ${
+                        isActive ? 'text-primary-300' : 'text-white'
+                      }`}
+                      title={collection.name}
+                    >
+                      {collection.name}
+                    </p>
+                  </div>
+                  <p className="text-xs text-slate-300">
                     {(collection.imageCount ?? 0).toLocaleString()} images
                   </p>
                 </div>
               </div>
-
-              {/* Thumbnail Preview (if available) */}
-              {collection.thumbnailBase64 && (
-                <div className="mt-2">
-                  <img
-                    src={collection.thumbnailBase64}
-                    alt={collection.name}
-                    className="w-full h-20 object-cover rounded border border-slate-700"
-                  />
-                </div>
-              )}
             </button>
           );
         })}
