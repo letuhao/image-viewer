@@ -400,8 +400,17 @@ public class BulkOperationConsumer : BaseMessageConsumer
         _logger.LogInformation("🖼️ Processing generate thumbnails operation for {CollectionIds}", 
             string.Join(", ", bulkMessage.CollectionIds));
         
-                using var scope = _serviceScopeFactory.CreateScope();
+        using var scope = _serviceScopeFactory.CreateScope();
         var imageService = scope.ServiceProvider.GetRequiredService<IImageService>();
+        var collectionRepository = scope.ServiceProvider.GetRequiredService<ICollectionRepository>();
+        var jobStateRepository = scope.ServiceProvider.GetRequiredService<IFileProcessingJobStateRepository>();
+        var imageProcessingSettingsService = scope.ServiceProvider.GetService<IImageProcessingSettingsService>();
+        
+        // Get thumbnail settings
+        var thumbnailFormat = await imageProcessingSettingsService?.GetThumbnailFormatAsync() ?? "jpeg";
+        var thumbnailQuality = await imageProcessingSettingsService?.GetThumbnailQualityAsync() ?? 90;
+        var thumbnailWidth = 300;
+        var thumbnailHeight = 300;
         
         // Get images for specified collections using embedded design
         int totalImages = 0;
@@ -409,27 +418,84 @@ public class BulkOperationConsumer : BaseMessageConsumer
         {
             try
             {
-                var collectionImages = await imageService.GetEmbeddedImagesByCollectionAsync(ObjectId.Parse(collectionId.ToString()));
-                totalImages += collectionImages.Count();
+                var collectionObjectId = ObjectId.Parse(collectionId.ToString());
+                var collection = await collectionRepository.GetByIdAsync(collectionObjectId);
+                if (collection == null)
+                {
+                    _logger.LogWarning("⚠️ Collection {CollectionId} not found", collectionId);
+                    continue;
+                }
+                
+                var collectionImages = await imageService.GetEmbeddedImagesByCollectionAsync(collectionObjectId);
+                var imagesList = collectionImages.ToList();
+                totalImages += imagesList.Count;
+                
+                // Pre-filter: Only queue images without thumbnails
+                var imagesNeedingThumbnails = imagesList.Where(img => 
+                    !collection.Thumbnails.Any(t => 
+                        t.ImageId == img.Id && 
+                        t.Width == thumbnailWidth && 
+                        t.Height == thumbnailHeight
+                    )
+                ).ToList();
+                
+                if (!imagesNeedingThumbnails.Any())
+                {
+                    _logger.LogInformation("✅ Collection {CollectionId} already has all thumbnails, skipping", collectionId);
+                    continue;
+                }
+                
+                _logger.LogInformation("📊 Collection {CollectionId}: {Total} images, {HasThumbnails} with thumbnails, {Remaining} to process",
+                    collectionId, imagesList.Count, imagesList.Count - imagesNeedingThumbnails.Count, imagesNeedingThumbnails.Count);
+                
+                // Create FileProcessingJobState for this collection
+                var jobId = $"thumbnail_{bulkMessage.JobId}_{collectionId}";
+                
+                var jobSettings = System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    width = thumbnailWidth,
+                    height = thumbnailHeight,
+                    quality = thumbnailQuality,
+                    format = thumbnailFormat
+                });
+                
+                var jobState = new Domain.Entities.FileProcessingJobState(
+                    jobId: jobId,
+                    jobType: "thumbnail",
+                    collectionId: collectionId.ToString(),
+                    collectionName: collection.Name,
+                    totalImages: imagesNeedingThumbnails.Count,
+                    outputFolderId: null,
+                    outputFolderPath: null,
+                    jobSettings: jobSettings
+                );
+                
+                jobState.Start(); // Set status to Running
+                await jobStateRepository.CreateAsync(jobState);
+                
+                _logger.LogInformation("✅ Created FileProcessingJobState {JobId} for collection {CollectionId} with {Count} images",
+                    jobId, collectionId, imagesNeedingThumbnails.Count);
                 
                 // Create individual thumbnail generation jobs for each image in this collection
-                foreach (var image in collectionImages)
+                foreach (var image in imagesNeedingThumbnails)
                 {
                     try
                     {
                         var thumbnailMessage = new ThumbnailGenerationMessage
                         {
-                            ImageId = image.Id, // Already a string
-                            CollectionId = collectionId.ToString(), // Use collectionId from outer loop
-                            ImagePath = image.RelativePath, // This should be the full path
+                            JobId = jobId, // Link to FileProcessingJobState
+                            ImageId = image.Id,
+                            CollectionId = collectionId.ToString(),
+                            ImagePath = collection.GetFullImagePath(image), // Use full path
                             ImageFilename = image.Filename,
-                            ThumbnailWidth = 300, // Default thumbnail size
-                            ThumbnailHeight = 300,
+                            ThumbnailWidth = thumbnailWidth,
+                            ThumbnailHeight = thumbnailHeight,
+                            ScanJobId = bulkMessage.JobId // Link to parent scan job
                         };
 
                         // Queue the thumbnail generation job
                         await messageQueueService.PublishAsync(thumbnailMessage, "thumbnail.generation");
-                        _logger.LogInformation("📋 Queued thumbnail generation job for image {ImageId}: {Filename}", 
+                        _logger.LogDebug("📋 Queued thumbnail generation job for image {ImageId}: {Filename}", 
                             image.Id, image.Filename);
                     }
                     catch (Exception ex)
@@ -452,8 +518,18 @@ public class BulkOperationConsumer : BaseMessageConsumer
         _logger.LogInformation("💾 Processing generate cache operation for {CollectionIds}", 
             string.Join(", ", bulkMessage.CollectionIds));
         
-                using var scope = _serviceScopeFactory.CreateScope();
+        using var scope = _serviceScopeFactory.CreateScope();
         var imageService = scope.ServiceProvider.GetRequiredService<IImageService>();
+        var collectionRepository = scope.ServiceProvider.GetRequiredService<ICollectionRepository>();
+        var jobStateRepository = scope.ServiceProvider.GetRequiredService<IFileProcessingJobStateRepository>();
+        var cacheFolderSelectionService = scope.ServiceProvider.GetService<ICacheFolderSelectionService>();
+        var imageProcessingSettingsService = scope.ServiceProvider.GetService<IImageProcessingSettingsService>();
+        
+        // Get cache settings
+        var cacheFormat = await imageProcessingSettingsService?.GetCacheFormatAsync() ?? "jpeg";
+        var cacheQuality = await imageProcessingSettingsService?.GetCacheQualityAsync() ?? 85;
+        var cacheWidth = 1920;
+        var cacheHeight = 1080;
         
         // Get images for specified collections using embedded design
         int totalImages = 0;
@@ -461,29 +537,93 @@ public class BulkOperationConsumer : BaseMessageConsumer
         {
             try
             {
-                var collectionImages = await imageService.GetEmbeddedImagesByCollectionAsync(ObjectId.Parse(collectionId.ToString()));
-                totalImages += collectionImages.Count();
+                var collectionObjectId = ObjectId.Parse(collectionId.ToString());
+                var collection = await collectionRepository.GetByIdAsync(collectionObjectId);
+                if (collection == null)
+                {
+                    _logger.LogWarning("⚠️ Collection {CollectionId} not found", collectionId);
+                    continue;
+                }
                 
-                // Create individual cache generation jobs for each image in this collection
-                foreach (var image in collectionImages)
+                var collectionImages = await imageService.GetEmbeddedImagesByCollectionAsync(collectionObjectId);
+                var imagesList = collectionImages.ToList();
+                totalImages += imagesList.Count;
+                
+                // Pre-filter: Only queue uncached images
+                var uncachedImages = imagesList.Where(img => 
+                    !collection.CacheImages.Any(c => 
+                        c.ImageId == img.Id && 
+                        c.Width == cacheWidth && 
+                        c.Height == cacheHeight
+                    )
+                ).ToList();
+                
+                if (!uncachedImages.Any())
+                {
+                    _logger.LogInformation("✅ Collection {CollectionId} already fully cached, skipping", collectionId);
+                    continue;
+                }
+                
+                _logger.LogInformation("📊 Collection {CollectionId}: {Total} images, {Cached} cached, {Remaining} to process",
+                    collectionId, imagesList.Count, imagesList.Count - uncachedImages.Count, uncachedImages.Count);
+                
+                // Create FileProcessingJobState for this collection
+                var jobId = $"cache_{bulkMessage.JobId}_{collectionId}";
+                var cacheFolderPath = await cacheFolderSelectionService?.SelectCacheFolderForCacheAsync(
+                    collectionObjectId, 
+                    uncachedImages[0].Id,
+                    cacheWidth, 
+                    cacheHeight, 
+                    cacheFormat) ?? string.Empty;
+                
+                var jobSettings = System.Text.Json.JsonSerializer.Serialize(new
+                {
+                    width = cacheWidth,
+                    height = cacheHeight,
+                    quality = cacheQuality,
+                    format = cacheFormat
+                });
+                
+                var jobState = new Domain.Entities.FileProcessingJobState(
+                    jobId: jobId,
+                    jobType: "cache",
+                    collectionId: collectionId.ToString(),
+                    collectionName: collection.Name,
+                    totalImages: uncachedImages.Count,
+                    outputFolderId: null, // Will be determined from path
+                    outputFolderPath: !string.IsNullOrEmpty(cacheFolderPath) ? Path.GetDirectoryName(Path.GetDirectoryName(cacheFolderPath)) : null,
+                    jobSettings: jobSettings
+                );
+                
+                jobState.Start(); // Set status to Running
+                await jobStateRepository.CreateAsync(jobState);
+                
+                _logger.LogInformation("✅ Created FileProcessingJobState {JobId} for collection {CollectionId} with {Count} images",
+                    jobId, collectionId, uncachedImages.Count);
+                
+                // Create individual cache generation jobs for each uncached image in this collection
+                foreach (var image in uncachedImages)
                 {
                     try
                     {
                         var cacheMessage = new CacheGenerationMessage
                         {
-                            ImageId = image.Id, // Already a string
-                            CollectionId = collectionId.ToString(), // Use collectionId from outer loop
-                            ImagePath = image.RelativePath, // This should be the full path
+                            JobId = jobId, // Link to FileProcessingJobState
+                            ImageId = image.Id,
+                            CollectionId = collectionId.ToString(),
+                            ImagePath = collection.GetFullImagePath(image), // Use full path
                             CachePath = "", // Will be determined by cache service
-                            CacheWidth = 1920, // Default cache size
-                            CacheHeight = 1080,
-                            Quality = 85,
-                            ForceRegenerate = true, // Force regeneration for bulk operations
+                            CacheWidth = cacheWidth,
+                            CacheHeight = cacheHeight,
+                            Quality = cacheQuality,
+                            Format = cacheFormat,
+                            ForceRegenerate = false, // Don't force - we already pre-filtered
+                            ScanJobId = bulkMessage.JobId // Link to parent scan job
                         };
 
                         // Queue the cache generation job
                         await messageQueueService.PublishAsync(cacheMessage, "cache.generation");
-                        _logger.LogInformation("📋 Queued cache generation job for image {ImageId}: {Filename}", 
+                        _logger.LogDebug("📋 Queued cache generation job for image {ImageId}: {Filename}", 
                             image.Id, image.Filename);
                     }
                     catch (Exception ex)
