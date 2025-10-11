@@ -30,6 +30,9 @@ public class UserSettings
     
     [BsonElement("performance")]
     public PerformanceSettings Performance { get; private set; }
+    
+    [BsonElement("pagination")]
+    public PaginationSettings Pagination { get; private set; }
 
     public UserSettings()
     {
@@ -41,6 +44,7 @@ public class UserSettings
         Notifications = new NotificationSettings();
         Privacy = new PrivacySettings();
         Performance = new PerformanceSettings();
+        Pagination = new PaginationSettings();
     }
 
     public void UpdateDisplayMode(string displayMode)
@@ -96,6 +100,11 @@ public class UserSettings
     public void UpdatePerformance(PerformanceSettings performance)
     {
         Performance = performance ?? throw new ArgumentNullException(nameof(performance));
+    }
+    
+    public void UpdatePagination(PaginationSettings pagination)
+    {
+        Pagination = pagination ?? throw new ArgumentNullException(nameof(pagination));
     }
 }
 
@@ -249,5 +258,53 @@ public class PerformanceSettings
     public void UpdateAutoOptimize(bool enabled)
     {
         AutoOptimize = enabled;
+    }
+}
+
+/// <summary>
+/// Pagination settings value object
+/// 分页设置值对象 - Đối tượng giá trị cài đặt phân trang
+/// </summary>
+public class PaginationSettings
+{
+    [BsonElement("showFirstLast")]
+    public bool ShowFirstLast { get; private set; }
+    
+    [BsonElement("showPageNumbers")]
+    public bool ShowPageNumbers { get; private set; }
+    
+    [BsonElement("pageNumbersToShow")]
+    public int PageNumbersToShow { get; private set; }
+
+    public PaginationSettings()
+    {
+        ShowFirstLast = true;
+        ShowPageNumbers = true;
+        PageNumbersToShow = 5;
+    }
+    
+    public PaginationSettings(bool showFirstLast, bool showPageNumbers, int pageNumbersToShow)
+    {
+        ShowFirstLast = showFirstLast;
+        ShowPageNumbers = showPageNumbers;
+        PageNumbersToShow = pageNumbersToShow;
+    }
+
+    public void UpdateShowFirstLast(bool enabled)
+    {
+        ShowFirstLast = enabled;
+    }
+
+    public void UpdateShowPageNumbers(bool enabled)
+    {
+        ShowPageNumbers = enabled;
+    }
+
+    public void UpdatePageNumbersToShow(int count)
+    {
+        if (count < 1 || count > 10)
+            throw new ArgumentException("Page numbers to show must be between 1 and 10", nameof(count));
+        
+        PageNumbersToShow = count;
     }
 }

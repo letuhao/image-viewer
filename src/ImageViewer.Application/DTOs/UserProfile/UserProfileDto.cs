@@ -119,8 +119,20 @@ public class UserProfileCustomizationSettings
     public bool ShowStatistics { get; set; } = true;
     public string DefaultSort { get; set; } = "name";
     public string DefaultSortOrder { get; set; } = "asc";
+    public PaginationSettingsDto? Pagination { get; set; }
     public List<string> CustomFields { get; set; } = new();
     public Dictionary<string, object> CustomSettings { get; set; } = new();
+}
+
+/// <summary>
+/// Pagination settings
+/// 分页设置 - Cài đặt phân trang
+/// </summary>
+public class PaginationSettingsDto
+{
+    public bool ShowFirstLast { get; set; } = true;
+    public bool ShowPageNumbers { get; set; } = true;
+    public int PageNumbersToShow { get; set; } = 5;
 }
 
 /// <summary>
