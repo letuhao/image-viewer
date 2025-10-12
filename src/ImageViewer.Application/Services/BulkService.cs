@@ -521,6 +521,38 @@ public class BulkService : IBulkService
     }
 
     /// <summary>
+    /// Fix archive entry path format from backslash to # separator
+    /// Converts: "L:\path\file.zip\entry.jpg" → "L:\path\file.zip#entry.jpg"
+    /// This fixes paths stored in old format that don't work with ArchiveFileHelper
+    /// </summary>
+    private static string FixArchiveEntryPath(string path)
+    {
+        if (string.IsNullOrEmpty(path))
+            return path;
+        
+        // Check if path contains .zip, .rar, .7z, .tar, .gz (common archive extensions)
+        var archiveExtensions = new[] { ".zip\\", ".rar\\", ".7z\\", ".tar\\", ".gz\\" };
+        
+        foreach (var ext in archiveExtensions)
+        {
+            var index = path.IndexOf(ext, StringComparison.OrdinalIgnoreCase);
+            if (index >= 0)
+            {
+                // Found archive with backslash separator
+                // Split: "L:\path\file.zip\entry.jpg" → "L:\path\file.zip" + "entry.jpg"
+                var archivePath = path.Substring(0, index + ext.Length - 1); // Remove trailing backslash
+                var entryPath = path.Substring(index + ext.Length);
+                
+                // Rejoin with # separator
+                return $"{archivePath}#{entryPath}";
+            }
+        }
+        
+        // Not an archive entry or already in correct format
+        return path;
+    }
+    
+    /// <summary>
     /// Queue thumbnail and cache generation jobs for images that are missing them
     /// This is used for resuming incomplete collections without re-scanning
     /// </summary>
@@ -582,11 +614,16 @@ public class BulkService : IBulkService
             // Queue thumbnail generation jobs
             foreach (var image in imagesNeedingThumbnails)
             {
+                // Fix path format: convert backslash format to # format for archive entries
+                // Old buggy format: "L:\path\file.zip\entry.jpg" (doesn't work)
+                // Correct format: "L:\path\file.zip#entry.jpg" (works)
+                var imagePath = FixArchiveEntryPath(image.GetFullPath(collection.Path));
+                
                 var thumbnailMessage = new ThumbnailGenerationMessage
                 {
                     ImageId = image.Id,
                     CollectionId = collection.Id.ToString(),
-                    ImagePath = image.GetFullPath(collection.Path),
+                    ImagePath = imagePath,
                     ImageFilename = image.Filename,
                     ThumbnailWidth = request.ThumbnailWidth ?? 300,
                     ThumbnailHeight = request.ThumbnailHeight ?? 300,
@@ -602,11 +639,14 @@ public class BulkService : IBulkService
             // Queue cache generation jobs
             foreach (var image in imagesNeedingCache)
             {
+                // Fix path format: convert backslash format to # format for archive entries
+                var imagePath = FixArchiveEntryPath(image.GetFullPath(collection.Path));
+                
                 var cacheMessage = new CacheGenerationMessage
                 {
                     ImageId = image.Id,
                     CollectionId = collection.Id.ToString(),
-                    ImagePath = image.GetFullPath(collection.Path),
+                    ImagePath = imagePath,
                     CacheWidth = request.CacheWidth ?? 1920,
                     CacheHeight = request.CacheHeight ?? 1080,
                     Quality = 85,
