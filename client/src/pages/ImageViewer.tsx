@@ -150,6 +150,15 @@ const ImageViewer: React.FC = () => {
     setTotalImagesCount(0);
     setCurrentImageId(initialImageId || '');
     
+    // Clear preloaded images cache (CRITICAL for sidebar navigation!)
+    console.log(`[ImageViewer] Clearing ${preloadedImagesRef.current.size} preloaded images`);
+    preloadedImagesRef.current.forEach((img) => {
+      img.onload = null;
+      img.onerror = null;
+      img.src = '';
+    });
+    preloadedImagesRef.current.clear();
+    
     // Also reset UI state
     setZoom(1);
     setRotation(0);
@@ -617,7 +626,8 @@ const ImageViewer: React.FC = () => {
     <div key={`${collectionId}-${initialImageId}`} className="fixed inset-0 bg-black z-50 flex">
       {/* Collection Navigation Sidebar (toggleable) */}
       {showCollectionSidebar && (
-        <CollectionNavigationSidebar 
+        <CollectionNavigationSidebar
+          key={`collection-sidebar-${collectionId}`}
           collectionId={collectionId!}
           sortBy="updatedAt"
           sortDirection="desc"
@@ -1054,6 +1064,7 @@ const ImageViewer: React.FC = () => {
         {/* Image Preview Sidebar (thumbnails strip on right) */}
         {showImagePreviewSidebar && (
           <ImagePreviewSidebar
+            key={`preview-${collectionId}`}
             images={images}
             currentImageId={currentImageId}
             collectionId={collectionId!}
