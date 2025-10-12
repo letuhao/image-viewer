@@ -210,10 +210,10 @@ public class BulkService : IBulkService
                     };
                 }
             }
-            // MODE 1: Skip or Scan
-            else if (!hasImages || request.ResumeIncomplete)
+            // MODE 1: Scan if no images (regardless of ResumeIncomplete flag)
+            else if (!hasImages)
             {
-                // No images yet OR ResumeIncomplete mode but no images = need to scan
+                // No images = need to scan
                 _logger.LogInformation("Collection {Name} has no images, queuing scan job", potential.Name);
                 
                 // Update existing collection metadata
