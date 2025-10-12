@@ -65,6 +65,19 @@ public class BackgroundJob : BaseEntity
     [BsonElement("collectionId")]
     [BsonRepresentation(BsonType.ObjectId)]
     public ObjectId? CollectionId { get; private set; }
+    
+    // Error tracking for jobs that complete with errors
+    [BsonElement("hasErrors")]
+    public bool HasErrors { get; private set; }
+    
+    [BsonElement("errorCount")]
+    public int ErrorCount { get; private set; }
+    
+    [BsonElement("successCount")]
+    public int SuccessCount { get; private set; }
+    
+    [BsonElement("errorSummary")]
+    public Dictionary<string, int>? ErrorSummary { get; private set; } // Error type -> count
 
     // Private constructor for EF Core
     private BackgroundJob() { }
@@ -160,6 +173,17 @@ public class BackgroundJob : BaseEntity
         Status = JobStatus.Completed.ToString();
         Result = result;
         CompletedAt = DateTime.UtcNow;
+    }
+
+    public void CompleteWithErrors(string? result = null)
+    {
+        if (Status != JobStatus.Running.ToString())
+            throw new InvalidOperationException($"Cannot complete job with status '{Status}'");
+
+        Status = JobStatus.Completed.ToString();
+        Result = result;
+        CompletedAt = DateTime.UtcNow;
+        HasErrors = true;
     }
 
     public void Fail(string errorMessage)
@@ -303,5 +327,54 @@ public class BackgroundJob : BaseEntity
             CompletedItems = scanStage.CompletedItems;
             TotalItems = scanStage.TotalItems;
         }
+    }
+
+    /// <summary>
+    /// Update error tracking statistics for jobs that complete with errors
+    /// </summary>
+    public void UpdateErrorStatistics(int successCount, int errorCount, Dictionary<string, int>? errorSummary = null)
+    {
+        SuccessCount = successCount;
+        ErrorCount = errorCount;
+        HasErrors = errorCount > 0;
+        ErrorSummary = errorSummary ?? new Dictionary<string, int>();
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    /// <summary>
+    /// Add an error to the error summary
+    /// </summary>
+    public void AddError(string errorType)
+    {
+        if (ErrorSummary == null)
+        {
+            ErrorSummary = new Dictionary<string, int>();
+        }
+
+        if (ErrorSummary.ContainsKey(errorType))
+        {
+            ErrorSummary[errorType]++;
+        }
+        else
+        {
+            ErrorSummary[errorType] = 1;
+        }
+
+        ErrorCount++;
+        HasErrors = true;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    /// <summary>
+    /// Get error summary as formatted string
+    /// </summary>
+    public string GetErrorSummaryString()
+    {
+        if (!HasErrors || ErrorSummary == null || ErrorSummary.Count == 0)
+        {
+            return "No errors";
+        }
+
+        return string.Join(", ", ErrorSummary.Select(kvp => $"{kvp.Key}: {kvp.Value}"));
     }
 }

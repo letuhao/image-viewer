@@ -34,6 +34,11 @@ public interface IBackgroundJobService
     Task<BackgroundJobDto> UpdateJobProgressAsync(ObjectId jobId, int completed, int total, string? currentItem = null);
 
     /// <summary>
+    /// Update job error statistics
+    /// </summary>
+    Task UpdateJobErrorStatisticsAsync(ObjectId jobId, int successCount, int errorCount, Dictionary<string, int>? errorSummary = null);
+
+    /// <summary>
     /// Cancel a job
     /// </summary>
     Task CancelJobAsync(ObjectId jobId);

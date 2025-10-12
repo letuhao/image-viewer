@@ -534,4 +534,23 @@ public class BackgroundJobService : IBackgroundJobService
         
         return issues;
     }
+
+    public async Task UpdateJobErrorStatisticsAsync(ObjectId jobId, int successCount, int errorCount, Dictionary<string, int>? errorSummary = null)
+    {
+        _logger.LogInformation("Updating job error statistics: {JobId} - {SuccessCount} success, {ErrorCount} errors", 
+            jobId, successCount, errorCount);
+
+        var job = await _backgroundJobRepository.GetByIdAsync(jobId);
+        if (job == null)
+        {
+            _logger.LogWarning("Job not found for error statistics update: {JobId}", jobId);
+            return;
+        }
+
+        job.UpdateErrorStatistics(successCount, errorCount, errorSummary);
+        await _backgroundJobRepository.UpdateAsync(job);
+
+        _logger.LogInformation("Job error statistics updated: {JobId} - {ErrorSummary}", 
+            jobId, job.GetErrorSummaryString());
+    }
 }

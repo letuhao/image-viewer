@@ -351,6 +351,10 @@ public class CacheGenerationConsumer : BaseMessageConsumer
                         
                         // Track as completed (not failed) since we handled it
                         await jobStateRepository.AtomicIncrementCompletedAsync(cacheMsg.JobId, cacheMsg.ImageId, 0);
+                        
+                        // Track the error type for statistics
+                        await jobStateRepository.TrackErrorAsync(cacheMsg.JobId, ex.GetType().Name);
+                        
                         await CheckAndMarkJobComplete(cacheMsg.JobId, jobStateRepository);
                         
                         _logger.LogInformation("✅ Created dummy cache entry for failed image {ImageId}: {Error}", 
@@ -715,6 +719,10 @@ public class CacheGenerationConsumer : BaseMessageConsumer
                 // Since we now create dummy entries for failed images, 
                 // all images are "completed" (either successful or dummy)
                 await jobStateRepository.UpdateStatusAsync(jobId, "Completed");
+                
+                // Update the main BackgroundJob with error statistics
+                await UpdateBackgroundJobErrorStats(jobId, jobState);
+                
                 _logger.LogInformation("✅ Job {JobId} marked as Completed - {Completed}/{Expected} processed (including dummy entries for failed images)", 
                     jobId, jobState.CompletedImages, totalExpected);
             }
@@ -722,6 +730,46 @@ public class CacheGenerationConsumer : BaseMessageConsumer
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Failed to check/mark job completion for {JobId}", jobId);
+        }
+    }
+
+    /// <summary>
+    /// Update the main BackgroundJob with error statistics
+    /// </summary>
+    private async Task UpdateBackgroundJobErrorStats(string jobId, FileProcessingJobState jobState)
+    {
+        try
+        {
+            using var scope = _serviceScopeFactory.CreateScope();
+            var backgroundJobService = scope.ServiceProvider.GetRequiredService<IBackgroundJobService>();
+            
+            var successCount = jobState.CompletedImages - jobState.DummyEntryCount;
+            var errorCount = jobState.DummyEntryCount;
+            
+            if (errorCount > 0)
+            {
+                // Job completed with errors
+                await backgroundJobService.UpdateJobErrorStatisticsAsync(
+                    ObjectId.Parse(jobId), 
+                    successCount, 
+                    errorCount, 
+                    jobState.ErrorSummary
+                );
+            }
+            else
+            {
+                // Job completed without errors
+                await backgroundJobService.UpdateJobErrorStatisticsAsync(
+                    ObjectId.Parse(jobId), 
+                    successCount, 
+                    0, 
+                    null
+                );
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to update BackgroundJob error statistics for {JobId}", jobId);
         }
     }
 }

@@ -232,5 +232,55 @@ public class FileProcessingJobStateRepository : MongoRepository<FileProcessingJo
             return 0;
         }
     }
+
+    public async Task<bool> TrackErrorAsync(string jobId, string errorType)
+    {
+        try
+        {
+            var filter = Builders<FileProcessingJobState>.Filter.Eq(x => x.JobId, jobId);
+            
+            var update = Builders<FileProcessingJobState>.Update
+                .Inc(x => x.DummyEntryCount, 1)
+                .Set(x => x.HasErrors, true)
+                .Set(x => x.UpdatedAt, DateTime.UtcNow);
+
+            // Update error summary using $inc for the specific error type
+            var errorField = $"errorSummary.{errorType}";
+            var errorUpdate = Builders<FileProcessingJobState>.Update.Inc(errorField, 1);
+            
+            // Combine both updates
+            var combinedUpdate = Builders<FileProcessingJobState>.Update.Combine(update, errorUpdate);
+
+            var result = await _collection.UpdateOneAsync(filter, combinedUpdate);
+            return result.ModifiedCount > 0;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error tracking error for job {JobId}, error type {ErrorType}", jobId, errorType);
+            return false;
+        }
+    }
+
+    public async Task<bool> UpdateErrorStatisticsAsync(string jobId, int dummyEntryCount, Dictionary<string, int>? errorSummary = null)
+    {
+        try
+        {
+            var filter = Builders<FileProcessingJobState>.Filter.Eq(x => x.JobId, jobId);
+            
+            var update = Builders<FileProcessingJobState>.Update
+                .Set(x => x.DummyEntryCount, dummyEntryCount)
+                .Set(x => x.HasErrors, dummyEntryCount > 0)
+                .Set(x => x.ErrorSummary, errorSummary ?? new Dictionary<string, int>())
+                .Set(x => x.UpdatedAt, DateTime.UtcNow);
+
+            var result = await _collection.UpdateOneAsync(filter, update);
+            return result.ModifiedCount > 0;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating error statistics for job {JobId}", jobId);
+            return false;
+        }
+    }
 }
 

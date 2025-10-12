@@ -58,6 +58,16 @@ public class FileProcessingJobState : BaseEntity
     [BsonElement("jobSettings")]
     public string JobSettings { get; private set; } = "{}"; // JSON: { width, height, quality, format, etc. }
     
+    // Error tracking for jobs that complete with dummy entries
+    [BsonElement("hasErrors")]
+    public bool HasErrors { get; private set; }
+    
+    [BsonElement("errorSummary")]
+    public Dictionary<string, int>? ErrorSummary { get; private set; } // Error type -> count
+    
+    [BsonElement("dummyEntryCount")]
+    public int DummyEntryCount { get; private set; } // Count of dummy entries created
+    
     // Timestamps
     [BsonElement("startedAt")]
     public DateTime? StartedAt { get; private set; }
@@ -203,6 +213,54 @@ public class FileProcessingJobState : BaseEntity
     {
         CanResume = false;
         UpdateTimestamp();
+    }
+
+    /// <summary>
+    /// Track an error for dummy entry creation
+    /// </summary>
+    public void TrackError(string errorType)
+    {
+        if (ErrorSummary == null)
+        {
+            ErrorSummary = new Dictionary<string, int>();
+        }
+
+        if (ErrorSummary.ContainsKey(errorType))
+        {
+            ErrorSummary[errorType]++;
+        }
+        else
+        {
+            ErrorSummary[errorType] = 1;
+        }
+
+        DummyEntryCount++;
+        HasErrors = true;
+        UpdateTimestamp();
+    }
+
+    /// <summary>
+    /// Update error statistics when job completes
+    /// </summary>
+    public void UpdateErrorStatistics(int dummyEntryCount, Dictionary<string, int>? errorSummary = null)
+    {
+        DummyEntryCount = dummyEntryCount;
+        HasErrors = dummyEntryCount > 0;
+        ErrorSummary = errorSummary ?? new Dictionary<string, int>();
+        UpdateTimestamp();
+    }
+
+    /// <summary>
+    /// Get error summary as formatted string
+    /// </summary>
+    public string GetErrorSummaryString()
+    {
+        if (!HasErrors || ErrorSummary == null || ErrorSummary.Count == 0)
+        {
+            return "No errors";
+        }
+
+        return string.Join(", ", ErrorSummary.Select(kvp => $"{kvp.Key}: {kvp.Value}"));
     }
 }
 

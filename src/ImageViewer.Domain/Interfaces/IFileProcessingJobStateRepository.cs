@@ -72,5 +72,15 @@ public interface IFileProcessingJobStateRepository : IRepository<FileProcessingJ
     /// Delete old completed jobs (cleanup)
     /// </summary>
     Task<int> DeleteOldCompletedJobsAsync(DateTime olderThan);
+    
+    /// <summary>
+    /// Track an error for dummy entry creation
+    /// </summary>
+    Task<bool> TrackErrorAsync(string jobId, string errorType);
+    
+    /// <summary>
+    /// Update error statistics when job completes
+    /// </summary>
+    Task<bool> UpdateErrorStatisticsAsync(string jobId, int dummyEntryCount, Dictionary<string, int>? errorSummary = null);
 }
 
