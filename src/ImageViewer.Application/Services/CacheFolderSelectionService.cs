@@ -56,8 +56,10 @@ public class CacheFolderSelectionService : ICacheFolderSelectionService
 
             // Use hash-based distribution to select cache folder
             // This ensures the same collection always goes to the same cache folder
-            var hash = collectionId.GetHashCode();
-            var selectedIndex = Math.Abs(hash) % cacheFoldersList.Count;
+            // NOTE: Use string hash of ObjectId instead of ObjectId.GetHashCode()
+            // because ObjectId.GetHashCode() has poor distribution (clusters around certain values)
+            var hash = Math.Abs(collectionId.ToString().GetHashCode());
+            var selectedIndex = hash % cacheFoldersList.Count;
             var selectedCacheFolder = cacheFoldersList[selectedIndex];
 
             // Create proper folder structure: CacheFolder/cache/CollectionId/ImageId_CacheWidthxCacheHeight.{ext}
@@ -111,8 +113,10 @@ public class CacheFolderSelectionService : ICacheFolderSelectionService
             }
 
             // Use hash-based distribution to select cache folder
-            var hash = collectionId.GetHashCode();
-            var selectedIndex = Math.Abs(hash) % cacheFoldersList.Count;
+            // NOTE: Use string hash of ObjectId instead of ObjectId.GetHashCode()
+            // because ObjectId.GetHashCode() has poor distribution (clusters around certain values)
+            var hash = Math.Abs(collectionId.ToString().GetHashCode());
+            var selectedIndex = hash % cacheFoldersList.Count;
             var selectedCacheFolder = cacheFoldersList[selectedIndex];
 
             // Create proper folder structure: CacheFolder/thumbnails/CollectionId/ImageId_WidthxHeight.{ext}

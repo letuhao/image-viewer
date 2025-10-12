@@ -532,7 +532,9 @@ public class CacheGenerationConsumer : BaseMessageConsumer
         // Use hash-based distribution to ensure equal distribution across cache folders
         // This ensures the same collection always goes to the same cache folder (for consistency)
         // while distributing collections evenly across all available cache folders
-        var hash = Math.Abs(collectionId.GetHashCode());
+        // NOTE: Use string hash of ObjectId instead of ObjectId.GetHashCode()
+        // because ObjectId.GetHashCode() has poor distribution (clusters around certain values)
+        var hash = Math.Abs(collectionId.ToString().GetHashCode());
         var selectedIndex = hash % activeCacheFolders.Count;
         var selectedFolder = activeCacheFolders[selectedIndex];
         
