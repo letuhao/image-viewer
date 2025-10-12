@@ -57,6 +57,14 @@ const ImagePreviewSidebar: React.FC<ImagePreviewSidebarProps> = ({
                   alt={image.filename}
                   className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-110"
                   loading="lazy"
+                  onError={(e) => {
+                    console.error(`[ImagePreviewSidebar] Thumbnail load error:`, {
+                      url: e.currentTarget.src,
+                      collectionId,
+                      imageId: image.id,
+                      imagePath: image.path
+                    });
+                  }}
                 />
 
                 {/* Image number overlay */}
