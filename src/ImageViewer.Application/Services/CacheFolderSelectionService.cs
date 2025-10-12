@@ -39,7 +39,14 @@ public class CacheFolderSelectionService : ICacheFolderSelectionService
 
             // Get all cache folders
             var cacheFolders = await _cacheService.GetCacheFoldersAsync();
-            var cacheFoldersList = cacheFolders.Where(cf => cf.IsActive).ToList();
+            
+            // CRITICAL: Sort by Id to ensure consistent ordering across all calls
+            // Without sorting, MongoDB's natural order can change, causing same collection
+            // to be assigned to different folders after DB restart/rebuild
+            var cacheFoldersList = cacheFolders
+                .Where(cf => cf.IsActive)
+                .OrderBy(cf => cf.Id) // ← STABLE ORDERING
+                .ToList();
 
             if (cacheFoldersList.Count == 0)
             {
@@ -88,7 +95,14 @@ public class CacheFolderSelectionService : ICacheFolderSelectionService
 
             // Get all cache folders
             var cacheFolders = await _cacheService.GetCacheFoldersAsync();
-            var cacheFoldersList = cacheFolders.Where(cf => cf.IsActive).ToList();
+            
+            // CRITICAL: Sort by Id to ensure consistent ordering across all calls
+            // Without sorting, MongoDB's natural order can change, causing same collection
+            // to be assigned to different folders after DB restart/rebuild
+            var cacheFoldersList = cacheFolders
+                .Where(cf => cf.IsActive)
+                .OrderBy(cf => cf.Id) // ← STABLE ORDERING
+                .ToList();
 
             if (cacheFoldersList.Count == 0)
             {

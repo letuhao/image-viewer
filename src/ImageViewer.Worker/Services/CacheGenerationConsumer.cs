@@ -516,8 +516,13 @@ public class CacheGenerationConsumer : BaseMessageConsumer
 
     private CacheFolderDto SelectCacheFolderForEqualDistribution(IEnumerable<CacheFolderDto> cacheFolders, ObjectId collectionId)
     {
-        // Filter to only active cache folders
-        var activeCacheFolders = cacheFolders.Where(cf => cf.IsActive).ToList();
+        // CRITICAL: Sort by Id to ensure consistent ordering across all calls
+        // Without sorting, MongoDB's natural order can change, causing same collection
+        // to be assigned to different folders after DB restart/rebuild
+        var activeCacheFolders = cacheFolders
+            .Where(cf => cf.IsActive)
+            .OrderBy(cf => cf.Id) // ← STABLE ORDERING
+            .ToList();
         
         if (!activeCacheFolders.Any())
         {
