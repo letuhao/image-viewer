@@ -113,51 +113,55 @@ public class BulkService : IBulkService
             _logger.LogInformation("Found existing collection {Name} with OverwriteExisting={OverwriteExisting}", 
                 potential.Name, request.OverwriteExisting);
             
+            // Always update metadata and queue scan for existing collections
+            // The difference is: OverwriteExisting=true clears image arrays, false keeps them
+            
+            _logger.LogInformation("Updating existing collection {Name} at {Path} (OverwriteExisting={OverwriteExisting})", 
+                potential.Name, potential.Path, request.OverwriteExisting);
+            
+            // Update existing collection metadata
+            var updateRequest = new UpdateCollectionRequest
+            {
+                Name = potential.Name,
+                Path = normalizedPath
+            };
+            collection = await _collectionService.UpdateCollectionAsync(existingCollection.Id, updateRequest);
+            
+            // Apply collection settings
+            var settings = CreateCollectionSettings(request);
+            var settingsRequest = new UpdateCollectionSettingsRequest
+            {
+                AutoScan = settings.AutoScan,
+                GenerateThumbnails = settings.GenerateThumbnails,
+                GenerateCache = settings.GenerateCache,
+                EnableWatching = settings.EnableWatching,
+                ScanInterval = settings.ScanInterval,
+                MaxFileSize = settings.MaxFileSize,
+                AllowedFormats = settings.AllowedFormats?.ToList(),
+                ExcludedPaths = settings.ExcludedPaths?.ToList()
+            };
+            // Pass forceRescan flag to determine rescan behavior
+            collection = await _collectionService.UpdateSettingsAsync(
+                collection.Id, 
+                settingsRequest, 
+                triggerScan: true, 
+                forceRescan: request.OverwriteExisting); // OverwriteExisting controls ForceRescan
+            
+            wasOverwritten = request.OverwriteExisting;
+            
             if (request.OverwriteExisting)
             {
-                _logger.LogInformation("Overwriting existing collection {Name} at {Path}", potential.Name, potential.Path);
-                
-                // Update existing collection
-                var updateRequest = new UpdateCollectionRequest
-                {
-                    Name = potential.Name,
-                    Path = normalizedPath
-                };
-                collection = await _collectionService.UpdateCollectionAsync(existingCollection.Id, updateRequest);
-                
-                // Apply collection settings
-                var settings = CreateCollectionSettings(request);
-                var settingsRequest = new UpdateCollectionSettingsRequest
-                {
-                    AutoScan = settings.AutoScan,
-                    GenerateThumbnails = settings.GenerateThumbnails,
-                    GenerateCache = settings.GenerateCache,
-                    EnableWatching = settings.EnableWatching,
-                    ScanInterval = settings.ScanInterval,
-                    MaxFileSize = settings.MaxFileSize,
-                    AllowedFormats = settings.AllowedFormats?.ToList(),
-                    ExcludedPaths = settings.ExcludedPaths?.ToList()
-                };
-                collection = await _collectionService.UpdateSettingsAsync(collection.Id, settingsRequest);
-                
-                wasOverwritten = true;
-                _logger.LogInformation("Successfully updated existing collection {Name} with ID {CollectionId} and applied settings", 
-                    potential.Name, collection.Id);
+                _logger.LogInformation("OverwriteExisting=true: Will clear image arrays and rescan collection {Name} from scratch", 
+                    potential.Name);
             }
             else
             {
-                _logger.LogInformation("Skipping existing collection {Name} - OverwriteExisting is false", potential.Name);
-                // Skip existing collections if overwrite is disabled
-                return new BulkCollectionResult
-                {
-                    Name = potential.Name,
-                    Path = potential.Path,
-                    Type = potential.Type,
-                    Status = "Skipped",
-                    Message = "Collection already exists - use OverwriteExisting=true to update",
-                    CollectionId = existingCollection.Id
-                };
+                _logger.LogInformation("OverwriteExisting=false: Will keep existing images and discover new ones for collection {Name}", 
+                    potential.Name);
             }
+            
+            _logger.LogInformation("Successfully updated existing collection {Name} with ID {CollectionId} and applied settings", 
+                potential.Name, collection.Id);
         }
         else
         {

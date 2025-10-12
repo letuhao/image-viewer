@@ -275,5 +275,17 @@ public class MongoCollectionRepository : MongoRepository<Collection>, ICollectio
         return result.ModifiedCount > 0;
     }
 
+    public async Task ClearImageArraysAsync(ObjectId collectionId)
+    {
+        var filter = Builders<Collection>.Filter.Eq(x => x.Id, collectionId);
+        var update = Builders<Collection>.Update
+            .Set(x => x.Images, new List<Domain.ValueObjects.ImageEmbedded>())
+            .Set(x => x.Thumbnails, new List<Domain.ValueObjects.ThumbnailEmbedded>())
+            .Set(x => x.CacheImages, new List<Domain.ValueObjects.CacheImageEmbedded>())
+            .Set(x => x.UpdatedAt, DateTime.UtcNow);
+        
+        await _collection.UpdateOneAsync(filter, update);
+    }
+
     #endregion
 }

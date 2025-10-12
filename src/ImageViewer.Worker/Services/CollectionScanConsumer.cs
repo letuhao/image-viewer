@@ -126,6 +126,17 @@ public class CollectionScanConsumer : BaseMessageConsumer
                 return;
             }
 
+            // If ForceRescan is true, clear existing image arrays
+            if (scanMessage.ForceRescan)
+            {
+                _logger.LogWarning("🔥 ForceRescan=true: Clearing existing image arrays for collection {CollectionId}", collection.Id);
+                
+                var collectionRepository = scope.ServiceProvider.GetRequiredService<ICollectionRepository>();
+                await collectionRepository.ClearImageArraysAsync(collection.Id);
+                
+                _logger.LogInformation("✅ Cleared image arrays (images, thumbnails, cache) for collection {CollectionId}", collection.Id);
+            }
+
             // Scan the collection for media files
             var mediaFiles = ScanCollectionForMediaFiles(collection.Path, collection.Type);
             _logger.LogDebug("📁 Found {FileCount} media files in collection {CollectionId}", 

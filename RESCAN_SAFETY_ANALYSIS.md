@@ -15,46 +15,64 @@ You want to:
 
 ### 1. Can Bulk Logic Skip Existing Collections?
 
-**YES** ✅ - Bulk logic handles existing collections correctly:
+**✅ FIXED** - Bulk logic now **ALWAYS processes existing collections**:
 
-**Code Location**: `src/ImageViewer.Application/Services/BulkService.cs:111-160`
+**Code Location**: `src/ImageViewer.Application/Services/BulkService.cs:111-165`
 
 ```csharp
 if (existingCollection != null)
 {
+    // Always update metadata and queue scan for existing collections
+    // The difference is: OverwriteExisting=true clears image arrays, false keeps them
+    
+    // Update existing collection metadata
+    var updateRequest = new UpdateCollectionRequest { ... };
+    collection = await _collectionService.UpdateCollectionAsync(existingCollection.Id, updateRequest);
+    
+    // Apply collection settings with forceRescan flag
+    collection = await _collectionService.UpdateSettingsAsync(
+        collection.Id, 
+        settingsRequest, 
+        triggerScan: true, 
+        forceRescan: request.OverwriteExisting); // OverwriteExisting controls ForceRescan
+    
     if (request.OverwriteExisting)
     {
-        // Update collection metadata + queue scan
-        wasOverwritten = true;
+        // Will CLEAR image arrays and rescan from scratch
     }
     else
     {
-        // SKIP existing collection
-        return new BulkCollectionResult
-        {
-            Status = "Skipped",
-            Message = "Collection already exists - use OverwriteExisting=true to update",
-            CollectionId = existingCollection.Id
-        };
+        // Will KEEP existing images and discover new ones
     }
 }
 ```
 
-**Behavior**:
-- `OverwriteExisting = false` (default): **Skips** existing collections entirely ❌
-- `OverwriteExisting = true`: **Updates** collection metadata + queues new scan job ✅
+**NEW Behavior**:
+- `OverwriteExisting = false` (default): 
+  - ✅ **Processes** existing collections (NOT skipped)
+  - ✅ **Keeps** existing image/thumbnail/cache metadata
+  - ✅ **Queues** new scan job with `ForceRescan=false`
+  - ✅ **Discovers** new images (adds them)
+  - ✅ **Skips** duplicate images
+  - ✅ **Skips** existing thumbnail/cache files on disk
+  - ✅ **Perfect for your scenario!** ✨
 
-**⚠️ PROBLEM FOR YOUR SCENARIO**:
-- With `OverwriteExisting = false`, existing collections are **SKIPPED**
-- No new scan job is queued
-- You **WON'T** get cache/thumbnail regeneration
+- `OverwriteExisting = true`:
+  - ✅ **Processes** existing collections
+  - 🔥 **CLEARS** all image arrays (Images, Thumbnails, CacheImages)
+  - ✅ **Queues** new scan job with `ForceRescan=true`
+  - ✅ **Rescans** from scratch
+  - ✅ **Regenerates** all thumbnails and cache
+  - ⚠️ **Use only when you want a clean slate**
 
-**✅ SOLUTION**:
-- **Use `OverwriteExisting = true`** when scanning from Library screen
+**✅ SOLUTION FOR YOUR SCENARIO**:
+- **Use `OverwriteExisting = false`** (default) when scanning from Library screen ✅
 - This will:
-  1. Update collection metadata (name, path, settings)
-  2. Queue a new collection scan job
-  3. Trigger image discovery → thumbnail → cache generation
+  1. ✅ Update collection metadata (name, path, settings)
+  2. ✅ Queue a new collection scan job
+  3. ✅ **Keep existing cache/thumbnail metadata** (no loss!)
+  4. ✅ Discover new images (add to image arrays)
+  5. ✅ Skip existing files on disk (no regeneration)
 
 ---
 
@@ -155,10 +173,10 @@ if (!cacheMessage.ForceRegenerate && File.Exists(cachePath))
 | **Purge RabbitMQ queues** | ✅ Safe | All pending messages lost, but collections remain in DB |
 | **Purge background jobs** | ✅ Safe | Job tracking lost, but collections remain in DB |
 | **Keep collections in DB** | ✅ Safe | Collections with images/thumbnails/cache metadata remain |
-| **Manual scan with OverwriteExisting=false** | ❌ **WON'T WORK** | Existing collections will be **SKIPPED**, no scan jobs queued |
-| **Manual scan with OverwriteExisting=true** | ✅ **WORKS** | Updates metadata + queues new scan jobs for all collections |
+| **Manual scan with OverwriteExisting=false** | ✅ **PERFECT!** ✨ | Keeps existing metadata + discovers new images + regenerates missing files only |
+| **Manual scan with OverwriteExisting=true** | ⚠️ **DESTRUCTIVE** | Clears all image arrays + rescans from scratch + regenerates everything |
 | **Rescan adds new images only** | ✅ Safe | Duplicate images are detected and skipped |
-| **Rescan preserves cache/thumbnail arrays** | ✅ Safe | Existing metadata is NOT touched |
+| **Rescan preserves cache/thumbnail arrays** | ✅ Safe | Existing metadata is preserved (when ForceRescan=false) |
 | **Skip existing thumbnails on disk** | ✅ Safe | File existence checked, regeneration skipped |
 | **Skip existing cache on disk** | ✅ Safe | File existence checked, regeneration skipped (if ForceRegenerate=false) |
 
@@ -178,14 +196,18 @@ if (!cacheMessage.ForceRegenerate && File.Exists(cachePath))
      db.background_jobs.deleteMany({});
      ```
 
-3. **Manual Library Scan with OverwriteExisting=true**
+3. **Manual Library Scan with OverwriteExisting=false (RECOMMENDED)** ✅
    - Go to Library screen
    - Click "Scan Library" button
-   - **IMPORTANT**: Enable "Overwrite Existing" checkbox ✅
+   - **IMPORTANT**: **DISABLE** "Overwrite Existing" checkbox (default) ✅
    - This will:
      - Update all existing collection metadata
+     - **Keep existing image/thumbnail/cache metadata** 🎉
      - Queue new scan jobs for all collections
-     - Trigger image processing → thumbnail → cache generation
+     - Discover new images (add to arrays)
+     - Skip duplicate images
+     - Skip existing thumbnail/cache files on disk
+     - Regenerate only missing files
 
 4. **Wait for Processing**
    - Worker will process all scan jobs
@@ -251,5 +273,15 @@ if (!cacheMessage.ForceRegenerate && File.Exists(cachePath))
 5. **Duplicate images will be skipped** ✅
 6. **Cache/thumbnail arrays will NOT be broken** ✅
 
-**Final Recommendation**: Proceed with confidence! The logic is solid. 🚀
+**Final Recommendation**: ✅ **NOW PERFECT FOR YOUR SCENARIO!** 🎉
+
+**What Changed**:
+- **BEFORE**: `OverwriteExisting=false` skipped existing collections ❌
+- **AFTER**: `OverwriteExisting=false` processes existing collections AND keeps metadata ✅
+
+**Your 2500 cached collections are now SAFE!** 🛡️
+- Use default scan (OverwriteExisting=false)
+- Existing cache/thumbnail metadata preserved
+- Only missing files regenerated
+- No data loss! 🚀
 

@@ -350,7 +350,7 @@ public class CollectionService : ICollectionService
         }
     }
 
-    public async Task<Collection> UpdateSettingsAsync(ObjectId collectionId, UpdateCollectionSettingsRequest request, bool triggerScan = true)
+    public async Task<Collection> UpdateSettingsAsync(ObjectId collectionId, UpdateCollectionSettingsRequest request, bool triggerScan = true, bool forceRescan = false)
     {
         try
         {
@@ -428,15 +428,24 @@ public class CollectionService : ICollectionService
                 CollectionId = collection.Id.ToString(), // Convert ObjectId to string
                 CollectionPath = collection.Path,
                 CollectionType = collection.Type,
-                ForceRescan = false,
+                ForceRescan = forceRescan, // Use the parameter to control rescan behavior
                 CreatedBy = "CollectionService",
                 CreatedBySystem = "ImageViewer.Application",
                 JobId = scanJob.JobId.ToString() // Link message to job for tracking!
             };
             
             await _messageQueueService.PublishAsync(scanMessage, "collection.scan");
-            _logger.LogInformation("✅ Queued collection scan for collection {CollectionId}: {CollectionName} (Job: {JobId})", 
-                collection.Id, collection.Name, scanJob.JobId);
+            
+            if (forceRescan)
+            {
+                _logger.LogInformation("✅ Queued FORCE RESCAN for collection {CollectionId}: {CollectionName} (Job: {JobId}) - will clear existing images", 
+                    collection.Id, collection.Name, scanJob.JobId);
+            }
+            else
+            {
+                _logger.LogInformation("✅ Queued collection scan for collection {CollectionId}: {CollectionName} (Job: {JobId}) - will keep existing images", 
+                    collection.Id, collection.Name, scanJob.JobId);
+            }
         }
             
             return updatedCollection;

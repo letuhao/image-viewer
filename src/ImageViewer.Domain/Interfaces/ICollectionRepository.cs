@@ -62,6 +62,12 @@ public interface ICollectionRepository : IRepository<Collection>
     /// </summary>
     Task<bool> AtomicAddCacheImageAsync(ObjectId collectionId, CacheImageEmbedded cacheImage);
     
+    /// <summary>
+    /// Clears all image arrays (Images, Thumbnails, CacheImages) for a collection
+    /// Used for force rescan to start fresh
+    /// </summary>
+    Task ClearImageArraysAsync(ObjectId collectionId);
+    
     #endregion
 }
 
