@@ -321,9 +321,20 @@ public class CacheGenerationConsumer : BaseMessageConsumer
             var cacheMsg = JsonSerializer.Deserialize<CacheGenerationMessage>(message, options);
             
             // Check if this is a corrupted/unsupported file error (should skip, not retry)
-            bool isSkippableError = (ex is InvalidOperationException && ex.Message.Contains("Failed to decode image")) ||
+            bool isSkippableError = (ex is InvalidOperationException && (ex.Message.Contains("Failed to decode image") || 
+                                                                        ex.Message.Contains("Failed to decode") ||
+                                                                        ex.Message.Contains("Unable to decode") ||
+                                                                        ex.Message.Contains("Cannot decode") ||
+                                                                        ex.Message.Contains("corrupted") ||
+                                                                        ex.Message.Contains("invalid image"))) ||
                                    (ex is DirectoryNotFoundException) ||
-                                   (ex is FileNotFoundException);
+                                   (ex is FileNotFoundException) ||
+                                   (ex is UnauthorizedAccessException) ||
+                                   (ex is PathTooLongException) ||
+                                   (ex is ArgumentException && ex.Message.Contains("Path")) ||
+                                   (ex is NotSupportedException && ex.Message.Contains("format")) ||
+                                   (ex is BadImageFormatException) ||
+                                   (ex is InvalidDataException && ex.Message.Contains("archive"));
             
             if (isSkippableError)
             {
