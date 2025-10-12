@@ -273,24 +273,31 @@ using (var scope = app.Services.CreateScope())
     // Initialize Redis collection index
     try
     {
+        Log.Information("🔍 Starting Redis collection index validation...");
         var collectionIndexService = scope.ServiceProvider.GetRequiredService<ImageViewer.Domain.Interfaces.ICollectionIndexService>();
+        Log.Information("✅ CollectionIndexService resolved successfully");
+        
+        Log.Information("🔍 Calling IsIndexValidAsync()...");
         var isValid = await collectionIndexService.IsIndexValidAsync();
+        Log.Information("📊 Redis index validation result: {IsValid}", isValid);
         
         if (!isValid)
         {
-            Log.Information("🔄 Redis collection index not found or invalid, rebuilding...");
+            Log.Information("🔄 Redis collection index not found or invalid, starting rebuild in background...");
             _ = Task.Run(async () =>
             {
                 try
                 {
+                    Log.Information("🚀 Background task: Starting Redis index rebuild...");
                     await collectionIndexService.RebuildIndexAsync();
-                    Log.Information("✅ Redis collection index rebuilt successfully");
+                    Log.Information("✅ Background task: Redis collection index rebuilt successfully");
                 }
                 catch (Exception rebuildEx)
                 {
-                    Log.Error(rebuildEx, "❌ Failed to rebuild Redis collection index");
+                    Log.Error(rebuildEx, "❌ Background task: Failed to rebuild Redis collection index");
                 }
             });
+            Log.Information("✅ Redis index rebuild started in background (API continues startup)");
         }
         else
         {

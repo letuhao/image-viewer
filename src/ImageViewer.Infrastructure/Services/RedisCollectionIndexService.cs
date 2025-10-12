@@ -41,14 +41,16 @@ public class RedisCollectionIndexService : ICollectionIndexService
         try
         {
             _logger.LogInformation("🔄 Starting collection index rebuild...");
+            _logger.LogInformation("📊 Redis connection status: IsConnected={IsConnected}", _redis.IsConnected);
             
             // CRITICAL: Wait for Redis to be ready before attempting rebuild
             if (!_redis.IsConnected)
             {
-                _logger.LogWarning("⚠️ Redis not connected, waiting up to 10s...");
+                _logger.LogWarning("⚠️ Redis not connected yet, waiting up to 10s...");
                 var waited = 0;
                 while (!_redis.IsConnected && waited < 10000)
                 {
+                    _logger.LogDebug("⏳ Still waiting for Redis... ({Waited}ms)", waited);
                     await Task.Delay(500, cancellationToken);
                     waited += 500;
                 }
@@ -56,10 +58,15 @@ public class RedisCollectionIndexService : ICollectionIndexService
                 if (!_redis.IsConnected)
                 {
                     _logger.LogError("❌ Redis connection timeout after {Waited}ms, skipping index rebuild", waited);
+                    _logger.LogError("📊 Final connection status: {Status}", _redis.GetStatus());
                     return; // Skip rebuild, will retry on next startup
                 }
                 
-                _logger.LogInformation("✅ Redis connected after {Waited}ms", waited);
+                _logger.LogInformation("✅ Redis connected after waiting {Waited}ms", waited);
+            }
+            else
+            {
+                _logger.LogInformation("✅ Redis already connected, proceeding with rebuild");
             }
             
             var startTime = DateTime.UtcNow;
@@ -73,37 +80,47 @@ public class RedisCollectionIndexService : ICollectionIndexService
             );
 
             var collectionList = collections.ToList();
-            _logger.LogInformation("📊 Found {Count} collections to index", collectionList.Count);
+            _logger.LogInformation("📊 Found {Count} collections to index from MongoDB", collectionList.Count);
 
             // Smart detection: If MongoDB has few collections but Redis has many keys, do a fast FLUSHDB
             // Only if Redis connection is ready (avoid timeout if connection still establishing)
+            _logger.LogInformation("🔍 Checking Redis connection before clearing old data...");
             if (_redis.IsConnected)
             {
+                _logger.LogInformation("✅ Redis connected, checking for stale data...");
                 var redisKeyCount = await GetRedisKeyCountAsync();
                 var mongoCollectionCount = collectionList.Count;
+                _logger.LogInformation("📊 Redis keys: {RedisKeys}, MongoDB collections: {MongoCollections}", 
+                    redisKeyCount, mongoCollectionCount);
                 
                 if (mongoCollectionCount < 100 && redisKeyCount > mongoCollectionCount * 10)
                 {
                     _logger.LogWarning("⚠️ Detected stale Redis data: {RedisKeys} keys but only {MongoCollections} collections. Using FLUSHDB for fast cleanup.", 
                         redisKeyCount, mongoCollectionCount);
                     await FlushRedisAsync();
+                    _logger.LogInformation("✅ Redis flushed successfully");
                 }
                 else
                 {
                     // Normal clear: scan and delete specific keys
+                    _logger.LogInformation("🧹 Clearing old Redis index data...");
                     await ClearIndexAsync();
+                    _logger.LogInformation("✅ Old Redis index cleared");
                 }
             }
             else
             {
                 _logger.LogWarning("⚠️ Redis connection not ready yet, using FLUSHDB as safe fallback");
                 await FlushRedisAsync();
+                _logger.LogInformation("✅ Redis flushed successfully");
             }
 
             // Build sorted sets and hash entries
+            _logger.LogInformation("🔨 Building Redis index for {Count} collections...", collectionList.Count);
             var batch = _db.CreateBatch();
             var tasks = new List<Task>();
 
+            var processedCount = 0;
             foreach (var collection in collectionList)
             {
                 if (cancellationToken.IsCancellationRequested)
@@ -117,15 +134,25 @@ public class RedisCollectionIndexService : ICollectionIndexService
 
                 // Add summary to hash
                 tasks.Add(AddToHashAsync(batch, collection));
+                
+                processedCount++;
+                if (processedCount % 1000 == 0)
+                {
+                    _logger.LogInformation("📊 Processed {Count}/{Total} collections...", processedCount, collectionList.Count);
+                }
             }
 
             // Execute batch
+            _logger.LogInformation("💾 Executing Redis batch write for {Count} collections...", collectionList.Count);
             batch.Execute();
             await Task.WhenAll(tasks);
+            _logger.LogInformation("✅ Batch write completed successfully");
 
             // Update statistics
+            _logger.LogInformation("📊 Updating index statistics...");
             await _db.StringSetAsync(LAST_REBUILD_KEY, DateTimeOffset.UtcNow.ToUnixTimeSeconds());
             await _db.StringSetAsync(STATS_KEY + ":total", collectionList.Count);
+            _logger.LogInformation("✅ Index statistics updated");
 
             var duration = DateTime.UtcNow - startTime;
             _logger.LogInformation("✅ Collection index rebuilt successfully. {Count} collections indexed in {Duration}ms", 
@@ -386,19 +413,38 @@ public class RedisCollectionIndexService : ICollectionIndexService
     {
         try
         {
+            _logger.LogDebug("🔍 Checking if Redis index is valid...");
+            _logger.LogDebug("📊 Redis connection status: IsConnected={IsConnected}", _redis.IsConnected);
+            
             // Check if at least one sorted set exists and has entries
             var key = GetSortedSetKey("updatedAt", "desc");
+            _logger.LogDebug("🔍 Checking sorted set key: {Key}", key);
             var count = await _db.SortedSetLengthAsync(key);
+            _logger.LogDebug("📊 Sorted set count: {Count}", count);
             
             if (count == 0)
+            {
+                _logger.LogInformation("⚠️ Index invalid: Sorted set is empty");
                 return false;
+            }
 
             // Check if last rebuild time exists
+            _logger.LogDebug("🔍 Checking last rebuild key: {Key}", LAST_REBUILD_KEY);
             var lastRebuildExists = await _db.KeyExistsAsync(LAST_REBUILD_KEY);
-            return lastRebuildExists;
+            _logger.LogDebug("📊 Last rebuild key exists: {Exists}", lastRebuildExists);
+            
+            if (!lastRebuildExists)
+            {
+                _logger.LogInformation("⚠️ Index invalid: Last rebuild key missing");
+                return false;
+            }
+            
+            _logger.LogInformation("✅ Index is valid: {Count} entries found", count);
+            return true;
         }
-        catch
+        catch (Exception ex)
         {
+            _logger.LogError(ex, "❌ Error checking index validity");
             return false;
         }
     }
