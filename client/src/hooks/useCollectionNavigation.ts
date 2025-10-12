@@ -68,7 +68,8 @@ export const useCollectionSiblings = (
       return response.data;
     },
     enabled: !!collectionId,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 30 * 1000, // 30 seconds (shorter for sidebar - needs to be fresh)
+    refetchOnMount: false, // Don't refetch on mount if data is fresh
   });
 };
 

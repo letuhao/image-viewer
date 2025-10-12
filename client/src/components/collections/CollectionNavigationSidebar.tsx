@@ -27,19 +27,38 @@ const CollectionNavigationSidebar: React.FC<CollectionNavigationSidebarProps> = 
   // Use same pageSize as collection list (from localStorage)
   const pageSize = parseInt(localStorage.getItem('collectionsPageSize') || '20');
 
+  // Reset page to 1 when collection changes
+  React.useEffect(() => {
+    console.log(`[Sidebar] Collection changed to ${collectionId}, resetting to page 1`);
+    setPage(1);
+  }, [collectionId]);
+
   const { data: navigationData, isLoading: navLoading } = useCollectionNavigation(
     collectionId,
     sortBy,
     sortDirection
   );
 
-  const { data: siblingsData, isLoading: siblingsLoading } = useCollectionSiblings(
+  const { data: siblingsData, isLoading: siblingsLoading, isFetching, refetch } = useCollectionSiblings(
     collectionId,
     page,
     pageSize,
     sortBy,
     sortDirection
   );
+
+  // Log when siblings data changes
+  React.useEffect(() => {
+    if (siblingsData) {
+      console.log(`[Sidebar] Siblings data loaded for page ${page}:`, {
+        page,
+        pageSize,
+        totalCount: siblingsData.totalCount,
+        itemsCount: siblingsData.siblings.length,
+        currentPosition: siblingsData.currentPosition,
+      });
+    }
+  }, [siblingsData, page, pageSize]);
 
   const handleCollectionClick = (id: string, firstImageId?: string) => {
     if (onNavigate) {
@@ -107,7 +126,14 @@ const CollectionNavigationSidebar: React.FC<CollectionNavigationSidebarProps> = 
       </div>
 
       {/* Siblings List - Card View with Thumbnails */}
-      <div className="flex-1 overflow-y-auto p-3 space-y-3">
+      <div className="flex-1 overflow-y-auto p-3 space-y-3 relative">
+        {/* Loading overlay when fetching new page */}
+        {isFetching && (
+          <div className="absolute inset-0 bg-slate-900/70 backdrop-blur-sm flex items-center justify-center z-10">
+            <LoadingSpinner text={`Loading page ${page}...`} />
+          </div>
+        )}
+        
         {siblingsData?.siblings.map((collection: any) => {
           const isActive = collection.id === collectionId;
           return (
@@ -178,21 +204,36 @@ const CollectionNavigationSidebar: React.FC<CollectionNavigationSidebarProps> = 
 
       {/* Pagination */}
       {siblingsData && siblingsData.totalCount > pageSize && (
-        <div className="flex-shrink-0 border-t border-slate-800 p-2 flex items-center justify-between">
+        <div className="flex-shrink-0 border-t border-slate-800 p-3 flex items-center justify-between bg-slate-900/30">
           <button
-            onClick={() => setPage(p => Math.max(1, p - 1))}
-            disabled={page === 1}
-            className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed text-xs"
+            onClick={() => {
+              const newPage = Math.max(1, page - 1);
+              console.log(`[Sidebar] Previous: ${page} -> ${newPage}`);
+              setPage(newPage);
+            }}
+            disabled={page === 1 || siblingsLoading}
+            className="px-2 py-1 rounded text-slate-400 hover:text-white hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed text-xs font-medium transition-colors"
+            title="Previous page"
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
-          <span className="text-xs text-slate-400">
-            {page} / {Math.ceil(siblingsData.totalCount / pageSize)}
-          </span>
+          <div className="flex flex-col items-center">
+            <span className="text-xs text-slate-300 font-medium">
+              Page {page} / {Math.ceil(siblingsData.totalCount / pageSize)}
+            </span>
+            <span className="text-xs text-slate-500">
+              {siblingsData.siblings.length} items
+            </span>
+          </div>
           <button
-            onClick={() => setPage(p => p + 1)}
-            disabled={page >= Math.ceil(siblingsData.totalCount / pageSize)}
-            className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed text-xs"
+            onClick={() => {
+              const newPage = page + 1;
+              console.log(`[Sidebar] Next: ${page} -> ${newPage}`);
+              setPage(newPage);
+            }}
+            disabled={page >= Math.ceil(siblingsData.totalCount / pageSize) || siblingsLoading}
+            className="px-2 py-1 rounded text-slate-400 hover:text-white hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed text-xs font-medium transition-colors"
+            title="Next page"
           >
             <ChevronRight className="h-4 w-4" />
           </button>
