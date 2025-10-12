@@ -139,26 +139,24 @@ const ImageViewer: React.FC = () => {
     crossCollectionNav ? collectionId : undefined
   );
 
-  // Track if component is mounting (to prevent reset after data loads)
-  const isMountingRef = useRef(true);
-  
-  // Reset on mount BEFORE any data loads
+  // Reset state when collectionId changes (MUST run before data loads)
   useEffect(() => {
-    console.log(`[ImageViewer] Component mounting, resetting state`);
+    console.log(`[ImageViewer] Collection or image changed - collectionId: ${collectionId}, initialImageId: ${initialImageId}`);
+    console.log(`[ImageViewer] Resetting all state`);
+    
+    // Reset all state immediately
     setAllLoadedImages([]);
     setCurrentPage(1);
     setTotalImagesCount(0);
+    setCurrentImageId(initialImageId || '');
     
-    // Mark that initial mount is complete
-    const timer = setTimeout(() => {
-      isMountingRef.current = false;
-    }, 100);
-    
-    return () => {
-      clearTimeout(timer);
-      isMountingRef.current = true; // Reset for next mount
-    };
-  }, [collectionId, initialImageId]); // Reset when these change
+    // Also reset UI state
+    setZoom(1);
+    setRotation(0);
+    setPanPosition({ x: 0, y: 0 });
+    setImageLoading(true);
+    setImageError(false);
+  }, [collectionId, initialImageId]); // Fire whenever these change
   
   // Update loaded images when new page arrives
   useEffect(() => {
