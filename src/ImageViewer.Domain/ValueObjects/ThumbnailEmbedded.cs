@@ -56,6 +56,19 @@ public class ThumbnailEmbedded
     
     [BsonElement("updatedAt")]
     public DateTime UpdatedAt { get; private set; }
+    
+    // Error tracking fields
+    [BsonElement("isDummy")]
+    public bool IsDummy { get; private set; }
+    
+    [BsonElement("errorMessage")]
+    public string? ErrorMessage { get; private set; }
+    
+    [BsonElement("errorType")]
+    public string? ErrorType { get; private set; }
+    
+    [BsonElement("failedAt")]
+    public DateTime? FailedAt { get; private set; }
 
     // Private constructor for MongoDB
     private ThumbnailEmbedded() { }
@@ -111,6 +124,46 @@ public class ThumbnailEmbedded
     public void UpdateQuality(int quality)
     {
         Quality = quality;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    /// <summary>
+    /// Create a dummy thumbnail entry for failed processing
+    /// </summary>
+    public static ThumbnailEmbedded CreateDummy(string imageId, string errorMessage, string errorType)
+    {
+        var dummy = new ThumbnailEmbedded();
+        dummy.ImageId = imageId ?? throw new ArgumentNullException(nameof(imageId));
+        dummy.ThumbnailPath = ""; // Empty path for dummy
+        dummy.Width = 0;
+        dummy.Height = 0;
+        dummy.FileSize = 0;
+        dummy.Format = "unknown";
+        dummy.Quality = 0;
+        dummy.IsGenerated = false;
+        dummy.GeneratedAt = null;
+        dummy.AccessCount = 0;
+        dummy.IsValid = false;
+        dummy.IsDummy = true;
+        dummy.ErrorMessage = errorMessage;
+        dummy.ErrorType = errorType;
+        dummy.FailedAt = DateTime.UtcNow;
+        dummy.CreatedAt = DateTime.UtcNow;
+        dummy.UpdatedAt = DateTime.UtcNow;
+        return dummy;
+    }
+
+    /// <summary>
+    /// Mark thumbnail as failed with error details
+    /// </summary>
+    public void MarkAsFailed(string errorMessage, string errorType)
+    {
+        IsDummy = true;
+        IsValid = false;
+        IsGenerated = false;
+        ErrorMessage = errorMessage;
+        ErrorType = errorType;
+        FailedAt = DateTime.UtcNow;
         UpdatedAt = DateTime.UtcNow;
     }
 }

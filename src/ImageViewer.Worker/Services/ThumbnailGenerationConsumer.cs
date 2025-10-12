@@ -308,19 +308,36 @@ public class ThumbnailGenerationConsumer : BaseMessageConsumer
             {
                 _logger.LogWarning(ex, "⚠️ Skipping corrupted/unsupported image file. This message will NOT be retried.");
                 
-                // Track as failed for job completion
-                if (!string.IsNullOrEmpty(thumbnailMsg?.JobId))
+                // Create dummy thumbnail entry for failed processing
+                if (!string.IsNullOrEmpty(thumbnailMsg?.JobId) && !string.IsNullOrEmpty(thumbnailMsg?.ImageId))
                 {
                     try
                     {
                         using var scope = _serviceScopeFactory.CreateScope();
+                        var collectionRepository = scope.ServiceProvider.GetRequiredService<ICollectionRepository>();
                         var jobStateRepository = scope.ServiceProvider.GetRequiredService<IFileProcessingJobStateRepository>();
-                        await jobStateRepository.AtomicIncrementFailedAsync(thumbnailMsg.JobId, thumbnailMsg.ImageId);
+                        
+                        // Create dummy thumbnail entry
+                        var dummyThumbnail = ThumbnailEmbedded.CreateDummy(
+                            thumbnailMsg.ImageId,
+                            ex.Message,
+                            ex.GetType().Name
+                        );
+                        
+                        // Add dummy entry to collection
+                        var collectionId = ObjectId.Parse(thumbnailMsg.CollectionId);
+                        await collectionRepository.AtomicAddThumbnailAsync(collectionId, dummyThumbnail);
+                        
+                        // Track as completed (not failed) since we handled it
+                        await jobStateRepository.AtomicIncrementCompletedAsync(thumbnailMsg.JobId, thumbnailMsg.ImageId, 0);
                         await CheckAndMarkJobComplete(thumbnailMsg.JobId, jobStateRepository);
+                        
+                        _logger.LogInformation("✅ Created dummy thumbnail entry for failed image {ImageId}: {Error}", 
+                            thumbnailMsg.ImageId, ex.Message);
                     }
                     catch (Exception trackEx)
                     {
-                        _logger.LogWarning(trackEx, "Failed to track failed thumbnail for image {ImageId} in job {JobId}", 
+                        _logger.LogWarning(trackEx, "Failed to create dummy thumbnail for image {ImageId} in job {JobId}", 
                             thumbnailMsg?.ImageId, thumbnailMsg?.JobId);
                     }
                 }
@@ -599,10 +616,11 @@ public class ThumbnailGenerationConsumer : BaseMessageConsumer
 
             if (totalExpected > 0 && totalProcessed >= totalExpected)
             {
-                var status = jobState.FailedImages == 0 ? "Completed" : "CompletedWithErrors";
-                await jobStateRepository.UpdateStatusAsync(jobId, status);
-                _logger.LogInformation("✅ Job {JobId} marked as {Status} - {Completed}/{Expected} completed, {Failed} failed", 
-                    jobId, status, jobState.CompletedImages, totalExpected, jobState.FailedImages);
+                // Since we now create dummy entries for failed images, 
+                // all images are "completed" (either successful or dummy)
+                await jobStateRepository.UpdateStatusAsync(jobId, "Completed");
+                _logger.LogInformation("✅ Job {JobId} marked as Completed - {Completed}/{Expected} processed (including dummy entries for failed images)", 
+                    jobId, jobState.CompletedImages, totalExpected);
             }
         }
         catch (Exception ex)

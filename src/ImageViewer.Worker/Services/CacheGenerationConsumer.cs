@@ -329,19 +329,36 @@ public class CacheGenerationConsumer : BaseMessageConsumer
             {
                 _logger.LogWarning(ex, "⚠️ Skipping corrupted/unsupported image file: {ImagePath}. This message will NOT be retried.", cacheMsg?.ImagePath);
                 
-                // Track as failed for job completion
-                if (!string.IsNullOrEmpty(cacheMsg?.JobId))
+                // Create dummy cache entry for failed processing
+                if (!string.IsNullOrEmpty(cacheMsg?.JobId) && !string.IsNullOrEmpty(cacheMsg?.ImageId))
                 {
                     try
                     {
                         using var scope = _serviceScopeFactory.CreateScope();
+                        var collectionRepository = scope.ServiceProvider.GetRequiredService<ICollectionRepository>();
                         var jobStateRepository = scope.ServiceProvider.GetRequiredService<IFileProcessingJobStateRepository>();
-                        await jobStateRepository.AtomicIncrementFailedAsync(cacheMsg.JobId, cacheMsg.ImageId);
+                        
+                        // Create dummy cache entry
+                        var dummyCache = CacheImageEmbedded.CreateDummy(
+                            cacheMsg.ImageId,
+                            ex.Message,
+                            ex.GetType().Name
+                        );
+                        
+                        // Add dummy entry to collection
+                        var collectionId = ObjectId.Parse(cacheMsg.CollectionId);
+                        await collectionRepository.AtomicAddCacheImageAsync(collectionId, dummyCache);
+                        
+                        // Track as completed (not failed) since we handled it
+                        await jobStateRepository.AtomicIncrementCompletedAsync(cacheMsg.JobId, cacheMsg.ImageId, 0);
                         await CheckAndMarkJobComplete(cacheMsg.JobId, jobStateRepository);
+                        
+                        _logger.LogInformation("✅ Created dummy cache entry for failed image {ImageId}: {Error}", 
+                            cacheMsg.ImageId, ex.Message);
                     }
                     catch (Exception trackEx)
                     {
-                        _logger.LogWarning(trackEx, "Failed to track failed cache for image {ImageId} in job {JobId}", 
+                        _logger.LogWarning(trackEx, "Failed to create dummy cache for image {ImageId} in job {JobId}", 
                             cacheMsg?.ImageId, cacheMsg?.JobId);
                     }
                 }
@@ -695,10 +712,11 @@ public class CacheGenerationConsumer : BaseMessageConsumer
 
             if (totalExpected > 0 && totalProcessed >= totalExpected)
             {
-                var status = jobState.FailedImages == 0 ? "Completed" : "CompletedWithErrors";
-                await jobStateRepository.UpdateStatusAsync(jobId, status);
-                _logger.LogInformation("✅ Job {JobId} marked as {Status} - {Completed}/{Expected} completed, {Failed} failed", 
-                    jobId, status, jobState.CompletedImages, totalExpected, jobState.FailedImages);
+                // Since we now create dummy entries for failed images, 
+                // all images are "completed" (either successful or dummy)
+                await jobStateRepository.UpdateStatusAsync(jobId, "Completed");
+                _logger.LogInformation("✅ Job {JobId} marked as Completed - {Completed}/{Expected} processed (including dummy entries for failed images)", 
+                    jobId, jobState.CompletedImages, totalExpected);
             }
         }
         catch (Exception ex)
