@@ -28,11 +28,11 @@ builder.Services.AddMongoDb(builder.Configuration);
 // Configure RabbitMQ
 builder.Services.Configure<RabbitMQOptions>(builder.Configuration.GetSection("RabbitMQ"));
 
-// Register RabbitMQ connection
-builder.Services.AddSingleton<IConnection>(provider =>
+// Register RabbitMQ ConnectionFactory
+builder.Services.AddSingleton<IConnectionFactory>(provider =>
 {
     var options = provider.GetRequiredService<IOptions<RabbitMQOptions>>().Value;
-    var factory = new ConnectionFactory
+    return new ConnectionFactory
     {
         HostName = options.HostName,
         Port = options.Port,
@@ -42,6 +42,12 @@ builder.Services.AddSingleton<IConnection>(provider =>
         RequestedConnectionTimeout = options.ConnectionTimeout,
         RequestedHeartbeat = TimeSpan.FromSeconds(60)
     };
+});
+
+// Register RabbitMQ connection (for backward compatibility with existing consumers)
+builder.Services.AddSingleton<IConnection>(provider =>
+{
+    var factory = provider.GetRequiredService<IConnectionFactory>();
     return factory.CreateConnectionAsync().GetAwaiter().GetResult();
 });
 
