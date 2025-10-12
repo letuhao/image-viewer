@@ -4,6 +4,7 @@ using Xunit;
 using ImageViewer.Application.Services;
 using ImageViewer.Domain.Interfaces;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace ImageViewer.Test.Features.SystemManagement.Unit;
 
@@ -15,6 +16,7 @@ public class BulkServiceTests
     private readonly Mock<ICollectionService> _mockCollectionService;
     private readonly Mock<IMessageQueueService> _mockMessageQueueService;
     private readonly Mock<IBackgroundJobService> _mockBackgroundJobService;
+    private readonly Mock<IServiceProvider> _mockServiceProvider;
     private readonly Mock<ILogger<BulkService>> _mockLogger;
     private readonly BulkService _bulkService;
     private const string ValidTestPath = @"L:\EMedia\AI_Generated\AiASAG";
@@ -24,12 +26,18 @@ public class BulkServiceTests
         _mockCollectionService = new Mock<ICollectionService>();
         _mockMessageQueueService = new Mock<IMessageQueueService>();
         _mockBackgroundJobService = new Mock<IBackgroundJobService>();
+        _mockServiceProvider = new Mock<IServiceProvider>();
         _mockLogger = new Mock<ILogger<BulkService>>();
+
+        // Setup IServiceProvider to return the mock BackgroundJobService
+        _mockServiceProvider
+            .Setup(sp => sp.GetService(typeof(IBackgroundJobService)))
+            .Returns(_mockBackgroundJobService.Object);
 
         _bulkService = new BulkService(
             _mockCollectionService.Object,
             _mockMessageQueueService.Object,
-            _mockBackgroundJobService.Object,
+            _mockServiceProvider.Object,
             _mockLogger.Object);
     }
 

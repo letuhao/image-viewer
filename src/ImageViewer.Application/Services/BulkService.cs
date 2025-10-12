@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.DependencyInjection;
 using ImageViewer.Domain.Entities;
 using ImageViewer.Domain.Enums;
 using ImageViewer.Domain.Exceptions;
@@ -17,18 +18,18 @@ public class BulkService : IBulkService
 {
     private readonly ICollectionService _collectionService;
     private readonly IMessageQueueService _messageQueueService;
-    private readonly IBackgroundJobService _backgroundJobService;
+    private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<BulkService> _logger;
 
     public BulkService(
         ICollectionService collectionService,
         IMessageQueueService messageQueueService,
-        IBackgroundJobService backgroundJobService,
+        IServiceProvider serviceProvider,
         ILogger<BulkService> logger)
     {
         _collectionService = collectionService;
         _messageQueueService = messageQueueService;
-        _backgroundJobService = backgroundJobService;
+        _serviceProvider = serviceProvider;
         _logger = logger;
     }
 
@@ -546,8 +547,9 @@ public class BulkService : IBulkService
             _logger.LogInformation("Collection {Name}: {ThumbnailCount} images need thumbnails, {CacheCount} images need cache", 
                 collection.Name, imagesNeedingThumbnails.Count, imagesNeedingCache.Count);
             
-            // Create a background job for tracking
-            var resumeJob = await _backgroundJobService.CreateJobAsync(new CreateBackgroundJobDto
+            // Create a background job for tracking (use IServiceProvider to avoid circular dependency)
+            var backgroundJobService = _serviceProvider.GetRequiredService<IBackgroundJobService>();
+            var resumeJob = await backgroundJobService.CreateJobAsync(new CreateBackgroundJobDto
             {
                 Type = "resume-collection",
                 Description = $"Resume thumbnail/cache generation for {collection.Name}"
