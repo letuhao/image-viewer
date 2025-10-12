@@ -112,6 +112,7 @@ public class DlqRecoveryService : IHostedService
                 // Extract MessageType from headers
                 string? messageType = null;
                 string? originalRoutingKey = null;
+                string? xDeathRoutingKey = null; // Track x-death routing key for comparison
 
                 if (ea.BasicProperties.Headers != null)
                 {
@@ -130,17 +131,25 @@ public class DlqRecoveryService : IHostedService
                                 xDeath.TryGetValue("routing-keys", out var routingKeysObj) &&
                                 routingKeysObj is List<object> routingKeys && routingKeys.Count > 0)
                             {
-                                originalRoutingKey = routingKeys[0]?.ToString();
+                                xDeathRoutingKey = routingKeys[0]?.ToString();
+                                originalRoutingKey = xDeathRoutingKey;
                             }
                         }
                     }
                 }
 
-                // Map MessageType to routing key
+                // Map MessageType to routing key (preferred over x-death)
                 if (!string.IsNullOrEmpty(messageType) &&
                     MessageTypeToRoutingKey.TryGetValue(messageType, out var mappedRoutingKey))
                 {
                     originalRoutingKey = mappedRoutingKey;
+                    
+                    // FIX 3: Log if x-death had different routing key (diagnostic)
+                    if (!string.IsNullOrEmpty(xDeathRoutingKey) && xDeathRoutingKey != mappedRoutingKey)
+                    {
+                        _logger.LogWarning("⚠️  Routing key mismatch detected: MessageType={MessageType} maps to {MappedKey}, but x-death shows {XDeathKey}. Using MessageType mapping.", 
+                            messageType, mappedRoutingKey, xDeathRoutingKey);
+                    }
                 }
 
                 if (string.IsNullOrEmpty(originalRoutingKey))
@@ -164,7 +173,7 @@ public class DlqRecoveryService : IHostedService
                     Priority = ea.BasicProperties.Priority,
                     CorrelationId = ea.BasicProperties.CorrelationId,
                     ReplyTo = ea.BasicProperties.ReplyTo,
-                    Expiration = ea.BasicProperties.Expiration,
+                    Expiration = null, // FIX 1: Clear expiration to use new 24-hour TTL from queue settings (prevent immediate re-expiry)
                     MessageId = ea.BasicProperties.MessageId,
                     Timestamp = ea.BasicProperties.Timestamp,
                     Type = ea.BasicProperties.Type,
@@ -289,13 +298,25 @@ public class DlqRecoveryService : IHostedService
                 var currentQueueInfo = await channel.QueueDeclarePassiveAsync(dlqName, cancellationToken);
                 if (currentQueueInfo.MessageCount == 0)
                 {
-                    _logger.LogInformation("DLQ is empty, waiting 5 seconds to confirm...");
+                    _logger.LogInformation("DLQ appears empty, waiting for any in-flight messages to complete...");
+                    
+                    // FIX 2: Acquire lock to ensure no message is currently being processed
+                    // This prevents premature exit while a message is between fetch and ACK/NACK
+                    await processingLock.WaitAsync(cancellationToken);
+                    processingLock.Release();
+                    
+                    _logger.LogInformation("In-flight messages completed, waiting 5 seconds to confirm DLQ is empty...");
                     await Task.Delay(5000, cancellationToken);
 
                     var confirmQueueInfo = await channel.QueueDeclarePassiveAsync(dlqName, cancellationToken);
                     if (confirmQueueInfo.MessageCount == 0)
                     {
+                        _logger.LogInformation("✅ Confirmed: DLQ is empty. Recovery complete.");
                         break; // Recovery complete
+                    }
+                    else
+                    {
+                        _logger.LogInformation("⚠️  New messages appeared in DLQ ({Count}). Continuing recovery...", confirmQueueInfo.MessageCount);
                     }
                 }
                 else
@@ -303,7 +324,7 @@ public class DlqRecoveryService : IHostedService
                     // Messages still in DLQ but not being processed - might be failures
                     if ((DateTime.UtcNow - lastProcessedTime) > TimeSpan.FromSeconds(30))
                     {
-                        _logger.LogWarning("⚠️  No messages processed for 30 seconds but {Count} messages remain in DLQ. Stopping recovery.", currentQueueInfo.MessageCount);
+                        _logger.LogWarning("⚠️  No messages processed for 30 seconds but {Count} messages remain in DLQ. Stopping recovery (will retry on next startup).", currentQueueInfo.MessageCount);
                         break;
                     }
                 }
