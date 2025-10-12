@@ -856,10 +856,12 @@ public class CollectionService : ICollectionService
                 : BuildDescendingSortDefinition(sortBy);
 
             // Get collections with sorting
+            // Note: For navigation/siblings, we need ALL collections, not just first 1000
+            // Using int.MaxValue to get all (MongoDB driver handles this efficiently with cursor)
             return await _collectionRepository.FindAsync(
                 Builders<Collection>.Filter.Eq(c => c.IsDeleted, false),
                 sortDefinition,
-                limit ?? 1000,
+                limit ?? int.MaxValue,
                 0
             );
         }
