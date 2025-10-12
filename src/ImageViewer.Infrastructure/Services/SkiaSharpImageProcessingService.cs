@@ -153,6 +153,12 @@ public class SkiaSharpImageProcessingService : IImageProcessingService
             using var data = SKData.CreateCopy(imageData);
             using var originalImage = SKImage.FromEncodedData(data);
             
+            if (originalImage == null)
+            {
+                _logger.LogError("Failed to decode image from byte array. Data may be corrupted or unsupported format. Size: {Size} bytes", imageData.Length);
+                throw new InvalidOperationException($"Failed to decode image from byte array (size: {imageData.Length} bytes)");
+            }
+            
             var originalInfo = originalImage.Info;
             var scaleX = (float)width / originalInfo.Width;
             var scaleY = (float)height / originalInfo.Height;

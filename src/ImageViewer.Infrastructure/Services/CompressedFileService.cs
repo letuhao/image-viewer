@@ -179,6 +179,15 @@ public class CompressedFileService : ICompressedFileService
             
             foreach (var entry in archive.Entries)
             {
+                // Skip macOS metadata files and hidden system files
+                if (entry.FullName.Contains("__MACOSX/") || 
+                    entry.FullName.StartsWith("._") ||
+                    entry.Name.StartsWith("._"))
+                {
+                    _logger.LogDebug("Skipping macOS metadata file: {EntryName}", entry.FullName);
+                    continue;
+                }
+                
                 if (IsImageFile(entry.Name))
                 {
                     var image = await ExtractImageFromZipEntryAsync(entry, cancellationToken);
@@ -267,9 +276,16 @@ public class CompressedFileService : ICompressedFileService
         {
             using var archive = ZipFile.OpenRead(filePath);
             
-            info.TotalFiles = archive.Entries.Count;
-            info.ImageFiles = archive.Entries.Count(entry => IsImageFile(entry.Name));
-            info.TotalImageSize = archive.Entries
+            // Filter out __MACOSX and ._ metadata files
+            var validEntries = archive.Entries
+                .Where(entry => !entry.FullName.Contains("__MACOSX/") && 
+                               !entry.FullName.StartsWith("._") && 
+                               !entry.Name.StartsWith("._"))
+                .ToList();
+            
+            info.TotalFiles = validEntries.Count;
+            info.ImageFiles = validEntries.Count(entry => IsImageFile(entry.Name));
+            info.TotalImageSize = validEntries
                 .Where(entry => IsImageFile(entry.Name))
                 .Sum(entry => entry.Length);
         }
