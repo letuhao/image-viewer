@@ -1,0 +1,28 @@
+feat: Add 4 pageSize settings to frontend Settings screen
+
+PHASE 2 COMPLETE: Frontend Settings UI
+
+CHANGES:
+
+1. client/src/services/settingsApi.ts
+   - Added 4 new fields to UserSettings interface
+   - Added 4 new fields to UpdateUserSettingsRequest
+   - Kept itemsPerPage for backward compatibility
+
+2. client/src/pages/Settings.tsx
+   - Updated state to include 4 new pageSize fields
+   - Read from backend API (collectionsPageSize, collectionDetailPageSize, etc)
+   - Added new Page Sizes section with 4 separate inputs
+   - Removed duplicate Default Page Size from Collection Detail section
+   - Updated save handler to send all 4 fields to backend
+
+UI CHANGES:
+- New Page Sizes section (clear organization)
+- 4 separate labeled inputs with descriptions
+- Appropriate min/max validation for each
+- Save button sends all 4 to backend
+
+NEXT PHASE: Apply to individual screens
+
+STATUS: Settings UI ready!
+

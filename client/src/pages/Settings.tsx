@@ -28,7 +28,12 @@ const Settings: React.FC = () => {
   const [userSettings, setUserSettings] = useState({
     theme: 'dark',
     viewMode: 'grid',
-    itemsPerPage: 20,
+    itemsPerPage: 20, // Keep for backward compatibility
+    // 4 PageSize settings
+    collectionsPageSize: 100,
+    collectionDetailPageSize: 20,
+    sidebarPageSize: 20,
+    imageViewerPageSize: 200,
     cardSize: 'medium',
     compactMode: false,
     language: 'en',
@@ -37,10 +42,9 @@ const Settings: React.FC = () => {
     pushNotifications: true,
     profilePublic: false,
     analytics: true,
-    // Collection Detail settings
+    // Collection Detail settings (view mode, card size)
     collectionDetailViewMode: 'grid',
     collectionDetailCardSize: 'medium',
-    collectionDetailPageSize: 20,
     // Image Viewer settings
     maxPreloadImages: 20,
     // Pagination settings
@@ -64,7 +68,12 @@ const Settings: React.FC = () => {
       setUserSettings({
         theme: apiSettings.theme,
         viewMode: apiSettings.displayMode,
-        itemsPerPage: apiSettings.itemsPerPage,
+        itemsPerPage: apiSettings.itemsPerPage, // Keep for backward compatibility
+        // 4 PageSize settings from backend
+        collectionsPageSize: apiSettings.collectionsPageSize,
+        collectionDetailPageSize: apiSettings.collectionDetailPageSize,
+        sidebarPageSize: apiSettings.sidebarPageSize,
+        imageViewerPageSize: apiSettings.imageViewerPageSize,
         cardSize: 'medium', // Not in backend, use default
         compactMode: false, // Not in backend, use default
         language: apiSettings.language,
@@ -73,10 +82,9 @@ const Settings: React.FC = () => {
         pushNotifications: apiSettings.notifications.push,
         profilePublic: apiSettings.privacy.profileVisibility === 'public',
         analytics: apiSettings.privacy.analytics,
-        // Collection Detail settings - sync with backend itemsPerPage
+        // Collection Detail settings (view mode, card size from localStorage)
         collectionDetailViewMode: localStorage.getItem('collectionDetailViewMode') || 'grid',
         collectionDetailCardSize: localStorage.getItem('collectionDetailCardSize') || 'medium',
-        collectionDetailPageSize: apiSettings.itemsPerPage, // Use backend setting!
         // Image Viewer settings
         maxPreloadImages: parseInt(localStorage.getItem('maxPreloadImages') || '20'),
         // Pagination settings
@@ -114,7 +122,11 @@ const Settings: React.FC = () => {
     updateSettingsMutation.mutate({
       theme: userSettings.theme,
       displayMode: userSettings.viewMode,
-      itemsPerPage: userSettings.itemsPerPage,
+      itemsPerPage: userSettings.itemsPerPage, // Keep for backward compatibility
+      collectionsPageSize: userSettings.collectionsPageSize,
+      collectionDetailPageSize: userSettings.collectionDetailPageSize,
+      sidebarPageSize: userSettings.sidebarPageSize,
+      imageViewerPageSize: userSettings.imageViewerPageSize,
       language: userSettings.language,
       notifications: {
         email: userSettings.emailNotifications,
@@ -253,27 +265,78 @@ const Settings: React.FC = () => {
                   </SettingItem>
 
                   <SettingItem
-                    label="Items Per Page"
-                    description="Number of items to show per page (1-1000)"
-                    vertical
-                  >
-                    <input
-                      type="number"
-                      min="1"
-                      max="1000"
-                      value={userSettings.itemsPerPage}
-                      onChange={(e) => setUserSettings({ ...userSettings, itemsPerPage: parseInt(e.target.value) || 20 })}
-                      className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    />
-                  </SettingItem>
-
-                  <SettingItem
                     label="Enable Animations"
                     description="Show smooth transitions and animations"
                   >
                     <Toggle
                       enabled={userSettings.enableAnimations}
                       onChange={(enabled) => setUserSettings({ ...userSettings, enableAnimations: enabled })}
+                    />
+                  </SettingItem>
+                </SettingsSection>
+
+                {/* Pagination Settings */}
+                <SettingsSection
+                  title="Page Sizes"
+                  description="Configure number of items per page for different screens"
+                >
+                  <SettingItem
+                    label="Collections List Page Size"
+                    description="Number of collections to show per page in collections list (1-1000)"
+                    vertical
+                  >
+                    <input
+                      type="number"
+                      min="1"
+                      max="1000"
+                      value={userSettings.collectionsPageSize}
+                      onChange={(e) => setUserSettings({ ...userSettings, collectionsPageSize: parseInt(e.target.value) || 100 })}
+                      className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </SettingItem>
+
+                  <SettingItem
+                    label="Collection Detail Page Size"
+                    description="Number of images to show per page in collection detail (1-1000)"
+                    vertical
+                  >
+                    <input
+                      type="number"
+                      min="1"
+                      max="1000"
+                      value={userSettings.collectionDetailPageSize}
+                      onChange={(e) => setUserSettings({ ...userSettings, collectionDetailPageSize: parseInt(e.target.value) || 20 })}
+                      className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </SettingItem>
+
+                  <SettingItem
+                    label="Sidebar Page Size"
+                    description="Number of collections to show in sidebar (1-100)"
+                    vertical
+                  >
+                    <input
+                      type="number"
+                      min="1"
+                      max="100"
+                      value={userSettings.sidebarPageSize}
+                      onChange={(e) => setUserSettings({ ...userSettings, sidebarPageSize: parseInt(e.target.value) || 20 })}
+                      className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </SettingItem>
+
+                  <SettingItem
+                    label="Image Viewer Page Size"
+                    description="Number of images to load initially in image viewer (50-1000)"
+                    vertical
+                  >
+                    <input
+                      type="number"
+                      min="50"
+                      max="1000"
+                      value={userSettings.imageViewerPageSize}
+                      onChange={(e) => setUserSettings({ ...userSettings, imageViewerPageSize: parseInt(e.target.value) || 200 })}
+                      className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
                   </SettingItem>
                 </SettingsSection>
@@ -378,27 +441,6 @@ const Settings: React.FC = () => {
                     </select>
                   </SettingItem>
 
-                  <SettingItem
-                    label="Default Page Size"
-                    description="Default number of items per page in collection detail pages (1-1000)"
-                    vertical
-                  >
-                    <input
-                      type="number"
-                      min="1"
-                      max="1000"
-                      value={userSettings.collectionDetailPageSize}
-                      onChange={(e) => {
-                        const newValue = parseInt(e.target.value) || 20;
-                        if (newValue >= 1 && newValue <= 1000) {
-                          setUserSettings({ ...userSettings, collectionDetailPageSize: newValue });
-                          localStorage.setItem('collectionDetailPageSize', newValue.toString());
-                        }
-                      }}
-                      className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="20"
-                    />
-                  </SettingItem>
                 </SettingsSection>
 
                 {/* Image Viewer Settings */}

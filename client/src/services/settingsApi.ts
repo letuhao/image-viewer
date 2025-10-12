@@ -6,7 +6,11 @@ import api from './api';
 
 export interface UserSettings {
   displayMode: string;
-  itemsPerPage: number;
+  itemsPerPage: number; // Keep for backward compatibility
+  collectionsPageSize: number;
+  collectionDetailPageSize: number;
+  sidebarPageSize: number;
+  imageViewerPageSize: number;
   theme: string;
   language: string;
   timezone: string;
@@ -57,7 +61,11 @@ export interface SystemSetting {
 
 export interface UpdateUserSettingsRequest {
   displayMode?: string;
-  itemsPerPage?: number;
+  itemsPerPage?: number; // Keep for backward compatibility
+  collectionsPageSize?: number;
+  collectionDetailPageSize?: number;
+  sidebarPageSize?: number;
+  imageViewerPageSize?: number;
   theme?: string;
   language?: string;
   timezone?: string;
