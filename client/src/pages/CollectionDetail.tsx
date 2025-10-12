@@ -62,6 +62,9 @@ const CollectionDetail: React.FC = () => {
     pageNumbersToShow: userSettingsData?.pagination?.pageNumbersToShow ?? 5,
   };
   
+  // Preserve previous totalPages to prevent layout shift during loading
+  const [previousTotalPages, setPreviousTotalPages] = useState(1);
+  
   const { data: collection, isLoading } = useCollection(id!);
   const { data: imagesData, isLoading: imagesLoading } = useImages({
     collectionId: id!,
@@ -115,6 +118,13 @@ const CollectionDetail: React.FC = () => {
   }
 
   const images = imagesData?.data || [];
+  // Update previousTotalPages when data arrives
+  useEffect(() => {
+    if (imagesData?.totalPages) {
+      setPreviousTotalPages(imagesData.totalPages);
+    }
+  }, [imagesData?.totalPages]);
+  
   const pagination = imagesData ? {
     totalPages: imagesData.totalPages,
     hasPrevious: imagesData.hasPreviousPage,
@@ -263,10 +273,10 @@ const CollectionDetail: React.FC = () => {
                 <div className="flex items-center gap-2 bg-slate-800 rounded-lg px-2 py-1">
                     <Pagination
                       currentPage={page}
-                      totalPages={pagination?.totalPages || 1}
+                      totalPages={pagination?.totalPages || previousTotalPages}
                       onPageChange={setPage}
-                      hasPrevious={pagination?.hasPrevious}
-                      hasNext={pagination?.hasNext}
+                      hasPrevious={pagination?.hasPrevious ?? (page > 1)}
+                      hasNext={pagination?.hasNext ?? (page < previousTotalPages)}
                       settings={paginationSettings}
                       compact={true}
                     />

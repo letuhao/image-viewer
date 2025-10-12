@@ -76,6 +76,14 @@ const Collections: React.FC = () => {
   };
 
   const { data, isLoading, refetch} = useCollections({ page, limit });
+  
+  // Preserve previous totalPages to prevent layout shift during loading
+  const [previousTotalPages, setPreviousTotalPages] = useState(1);
+  useEffect(() => {
+    if (data?.totalPages) {
+      setPreviousTotalPages(data.totalPages);
+    }
+  }, [data?.totalPages]);
 
   // Save current page to sessionStorage whenever it changes
   useEffect(() => {
@@ -236,10 +244,10 @@ const Collections: React.FC = () => {
               <div className="flex items-center gap-2 bg-slate-800 rounded-lg px-2 py-1">
                   <Pagination
                     currentPage={page}
-                    totalPages={data?.totalPages || 1}
+                    totalPages={data?.totalPages || previousTotalPages}
                     onPageChange={setPage}
-                    hasPrevious={data?.hasPrevious}
-                    hasNext={data?.hasNext}
+                    hasPrevious={data?.hasPrevious ?? (page > 1)}
+                    hasNext={data?.hasNext ?? (page < previousTotalPages)}
                     settings={paginationSettings}
                     compact={true}
                   />
