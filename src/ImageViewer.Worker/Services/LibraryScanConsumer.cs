@@ -138,7 +138,8 @@ public class LibraryScanConsumer : BaseMessageConsumer
                     IncludeSubfolders = scanMessage.IncludeSubfolders,
                     CollectionPrefix = null, // No prefix filtering for library scans
                     AutoAdd = false, // We don't auto-add, we control creation
-                    OverwriteExisting = false, // Don't overwrite existing collections
+                    OverwriteExisting = scanMessage.OverwriteExisting, // Pass from message
+                    ResumeIncomplete = scanMessage.ResumeIncomplete, // Pass from message
                     AutoScan = library.Settings?.AutoScan ?? false,
                     EnableCache = library.Settings?.CacheSettings?.Enabled ?? true,
                     ThumbnailWidth = library.Settings?.ThumbnailSettings?.Width,

@@ -25,6 +25,12 @@ export default function Libraries() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showScanModal, setShowScanModal] = useState(false);
+  const [scanLibraryId, setScanLibraryId] = useState<string | null>(null);
+  const [scanOptions, setScanOptions] = useState({
+    resumeIncomplete: false,
+    overwriteExisting: false
+  });
   const [selectedLibrary, setSelectedLibrary] = useState<Library | null>(null);
   const [showSchedulerDetails, setShowSchedulerDetails] = useState<Record<string, boolean>>({});
   const [editingCron, setEditingCron] = useState<Record<string, boolean>>({});
@@ -103,16 +109,34 @@ export default function Libraries() {
 
   // Trigger manual scan
   const triggerScanMutation = useMutation({
-    mutationFn: libraryApi.triggerScan,
+    mutationFn: ({ libraryId, options }: { libraryId: string; options?: { resumeIncomplete?: boolean; overwriteExisting?: boolean } }) => 
+      libraryApi.triggerScan(libraryId, options),
     onSuccess: (data) => {
       toast.success(`Scan triggered for ${data.libraryName}`);
       queryClient.invalidateQueries({ queryKey: ['libraries'] });
       queryClient.invalidateQueries({ queryKey: ['scheduledJobs'] });
+      setShowScanModal(false);
+      setScanLibraryId(null);
+      setScanOptions({ resumeIncomplete: false, overwriteExisting: false });
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.message || 'Failed to trigger scan');
     },
   });
+  
+  // Handler to open scan modal
+  const handleOpenScanModal = (libraryId: string) => {
+    setScanLibraryId(libraryId);
+    setScanOptions({ resumeIncomplete: false, overwriteExisting: false });
+    setShowScanModal(true);
+  };
+  
+  // Handler to confirm scan
+  const handleConfirmScan = () => {
+    if (scanLibraryId) {
+      triggerScanMutation.mutate({ libraryId: scanLibraryId, options: scanOptions });
+    }
+  };
 
   // Delete orphaned job
   const deleteOrphanedJobMutation = useMutation({
@@ -423,7 +447,7 @@ export default function Libraries() {
                           {/* Actions */}
                           <div className="flex items-center gap-2">
                             <button
-                              onClick={() => triggerScanMutation.mutate(library.id)}
+                              onClick={() => handleOpenScanModal(library.id)}
                               disabled={triggerScanMutation.isPending}
                               className="p-2 text-primary-400 hover:bg-primary-500/10 rounded transition-colors disabled:opacity-50"
                               title="Scan now"
@@ -749,7 +773,7 @@ export default function Libraries() {
                                   </p>
                                   <div className="mt-2">
                                     <button
-                                      onClick={() => triggerScanMutation.mutate(library.id)}
+                                      onClick={() => handleOpenScanModal(library.id)}
                                       disabled={triggerScanMutation.isPending}
                                       className="text-xs px-3 py-1.5 bg-yellow-500/20 text-yellow-300 hover:bg-yellow-500/30 rounded transition-colors"
                                     >
@@ -942,6 +966,106 @@ export default function Libraries() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Scan Library Modal */}
+      {showScanModal && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-lg shadow-2xl max-w-md w-full">
+            {/* Modal Header */}
+            <div className="flex justify-between items-center p-6 border-b border-slate-800">
+              <h2 className="text-2xl font-bold text-white">Trigger Library Scan</h2>
+              <button
+                onClick={() => setShowScanModal(false)}
+                className="text-slate-400 hover:text-white transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 space-y-4">
+              <p className="text-slate-300 text-sm">
+                Choose scan options for this library. Configure how existing collections are handled.
+              </p>
+
+              {/* Resume Incomplete Checkbox */}
+              <div className="flex items-start gap-3 p-4 bg-primary-500/10 border border-primary-500/30 rounded-lg">
+                <input
+                  type="checkbox"
+                  id="resumeIncomplete"
+                  checked={scanOptions.resumeIncomplete}
+                  onChange={(e) => setScanOptions({ ...scanOptions, resumeIncomplete: e.target.checked })}
+                  className="mt-1 w-4 h-4 rounded border-slate-600 text-primary-500 focus:ring-primary-500 focus:ring-offset-slate-900"
+                />
+                <div className="flex-1">
+                  <label htmlFor="resumeIncomplete" className="text-sm font-medium text-white cursor-pointer">
+                    Resume Incomplete Collections (Recommended)
+                  </label>
+                  <p className="text-xs text-slate-400 mt-1">
+                    For collections at 99% complete, queue ONLY missing thumbnail/cache jobs. No re-scanning! Perfect for resuming interrupted processing.
+                  </p>
+                </div>
+              </div>
+
+              {/* Overwrite Existing Checkbox */}
+              <div className="flex items-start gap-3 p-4 bg-red-500/10 border border-red-500/30 rounded-lg">
+                <input
+                  type="checkbox"
+                  id="overwriteExisting"
+                  checked={scanOptions.overwriteExisting}
+                  onChange={(e) => setScanOptions({ ...scanOptions, overwriteExisting: e.target.checked })}
+                  className="mt-1 w-4 h-4 rounded border-slate-600 text-red-500 focus:ring-red-500 focus:ring-offset-slate-900"
+                />
+                <div className="flex-1">
+                  <label htmlFor="overwriteExisting" className="text-sm font-medium text-white cursor-pointer">
+                    Overwrite Existing (Destructive)
+                  </label>
+                  <p className="text-xs text-slate-400 mt-1">
+                    Clear all image arrays and rescan from scratch. Use only when you want a clean slate. ⚠️ Will regenerate ALL thumbnails and cache.
+                  </p>
+                </div>
+              </div>
+
+              {/* Info Message */}
+              <div className="p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+                <p className="text-xs text-blue-300">
+                  <strong>💡 Tip:</strong> {
+                    scanOptions.resumeIncomplete 
+                      ? "Resume mode will analyze each collection and queue only missing jobs. Perfect for continuing from 99% to 100%!"
+                      : scanOptions.overwriteExisting
+                      ? "Overwrite mode will clear everything and rebuild from scratch. This takes much longer!"
+                      : "Default mode will keep existing collections unchanged and scan only new ones."
+                  }
+                </p>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex gap-3 p-6 border-t border-slate-800">
+              <button
+                onClick={() => setShowScanModal(false)}
+                className="flex-1 px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-600 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmScan}
+                disabled={triggerScanMutation.isPending}
+                className="flex-1 px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {triggerScanMutation.isPending ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    Scanning...
+                  </span>
+                ) : (
+                  'Start Scan'
+                )}
+              </button>
+            </div>
           </div>
         </div>
       )}

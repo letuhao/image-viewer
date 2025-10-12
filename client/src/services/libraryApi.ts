@@ -120,8 +120,11 @@ export const libraryApi = {
   },
 
   // Trigger manual scan
-  triggerScan: async (id: string): Promise<{ message: string; libraryId: string; libraryName: string; libraryPath: string }> => {
-    const response = await api.post(`/libraries/${id}/scan`);
+  triggerScan: async (id: string, options?: { resumeIncomplete?: boolean; overwriteExisting?: boolean }): Promise<{ message: string; libraryId: string; libraryName: string; libraryPath: string }> => {
+    const response = await api.post(`/libraries/${id}/scan`, {
+      resumeIncomplete: options?.resumeIncomplete ?? false,
+      overwriteExisting: options?.overwriteExisting ?? false
+    });
     return response.data;
   },
 

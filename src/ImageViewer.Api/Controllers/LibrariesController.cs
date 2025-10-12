@@ -99,7 +99,7 @@ public class LibrariesController : ControllerBase
     /// Manually trigger library scan
     /// </summary>
     [HttpPost("{id}/scan")]
-    public async Task<IActionResult> TriggerLibraryScan(string id)
+    public async Task<IActionResult> TriggerLibraryScan(string id, [FromBody] TriggerScanRequest? request = null)
     {
         try
         {
@@ -118,7 +118,9 @@ public class LibrariesController : ControllerBase
                 LibraryId = libraryId.ToString(),
                 LibraryPath = library.Path,
                 ScanType = "Manual",
-                IncludeSubfolders = true
+                IncludeSubfolders = true,
+                ResumeIncomplete = request?.ResumeIncomplete ?? false,
+                OverwriteExisting = request?.OverwriteExisting ?? false
             };
 
             _logger.LogInformation("About to publish LibraryScanMessage: LibraryId={LibraryId}, MessageType={MessageType}, MessageId={MessageId}", 
@@ -745,4 +747,10 @@ public class OrphanedJobDto
     public string JobType { get; set; } = string.Empty;
     public string CronExpression { get; set; } = string.Empty;
     public string? LibraryId { get; set; }
+}
+
+public class TriggerScanRequest
+{
+    public bool ResumeIncomplete { get; set; } = false;
+    public bool OverwriteExisting { get; set; } = false;
 }
