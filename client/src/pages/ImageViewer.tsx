@@ -620,9 +620,10 @@ const ImageViewer: React.FC = () => {
           sortBy="updatedAt"
           sortDirection="desc"
           onNavigate={(newCollectionId, firstImageId) => {
+            console.log(`[ImageViewer Sidebar] Navigating to collection ${newCollectionId}, image ${firstImageId}`);
             // Navigate directly to viewer with first image if available
             if (firstImageId) {
-              navigate(`/collections/${newCollectionId}/viewer?imageId=${firstImageId}`, { replace: true });
+              navigate(`/collections/${newCollectionId}/viewer?imageId=${firstImageId}`);
             } else {
               // Fallback to collection detail if no firstImageId
               navigate(`/collections/${newCollectionId}`);
