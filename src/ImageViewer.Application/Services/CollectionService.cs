@@ -987,20 +987,20 @@ public class CollectionService : ICollectionService
                 .Take(pageSize)
                 .ToList();
             
-            var siblings = paginatedCollections.Select(c => c.ToOverviewDto()).ToList();
+            var siblingDtos = paginatedCollections.Select(c => c.ToOverviewDto()).ToList();
 
             // Populate firstImageId
             for (int i = 0; i < paginatedCollections.Count; i++)
             {
-                if (siblings[i].FirstImageId == null && paginatedCollections[i].Images?.Count > 0)
+                if (siblingDtos[i].FirstImageId == null && paginatedCollections[i].Images?.Count > 0)
                 {
-                    siblings[i].FirstImageId = paginatedCollections[i].Images[0].Id;
+                    siblingDtos[i].FirstImageId = paginatedCollections[i].Images[0].Id;
                 }
             }
 
             return new DTOs.Collections.CollectionSiblingsDto
             {
-                Siblings = siblings,
+                Siblings = siblingDtos,
                 CurrentPosition = currentPosition + 1, // 1-based
                 TotalCount = allCollections.Count
             };

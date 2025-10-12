@@ -378,9 +378,9 @@ public class QueuedCollectionService : ICollectionService
         return await _collectionService.GetCollectionsByLibraryIdAsync(libraryId);
     }
 
-    public async Task<IEnumerable<Collection>> GetCollectionsAsync(int page, int pageSize)
+    public async Task<IEnumerable<Collection>> GetCollectionsAsync(int page = 1, int pageSize = 20, string sortBy = "updatedAt", string sortDirection = "desc")
     {
-        return await _collectionService.GetCollectionsAsync(page, pageSize);
+        return await _collectionService.GetCollectionsAsync(page, pageSize, sortBy, sortDirection);
     }
 
     public async Task<long> GetTotalCollectionsCountAsync()
