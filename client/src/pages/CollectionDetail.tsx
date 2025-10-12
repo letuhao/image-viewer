@@ -68,7 +68,7 @@ const CollectionDetail: React.FC = () => {
       setLimit(userSettingsData.collectionDetailPageSize);
       localStorage.setItem('collectionDetailPageSize', userSettingsData.collectionDetailPageSize.toString());
     }
-  }, [userSettingsData?.collectionDetailPageSize]);
+  }, [userSettingsData?.collectionDetailPageSize, limit]);
   
   // Pagination settings for UI controls
   const paginationSettings: PaginationSettings = {

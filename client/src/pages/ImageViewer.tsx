@@ -65,7 +65,21 @@ const ImageViewer: React.FC = () => {
   
   // Get user settings for pageSize
   const { data: userSettingsData } = useUserSettings();
-  const imageViewerPageSize = userSettingsData?.imageViewerPageSize || 200;
+  const [imageViewerPageSize, setImageViewerPageSize] = useState(() => 
+    userSettingsData?.imageViewerPageSize || parseInt(localStorage.getItem('imageViewerPageSize') || '200')
+  );
+  
+  // Sync imageViewerPageSize when backend settings change
+  useEffect(() => {
+    if (userSettingsData?.imageViewerPageSize && userSettingsData.imageViewerPageSize !== imageViewerPageSize) {
+      console.log(`[ImageViewer] Syncing pageSize from backend: ${userSettingsData.imageViewerPageSize}`);
+      setImageViewerPageSize(userSettingsData.imageViewerPageSize);
+      localStorage.setItem('imageViewerPageSize', userSettingsData.imageViewerPageSize.toString());
+      // Reset to page 1 when pageSize changes
+      setCurrentPage(1);
+      setAllLoadedImages([]);
+    }
+  }, [userSettingsData?.imageViewerPageSize, imageViewerPageSize]);
   
   // Paginated image loading
   const [currentPage, setCurrentPage] = useState(1);

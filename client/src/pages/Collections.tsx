@@ -65,7 +65,7 @@ const Collections: React.FC = () => {
       setLimit(userSettingsData.collectionsPageSize);
       localStorage.setItem('collectionsPageSize', userSettingsData.collectionsPageSize.toString());
     }
-  }, [userSettingsData?.collectionsPageSize]);
+  }, [userSettingsData?.collectionsPageSize, limit]);
 
   // Sort state (persisted to localStorage)
   const [sortBy, setSortBy] = useState<string>(() => 
