@@ -41,6 +41,27 @@ public class RedisCollectionIndexService : ICollectionIndexService
         try
         {
             _logger.LogInformation("🔄 Starting collection index rebuild...");
+            
+            // CRITICAL: Wait for Redis to be ready before attempting rebuild
+            if (!_redis.IsConnected)
+            {
+                _logger.LogWarning("⚠️ Redis not connected, waiting up to 10s...");
+                var waited = 0;
+                while (!_redis.IsConnected && waited < 10000)
+                {
+                    await Task.Delay(500, cancellationToken);
+                    waited += 500;
+                }
+                
+                if (!_redis.IsConnected)
+                {
+                    _logger.LogError("❌ Redis connection timeout after {Waited}ms, skipping index rebuild", waited);
+                    return; // Skip rebuild, will retry on next startup
+                }
+                
+                _logger.LogInformation("✅ Redis connected after {Waited}ms", waited);
+            }
+            
             var startTime = DateTime.UtcNow;
 
             // Get all non-deleted collections
