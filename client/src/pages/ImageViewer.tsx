@@ -353,7 +353,7 @@ const ImageViewer: React.FC = () => {
         if (newIndex >= images.length) {
           if (canCrossNavigate && collectionNav.hasNext && collectionNav.nextCollectionId) {
             // Navigate to first image of next collection
-            navigate(`/viewer/${collectionNav.nextCollectionId}`);
+            navigate(`/collections/${collectionNav.nextCollectionId}/viewer`);
             return;
           } else {
             // Wrap to beginning of current collection
@@ -368,7 +368,7 @@ const ImageViewer: React.FC = () => {
           if (canCrossNavigate && collectionNav.hasPrevious && collectionNav.previousCollectionId) {
             // Navigate to last image of previous collection
             // We don't know the last image ID yet, so navigate to collection and let it load
-            navigate(`/viewer/${collectionNav.previousCollectionId}?goToLast=true`);
+            navigate(`/collections/${collectionNav.previousCollectionId}/viewer?goToLast=true`);
             return;
           } else {
             // Wrap to end of current collection
