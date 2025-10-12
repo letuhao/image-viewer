@@ -441,10 +441,10 @@ public class RedisCollectionIndexService : ICollectionIndexService
             UpdatedAt = collection.UpdatedAt,
             
             // New fields for filtering and display
-            LibraryId = collection.LibraryId.ToString(),
+            LibraryId = collection.LibraryId?.ToString() ?? string.Empty,
             Description = collection.Description,
             Type = (int)collection.Type,
-            Tags = collection.Tags?.ToList() ?? new List<string>(),
+            Tags = new List<string>(), // TODO: Add tags support when Collection entity has it
             Path = collection.Path ?? ""
         };
 
