@@ -4,6 +4,7 @@ using ImageViewer.Domain.Enums;
 using ImageViewer.Domain.Exceptions;
 using ImageViewer.Domain.ValueObjects;
 using ImageViewer.Domain.Events;
+using ImageViewer.Domain.Interfaces;
 using ImageViewer.Application.DTOs.BackgroundJobs;
 using MongoDB.Bson;
 
