@@ -56,7 +56,11 @@ public class UserSettingsController : ControllerBase
             return Ok(new
             {
                 displayMode = user.Settings.DisplayMode,
-                itemsPerPage = user.Settings.ItemsPerPage,
+                itemsPerPage = user.Settings.ItemsPerPage, // Keep for backward compatibility
+                collectionsPageSize = user.Settings.CollectionsPageSize,
+                collectionDetailPageSize = user.Settings.CollectionDetailPageSize,
+                sidebarPageSize = user.Settings.SidebarPageSize,
+                imageViewerPageSize = user.Settings.ImageViewerPageSize,
                 theme = user.Settings.Theme,
                 language = user.Settings.Language,
                 timezone = user.Settings.Timezone,
@@ -128,6 +132,18 @@ public class UserSettingsController : ControllerBase
             if (request.ItemsPerPage.HasValue)
                 user.Settings.UpdateItemsPerPage(request.ItemsPerPage.Value);
             
+            if (request.CollectionsPageSize.HasValue)
+                user.Settings.UpdateCollectionsPageSize(request.CollectionsPageSize.Value);
+            
+            if (request.CollectionDetailPageSize.HasValue)
+                user.Settings.UpdateCollectionDetailPageSize(request.CollectionDetailPageSize.Value);
+            
+            if (request.SidebarPageSize.HasValue)
+                user.Settings.UpdateSidebarPageSize(request.SidebarPageSize.Value);
+            
+            if (request.ImageViewerPageSize.HasValue)
+                user.Settings.UpdateImageViewerPageSize(request.ImageViewerPageSize.Value);
+            
             if (request.Theme != null)
                 user.Settings.UpdateTheme(request.Theme);
             
@@ -195,7 +211,11 @@ public class UserSettingsController : ControllerBase
             return Ok(new
             {
                 displayMode = user.Settings.DisplayMode,
-                itemsPerPage = user.Settings.ItemsPerPage,
+                itemsPerPage = user.Settings.ItemsPerPage, // Keep for backward compatibility
+                collectionsPageSize = user.Settings.CollectionsPageSize,
+                collectionDetailPageSize = user.Settings.CollectionDetailPageSize,
+                sidebarPageSize = user.Settings.SidebarPageSize,
+                imageViewerPageSize = user.Settings.ImageViewerPageSize,
                 theme = user.Settings.Theme,
                 language = user.Settings.Language,
                 timezone = user.Settings.Timezone,
@@ -314,7 +334,11 @@ public class UserSettingsController : ControllerBase
 public class UpdateUserSettingsRequest
 {
     public string? DisplayMode { get; set; }
-    public int? ItemsPerPage { get; set; }
+    public int? ItemsPerPage { get; set; } // Keep for backward compatibility
+    public int? CollectionsPageSize { get; set; }
+    public int? CollectionDetailPageSize { get; set; }
+    public int? SidebarPageSize { get; set; }
+    public int? ImageViewerPageSize { get; set; }
     public string? Theme { get; set; }
     public string? Language { get; set; }
     public string? Timezone { get; set; }

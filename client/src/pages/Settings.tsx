@@ -73,10 +73,10 @@ const Settings: React.FC = () => {
         pushNotifications: apiSettings.notifications.push,
         profilePublic: apiSettings.privacy.profileVisibility === 'public',
         analytics: apiSettings.privacy.analytics,
-        // Collection Detail settings (from localStorage for now)
+        // Collection Detail settings - sync with backend itemsPerPage
         collectionDetailViewMode: localStorage.getItem('collectionDetailViewMode') || 'grid',
         collectionDetailCardSize: localStorage.getItem('collectionDetailCardSize') || 'medium',
-        collectionDetailPageSize: parseInt(localStorage.getItem('collectionDetailPageSize') || '20'),
+        collectionDetailPageSize: apiSettings.itemsPerPage, // Use backend setting!
         // Image Viewer settings
         maxPreloadImages: parseInt(localStorage.getItem('maxPreloadImages') || '20'),
         // Pagination settings

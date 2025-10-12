@@ -13,6 +13,18 @@ public class UserSettings
     [BsonElement("itemsPerPage")]
     public int ItemsPerPage { get; private set; }
     
+    [BsonElement("collectionsPageSize")]
+    public int CollectionsPageSize { get; private set; }
+    
+    [BsonElement("collectionDetailPageSize")]
+    public int CollectionDetailPageSize { get; private set; }
+    
+    [BsonElement("sidebarPageSize")]
+    public int SidebarPageSize { get; private set; }
+    
+    [BsonElement("imageViewerPageSize")]
+    public int ImageViewerPageSize { get; private set; }
+    
     [BsonElement("theme")]
     public string Theme { get; private set; }
     
@@ -37,7 +49,11 @@ public class UserSettings
     public UserSettings()
     {
         DisplayMode = "grid";
-        ItemsPerPage = 20;
+        ItemsPerPage = 20; // Keep for backward compatibility
+        CollectionsPageSize = 100;
+        CollectionDetailPageSize = 20;
+        SidebarPageSize = 20;
+        ImageViewerPageSize = 200;
         Theme = "light";
         Language = "en";
         Timezone = "UTC";
@@ -61,6 +77,38 @@ public class UserSettings
             throw new ArgumentException("Items per page must be greater than 0", nameof(itemsPerPage));
         
         ItemsPerPage = itemsPerPage;
+    }
+
+    public void UpdateCollectionsPageSize(int collectionsPageSize)
+    {
+        if (collectionsPageSize <= 0 || collectionsPageSize > 1000)
+            throw new ArgumentException("Collections page size must be between 1 and 1000", nameof(collectionsPageSize));
+        
+        CollectionsPageSize = collectionsPageSize;
+    }
+
+    public void UpdateCollectionDetailPageSize(int collectionDetailPageSize)
+    {
+        if (collectionDetailPageSize <= 0 || collectionDetailPageSize > 1000)
+            throw new ArgumentException("Collection detail page size must be between 1 and 1000", nameof(collectionDetailPageSize));
+        
+        CollectionDetailPageSize = collectionDetailPageSize;
+    }
+
+    public void UpdateSidebarPageSize(int sidebarPageSize)
+    {
+        if (sidebarPageSize <= 0 || sidebarPageSize > 100)
+            throw new ArgumentException("Sidebar page size must be between 1 and 100", nameof(sidebarPageSize));
+        
+        SidebarPageSize = sidebarPageSize;
+    }
+
+    public void UpdateImageViewerPageSize(int imageViewerPageSize)
+    {
+        if (imageViewerPageSize < 50 || imageViewerPageSize > 1000)
+            throw new ArgumentException("Image viewer page size must be between 50 and 1000", nameof(imageViewerPageSize));
+        
+        ImageViewerPageSize = imageViewerPageSize;
     }
 
     public void UpdateTheme(string theme)
