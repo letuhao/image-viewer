@@ -566,7 +566,8 @@ public class BulkService : IBulkService
                     ImageFilename = image.Filename,
                     ThumbnailWidth = request.ThumbnailWidth ?? 300,
                     ThumbnailHeight = request.ThumbnailHeight ?? 300,
-                    JobId = resumeJob.JobId.ToString()
+                    JobId = resumeJob.JobId.ToString(),
+                    ScanJobId = resumeJob.JobId.ToString() // CRITICAL: Link to background job for progress tracking
                 };
                 
                 await _messageQueueService.PublishAsync(thumbnailMessage);
@@ -587,7 +588,8 @@ public class BulkService : IBulkService
                     Quality = 85,
                     Format = "jpeg",
                     ForceRegenerate = false,
-                    JobId = resumeJob.JobId.ToString()
+                    JobId = resumeJob.JobId.ToString(),
+                    ScanJobId = resumeJob.JobId.ToString() // CRITICAL: Link to background job for progress tracking
                 };
                 
                 await _messageQueueService.PublishAsync(cacheMessage);
