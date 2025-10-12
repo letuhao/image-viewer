@@ -157,7 +157,8 @@ public class DlqRecoveryService : IHostedService
                     _logger.LogWarning("⚠️  Message has no MessageType or routing key. MessageType={MessageType}. Keeping in DLQ for manual review.", messageType);
 
                     // CRITICAL: Requeue to DLQ (don't delete unknown messages)
-                    await channel.BasicNackAsync(ea.DeliveryTag, multiple: false, requeue: true, cancellationToken);
+                    // FIX 5: Use CancellationToken.None for cleanup operations (prevent cancellation during NACK)
+                    await channel.BasicNackAsync(ea.DeliveryTag, multiple: false, requeue: true, CancellationToken.None);
                     Interlocked.Increment(ref skippedMessages);
                     return;
                 }
@@ -213,7 +214,8 @@ public class DlqRecoveryService : IHostedService
                         cancellationToken: cancellationToken);
 
                     // SUCCESS: ACK to remove from DLQ
-                    await channel.BasicAckAsync(ea.DeliveryTag, multiple: false, cancellationToken);
+                    // FIX 5: Use CancellationToken.None for cleanup operations (prevent cancellation during ACK)
+                    await channel.BasicAckAsync(ea.DeliveryTag, multiple: false, CancellationToken.None);
 
                     // Update success statistics
                     lock (stats)
@@ -239,7 +241,8 @@ public class DlqRecoveryService : IHostedService
                     _logger.LogError(publishEx, "❌ Failed to republish message. Keeping in DLQ. MessageType={MessageType}, RoutingKey={RoutingKey}",
                         messageType, originalRoutingKey);
 
-                    await channel.BasicNackAsync(ea.DeliveryTag, multiple: false, requeue: true, cancellationToken);
+                    // FIX 5: Use CancellationToken.None for cleanup operations (prevent cancellation during NACK)
+                    await channel.BasicNackAsync(ea.DeliveryTag, multiple: false, requeue: true, CancellationToken.None);
 
                     // Update failure statistics
                     lock (failedStats)
@@ -261,7 +264,8 @@ public class DlqRecoveryService : IHostedService
 
                 try
                 {
-                    await channel.BasicNackAsync(ea.DeliveryTag, multiple: false, requeue: true, cancellationToken);
+                    // FIX 5: Use CancellationToken.None for cleanup operations (prevent cancellation during NACK)
+                    await channel.BasicNackAsync(ea.DeliveryTag, multiple: false, requeue: true, CancellationToken.None);
                 }
                 catch (Exception nackEx)
                 {
@@ -300,9 +304,13 @@ public class DlqRecoveryService : IHostedService
                 {
                     _logger.LogInformation("DLQ appears empty, waiting for any in-flight messages to complete...");
                     
-                    // FIX 2: Acquire lock to ensure no message is currently being processed
+                    // FIX 2 + FIX 4: Acquire lock with timeout (prevents deadlock on cancellation)
                     // This prevents premature exit while a message is between fetch and ACK/NACK
-                    await processingLock.WaitAsync(cancellationToken);
+                    if (!await processingLock.WaitAsync(TimeSpan.FromSeconds(5)))
+                    {
+                        _logger.LogWarning("⚠️  Timed out waiting for in-flight message. Exiting anyway (message will be requeued by RabbitMQ).");
+                        break;
+                    }
                     processingLock.Release();
                     
                     _logger.LogInformation("In-flight messages completed, waiting 5 seconds to confirm DLQ is empty...");
