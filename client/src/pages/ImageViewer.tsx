@@ -65,13 +65,17 @@ const ImageViewer: React.FC = () => {
   
   // Get user settings for pageSize
   const { data: userSettingsData } = useUserSettings();
-  const imageViewerPageSize = userSettingsData?.imageViewerPageSize || 1000;
+  const batchSize = userSettingsData?.imageViewerPageSize || 200;
   
-  // For now: Load all images (set high limit to prevent user getting stuck)
-  // TODO: Implement proper progressive pagination without race conditions
-  const { data: imagesData } = useImages({ 
+  // Batch loading state
+  const [currentBatch, setCurrentBatch] = useState(1);
+  const [loadedImages, setLoadedImages] = useState<any[]>([]);
+  
+  // Load current batch
+  const { data: batchData } = useImages({ 
     collectionId: collectionId!, 
-    limit: 10000 // High limit to ensure all images load
+    page: currentBatch,
+    limit: batchSize
   });
   
   // Use local state for current image ID to avoid URL changes on every navigation
@@ -120,20 +124,52 @@ const ImageViewer: React.FC = () => {
     crossCollectionNav ? collectionId : undefined
   );
 
-  // Clear preload cache when collection changes to prevent 404s
+  // Reset when collection changes
   useEffect(() => {
-    // Clear all preloaded images when navigating to different collection
-    preloadedImagesRef.current.forEach((img) => {
-      img.onload = null;
-      img.onerror = null;
-      img.src = '';
-    });
+    setLoadedImages([]);
+    setCurrentBatch(1);
     preloadedImagesRef.current.clear();
   }, [collectionId]);
-
-  const images = imagesData?.data || [];
+  
+  // Accumulate batch data into loadedImages
+  useEffect(() => {
+    if (batchData?.data && batchData.data.length > 0) {
+      setLoadedImages(prev => {
+        // For batch 1, replace. For batch 2+, append
+        if (currentBatch === 1) {
+          return batchData.data;
+        } else {
+          // Append and deduplicate
+          const existingIds = new Set(prev.map(img => img.id));
+          const newImages = batchData.data.filter(img => !existingIds.has(img.id));
+          return [...prev, ...newImages];
+        }
+      });
+    }
+  }, [batchData, currentBatch]);
+  
+  const images = loadedImages;
+  const totalImages = batchData?.totalCount || 0;
   const currentIndex = images.findIndex((img) => img.id === currentImageId);
   const currentImage = currentIndex >= 0 ? images[currentIndex] : null;
+  
+  // Auto-load next batch when near end of loaded images
+  useEffect(() => {
+    if (images.length === 0 || totalImages === 0) return;
+    
+    const threshold = 20;
+    const hasMoreImages = images.length < totalImages;
+    const nearEnd = currentIndex >= images.length - threshold;
+    
+    if (nearEnd && hasMoreImages) {
+      const nextBatch = currentBatch + 1;
+      const maxBatch = Math.ceil(totalImages / batchSize);
+      
+      if (nextBatch <= maxBatch) {
+        setCurrentBatch(nextBatch);
+      }
+    }
+  }, [currentIndex, images.length, totalImages, currentBatch, batchSize]);
 
   // Handle goToLast parameter for cross-collection navigation from previous collection
   useEffect(() => {
@@ -573,7 +609,10 @@ const ImageViewer: React.FC = () => {
             <div className="text-white">
               <h2 className="font-semibold">{currentImage.filename}</h2>
               <p className="text-sm text-slate-300">
-                {currentIndex + 1} of {images.length}
+                {currentIndex + 1} of {totalImages > 0 ? totalImages : images.length}
+                {totalImages > images.length && (
+                  <span className="text-primary-400"> • Loaded: {images.length}</span>
+                )}
                 {' • '}{currentImage.width} × {currentImage.height}
               </p>
             </div>
