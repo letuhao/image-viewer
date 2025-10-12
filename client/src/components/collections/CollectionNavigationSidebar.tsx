@@ -36,7 +36,7 @@ const CollectionNavigationSidebar: React.FC<CollectionNavigationSidebarProps> = 
   // Sync pageSize with backend settings when they change
   useEffect(() => {
     if (userSettingsData?.sidebarPageSize && userSettingsData.sidebarPageSize !== pageSize) {
-      console.log(`[Sidebar] Syncing pageSize from backend: ${userSettingsData.sidebarPageSize}`);
+      // console.log(`[Sidebar] Syncing pageSize from backend: ${userSettingsData.sidebarPageSize}`);
       setPageSize(userSettingsData.sidebarPageSize);
       localStorage.setItem('sidebarPageSize', userSettingsData.sidebarPageSize.toString());
     }
@@ -44,7 +44,7 @@ const CollectionNavigationSidebar: React.FC<CollectionNavigationSidebarProps> = 
 
   // Reset page to 1 when collection changes
   React.useEffect(() => {
-    console.log(`[Sidebar] Collection changed to ${collectionId}, resetting to page 1`);
+    // console.log(`[Sidebar] Collection changed to ${collectionId}, resetting to page 1`);
     setPage(1);
   }, [collectionId]);
 
@@ -65,15 +65,15 @@ const CollectionNavigationSidebar: React.FC<CollectionNavigationSidebarProps> = 
   // Log when siblings data changes
   React.useEffect(() => {
     if (siblingsData) {
-      console.log(`[Sidebar] Siblings data loaded for page ${page}:`, {
-        requestedPage: page,
-        currentPage: siblingsData.currentPage,
-        pageSize,
-        totalCount: siblingsData.totalCount,
-        totalPages: siblingsData.totalPages,
-        itemsCount: siblingsData.siblings.length,
-        currentPosition: siblingsData.currentPosition,
-      });
+      // console.log(`[Sidebar] Siblings data loaded for page ${page}:`, {
+      //   requestedPage: page,
+      //   currentPage: siblingsData.currentPage,
+      //   pageSize,
+      //   totalCount: siblingsData.totalCount,
+      //   totalPages: siblingsData.totalPages,
+      //   itemsCount: siblingsData.siblings.length,
+      //   currentPosition: siblingsData.currentPosition,
+      // });
     }
   }, [siblingsData, page, pageSize]);
 
@@ -225,7 +225,7 @@ const CollectionNavigationSidebar: React.FC<CollectionNavigationSidebarProps> = 
           <button
             onClick={() => {
               const newPage = siblingsData.currentPage - 1;
-              console.log(`[Sidebar] Previous: ${siblingsData.currentPage} -> ${newPage}`);
+              // console.log(`[Sidebar] Previous: ${siblingsData.currentPage} -> ${newPage}`);
               setPage(newPage);
             }}
             disabled={siblingsData.currentPage === 1 || siblingsLoading}
@@ -245,7 +245,7 @@ const CollectionNavigationSidebar: React.FC<CollectionNavigationSidebarProps> = 
           <button
             onClick={() => {
               const newPage = siblingsData.currentPage + 1;
-              console.log(`[Sidebar] Next: ${siblingsData.currentPage} -> ${newPage}`);
+              // console.log(`[Sidebar] Next: ${siblingsData.currentPage} -> ${newPage}`);
               setPage(newPage);
             }}
             disabled={siblingsData.currentPage >= siblingsData.totalPages || siblingsLoading}

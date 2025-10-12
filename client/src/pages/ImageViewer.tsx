@@ -72,7 +72,7 @@ const ImageViewer: React.FC = () => {
   // Sync imageViewerPageSize when backend settings change
   useEffect(() => {
     if (userSettingsData?.imageViewerPageSize && userSettingsData.imageViewerPageSize !== imageViewerPageSize) {
-      console.log(`[ImageViewer] Syncing pageSize from backend: ${userSettingsData.imageViewerPageSize}`);
+      // console.log(`[ImageViewer] Syncing pageSize from backend: ${userSettingsData.imageViewerPageSize}`);
       setImageViewerPageSize(userSettingsData.imageViewerPageSize);
       localStorage.setItem('imageViewerPageSize', userSettingsData.imageViewerPageSize.toString());
       // Reset to page 1 when pageSize changes
@@ -141,8 +141,8 @@ const ImageViewer: React.FC = () => {
 
   // Reset state when collectionId changes (MUST run before data loads)
   useEffect(() => {
-    console.log(`[ImageViewer] Collection or image changed - collectionId: ${collectionId}, initialImageId: ${initialImageId}`);
-    console.log(`[ImageViewer] Resetting all state`);
+    // console.log(`[ImageViewer] Collection or image changed - collectionId: ${collectionId}, initialImageId: ${initialImageId}`);
+    // console.log(`[ImageViewer] Resetting all state`);
     
     // Reset all state immediately
     setAllLoadedImages([]);
@@ -151,7 +151,7 @@ const ImageViewer: React.FC = () => {
     setCurrentImageId(initialImageId || '');
     
     // Clear preloaded images cache (CRITICAL for sidebar navigation!)
-    console.log(`[ImageViewer] Clearing ${preloadedImagesRef.current.size} preloaded images`);
+    // console.log(`[ImageViewer] Clearing ${preloadedImagesRef.current.size} preloaded images`);
     preloadedImagesRef.current.forEach((img) => {
       img.onload = null;
       img.onerror = null;
@@ -172,21 +172,21 @@ const ImageViewer: React.FC = () => {
     if (imagesData?.data && imagesData.data.length > 0) {
       // Verify images belong to current collection (prevent stale data)
       const firstImage = imagesData.data[0];
-      console.log(`[ImageViewer] Loaded page ${currentPage}: ${imagesData.data.length} images (total: ${imagesData.totalCount})`);
-      console.log(`[ImageViewer] First image ID: ${firstImage.id}, Current collectionId: ${collectionId}`);
+      // console.log(`[ImageViewer] Loaded page ${currentPage}: ${imagesData.data.length} images (total: ${imagesData.totalCount})`);
+      // console.log(`[ImageViewer] First image ID: ${firstImage.id}, Current collectionId: ${collectionId}`);
       
       setTotalImagesCount(imagesData.totalCount || 0);
       
       // For page 1, replace instead of merge (fresh start)
       if (currentPage === 1) {
-        console.log(`[ImageViewer] Page 1 - replacing with ${imagesData.data.length} fresh images`);
+        // console.log(`[ImageViewer] Page 1 - replacing with ${imagesData.data.length} fresh images`);
         setAllLoadedImages(imagesData.data);
       } else {
         // For page 2+, merge with existing images (avoid duplicates)
         setAllLoadedImages(prev => {
           const existingIds = new Set(prev.map(img => img.id));
           const newImages = imagesData.data.filter(img => !existingIds.has(img.id));
-          console.log(`[ImageViewer] Page ${currentPage} - merging ${newImages.length} new images (had ${prev.length}, now ${prev.length + newImages.length})`);
+          // console.log(`[ImageViewer] Page ${currentPage} - merging ${newImages.length} new images (had ${prev.length}, now ${prev.length + newImages.length})`);
           return [...prev, ...newImages];
         });
       }
@@ -204,10 +204,10 @@ const ImageViewer: React.FC = () => {
     const totalPages = Math.ceil(totalImagesCount / imageViewerPageSize);
     
     if (direction === 'next' && currentPage < totalPages) {
-      console.log(`[ImageViewer] Loading next page: ${currentPage + 1}`);
+      // console.log(`[ImageViewer] Loading next page: ${currentPage + 1}`);
       setCurrentPage(prev => prev + 1);
     } else if (direction === 'previous' && currentPage > 1) {
-      console.log(`[ImageViewer] Loading previous page: ${currentPage - 1}`);
+      // console.log(`[ImageViewer] Loading previous page: ${currentPage - 1}`);
       setCurrentPage(prev => prev - 1);
     }
   }, [currentPage, totalImagesCount, imageViewerPageSize]);
@@ -221,7 +221,7 @@ const ImageViewer: React.FC = () => {
     
     // Check if near end of loaded images
     if (currentIndex >= 0 && currentIndex >= images.length - threshold && currentPage < totalPages) {
-      console.log(`[ImageViewer] Near end (${currentIndex}/${images.length}), auto-loading page ${currentPage + 1}`);
+      // console.log(`[ImageViewer] Near end (${currentIndex}/${images.length}), auto-loading page ${currentPage + 1}`);
       setCurrentPage(prev => prev + 1);
     }
   }, [currentIndex, images.length, currentPage, totalImagesCount, imageViewerPageSize]);
@@ -233,7 +233,7 @@ const ImageViewer: React.FC = () => {
       const lastPage = Math.ceil(totalImagesCount / imageViewerPageSize);
       
       if (currentPage !== lastPage) {
-        console.log(`[ImageViewer] goToLast: loading page ${lastPage}`);
+        // console.log(`[ImageViewer] goToLast: loading page ${lastPage}`);
         setCurrentPage(lastPage);
       } else if (images.length > 0) {
         // Navigate to last image once it's loaded
@@ -634,7 +634,7 @@ const ImageViewer: React.FC = () => {
           sortBy="updatedAt"
           sortDirection="desc"
           onNavigate={(newCollectionId, firstImageId) => {
-            console.log(`[ImageViewer Sidebar] Navigating to collection ${newCollectionId}, image ${firstImageId}`);
+            // console.log(`[ImageViewer Sidebar] Navigating to collection ${newCollectionId}, image ${firstImageId}`);
             // Navigate directly to viewer with first image if available
             if (firstImageId) {
               navigate(`/collections/${newCollectionId}/viewer?imageId=${firstImageId}`);
