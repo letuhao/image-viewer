@@ -268,13 +268,15 @@ public class CollectionsController : ControllerBase
     public async Task<IActionResult> GetCollections(
         [FromQuery] int page = 1, 
         [FromQuery] int pageSize = 20,
-        [FromQuery] int? limit = null) // Support both pageSize and limit for compatibility
+        [FromQuery] int? limit = null, // Support both pageSize and limit for compatibility
+        [FromQuery] string sortBy = "updatedAt",
+        [FromQuery] string sortDirection = "desc")
     {
         try
         {
             // Use limit if provided, otherwise fall back to pageSize
             var effectivePageSize = limit ?? pageSize;
-            var collections = await _collectionService.GetCollectionsAsync(page, effectivePageSize);
+            var collections = await _collectionService.GetCollectionsAsync(page, effectivePageSize, sortBy, sortDirection);
             var allCollections = collections.ToList();
             var overviewDtos = allCollections.Select(c => c.ToOverviewDto()).ToList();
             

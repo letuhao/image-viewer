@@ -173,7 +173,7 @@ public class CollectionService : ICollectionService
         }
     }
 
-    public async Task<IEnumerable<Collection>> GetCollectionsAsync(int page = 1, int pageSize = 20)
+    public async Task<IEnumerable<Collection>> GetCollectionsAsync(int page = 1, int pageSize = 20, string sortBy = "updatedAt", string sortDirection = "desc")
     {
         try
         {
@@ -188,9 +188,9 @@ public class CollectionService : ICollectionService
             {
                 try
                 {
-                    _logger.LogDebug("Using Redis index for GetCollectionsAsync");
+                    _logger.LogDebug("Using Redis index for GetCollectionsAsync with sort {SortBy} {SortDirection}", sortBy, sortDirection);
                     var result = await _collectionIndexService.GetCollectionPageAsync(
-                        page, pageSize, "updatedAt", "desc");
+                        page, pageSize, sortBy, sortDirection);
                     
                     // Convert CollectionSummary to full Collection entities
                     // by fetching from MongoDB (batch operation)
