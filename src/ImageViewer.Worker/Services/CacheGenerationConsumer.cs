@@ -285,6 +285,9 @@ public class CacheGenerationConsumer : BaseMessageConsumer
                     cacheMessage.JobId, 
                     cacheMessage.ImageId, 
                     cacheImageData.Length);
+                
+                // Check if job is complete and mark it as finished
+                await CheckAndMarkJobComplete(cacheMessage.JobId, jobStateRepository);
             }
 
             _logger.LogDebug("✅ Cache generated for image {ImageId} at path {CachePath} with dimensions {Width}x{Height}", 
@@ -318,11 +321,30 @@ public class CacheGenerationConsumer : BaseMessageConsumer
             var cacheMsg = JsonSerializer.Deserialize<CacheGenerationMessage>(message, options);
             
             // Check if this is a corrupted/unsupported file error (should skip, not retry)
-            bool isSkippableError = ex is InvalidOperationException && ex.Message.Contains("Failed to decode image");
+            bool isSkippableError = (ex is InvalidOperationException && ex.Message.Contains("Failed to decode image")) ||
+                                   (ex is DirectoryNotFoundException) ||
+                                   (ex is FileNotFoundException);
             
             if (isSkippableError)
             {
                 _logger.LogWarning(ex, "⚠️ Skipping corrupted/unsupported image file: {ImagePath}. This message will NOT be retried.", cacheMsg?.ImagePath);
+                
+                // Track as failed for job completion
+                if (!string.IsNullOrEmpty(cacheMsg?.JobId))
+                {
+                    try
+                    {
+                        using var scope = _serviceScopeFactory.CreateScope();
+                        var jobStateRepository = scope.ServiceProvider.GetRequiredService<IFileProcessingJobStateRepository>();
+                        await jobStateRepository.AtomicIncrementFailedAsync(cacheMsg.JobId, cacheMsg.ImageId);
+                        await CheckAndMarkJobComplete(cacheMsg.JobId, jobStateRepository);
+                    }
+                    catch (Exception trackEx)
+                    {
+                        _logger.LogWarning(trackEx, "Failed to track failed cache for image {ImageId} in job {JobId}", 
+                            cacheMsg?.ImageId, cacheMsg?.JobId);
+                    }
+                }
             }
             else
             {
@@ -654,6 +676,34 @@ public class CacheGenerationConsumer : BaseMessageConsumer
         {
             _logger.LogWarning(ex, "⚠️ Failed to update cache folder statistics for cache image: {Path}", cachePath);
             // Don't throw - cache is already saved, this is just statistics
+        }
+    }
+
+    /// <summary>
+    /// Check if job is complete and mark it as finished if so
+    /// </summary>
+    private async Task CheckAndMarkJobComplete(string jobId, IFileProcessingJobStateRepository jobStateRepository)
+    {
+        try
+        {
+            var jobState = await jobStateRepository.GetByJobIdAsync(jobId);
+            if (jobState == null) return;
+
+            // Check if all expected images have been processed (completed + failed)
+            var totalProcessed = jobState.CompletedImages + jobState.FailedImages;
+            var totalExpected = jobState.TotalImages;
+
+            if (totalExpected > 0 && totalProcessed >= totalExpected)
+            {
+                var status = jobState.FailedImages == 0 ? "Completed" : "CompletedWithErrors";
+                await jobStateRepository.UpdateStatusAsync(jobId, status);
+                _logger.LogInformation("✅ Job {JobId} marked as {Status} - {Completed}/{Expected} completed, {Failed} failed", 
+                    jobId, status, jobState.CompletedImages, totalExpected, jobState.FailedImages);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to check/mark job completion for {JobId}", jobId);
         }
     }
 }

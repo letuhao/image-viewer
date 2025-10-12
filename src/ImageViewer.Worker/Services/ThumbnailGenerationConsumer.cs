@@ -223,6 +223,9 @@ public class ThumbnailGenerationConsumer : BaseMessageConsumer
                                 thumbnailMessage.JobId, 
                                 thumbnailMessage.ImageId,
                                 fileInfo.Length);
+                            
+                            // Check if job is complete and mark it as finished
+                            await CheckAndMarkJobComplete(thumbnailMessage.JobId, jobStateRepository);
                         }
                         catch (Exception ex)
                         {
@@ -288,12 +291,39 @@ public class ThumbnailGenerationConsumer : BaseMessageConsumer
         }
         catch (Exception ex)
         {
+            // Deserialize message to get job/image info for tracking
+            var options = new JsonSerializerOptions
+            {
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                WriteIndented = false
+            };
+            var thumbnailMsg = JsonSerializer.Deserialize<ThumbnailGenerationMessage>(message, options);
+            
             // Check if this is a corrupted/unsupported file error (should skip, not retry)
-            bool isSkippableError = ex is InvalidOperationException && ex.Message.Contains("Failed to decode image");
+            bool isSkippableError = (ex is InvalidOperationException && ex.Message.Contains("Failed to decode image")) ||
+                                   (ex is DirectoryNotFoundException) ||
+                                   (ex is FileNotFoundException);
             
             if (isSkippableError)
             {
                 _logger.LogWarning(ex, "⚠️ Skipping corrupted/unsupported image file. This message will NOT be retried.");
+                
+                // Track as failed for job completion
+                if (!string.IsNullOrEmpty(thumbnailMsg?.JobId))
+                {
+                    try
+                    {
+                        using var scope = _serviceScopeFactory.CreateScope();
+                        var jobStateRepository = scope.ServiceProvider.GetRequiredService<IFileProcessingJobStateRepository>();
+                        await jobStateRepository.AtomicIncrementFailedAsync(thumbnailMsg.JobId, thumbnailMsg.ImageId);
+                        await CheckAndMarkJobComplete(thumbnailMsg.JobId, jobStateRepository);
+                    }
+                    catch (Exception trackEx)
+                    {
+                        _logger.LogWarning(trackEx, "Failed to track failed thumbnail for image {ImageId} in job {JobId}", 
+                            thumbnailMsg?.ImageId, thumbnailMsg?.JobId);
+                    }
+                }
             }
             else
             {
@@ -550,6 +580,34 @@ public class ThumbnailGenerationConsumer : BaseMessageConsumer
         {
             _logger.LogWarning(ex, "⚠️ Failed to update cache folder statistics for thumbnail: {Path}", thumbnailPath);
             // Don't throw - thumbnail is already saved, this is just statistics
+        }
+    }
+
+    /// <summary>
+    /// Check if job is complete and mark it as finished if so
+    /// </summary>
+    private async Task CheckAndMarkJobComplete(string jobId, IFileProcessingJobStateRepository jobStateRepository)
+    {
+        try
+        {
+            var jobState = await jobStateRepository.GetByJobIdAsync(jobId);
+            if (jobState == null) return;
+
+            // Check if all expected images have been processed (completed + failed)
+            var totalProcessed = jobState.CompletedImages + jobState.FailedImages;
+            var totalExpected = jobState.TotalImages;
+
+            if (totalExpected > 0 && totalProcessed >= totalExpected)
+            {
+                var status = jobState.FailedImages == 0 ? "Completed" : "CompletedWithErrors";
+                await jobStateRepository.UpdateStatusAsync(jobId, status);
+                _logger.LogInformation("✅ Job {JobId} marked as {Status} - {Completed}/{Expected} completed, {Failed} failed", 
+                    jobId, status, jobState.CompletedImages, totalExpected, jobState.FailedImages);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to check/mark job completion for {JobId}", jobId);
         }
     }
 }
