@@ -87,7 +87,7 @@ const ImageViewer: React.FC = () => {
   const [totalImagesCount, setTotalImagesCount] = useState(0);
   
   // Load initial page or page containing specific image
-  const { data: imagesData, refetch: refetchImages } = useImages({ 
+  const { data: imagesData, isLoading: imagesLoading, refetch: refetchImages } = useImages({ 
     collectionId: collectionId!, 
     page: currentPage,
     limit: imageViewerPageSize 
@@ -154,11 +154,21 @@ const ImageViewer: React.FC = () => {
     }
   }, [imagesData, currentPage]);
   
-  // Reset loaded images when collection changes
+  // Reset loaded images when component mounts or collection changes
   useEffect(() => {
-    console.log(`[ImageViewer] Collection changed, resetting loaded images`);
+    console.log(`[ImageViewer] Mounting or collection changed (${collectionId}), resetting loaded images`);
     setAllLoadedImages([]);
     setCurrentPage(1);
+    setTotalImagesCount(0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Empty array = run on mount only
+  
+  // Separate effect for collection changes (if navigating between collections)
+  useEffect(() => {
+    console.log(`[ImageViewer] Collection changed to ${collectionId}, resetting state`);
+    setAllLoadedImages([]);
+    setCurrentPage(1);
+    setTotalImagesCount(0);
   }, [collectionId]);
   
   const images = allLoadedImages;
