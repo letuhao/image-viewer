@@ -729,36 +729,63 @@ public class CollectionService : ICollectionService
     {
         try
         {
-            _logger.LogInformation("Getting navigation info for collection {CollectionId} with sort {SortBy} {SortDirection}", collectionId, sortBy, sortDirection);
+            _logger.LogDebug("Getting navigation info for collection {CollectionId} with sort {SortBy} {SortDirection}", collectionId, sortBy, sortDirection);
 
-            // Get all collections sorted
-            var allCollections = (await GetSortedCollectionsAsync(sortBy, sortDirection)).ToList();
+            // OPTIMIZATION: Use MongoDB aggregation to find previous/next without loading all collections
+            // This is much faster for large datasets (24k+ collections)
             
-            // Find current collection position
-            var currentPosition = allCollections.FindIndex(c => c.Id == collectionId);
-            
-            if (currentPosition == -1)
+            // First, get the current collection to know its sort value
+            var currentCollection = await _collectionRepository.GetByIdAsync(collectionId);
+            if (currentCollection == null || currentCollection.IsDeleted)
             {
-                throw new BusinessRuleException($"Collection {collectionId} not found in sorted list");
+                throw new BusinessRuleException($"Collection {collectionId} not found");
             }
 
-            // Get previous and next collection IDs
-            var previousCollectionId = currentPosition > 0 
-                ? allCollections[currentPosition - 1].Id.ToString() 
-                : null;
+            // Get the sort value for the current collection
+            var currentSortValue = GetSortValue(currentCollection, sortBy);
+            var isAscending = sortDirection.ToLower() == "asc";
+
+            // Build filter for previous collection (using MongoDB query)
+            var previousFilter = BuildNavigationFilter(sortBy, currentSortValue, currentCollection.Id, !isAscending, true);
+            var previousSort = isAscending 
+                ? BuildDescendingSortDefinition(sortBy) 
+                : BuildAscendingSortDefinition(sortBy);
             
-            var nextCollectionId = currentPosition < allCollections.Count - 1 
-                ? allCollections[currentPosition + 1].Id.ToString() 
-                : null;
+            var previousCollections = await _collectionRepository.FindAsync(
+                previousFilter,
+                previousSort,
+                1,
+                0
+            );
+            var previousCollection = previousCollections.FirstOrDefault();
+
+            // Build filter for next collection
+            var nextFilter = BuildNavigationFilter(sortBy, currentSortValue, currentCollection.Id, isAscending, false);
+            var nextSort = isAscending 
+                ? BuildAscendingSortDefinition(sortBy) 
+                : BuildDescendingSortDefinition(sortBy);
+            
+            var nextCollections = await _collectionRepository.FindAsync(
+                nextFilter,
+                nextSort,
+                1,
+                0
+            );
+            var nextCollection = nextCollections.FirstOrDefault();
+
+            // Get total count (can be cached separately if needed)
+            var totalCount = await _collectionRepository.CountAsync(
+                Builders<Collection>.Filter.Eq(c => c.IsDeleted, false)
+            );
 
             return new DTOs.Collections.CollectionNavigationDto
             {
-                PreviousCollectionId = previousCollectionId,
-                NextCollectionId = nextCollectionId,
-                CurrentPosition = currentPosition + 1, // 1-based for display
-                TotalCollections = allCollections.Count,
-                HasPrevious = currentPosition > 0,
-                HasNext = currentPosition < allCollections.Count - 1
+                PreviousCollectionId = previousCollection?.Id.ToString(),
+                NextCollectionId = nextCollection?.Id.ToString(),
+                CurrentPosition = 0, // Position is expensive to calculate precisely, set to 0 for now
+                TotalCollections = (int)totalCount,
+                HasPrevious = previousCollection != null,
+                HasNext = nextCollection != null
             };
         }
         catch (Exception ex) when (!(ex is BusinessRuleException))
@@ -848,7 +875,7 @@ public class CollectionService : ICollectionService
     {
         try
         {
-            _logger.LogDebug("Getting sorted collections by {SortBy} {SortDirection}", sortBy, sortDirection);
+            _logger.LogDebug("Getting sorted collections from database: {SortBy} {SortDirection}, Limit: {Limit}", sortBy, sortDirection, limit);
 
             // Build sort definition based on sortBy field
             var sortDefinition = sortDirection.ToLower() == "asc" 
@@ -856,8 +883,7 @@ public class CollectionService : ICollectionService
                 : BuildDescendingSortDefinition(sortBy);
 
             // Get collections with sorting
-            // Note: For navigation/siblings, we need ALL collections, not just first 1000
-            // Using int.MaxValue to get all (MongoDB driver handles this efficiently with cursor)
+            // Note: Using MongoDB indexes on sortBy fields for fast sorting
             return await _collectionRepository.FindAsync(
                 Builders<Collection>.Filter.Eq(c => c.IsDeleted, false),
                 sortDefinition,
@@ -870,6 +896,86 @@ public class CollectionService : ICollectionService
             _logger.LogError(ex, "Failed to get sorted collections");
             throw new BusinessRuleException($"Failed to get sorted collections", ex);
         }
+    }
+
+    /// <summary>
+    /// Get sort value from collection based on sort field
+    /// </summary>
+    private object GetSortValue(Collection collection, string sortBy)
+    {
+        return sortBy.ToLower() switch
+        {
+            "createdat" => collection.CreatedAt,
+            "updatedat" => collection.UpdatedAt,
+            "name" => collection.Name,
+            "imagecount" => collection.Statistics.TotalItems,
+            "totalsize" => collection.Statistics.TotalSize,
+            _ => collection.UpdatedAt
+        };
+    }
+
+    /// <summary>
+    /// Build MongoDB filter for navigation (find previous/next collection)
+    /// </summary>
+    private FilterDefinition<Collection> BuildNavigationFilter(string sortBy, object currentValue, ObjectId currentId, bool greater, bool orEqual)
+    {
+        var baseFilter = Builders<Collection>.Filter.Eq(c => c.IsDeleted, false);
+        
+        FilterDefinition<Collection> sortFilter = sortBy.ToLower() switch
+        {
+            "createdat" => greater
+                ? (orEqual 
+                    ? Builders<Collection>.Filter.Lte(c => c.CreatedAt, (DateTime)currentValue)
+                    : Builders<Collection>.Filter.Lt(c => c.CreatedAt, (DateTime)currentValue))
+                : (orEqual 
+                    ? Builders<Collection>.Filter.Gte(c => c.CreatedAt, (DateTime)currentValue)
+                    : Builders<Collection>.Filter.Gt(c => c.CreatedAt, (DateTime)currentValue)),
+            
+            "updatedat" => greater
+                ? (orEqual 
+                    ? Builders<Collection>.Filter.Lte(c => c.UpdatedAt, (DateTime)currentValue)
+                    : Builders<Collection>.Filter.Lt(c => c.UpdatedAt, (DateTime)currentValue))
+                : (orEqual 
+                    ? Builders<Collection>.Filter.Gte(c => c.UpdatedAt, (DateTime)currentValue)
+                    : Builders<Collection>.Filter.Gt(c => c.UpdatedAt, (DateTime)currentValue)),
+            
+            "name" => greater
+                ? (orEqual 
+                    ? Builders<Collection>.Filter.Lte(c => c.Name, (string)currentValue)
+                    : Builders<Collection>.Filter.Lt(c => c.Name, (string)currentValue))
+                : (orEqual 
+                    ? Builders<Collection>.Filter.Gte(c => c.Name, (string)currentValue)
+                    : Builders<Collection>.Filter.Gt(c => c.Name, (string)currentValue)),
+            
+            "imagecount" => greater
+                ? (orEqual 
+                    ? Builders<Collection>.Filter.Lte(c => c.Statistics.TotalItems, (int)currentValue)
+                    : Builders<Collection>.Filter.Lt(c => c.Statistics.TotalItems, (int)currentValue))
+                : (orEqual 
+                    ? Builders<Collection>.Filter.Gte(c => c.Statistics.TotalItems, (int)currentValue)
+                    : Builders<Collection>.Filter.Gt(c => c.Statistics.TotalItems, (int)currentValue)),
+            
+            "totalsize" => greater
+                ? (orEqual 
+                    ? Builders<Collection>.Filter.Lte(c => c.Statistics.TotalSize, (long)currentValue)
+                    : Builders<Collection>.Filter.Lt(c => c.Statistics.TotalSize, (long)currentValue))
+                : (orEqual 
+                    ? Builders<Collection>.Filter.Gte(c => c.Statistics.TotalSize, (long)currentValue)
+                    : Builders<Collection>.Filter.Gt(c => c.Statistics.TotalSize, (long)currentValue)),
+            
+            _ => greater
+                ? (orEqual 
+                    ? Builders<Collection>.Filter.Lte(c => c.UpdatedAt, (DateTime)currentValue)
+                    : Builders<Collection>.Filter.Lt(c => c.UpdatedAt, (DateTime)currentValue))
+                : (orEqual 
+                    ? Builders<Collection>.Filter.Gte(c => c.UpdatedAt, (DateTime)currentValue)
+                    : Builders<Collection>.Filter.Gt(c => c.UpdatedAt, (DateTime)currentValue))
+        };
+        
+        // Exclude current collection
+        var excludeCurrentFilter = Builders<Collection>.Filter.Ne(c => c.Id, currentId);
+        
+        return Builders<Collection>.Filter.And(baseFilter, sortFilter, excludeCurrentFilter);
     }
 
     private SortDefinition<Collection> BuildAscendingSortDefinition(string sortBy)
