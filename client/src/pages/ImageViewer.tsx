@@ -565,7 +565,8 @@ const ImageViewer: React.FC = () => {
 
   // Image preloading with persistent cache (only in paging mode)
   useEffect(() => {
-    if (navigationMode === 'scroll' || currentIndex === -1 || images.length === 0) {
+    // Don't preload if in scroll mode, no current image, no images, or no data loaded yet
+    if (navigationMode === 'scroll' || currentIndex === -1 || images.length === 0 || !imagesData?.data) {
       return;
     }
 
