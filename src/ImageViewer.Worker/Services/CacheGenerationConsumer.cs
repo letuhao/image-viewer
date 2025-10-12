@@ -316,7 +316,18 @@ public class CacheGenerationConsumer : BaseMessageConsumer
                 WriteIndented = false
             };
             var cacheMsg = JsonSerializer.Deserialize<CacheGenerationMessage>(message, options);
-            _logger.LogError(ex, "Error processing cache generation message for image {ImageId}", cacheMsg?.ImageId);
+            
+            // Check if this is a corrupted/unsupported file error (should skip, not retry)
+            bool isSkippableError = ex is InvalidOperationException && ex.Message.Contains("Failed to decode image");
+            
+            if (isSkippableError)
+            {
+                _logger.LogWarning(ex, "⚠️ Skipping corrupted/unsupported image file: {ImagePath}. This message will NOT be retried.", cacheMsg?.ImagePath);
+            }
+            else
+            {
+                _logger.LogError(ex, "Error processing cache generation message for image {ImageId}", cacheMsg?.ImageId);
+            }
             
             // Track as failed in FileProcessingJobState
             if (cacheMsg != null && !string.IsNullOrEmpty(cacheMsg.JobId))
@@ -345,7 +356,13 @@ public class CacheGenerationConsumer : BaseMessageConsumer
                 }
             }
             
-            throw;
+            // CRITICAL: Skip corrupted files (don't retry), but throw for other errors (network, disk, etc.)
+            if (!isSkippableError)
+            {
+                throw;
+            }
+            
+            // For skippable errors, we return without throwing = ACK the message (don't retry)
         }
     }
 
