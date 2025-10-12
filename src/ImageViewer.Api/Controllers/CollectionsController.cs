@@ -789,8 +789,36 @@ public class CollectionsController : ControllerBase
                 return BadRequest(new { message = "Invalid collection ID format" });
             }
 
-            var siblings = await _collectionService.GetCollectionSiblingsAsync(collectionId, page, pageSize, sortBy, sortDirection);
-            return Ok(siblings);
+            var siblingsResult = await _collectionService.GetCollectionSiblingsAsync(collectionId, page, pageSize, sortBy, sortDirection);
+            
+            // Load thumbnails for siblings (same as collection list)
+            if (siblingsResult.Siblings.Any())
+            {
+                var thumbnailTasks = siblingsResult.Siblings.Select(async (sibling, index) =>
+                {
+                    // Get full collection to access thumbnail data
+                    if (ObjectId.TryParse(sibling.Id, out var siblingId))
+                    {
+                        var collection = await _collectionService.GetCollectionByIdAsync(siblingId);
+                        if (collection != null)
+                        {
+                            var thumbnail = collection.GetCollectionThumbnail();
+                            if (thumbnail != null)
+                            {
+                                var base64 = await _thumbnailCacheService.GetThumbnailAsBase64Async(
+                                    collection.Id.ToString(),
+                                    thumbnail);
+                                siblingsResult.Siblings[index].ThumbnailBase64 = base64;
+                            }
+                        }
+                    }
+                });
+                
+                await Task.WhenAll(thumbnailTasks);
+                _logger.LogDebug("Populated {Count} sibling thumbnails", siblingsResult.Siblings.Count(s => s.ThumbnailBase64 != null));
+            }
+            
+            return Ok(siblingsResult);
         }
         catch (BusinessRuleException ex)
         {
