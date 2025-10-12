@@ -142,15 +142,21 @@ const ImageViewer: React.FC = () => {
   // Update loaded images when new page arrives
   useEffect(() => {
     if (imagesData?.data) {
-      console.log(`[ImageViewer] Loaded page ${currentPage}: ${imagesData.data.length} images`);
+      console.log(`[ImageViewer] Loaded page ${currentPage}: ${imagesData.data.length} images (total: ${imagesData.totalCount})`);
       setTotalImagesCount(imagesData.totalCount || 0);
       
-      // Merge with existing images (avoid duplicates)
-      setAllLoadedImages(prev => {
-        const existingIds = new Set(prev.map(img => img.id));
-        const newImages = imagesData.data.filter(img => !existingIds.has(img.id));
-        return [...prev, ...newImages];
-      });
+      // For page 1, replace instead of merge (fresh start)
+      if (currentPage === 1) {
+        console.log(`[ImageViewer] Page 1 - replacing with fresh data`);
+        setAllLoadedImages(imagesData.data);
+      } else {
+        // For page 2+, merge with existing images (avoid duplicates)
+        setAllLoadedImages(prev => {
+          const existingIds = new Set(prev.map(img => img.id));
+          const newImages = imagesData.data.filter(img => !existingIds.has(img.id));
+          return [...prev, ...newImages];
+        });
+      }
     }
   }, [imagesData, currentPage]);
   
