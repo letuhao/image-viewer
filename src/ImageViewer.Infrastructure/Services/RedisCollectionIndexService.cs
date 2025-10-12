@@ -47,8 +47,8 @@ public class RedisCollectionIndexService : ICollectionIndexService
             var collections = await _collectionRepository.FindAsync(
                 MongoDB.Driver.Builders<Collection>.Filter.Eq(c => c.IsDeleted, false),
                 MongoDB.Driver.Builders<Collection>.Sort.Ascending(c => c.Id),
-                int.MaxValue,
-                0
+                0, // 0 = no limit, get all collections
+                0  // 0 = no skip
             );
 
             var collectionList = collections.ToList();
