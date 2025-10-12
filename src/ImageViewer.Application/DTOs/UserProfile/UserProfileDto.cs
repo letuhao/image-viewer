@@ -115,7 +115,7 @@ public class UserProfileCustomizationSettings
     public int ItemsPerPage { get; set; } = 20; // Keep for backward compatibility
     public int CollectionsPageSize { get; set; } = 100;
     public int CollectionDetailPageSize { get; set; } = 20;
-    public int SidebarPageSize { get; set} = 20;
+    public int SidebarPageSize { get; set; } = 20;
     public int ImageViewerPageSize { get; set; } = 200;
     public bool ShowThumbnails { get; set; } = true;
     public bool ShowMetadata { get; set; } = true;
