@@ -139,6 +139,27 @@ const ImageViewer: React.FC = () => {
     crossCollectionNav ? collectionId : undefined
   );
 
+  // Track if component is mounting (to prevent reset after data loads)
+  const isMountingRef = useRef(true);
+  
+  // Reset on mount BEFORE any data loads
+  useEffect(() => {
+    console.log(`[ImageViewer] Component mounting, resetting state`);
+    setAllLoadedImages([]);
+    setCurrentPage(1);
+    setTotalImagesCount(0);
+    
+    // Mark that initial mount is complete
+    const timer = setTimeout(() => {
+      isMountingRef.current = false;
+    }, 100);
+    
+    return () => {
+      clearTimeout(timer);
+      isMountingRef.current = true; // Reset for next mount
+    };
+  }, [collectionId, initialImageId]); // Reset when these change
+  
   // Update loaded images when new page arrives
   useEffect(() => {
     if (imagesData?.data) {
@@ -154,28 +175,12 @@ const ImageViewer: React.FC = () => {
         setAllLoadedImages(prev => {
           const existingIds = new Set(prev.map(img => img.id));
           const newImages = imagesData.data.filter(img => !existingIds.has(img.id));
+          console.log(`[ImageViewer] Page ${currentPage} - merging ${newImages.length} new images`);
           return [...prev, ...newImages];
         });
       }
     }
   }, [imagesData, currentPage]);
-  
-  // Reset loaded images when component mounts or collection changes
-  useEffect(() => {
-    console.log(`[ImageViewer] Mounting or collection changed (${collectionId}), resetting loaded images`);
-    setAllLoadedImages([]);
-    setCurrentPage(1);
-    setTotalImagesCount(0);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Empty array = run on mount only
-  
-  // Separate effect for collection changes (if navigating between collections)
-  useEffect(() => {
-    console.log(`[ImageViewer] Collection changed to ${collectionId}, resetting state`);
-    setAllLoadedImages([]);
-    setCurrentPage(1);
-    setTotalImagesCount(0);
-  }, [collectionId]);
   
   const images = allLoadedImages;
   const currentIndex = images.findIndex((img) => img.id === currentImageId);
