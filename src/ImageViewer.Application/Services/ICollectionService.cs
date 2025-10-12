@@ -25,7 +25,7 @@ public interface ICollectionService
     
     #region Collection Settings Management
     
-    Task<Collection> UpdateSettingsAsync(ObjectId collectionId, UpdateCollectionSettingsRequest request, bool triggerScan = true);
+    Task<Collection> UpdateSettingsAsync(ObjectId collectionId, UpdateCollectionSettingsRequest request, bool triggerScan = true, bool forceRescan = false);
     Task<Collection> UpdateMetadataAsync(ObjectId collectionId, UpdateCollectionMetadataRequest request);
     Task<Collection> UpdateStatisticsAsync(ObjectId collectionId, UpdateCollectionStatisticsRequest request);
     
