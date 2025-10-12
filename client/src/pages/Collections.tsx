@@ -52,6 +52,14 @@ const Collections: React.FC = () => {
     parseInt(localStorage.getItem('collectionsPageSize') || '100')
   );
 
+  // Sort state (persisted to localStorage)
+  const [sortBy, setSortBy] = useState<string>(() => 
+    localStorage.getItem('collectionsSortBy') || 'updatedAt'
+  );
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>(() => 
+    (localStorage.getItem('collectionsSortDirection') as 'asc' | 'desc') || 'desc'
+  );
+
   // View preferences (persisted to localStorage)
   const [viewMode, setViewMode] = useState<ViewMode>(() => 
     (localStorage.getItem('viewMode') as ViewMode) || 'grid'
@@ -75,7 +83,7 @@ const Collections: React.FC = () => {
     pageNumbersToShow: userSettingsData?.pagination?.pageNumbersToShow ?? 5,
   };
 
-  const { data, isLoading, refetch} = useCollections({ page, limit });
+  const { data, isLoading, refetch} = useCollections({ page, limit, sortBy, sortDirection });
   
   // Preserve previous pagination data to prevent layout shift during loading
   const [previousTotalPages, setPreviousTotalPages] = useState(1);
@@ -97,6 +105,15 @@ const Collections: React.FC = () => {
   useEffect(() => {
     sessionStorage.setItem('collectionsCurrentPage', page.toString());
   }, [page]);
+
+  // Save sort preferences to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem('collectionsSortBy', sortBy);
+  }, [sortBy]);
+
+  useEffect(() => {
+    localStorage.setItem('collectionsSortDirection', sortDirection);
+  }, [sortDirection]);
 
   // Save search query to sessionStorage whenever it changes
   useEffect(() => {
@@ -248,6 +265,32 @@ const Collections: React.FC = () => {
 
             {/* Right: View Controls + Pagination - Compact & Efficient */}
             <div className="flex items-center gap-2 lg:gap-3 flex-shrink-0">
+              {/* Sort Controls - Compact */}
+              <div className="flex items-center gap-1 bg-slate-800 rounded-lg p-1">
+                <select
+                  value={sortBy}
+                  onChange={(e) => {
+                    setSortBy(e.target.value);
+                    setPage(1); // Reset to first page when sort changes
+                  }}
+                  className="px-2 py-1.5 bg-slate-700 border border-slate-600 rounded text-white text-xs focus:outline-none focus:ring-1 focus:ring-primary-500"
+                  title="Sort By"
+                >
+                  <option value="updatedAt">Last Updated</option>
+                  <option value="createdAt">Date Added</option>
+                  <option value="name">Name</option>
+                  <option value="imageCount">Images</option>
+                  <option value="totalSize">Size</option>
+                </select>
+                <button
+                  onClick={() => setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc')}
+                  className="p-1.5 rounded transition-colors text-slate-400 hover:text-white hover:bg-slate-700"
+                  title={sortDirection === 'asc' ? 'Ascending' : 'Descending'}
+                >
+                  {sortDirection === 'asc' ? '↑' : '↓'}
+                </button>
+              </div>
+
               {/* Pagination Controls - Compact */}
               <div className="flex items-center gap-2 bg-slate-800 rounded-lg px-2 py-1">
                   <Pagination
