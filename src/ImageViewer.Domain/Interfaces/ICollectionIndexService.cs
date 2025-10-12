@@ -111,6 +111,24 @@ public interface ICollectionIndexService
     /// Get collections count by type (O(1) operation).
     /// </summary>
     Task<int> GetCollectionsCountByTypeAsync(int collectionType, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Get cached thumbnail for collection (WebP format).
+    /// Returns null if not cached.
+    /// </summary>
+    Task<byte[]?> GetCachedThumbnailAsync(ObjectId collectionId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Cache thumbnail for collection (WebP format).
+    /// Sets expiration to 30 days by default.
+    /// </summary>
+    Task SetCachedThumbnailAsync(ObjectId collectionId, byte[] thumbnailData, TimeSpan? expiration = null, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Batch cache thumbnails for multiple collections.
+    /// Used during index rebuild for performance.
+    /// </summary>
+    Task BatchCacheThumbnailsAsync(Dictionary<ObjectId, byte[]> thumbnails, TimeSpan? expiration = null, CancellationToken cancellationToken = default);
 }
 
 /// <summary>

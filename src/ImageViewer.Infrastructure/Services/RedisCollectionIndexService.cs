@@ -23,6 +23,7 @@ public class RedisCollectionIndexService : ICollectionIndexService
     private const string HASH_PREFIX = "collection_index:data:";
     private const string STATS_KEY = "collection_index:stats";
     private const string LAST_REBUILD_KEY = "collection_index:last_rebuild";
+    private const string THUMBNAIL_PREFIX = "collection_index:thumb:";
 
     public RedisCollectionIndexService(
         IConnectionMultiplexer redis,
@@ -360,6 +361,11 @@ public class RedisCollectionIndexService : ICollectionIndexService
         return $"{SORTED_SET_PREFIX}{indexType}:{indexValue}:{sortBy}:{sortDirection}";
     }
 
+    private string GetThumbnailKey(string collectionId)
+    {
+        return $"{THUMBNAIL_PREFIX}{collectionId}";
+    }
+
     private async Task AddToSortedSetsAsync(IDatabaseAsync db, Collection collection)
     {
         var collectionIdStr = collection.Id.ToString();
@@ -684,6 +690,81 @@ public class RedisCollectionIndexService : ICollectionIndexService
         {
             _logger.LogError(ex, "Failed to get collections count for type {Type}", collectionType);
             throw;
+        }
+    }
+
+    #endregion
+
+    #region Thumbnail Caching
+
+    public async Task<byte[]?> GetCachedThumbnailAsync(ObjectId collectionId, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var key = GetThumbnailKey(collectionId.ToString());
+            var data = await _db.StringGetAsync(key);
+            
+            if (data.HasValue)
+            {
+                _logger.LogDebug("✅ Thumbnail cache HIT for collection {CollectionId}", collectionId);
+                return (byte[])data;
+            }
+            
+            _logger.LogDebug("❌ Thumbnail cache MISS for collection {CollectionId}", collectionId);
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get cached thumbnail for collection {CollectionId}", collectionId);
+            return null; // Fail gracefully
+        }
+    }
+
+    public async Task SetCachedThumbnailAsync(ObjectId collectionId, byte[] thumbnailData, TimeSpan? expiration = null, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var key = GetThumbnailKey(collectionId.ToString());
+            var expire = expiration ?? TimeSpan.FromDays(30); // 30 days default
+            
+            await _db.StringSetAsync(key, thumbnailData, expire);
+            _logger.LogDebug("💾 Cached thumbnail for collection {CollectionId}, size: {Size} bytes, expiration: {Expiration}", 
+                collectionId, thumbnailData.Length, expire);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to cache thumbnail for collection {CollectionId}", collectionId);
+            // Fail gracefully - don't throw
+        }
+    }
+
+    public async Task BatchCacheThumbnailsAsync(Dictionary<ObjectId, byte[]> thumbnails, TimeSpan? expiration = null, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            _logger.LogInformation("📦 Batch caching {Count} thumbnails...", thumbnails.Count);
+            var expire = expiration ?? TimeSpan.FromDays(30);
+            
+            var batch = _db.CreateBatch();
+            var tasks = new List<Task>();
+            
+            foreach (var kvp in thumbnails)
+            {
+                var key = GetThumbnailKey(kvp.Key.ToString());
+                tasks.Add(batch.StringSetAsync(key, kvp.Value, expire));
+            }
+            
+            batch.Execute();
+            await Task.WhenAll(tasks);
+            
+            var totalSize = thumbnails.Values.Sum(t => t.Length);
+            _logger.LogInformation("✅ Batch cached {Count} thumbnails, total size: {Size:N0} bytes ({SizeMB:F2} MB)", 
+                thumbnails.Count, totalSize, totalSize / 1024.0 / 1024.0);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to batch cache thumbnails");
+            // Fail gracefully
         }
     }
 
