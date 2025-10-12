@@ -40,6 +40,9 @@ public class BulkAddCollectionsRequest
     [JsonPropertyName("overwriteExisting")]
     public bool OverwriteExisting { get; set; } = false;
     
+    [JsonPropertyName("resumeIncomplete")]
+    public bool ResumeIncomplete { get; set; } = false;
+    
     [JsonPropertyName("thumbnailWidth")]
     public int? ThumbnailWidth { get; set; }
     

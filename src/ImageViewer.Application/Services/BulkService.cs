@@ -3,6 +3,7 @@ using ImageViewer.Domain.Entities;
 using ImageViewer.Domain.Enums;
 using ImageViewer.Domain.Exceptions;
 using ImageViewer.Domain.ValueObjects;
+using ImageViewer.Domain.Events;
 using MongoDB.Bson;
 
 namespace ImageViewer.Application.Services;
@@ -13,11 +14,19 @@ namespace ImageViewer.Application.Services;
 public class BulkService : IBulkService
 {
     private readonly ICollectionService _collectionService;
+    private readonly IMessageQueueService _messageQueueService;
+    private readonly IBackgroundJobService _backgroundJobService;
     private readonly ILogger<BulkService> _logger;
 
-    public BulkService(ICollectionService collectionService, ILogger<BulkService> logger)
+    public BulkService(
+        ICollectionService collectionService,
+        IMessageQueueService messageQueueService,
+        IBackgroundJobService backgroundJobService,
+        ILogger<BulkService> logger)
     {
         _collectionService = collectionService;
+        _messageQueueService = messageQueueService;
+        _backgroundJobService = backgroundJobService;
         _logger = logger;
     }
 
@@ -110,58 +119,146 @@ public class BulkService : IBulkService
         
         if (existingCollection != null)
         {
-            _logger.LogInformation("Found existing collection {Name} with OverwriteExisting={OverwriteExisting}", 
-                potential.Name, request.OverwriteExisting);
+            _logger.LogInformation("Found existing collection {Name} with OverwriteExisting={OverwriteExisting}, ResumeIncomplete={ResumeIncomplete}", 
+                potential.Name, request.OverwriteExisting, request.ResumeIncomplete);
             
-            // Always update metadata and queue scan for existing collections
-            // The difference is: OverwriteExisting=true clears image arrays, false keeps them
+            // Check if collection has images (already scanned)
+            var hasImages = existingCollection.Images?.Count > 0;
+            var imageCount = existingCollection.Images?.Count ?? 0;
+            var thumbnailCount = existingCollection.Thumbnails?.Count ?? 0;
+            var cacheCount = existingCollection.CacheImages?.Count ?? 0;
             
-            _logger.LogInformation("Updating existing collection {Name} at {Path} (OverwriteExisting={OverwriteExisting})", 
-                potential.Name, potential.Path, request.OverwriteExisting);
-            
-            // Update existing collection metadata
-            var updateRequest = new UpdateCollectionRequest
-            {
-                Name = potential.Name,
-                Path = normalizedPath
-            };
-            collection = await _collectionService.UpdateCollectionAsync(existingCollection.Id, updateRequest);
-            
-            // Apply collection settings
-            var settings = CreateCollectionSettings(request);
-            var settingsRequest = new UpdateCollectionSettingsRequest
-            {
-                AutoScan = settings.AutoScan,
-                GenerateThumbnails = settings.GenerateThumbnails,
-                GenerateCache = settings.GenerateCache,
-                EnableWatching = settings.EnableWatching,
-                ScanInterval = settings.ScanInterval,
-                MaxFileSize = settings.MaxFileSize,
-                AllowedFormats = settings.AllowedFormats?.ToList(),
-                ExcludedPaths = settings.ExcludedPaths?.ToList()
-            };
-            // Pass forceRescan flag to determine rescan behavior
-            collection = await _collectionService.UpdateSettingsAsync(
-                collection.Id, 
-                settingsRequest, 
-                triggerScan: true, 
-                forceRescan: request.OverwriteExisting); // OverwriteExisting controls ForceRescan
-            
-            wasOverwritten = request.OverwriteExisting;
-            
+            // MODE 3: Force Rescan (OverwriteExisting=true)
             if (request.OverwriteExisting)
             {
                 _logger.LogInformation("OverwriteExisting=true: Will clear image arrays and rescan collection {Name} from scratch", 
                     potential.Name);
+                
+                // Update existing collection metadata
+                var updateRequest = new UpdateCollectionRequest
+                {
+                    Name = potential.Name,
+                    Path = normalizedPath
+                };
+                collection = await _collectionService.UpdateCollectionAsync(existingCollection.Id, updateRequest);
+                
+                // Apply collection settings with force rescan
+                var settings = CreateCollectionSettings(request);
+                var settingsRequest = new UpdateCollectionSettingsRequest
+                {
+                    AutoScan = settings.AutoScan,
+                    GenerateThumbnails = settings.GenerateThumbnails,
+                    GenerateCache = settings.GenerateCache,
+                    EnableWatching = settings.EnableWatching,
+                    ScanInterval = settings.ScanInterval,
+                    MaxFileSize = settings.MaxFileSize,
+                    AllowedFormats = settings.AllowedFormats?.ToList(),
+                    ExcludedPaths = settings.ExcludedPaths?.ToList()
+                };
+                collection = await _collectionService.UpdateSettingsAsync(
+                    collection.Id, 
+                    settingsRequest, 
+                    triggerScan: true, 
+                    forceRescan: true);
+                
+                wasOverwritten = true;
+                _logger.LogInformation("Successfully updated existing collection {Name} with ID {CollectionId} and queued force rescan", 
+                    potential.Name, collection.Id);
+            }
+            // MODE 2: Resume Incomplete (ResumeIncomplete=true AND hasImages)
+            else if (request.ResumeIncomplete && hasImages)
+            {
+                // Collection has images, check if thumbnail/cache is incomplete
+                var missingThumbnails = imageCount - thumbnailCount;
+                var missingCache = imageCount - cacheCount;
+                
+                if (missingThumbnails > 0 || missingCache > 0)
+                {
+                    _logger.LogInformation("ResumeIncomplete=true: Collection {Name} has {ImageCount} images, {ThumbnailCount} thumbnails, {CacheCount} cache. Missing: {MissingThumbnails} thumbnails, {MissingCache} cache", 
+                        potential.Name, imageCount, thumbnailCount, cacheCount, missingThumbnails, missingCache);
+                    
+                    // Queue ONLY missing thumbnail/cache jobs (no re-scan)
+                    await QueueMissingThumbnailCacheJobsAsync(existingCollection, request, cancellationToken);
+                    
+                    return new BulkCollectionResult
+                    {
+                        Name = potential.Name,
+                        Path = potential.Path,
+                        Type = potential.Type,
+                        Status = "Resumed",
+                        Message = $"Resumed: {missingThumbnails} thumbnails, {missingCache} cache (no re-scan)",
+                        CollectionId = existingCollection.Id
+                    };
+                }
+                else
+                {
+                    // Collection is complete (100%)
+                    _logger.LogInformation("ResumeIncomplete=true: Collection {Name} is complete ({ImageCount} images, {ThumbnailCount} thumbnails, {CacheCount} cache), skipping", 
+                        potential.Name, imageCount, thumbnailCount, cacheCount);
+                    
+                    return new BulkCollectionResult
+                    {
+                        Name = potential.Name,
+                        Path = potential.Path,
+                        Type = potential.Type,
+                        Status = "Skipped",
+                        Message = $"Already complete: {imageCount} images, {thumbnailCount} thumbnails, {cacheCount} cache",
+                        CollectionId = existingCollection.Id
+                    };
+                }
+            }
+            // MODE 1: Skip or Scan
+            else if (!hasImages || request.ResumeIncomplete)
+            {
+                // No images yet OR ResumeIncomplete mode but no images = need to scan
+                _logger.LogInformation("Collection {Name} has no images, queuing scan job", potential.Name);
+                
+                // Update existing collection metadata
+                var updateRequest = new UpdateCollectionRequest
+                {
+                    Name = potential.Name,
+                    Path = normalizedPath
+                };
+                collection = await _collectionService.UpdateCollectionAsync(existingCollection.Id, updateRequest);
+                
+                // Apply collection settings and queue scan
+                var settings = CreateCollectionSettings(request);
+                var settingsRequest = new UpdateCollectionSettingsRequest
+                {
+                    AutoScan = settings.AutoScan,
+                    GenerateThumbnails = settings.GenerateThumbnails,
+                    GenerateCache = settings.GenerateCache,
+                    EnableWatching = settings.EnableWatching,
+                    ScanInterval = settings.ScanInterval,
+                    MaxFileSize = settings.MaxFileSize,
+                    AllowedFormats = settings.AllowedFormats?.ToList(),
+                    ExcludedPaths = settings.ExcludedPaths?.ToList()
+                };
+                collection = await _collectionService.UpdateSettingsAsync(
+                    collection.Id, 
+                    settingsRequest, 
+                    triggerScan: true, 
+                    forceRescan: false);
+                
+                _logger.LogInformation("Successfully updated existing collection {Name} with ID {CollectionId} and queued scan", 
+                    potential.Name, collection.Id);
             }
             else
             {
-                _logger.LogInformation("OverwriteExisting=false: Will keep existing images and discover new ones for collection {Name}", 
-                    potential.Name);
+                // MODE 1: Skip (hasImages and not ResumeIncomplete)
+                _logger.LogInformation("Collection {Name} already has {ImageCount} images, skipping (ResumeIncomplete=false)", 
+                    potential.Name, imageCount);
+                
+                return new BulkCollectionResult
+                {
+                    Name = potential.Name,
+                    Path = potential.Path,
+                    Type = potential.Type,
+                    Status = "Skipped",
+                    Message = $"Already scanned: {imageCount} images (use ResumeIncomplete=true to resume)",
+                    CollectionId = existingCollection.Id
+                };
             }
-            
-            _logger.LogInformation("Successfully updated existing collection {Name} with ID {CollectionId} and applied settings", 
-                potential.Name, collection.Id);
         }
         else
         {
@@ -417,6 +514,91 @@ public class BulkService : IBulkService
         {
             _logger.LogWarning(ex, "Error checking images in compressed file {FilePath}", filePath);
             return Task.FromResult(false);
+        }
+    }
+
+    /// <summary>
+    /// Queue thumbnail and cache generation jobs for images that are missing them
+    /// This is used for resuming incomplete collections without re-scanning
+    /// </summary>
+    private async Task QueueMissingThumbnailCacheJobsAsync(
+        Collection collection, 
+        BulkAddCollectionsRequest request, 
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            _logger.LogInformation("Queuing missing thumbnail/cache jobs for collection {CollectionId} ({Name})", 
+                collection.Id, collection.Name);
+            
+            // Get images that don't have thumbnails
+            var imagesNeedingThumbnails = collection.Images?
+                .Where(img => !(collection.Thumbnails?.Any(t => t.ImageId == img.Id) ?? false))
+                .ToList() ?? new List<ImageEmbedded>();
+            
+            // Get images that don't have cache
+            var imagesNeedingCache = collection.Images?
+                .Where(img => !(collection.CacheImages?.Any(c => c.ImageId == img.Id) ?? false))
+                .ToList() ?? new List<ImageEmbedded>();
+            
+            _logger.LogInformation("Collection {Name}: {ThumbnailCount} images need thumbnails, {CacheCount} images need cache", 
+                collection.Name, imagesNeedingThumbnails.Count, imagesNeedingCache.Count);
+            
+            // Create a background job for tracking
+            var resumeJob = await _backgroundJobService.CreateJobAsync(new CreateBackgroundJobDto
+            {
+                Type = "resume-collection",
+                Description = $"Resume thumbnail/cache generation for {collection.Name}"
+            });
+            
+            // Queue thumbnail generation jobs
+            foreach (var image in imagesNeedingThumbnails)
+            {
+                var thumbnailMessage = new ThumbnailGenerationMessage
+                {
+                    ImageId = image.Id,
+                    CollectionId = collection.Id.ToString(),
+                    ImagePath = image.FullPath,
+                    ImageFilename = image.Filename,
+                    ThumbnailWidth = request.ThumbnailWidth ?? 300,
+                    ThumbnailHeight = request.ThumbnailHeight ?? 300,
+                    JobId = resumeJob.JobId.ToString()
+                };
+                
+                await _messageQueueService.PublishAsync(thumbnailMessage);
+                _logger.LogDebug("Queued thumbnail generation for image {ImageId} in collection {CollectionId}", 
+                    image.Id, collection.Id);
+            }
+            
+            // Queue cache generation jobs
+            foreach (var image in imagesNeedingCache)
+            {
+                var cacheMessage = new CacheGenerationMessage
+                {
+                    ImageId = image.Id,
+                    CollectionId = collection.Id.ToString(),
+                    ImagePath = image.FullPath,
+                    ImageFilename = image.Filename,
+                    TargetWidth = request.CacheWidth ?? 1920,
+                    TargetHeight = request.CacheHeight ?? 1080,
+                    Quality = 85,
+                    Format = "jpeg",
+                    ForceRegenerate = false,
+                    JobId = resumeJob.JobId.ToString()
+                };
+                
+                await _messageQueueService.PublishAsync(cacheMessage);
+                _logger.LogDebug("Queued cache generation for image {ImageId} in collection {CollectionId}", 
+                    image.Id, collection.Id);
+            }
+            
+            _logger.LogInformation("Successfully queued {ThumbnailCount} thumbnail jobs and {CacheCount} cache jobs for collection {Name}", 
+                imagesNeedingThumbnails.Count, imagesNeedingCache.Count, collection.Name);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error queuing missing thumbnail/cache jobs for collection {CollectionId}", collection.Id);
+            throw;
         }
     }
 }
