@@ -585,22 +585,23 @@ public class RedisCollectionIndexService : ICollectionIndexService
             var tasks = new List<Task>();
             
             // Find and delete all sorted set indexes (primary + secondary)
-            var sortedSetKeys = server.Keys(pattern: $"{SORTED_SET_PREFIX}*").ToList();
-            _logger.LogDebug("Found {Count} sorted set keys to delete", sortedSetKeys.Count);
-            
-            foreach (var key in sortedSetKeys)
+            // Use async enumeration to avoid timeout on large key sets
+            var sortedSetCount = 0;
+            await foreach (var key in server.KeysAsync(pattern: $"{SORTED_SET_PREFIX}*", pageSize: 1000))
             {
                 tasks.Add(_db.KeyDeleteAsync(key));
+                sortedSetCount++;
             }
+            _logger.LogDebug("Found {Count} sorted set keys to delete", sortedSetCount);
             
             // Find and delete all collection hashes
-            var hashKeys = server.Keys(pattern: $"{HASH_PREFIX}*").ToList();
-            _logger.LogDebug("Found {Count} collection hashes to delete", hashKeys.Count);
-            
-            foreach (var key in hashKeys)
+            var hashCount = 0;
+            await foreach (var key in server.KeysAsync(pattern: $"{HASH_PREFIX}*", pageSize: 1000))
             {
                 tasks.Add(_db.KeyDeleteAsync(key));
+                hashCount++;
             }
+            _logger.LogDebug("Found {Count} collection hashes to delete", hashCount);
             
             // Note: Don't clear thumbnails - they can persist for performance
             // Thumbnails have 30-day expiration anyway
@@ -608,7 +609,7 @@ public class RedisCollectionIndexService : ICollectionIndexService
             await Task.WhenAll(tasks);
             
             _logger.LogInformation("✅ Cleared {SortedSets} sorted sets and {Hashes} hashes", 
-                sortedSetKeys.Count, hashKeys.Count);
+                sortedSetCount, hashCount);
         }
         catch (Exception ex)
         {
