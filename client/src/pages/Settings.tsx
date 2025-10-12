@@ -9,6 +9,7 @@ import Toggle from '../components/ui/Toggle';
 import Button from '../components/ui/Button';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import CacheFolderManager from '../components/settings/CacheFolderManager';
+import RedisIndexManagement from '../components/settings/RedisIndexManagement';
 import { useUserSettings, useUpdateUserSettings, useResetUserSettings, useSystemSettings, useBatchUpdateSystemSettings } from '../hooks/useSettings';
 import toast from 'react-hot-toast';
 
@@ -671,6 +672,8 @@ const Settings: React.FC = () => {
                       <Toggle enabled={true} onChange={() => {}} />
                     </SettingItem>
                   </SettingsSection>
+
+                  <RedisIndexManagement />
 
                   {/* Save Button */}
                   <div className="flex justify-end space-x-3">

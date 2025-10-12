@@ -18,17 +18,20 @@ public class CollectionsController : ControllerBase
     private readonly ILogger<CollectionsController> _logger;
     private readonly ImageViewer.Domain.Interfaces.IImageCacheService _imageCacheService;
     private readonly ImageViewer.Application.Services.IThumbnailCacheService _thumbnailCacheService;
+    private readonly ImageViewer.Domain.Interfaces.ICollectionIndexService _collectionIndexService;
 
     public CollectionsController(
         ICollectionService collectionService, 
         ILogger<CollectionsController> logger,
         ImageViewer.Domain.Interfaces.IImageCacheService imageCacheService,
-        ImageViewer.Application.Services.IThumbnailCacheService thumbnailCacheService)
+        ImageViewer.Application.Services.IThumbnailCacheService thumbnailCacheService,
+        ImageViewer.Domain.Interfaces.ICollectionIndexService collectionIndexService)
     {
         _collectionService = collectionService ?? throw new ArgumentNullException(nameof(collectionService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _imageCacheService = imageCacheService ?? throw new ArgumentNullException(nameof(imageCacheService));
         _thumbnailCacheService = thumbnailCacheService ?? throw new ArgumentNullException(nameof(thumbnailCacheService));
+        _collectionIndexService = collectionIndexService ?? throw new ArgumentNullException(nameof(collectionIndexService));
     }
 
     /// <summary>
@@ -829,6 +832,92 @@ public class CollectionsController : ControllerBase
         {
             _logger.LogError(ex, "Failed to get siblings for collection {CollectionId}", id);
             return StatusCode(500, new { message = "Internal server error" });
+        }
+    }
+
+    #endregion
+
+    #region Redis Index Management
+
+    /// <summary>
+    /// Get Redis collection index statistics
+    /// </summary>
+    [HttpGet("index/stats")]
+    [ProducesResponseType(typeof(object), 200)]
+    public async Task<IActionResult> GetIndexStats()
+    {
+        try
+        {
+            var stats = await _collectionIndexService.GetIndexStatsAsync();
+            var isValid = await _collectionIndexService.IsIndexValidAsync();
+            
+            return Ok(new
+            {
+                totalCollections = stats.TotalCollections,
+                lastRebuildTime = stats.LastRebuildTime,
+                isValid = isValid,
+                redisConnected = true // If we got here, Redis is connected
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get Redis index stats");
+            return StatusCode(500, new { message = "Failed to get index statistics", error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Validate Redis collection index
+    /// </summary>
+    [HttpGet("index/validate")]
+    [ProducesResponseType(typeof(object), 200)]
+    public async Task<IActionResult> ValidateIndex()
+    {
+        try
+        {
+            var isValid = await _collectionIndexService.IsIndexValidAsync();
+            _logger.LogInformation("Redis index validation result: {IsValid}", isValid);
+            
+            return Ok(new { isValid = isValid });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to validate Redis index");
+            return StatusCode(500, new { message = "Failed to validate index", error = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Rebuild Redis collection index
+    /// </summary>
+    [HttpPost("index/rebuild")]
+    [ProducesResponseType(200)]
+    public IActionResult RebuildIndex()
+    {
+        try
+        {
+            _logger.LogInformation("🔄 Starting Redis index rebuild (background task)");
+            
+            // Start rebuild in background task
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await _collectionIndexService.RebuildIndexAsync();
+                    _logger.LogInformation("✅ Redis index rebuild completed successfully");
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "❌ Redis index rebuild failed");
+                }
+            });
+            
+            return Ok(new { message = "Index rebuild started in background" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to start Redis index rebuild");
+            return StatusCode(500, new { message = "Failed to start index rebuild", error = ex.Message });
         }
     }
 
