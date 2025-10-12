@@ -249,17 +249,17 @@ const CollectionDetail: React.FC = () => {
               <div className="flex items-center space-x-6">
                 <div className="flex items-center space-x-2">
                   <ImageIcon className="h-4 w-4 text-blue-400" />
-                  <span className="text-sm font-medium text-white">{(collection.imageCount ?? 0).toLocaleString()}</span>
+                  <span className="text-sm font-medium text-white">{(collection.statistics?.totalItems ?? collection.imageCount ?? 0).toLocaleString()}</span>
                   <span className="text-xs text-slate-400">images</span>
                 </div>
                 <div className="flex items-center space-x-2">
                   <FileImage className="h-4 w-4 text-green-400" />
-                  <span className="text-sm font-medium text-white">{(collection.thumbnailCount ?? 0).toLocaleString()}</span>
+                  <span className="text-sm font-medium text-white">{(collection.statistics?.totalThumbnails ?? collection.thumbnailCount ?? 0).toLocaleString()}</span>
                   <span className="text-xs text-slate-400">thumbs</span>
                 </div>
                 <div className="flex items-center space-x-2">
                   <HardDrive className="h-4 w-4 text-purple-400" />
-                  <span className="text-sm font-medium text-white">{(collection.cacheImageCount ?? 0).toLocaleString()}</span>
+                  <span className="text-sm font-medium text-white">{(collection.statistics?.totalCached ?? collection.cacheImageCount ?? 0).toLocaleString()}</span>
                   <span className="text-xs text-slate-400">cached</span>
                 </div>
                 <div className="flex items-center space-x-2">

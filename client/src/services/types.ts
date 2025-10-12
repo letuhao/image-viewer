@@ -17,10 +17,22 @@ export interface Collection {
   isNested: boolean;
   parentId?: string;
   depth: number;
-  imageCount: number;
-  thumbnailCount: number;
-  cacheImageCount: number;
-  totalSize: number;
+  
+  // Legacy fields (for backward compatibility with collection list)
+  imageCount?: number;
+  thumbnailCount?: number;
+  cacheImageCount?: number;
+  totalSize?: number;
+
+  // New statistics object (from collection detail API)
+  statistics?: {
+    totalItems: number;
+    totalThumbnails: number;
+    totalCached: number;
+    totalSize: number;
+    lastScanDate?: string;
+    lastViewed?: string;
+  };
 
   // Thumbnail info for collection card display
   thumbnailPath?: string;
