@@ -67,12 +67,11 @@ const ImageViewer: React.FC = () => {
   const { data: userSettingsData } = useUserSettings();
   const imageViewerPageSize = userSettingsData?.imageViewerPageSize || 1000;
   
-  // Simple approach: Load all images (or large limit)
-  // Pagination in Image Viewer is complex and causes race conditions
-  // Better to load all images for collections up to 10k images
+  // For now: Load all images (set high limit to prevent user getting stuck)
+  // TODO: Implement proper progressive pagination without race conditions
   const { data: imagesData } = useImages({ 
     collectionId: collectionId!, 
-    limit: imageViewerPageSize 
+    limit: 10000 // High limit to ensure all images load
   });
   
   // Use local state for current image ID to avoid URL changes on every navigation
