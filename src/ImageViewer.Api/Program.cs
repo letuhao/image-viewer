@@ -122,6 +122,9 @@ builder.Services.AddScoped<ImageViewer.Domain.Interfaces.IImageCacheService, Ima
 // Register Thumbnail Cache Service (for Base64 encoding with Redis)
 builder.Services.AddScoped<ImageViewer.Application.Services.IThumbnailCacheService, ImageViewer.Application.Services.ThumbnailCacheService>();
 
+// Register Redis Collection Index Service (for fast navigation and sorting)
+builder.Services.AddScoped<ImageViewer.Domain.Interfaces.ICollectionIndexService, ImageViewer.Infrastructure.Services.RedisCollectionIndexService>();
+
 // Add Hangfire Scheduler with Dashboard
 builder.Services.AddHangfireDashboard(builder.Configuration);
 
@@ -240,6 +243,41 @@ using (var scope = app.Services.CreateScope())
     {
         Log.Error(ex, "❌ Failed to initialize MongoDB indexes");
         // Continue startup even if index creation fails
+    }
+
+    // Initialize Redis collection index
+    try
+    {
+        var collectionIndexService = scope.ServiceProvider.GetRequiredService<ImageViewer.Domain.Interfaces.ICollectionIndexService>();
+        var isValid = await collectionIndexService.IsIndexValidAsync();
+        
+        if (!isValid)
+        {
+            Log.Information("🔄 Redis collection index not found or invalid, rebuilding...");
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await collectionIndexService.RebuildIndexAsync();
+                    Log.Information("✅ Redis collection index rebuilt successfully");
+                }
+                catch (Exception rebuildEx)
+                {
+                    Log.Error(rebuildEx, "❌ Failed to rebuild Redis collection index");
+                }
+            });
+        }
+        else
+        {
+            Log.Information("✅ Redis collection index is valid");
+            var stats = await collectionIndexService.GetIndexStatsAsync();
+            Log.Information("📊 Index contains {Count} collections, last rebuild: {LastRebuild}", 
+                stats.TotalCollections, stats.LastRebuildTime);
+        }
+    }
+    catch (Exception ex)
+    {
+        Log.Error(ex, "❌ Failed to validate Redis collection index");
     }
 }
 
