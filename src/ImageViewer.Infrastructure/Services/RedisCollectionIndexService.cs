@@ -121,12 +121,15 @@ public class RedisCollectionIndexService : ICollectionIndexService
             _logger.LogDebug("Removing collection {CollectionId} from index", collectionId);
 
             var collectionIdStr = collectionId.ToString();
+            
+            // First, get the collection summary to know which secondary indexes to clean
+            var summary = await GetCollectionSummaryAsync(collectionIdStr);
 
-            // Remove from all sorted sets
             var sortFields = new[] { "updatedAt", "createdAt", "name", "imageCount", "totalSize" };
             var sortDirections = new[] { "asc", "desc" };
-
             var tasks = new List<Task>();
+
+            // Remove from primary indexes
             foreach (var field in sortFields)
             {
                 foreach (var direction in sortDirections)
@@ -134,6 +137,37 @@ public class RedisCollectionIndexService : ICollectionIndexService
                     var key = GetSortedSetKey(field, direction);
                     tasks.Add(_db.SortedSetRemoveAsync(key, collectionIdStr));
                 }
+            }
+            
+            // Remove from secondary indexes (if summary found)
+            if (summary != null)
+            {
+                // Remove from by_library indexes
+                if (!string.IsNullOrEmpty(summary.LibraryId))
+                {
+                    foreach (var field in sortFields)
+                    {
+                        foreach (var direction in sortDirections)
+                        {
+                            var key = GetSecondaryIndexKey("by_library", summary.LibraryId, field, direction);
+                            tasks.Add(_db.SortedSetRemoveAsync(key, collectionIdStr));
+                        }
+                    }
+                }
+                
+                // Remove from by_type indexes
+                foreach (var field in sortFields)
+                {
+                    foreach (var direction in sortDirections)
+                    {
+                        var key = GetSecondaryIndexKey("by_type", summary.Type.ToString(), field, direction);
+                        tasks.Add(_db.SortedSetRemoveAsync(key, collectionIdStr));
+                    }
+                }
+                
+                _logger.LogDebug("Removing collection from {PrimaryCount} primary + {SecondaryCount} secondary indexes", 
+                    sortFields.Length * sortDirections.Length, 
+                    (sortFields.Length * sortDirections.Length * 2)); // library + type
             }
 
             // Remove from hash
@@ -160,7 +194,8 @@ public class RedisCollectionIndexService : ICollectionIndexService
             var key = GetSortedSetKey(sortBy, sortDirection);
 
             // Get position using ZRANK (O(log N) - super fast!)
-            var rank = await _db.SortedSetRankAsync(key, collectionIdStr, sortDirection == "desc" ? Order.Descending : Order.Ascending);
+            // Note: ZRANK always returns ascending rank (0 = lowest score), Order parameter is ignored
+            var rank = await _db.SortedSetRankAsync(key, collectionIdStr);
             
             if (!rank.HasValue)
             {
@@ -170,7 +205,7 @@ public class RedisCollectionIndexService : ICollectionIndexService
                 if (collection != null && !collection.IsDeleted)
                 {
                     await AddOrUpdateCollectionAsync(collection);
-                    rank = await _db.SortedSetRankAsync(key, collectionIdStr, sortDirection == "desc" ? Order.Descending : Order.Ascending);
+                    rank = await _db.SortedSetRankAsync(key, collectionIdStr);
                 }
             }
 
@@ -186,16 +221,17 @@ public class RedisCollectionIndexService : ICollectionIndexService
             if (rank.HasValue)
             {
                 // Get previous (rank - 1)
+                // ZRANGE by rank should always use Order.Ascending (rank 0, 1, 2...)
                 if (rank.Value > 0)
                 {
-                    var prevEntries = await _db.SortedSetRangeByRankAsync(key, rank.Value - 1, rank.Value - 1, sortDirection == "desc" ? Order.Descending : Order.Ascending);
+                    var prevEntries = await _db.SortedSetRangeByRankAsync(key, rank.Value - 1, rank.Value - 1, Order.Ascending);
                     previousId = prevEntries.FirstOrDefault().ToString();
                 }
 
                 // Get next (rank + 1)
                 if (rank.Value < totalCount - 1)
                 {
-                    var nextEntries = await _db.SortedSetRangeByRankAsync(key, rank.Value + 1, rank.Value + 1, sortDirection == "desc" ? Order.Descending : Order.Ascending);
+                    var nextEntries = await _db.SortedSetRangeByRankAsync(key, rank.Value + 1, rank.Value + 1, Order.Ascending);
                     nextId = nextEntries.FirstOrDefault().ToString();
                 }
             }
@@ -231,7 +267,8 @@ public class RedisCollectionIndexService : ICollectionIndexService
             var key = GetSortedSetKey(sortBy, sortDirection);
 
             // Get current position
-            var rank = await _db.SortedSetRankAsync(key, collectionIdStr, sortDirection == "desc" ? Order.Descending : Order.Ascending);
+            // Note: ZRANK always returns ascending rank (0 = lowest score)
+            var rank = await _db.SortedSetRankAsync(key, collectionIdStr);
             
             if (!rank.HasValue)
             {
@@ -252,7 +289,8 @@ public class RedisCollectionIndexService : ICollectionIndexService
             var endRank = startRank + pageSize - 1;
 
             // Get collection IDs in range (O(log N + M))
-            var collectionIds = await _db.SortedSetRangeByRankAsync(key, startRank, endRank, sortDirection == "desc" ? Order.Descending : Order.Ascending);
+            // ZRANGE by rank always uses ascending order (rank 0, 1, 2...)
+            var collectionIds = await _db.SortedSetRangeByRankAsync(key, startRank, endRank, Order.Ascending);
 
             // Get collection summaries from hash
             var siblings = new List<CollectionSummary>();
@@ -385,7 +423,7 @@ public class RedisCollectionIndexService : ICollectionIndexService
         }
 
         // Secondary indexes - by library
-        var libraryId = collection.LibraryId.ToString();
+        var libraryId = collection.LibraryId?.ToString() ?? "null";
         foreach (var field in sortFields)
         {
             foreach (var direction in sortDirections)
@@ -465,20 +503,42 @@ public class RedisCollectionIndexService : ICollectionIndexService
     {
         _logger.LogDebug("Clearing existing index...");
 
-        var sortFields = new[] { "updatedAt", "createdAt", "name", "imageCount", "totalSize" };
-        var sortDirections = new[] { "asc", "desc" };
-
-        var tasks = new List<Task>();
-        foreach (var field in sortFields)
+        try
         {
-            foreach (var direction in sortDirections)
+            var server = _redis.GetServer(_redis.GetEndPoints().First());
+            var tasks = new List<Task>();
+            
+            // Find and delete all sorted set indexes (primary + secondary)
+            var sortedSetKeys = server.Keys(pattern: $"{SORTED_SET_PREFIX}*").ToList();
+            _logger.LogDebug("Found {Count} sorted set keys to delete", sortedSetKeys.Count);
+            
+            foreach (var key in sortedSetKeys)
             {
-                var key = GetSortedSetKey(field, direction);
                 tasks.Add(_db.KeyDeleteAsync(key));
             }
+            
+            // Find and delete all collection hashes
+            var hashKeys = server.Keys(pattern: $"{HASH_PREFIX}*").ToList();
+            _logger.LogDebug("Found {Count} collection hashes to delete", hashKeys.Count);
+            
+            foreach (var key in hashKeys)
+            {
+                tasks.Add(_db.KeyDeleteAsync(key));
+            }
+            
+            // Note: Don't clear thumbnails - they can persist for performance
+            // Thumbnails have 30-day expiration anyway
+            
+            await Task.WhenAll(tasks);
+            
+            _logger.LogInformation("✅ Cleared {SortedSets} sorted sets and {Hashes} hashes", 
+                sortedSetKeys.Count, hashKeys.Count);
         }
-
-        await Task.WhenAll(tasks);
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to clear index");
+            throw;
+        }
     }
 
     #endregion
@@ -499,11 +559,8 @@ public class RedisCollectionIndexService : ICollectionIndexService
             var endRank = startRank + pageSize - 1;
 
             // Get collection IDs for this page
-            var collectionIds = await _db.SortedSetRangeByRankAsync(
-                key, 
-                startRank, 
-                endRank, 
-                sortDirection == "desc" ? Order.Descending : Order.Ascending);
+            // ZRANGE by rank always uses ascending order (rank 0, 1, 2...)
+            var collectionIds = await _db.SortedSetRangeByRankAsync(key, startRank, endRank, Order.Ascending);
 
             // Get collection summaries
             var collections = new List<CollectionSummary>();
@@ -555,11 +612,8 @@ public class RedisCollectionIndexService : ICollectionIndexService
             var endRank = startRank + pageSize - 1;
 
             // Get collection IDs for this page
-            var collectionIds = await _db.SortedSetRangeByRankAsync(
-                key,
-                startRank,
-                endRank,
-                sortDirection == "desc" ? Order.Descending : Order.Ascending);
+            // ZRANGE by rank always uses ascending order (rank 0, 1, 2...)
+            var collectionIds = await _db.SortedSetRangeByRankAsync(key, startRank, endRank, Order.Ascending);
 
             // Get collection summaries
             var collections = new List<CollectionSummary>();
@@ -609,11 +663,8 @@ public class RedisCollectionIndexService : ICollectionIndexService
             var endRank = startRank + pageSize - 1;
 
             // Get collection IDs for this page
-            var collectionIds = await _db.SortedSetRangeByRankAsync(
-                key,
-                startRank,
-                endRank,
-                sortDirection == "desc" ? Order.Descending : Order.Ascending);
+            // ZRANGE by rank always uses ascending order (rank 0, 1, 2...)
+            var collectionIds = await _db.SortedSetRangeByRankAsync(key, startRank, endRank, Order.Ascending);
 
             // Get collection summaries
             var collections = new List<CollectionSummary>();
