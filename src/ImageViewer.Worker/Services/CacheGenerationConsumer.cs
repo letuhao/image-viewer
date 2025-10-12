@@ -169,16 +169,67 @@ public class CacheGenerationConsumer : BaseMessageConsumer
                 }
             }
 
-            // Check if cache already exists and force regeneration is disabled
+            // Check if cache already exists on disk and force regeneration is disabled
             if (!cacheMessage.ForceRegenerate && File.Exists(cachePath))
             {
-                _logger.LogDebug("📁 Cache already exists for image {ImageId}, skipping generation", cacheMessage.ImageId);
+                _logger.LogDebug("📁 Cache file already exists on disk for image {ImageId}, re-adding to collection without regeneration", cacheMessage.ImageId);
+                
+                // CRITICAL: Even if file exists on disk, we need to add it to collection if it's missing from the array
+                // This handles Resume Incomplete scenario where cache array was cleared but disk files still exist
+                var collectionId = ObjectId.Parse(cacheMessage.CollectionId);
+                var collection = await collectionRepository.GetByIdAsync(collectionId);
+                
+                if (collection != null)
+                {
+                    // Check if cache entry already exists in collection
+                    var existingCache = collection.CacheImages?.FirstOrDefault(c => c.ImageId == cacheMessage.ImageId);
+                    
+                    if (existingCache == null)
+                    {
+                        // Cache file exists on disk but not in collection - add the entry
+                        _logger.LogInformation("📝 Re-adding existing cache file to collection for image {ImageId}", cacheMessage.ImageId);
+                        
+                        var fileInfo = new FileInfo(cachePath);
+                        var cacheImage = new CacheImageEmbedded(
+                            cacheMessage.ImageId,
+                            cachePath,
+                            cacheMessage.CacheWidth,
+                            cacheMessage.CacheHeight,
+                            fileInfo.Length,
+                            fileInfo.Extension.TrimStart('.').ToUpperInvariant(),
+                            cacheMessage.Quality
+                        );
+                        
+                        await collectionRepository.AtomicAddCacheImageAsync(collectionId, cacheImage);
+                    }
+                    else
+                    {
+                        _logger.LogDebug("Cache entry already exists in collection for image {ImageId}, true skip", cacheMessage.ImageId);
+                    }
+                }
                 
                 // Track as skipped in FileProcessingJobState
                 if (!string.IsNullOrEmpty(cacheMessage.JobId))
                 {
                     var jobStateRepository = scope.ServiceProvider.GetRequiredService<IFileProcessingJobStateRepository>();
                     await jobStateRepository.AtomicIncrementSkippedAsync(cacheMessage.JobId, cacheMessage.ImageId);
+                }
+                
+                // CRITICAL: Update job stage progress for skipped files
+                if (!string.IsNullOrEmpty(cacheMessage.ScanJobId))
+                {
+                    try
+                    {
+                        var bgJobService = scope.ServiceProvider.GetRequiredService<IBackgroundJobService>();
+                        await bgJobService.IncrementJobStageProgressAsync(
+                            ObjectId.Parse(cacheMessage.ScanJobId),
+                            "cache",
+                            incrementBy: 1);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to update job stage for skipped cache {ImageId}", cacheMessage.ImageId);
+                    }
                 }
                 
                 return;
