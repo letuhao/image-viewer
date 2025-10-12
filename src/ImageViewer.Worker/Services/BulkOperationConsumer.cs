@@ -290,7 +290,7 @@ public class BulkOperationConsumer : BaseMessageConsumer
 
                     // Queue the thumbnail generation job
                     await messageQueueService.PublishAsync(thumbnailMessage, "thumbnail.generation");
-                    _logger.LogInformation("📋 Queued thumbnail generation job for image {ImageId}: {Filename}", 
+                    _logger.LogDebug("📋 Queued thumbnail generation job for image {ImageId}: {Filename}", 
                         image.Id, image.Filename);
                 }
             catch (Exception ex)
@@ -339,7 +339,7 @@ public class BulkOperationConsumer : BaseMessageConsumer
 
                     // Queue the cache generation job
                     await messageQueueService.PublishAsync(cacheMessage, "cache.generation");
-                    _logger.LogInformation("📋 Queued cache generation job for image {ImageId}: {Filename}", 
+                    _logger.LogDebug("📋 Queued cache generation job for image {ImageId}: {Filename}", 
                         image.Id, image.Filename);
                 }
             catch (Exception ex)

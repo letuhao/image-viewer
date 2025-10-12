@@ -116,7 +116,7 @@ public class JobMonitoringService : BackgroundService
                 
                 if (expectedCount == 0)
                 {
-                    _logger.LogWarning("Job {JobId} has no expected count in scan stage", job.Id);
+                    _logger.LogDebug("Job {JobId} has no expected count in scan stage", job.Id);
                     continue;
                 }
                 
