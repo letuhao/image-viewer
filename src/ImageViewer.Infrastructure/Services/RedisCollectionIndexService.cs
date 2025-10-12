@@ -372,35 +372,69 @@ public class RedisCollectionIndexService : ICollectionIndexService
         return $"{HASH_PREFIX}{collectionId}";
     }
 
+    private string GetSecondaryIndexKey(string indexType, string indexValue, string sortBy, string sortDirection)
+    {
+        return $"{SORTED_SET_PREFIX}{indexType}:{indexValue}:{sortBy}:{sortDirection}";
+    }
+
     private async Task AddToSortedSetsAsync(IDatabaseAsync db, Collection collection)
     {
         var collectionIdStr = collection.Id.ToString();
-
-        // Add to all sort field combinations
         var tasks = new List<Task>();
 
-        // updatedAt
-        tasks.Add(db.SortedSetAddAsync(GetSortedSetKey("updatedAt", "asc"), collectionIdStr, collection.UpdatedAt.Ticks));
-        tasks.Add(db.SortedSetAddAsync(GetSortedSetKey("updatedAt", "desc"), collectionIdStr, -collection.UpdatedAt.Ticks)); // Negative for desc
+        // Primary indexes - all sort field combinations
+        var sortFields = new[] { "updatedAt", "createdAt", "name", "imageCount", "totalSize" };
+        var sortDirections = new[] { "asc", "desc" };
 
-        // createdAt
-        tasks.Add(db.SortedSetAddAsync(GetSortedSetKey("createdAt", "asc"), collectionIdStr, collection.CreatedAt.Ticks));
-        tasks.Add(db.SortedSetAddAsync(GetSortedSetKey("createdAt", "desc"), collectionIdStr, -collection.CreatedAt.Ticks));
+        foreach (var field in sortFields)
+        {
+            foreach (var direction in sortDirections)
+            {
+                var score = GetScoreForField(collection, field, direction);
+                tasks.Add(db.SortedSetAddAsync(GetSortedSetKey(field, direction), collectionIdStr, score));
+            }
+        }
 
-        // name (use hash code for sorting, not perfect but works)
-        var nameScore = collection.Name?.GetHashCode() ?? 0;
-        tasks.Add(db.SortedSetAddAsync(GetSortedSetKey("name", "asc"), collectionIdStr, nameScore));
-        tasks.Add(db.SortedSetAddAsync(GetSortedSetKey("name", "desc"), collectionIdStr, -nameScore));
+        // Secondary indexes - by library
+        var libraryId = collection.LibraryId.ToString();
+        foreach (var field in sortFields)
+        {
+            foreach (var direction in sortDirections)
+            {
+                var score = GetScoreForField(collection, field, direction);
+                var key = GetSecondaryIndexKey("by_library", libraryId, field, direction);
+                tasks.Add(db.SortedSetAddAsync(key, collectionIdStr, score));
+            }
+        }
 
-        // imageCount
-        tasks.Add(db.SortedSetAddAsync(GetSortedSetKey("imageCount", "asc"), collectionIdStr, collection.Statistics.TotalItems));
-        tasks.Add(db.SortedSetAddAsync(GetSortedSetKey("imageCount", "desc"), collectionIdStr, -collection.Statistics.TotalItems));
-
-        // totalSize
-        tasks.Add(db.SortedSetAddAsync(GetSortedSetKey("totalSize", "asc"), collectionIdStr, collection.Statistics.TotalSize));
-        tasks.Add(db.SortedSetAddAsync(GetSortedSetKey("totalSize", "desc"), collectionIdStr, -collection.Statistics.TotalSize));
+        // Secondary indexes - by type
+        var type = ((int)collection.Type).ToString();
+        foreach (var field in sortFields)
+        {
+            foreach (var direction in sortDirections)
+            {
+                var score = GetScoreForField(collection, field, direction);
+                var key = GetSecondaryIndexKey("by_type", type, field, direction);
+                tasks.Add(db.SortedSetAddAsync(key, collectionIdStr, score));
+            }
+        }
 
         await Task.WhenAll(tasks);
+    }
+
+    private double GetScoreForField(Collection collection, string field, string direction)
+    {
+        var multiplier = direction == "desc" ? -1 : 1;
+
+        return field.ToLower() switch
+        {
+            "updatedat" => collection.UpdatedAt.Ticks * multiplier,
+            "createdat" => collection.CreatedAt.Ticks * multiplier,
+            "name" => (collection.Name?.GetHashCode() ?? 0) * multiplier,
+            "imagecount" => collection.Statistics.TotalItems * multiplier,
+            "totalsize" => collection.Statistics.TotalSize * multiplier,
+            _ => collection.UpdatedAt.Ticks * multiplier
+        };
     }
 
     private async Task AddToHashAsync(IDatabaseAsync db, Collection collection)
@@ -415,7 +449,14 @@ public class RedisCollectionIndexService : ICollectionIndexService
             CacheCount = collection.CacheImages?.Count ?? 0,
             TotalSize = collection.Statistics.TotalSize,
             CreatedAt = collection.CreatedAt,
-            UpdatedAt = collection.UpdatedAt
+            UpdatedAt = collection.UpdatedAt,
+            
+            // New fields for filtering and display
+            LibraryId = collection.LibraryId.ToString(),
+            Description = collection.Description,
+            Type = (int)collection.Type,
+            Tags = collection.Tags?.ToList() ?? new List<string>(),
+            Path = collection.Path ?? ""
         };
 
         var json = JsonSerializer.Serialize(summary);
@@ -449,6 +490,231 @@ public class RedisCollectionIndexService : ICollectionIndexService
         }
 
         await Task.WhenAll(tasks);
+    }
+
+    #endregion
+
+    #region New Methods for Collection Pagination and Filtering
+
+    public async Task<CollectionPageResult> GetCollectionPageAsync(
+        int page,
+        int pageSize,
+        string sortBy = "updatedAt",
+        string sortDirection = "desc",
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var key = GetSortedSetKey(sortBy, sortDirection);
+            var startRank = (page - 1) * pageSize;
+            var endRank = startRank + pageSize - 1;
+
+            // Get collection IDs for this page
+            var collectionIds = await _db.SortedSetRangeByRankAsync(
+                key, 
+                startRank, 
+                endRank, 
+                sortDirection == "desc" ? Order.Descending : Order.Ascending);
+
+            // Get collection summaries
+            var collections = new List<CollectionSummary>();
+            foreach (var id in collectionIds)
+            {
+                var summary = await GetCollectionSummaryAsync(id.ToString());
+                if (summary != null)
+                {
+                    // Load thumbnail URL if available
+                    if (_thumbnailService != null && !string.IsNullOrEmpty(summary.FirstImageId))
+                    {
+                        try
+                        {
+                            summary.FirstImageThumbnailUrl = await _thumbnailService.GetThumbnailUrlAsync(
+                                ObjectId.Parse(id.ToString()),
+                                ObjectId.Parse(summary.FirstImageId),
+                                200);
+                        }
+                        catch
+                        {
+                            // Ignore thumbnail errors
+                        }
+                    }
+                    collections.Add(summary);
+                }
+            }
+
+            // Get total count
+            var totalCount = await _db.SortedSetLengthAsync(key);
+            var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
+
+            return new CollectionPageResult
+            {
+                Collections = collections,
+                CurrentPage = page,
+                PageSize = pageSize,
+                TotalCount = (int)totalCount,
+                TotalPages = totalPages,
+                HasNext = page < totalPages,
+                HasPrevious = page > 1
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get collection page {Page} with size {PageSize}", page, pageSize);
+            throw;
+        }
+    }
+
+    public async Task<CollectionPageResult> GetCollectionsByLibraryAsync(
+        ObjectId libraryId,
+        int page,
+        int pageSize,
+        string sortBy = "updatedAt",
+        string sortDirection = "desc",
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var key = GetSecondaryIndexKey("by_library", libraryId.ToString(), sortBy, sortDirection);
+            var startRank = (page - 1) * pageSize;
+            var endRank = startRank + pageSize - 1;
+
+            // Get collection IDs for this page
+            var collectionIds = await _db.SortedSetRangeByRankAsync(
+                key,
+                startRank,
+                endRank,
+                sortDirection == "desc" ? Order.Descending : Order.Ascending);
+
+            // Get collection summaries
+            var collections = new List<CollectionSummary>();
+            foreach (var id in collectionIds)
+            {
+                var summary = await GetCollectionSummaryAsync(id.ToString());
+                if (summary != null)
+                {
+                    collections.Add(summary);
+                }
+            }
+
+            // Get total count
+            var totalCount = await _db.SortedSetLengthAsync(key);
+            var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
+
+            return new CollectionPageResult
+            {
+                Collections = collections,
+                CurrentPage = page,
+                PageSize = pageSize,
+                TotalCount = (int)totalCount,
+                TotalPages = totalPages,
+                HasNext = page < totalPages,
+                HasPrevious = page > 1
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get collections by library {LibraryId}", libraryId);
+            throw;
+        }
+    }
+
+    public async Task<CollectionPageResult> GetCollectionsByTypeAsync(
+        int collectionType,
+        int page,
+        int pageSize,
+        string sortBy = "updatedAt",
+        string sortDirection = "desc",
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var key = GetSecondaryIndexKey("by_type", collectionType.ToString(), sortBy, sortDirection);
+            var startRank = (page - 1) * pageSize;
+            var endRank = startRank + pageSize - 1;
+
+            // Get collection IDs for this page
+            var collectionIds = await _db.SortedSetRangeByRankAsync(
+                key,
+                startRank,
+                endRank,
+                sortDirection == "desc" ? Order.Descending : Order.Ascending);
+
+            // Get collection summaries
+            var collections = new List<CollectionSummary>();
+            foreach (var id in collectionIds)
+            {
+                var summary = await GetCollectionSummaryAsync(id.ToString());
+                if (summary != null)
+                {
+                    collections.Add(summary);
+                }
+            }
+
+            // Get total count
+            var totalCount = await _db.SortedSetLengthAsync(key);
+            var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
+
+            return new CollectionPageResult
+            {
+                Collections = collections,
+                CurrentPage = page,
+                PageSize = pageSize,
+                TotalCount = (int)totalCount,
+                TotalPages = totalPages,
+                HasNext = page < totalPages,
+                HasPrevious = page > 1
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get collections by type {Type}", collectionType);
+            throw;
+        }
+    }
+
+    public async Task<int> GetTotalCollectionsCountAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var key = GetSortedSetKey("updatedAt", "desc");
+            var count = await _db.SortedSetLengthAsync(key);
+            return (int)count;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get total collections count");
+            throw;
+        }
+    }
+
+    public async Task<int> GetCollectionsCountByLibraryAsync(ObjectId libraryId, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var key = GetSecondaryIndexKey("by_library", libraryId.ToString(), "updatedAt", "desc");
+            var count = await _db.SortedSetLengthAsync(key);
+            return (int)count;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get collections count for library {LibraryId}", libraryId);
+            throw;
+        }
+    }
+
+    public async Task<int> GetCollectionsCountByTypeAsync(int collectionType, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var key = GetSecondaryIndexKey("by_type", collectionType.ToString(), "updatedAt", "desc");
+            var count = await _db.SortedSetLengthAsync(key);
+            return (int)count;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get collections count for type {Type}", collectionType);
+            throw;
+        }
     }
 
     #endregion
