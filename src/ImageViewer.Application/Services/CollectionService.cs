@@ -960,7 +960,9 @@ public class CollectionService : ICollectionService
                     {
                         Siblings = siblings,
                         CurrentPosition = result.CurrentPosition,
-                        TotalCount = result.TotalCount
+                        CurrentPage = result.CurrentPage,
+                        TotalCount = result.TotalCount,
+                        TotalPages = result.TotalPages
                     };
                 }
                 catch (Exception ex)
@@ -998,11 +1000,16 @@ public class CollectionService : ICollectionService
                 }
             }
 
+            var totalPages = (int)Math.Ceiling((double)allCollections.Count / pageSize);
+            var currentPageNumber = (currentPosition / pageSize) + 1;
+            
             return new DTOs.Collections.CollectionSiblingsDto
             {
                 Siblings = siblingDtos,
                 CurrentPosition = currentPosition + 1, // 1-based
-                TotalCount = allCollections.Count
+                CurrentPage = (page == 1) ? currentPageNumber : page,
+                TotalCount = allCollections.Count,
+                TotalPages = totalPages
             };
         }
         catch (Exception ex) when (!(ex is BusinessRuleException))

@@ -284,64 +284,34 @@ public class RedisCollectionIndexService : ICollectionIndexService
             var currentPosition = (int)rank.Value;
             var totalCount = await _db.SortedSetLengthAsync(key);
 
-            // RELATIVE PAGINATION: All pages relative to current position
-            // Goal: Show context AROUND current collection, then allow navigation
+            // ABSOLUTE PAGINATION WITH CURRENT POSITION AWARENESS
+            // Calculate which absolute page the current collection is on
+            // Then use standard pagination from there
             // 
-            // Page 1: Centered on current (pageSize/2 before + current + pageSize/2 after)
-            // Page 2: Next pageSize items after page 1's range
-            // Page 3: Next pageSize items after page 2's range
-            // Page 0 (or -1): Previous pageSize items before page 1's range
+            // Example: current at rank 24,423, pageSize 20
+            //   currentPage = floor(24,423 / 20) + 1 = 1221 + 1 = 1222
+            //   Page 1222: ranks 24,420-24,439 (but clamped to 24,423)
+            //   Page 1221: ranks 24,400-24,419
+            //   Page 1223: ranks 24,440+ (empty if beyond total)
             
-            var halfPageSize = pageSize / 2;
-            int startRank, endRank;
+            // Calculate which page contains the current collection
+            var currentPageNumber = (currentPosition / pageSize) + 1;
             
-            if (page == 1)
-            {
-                // Page 1: Centered on current position
-                startRank = currentPosition - halfPageSize;
-                endRank = currentPosition + halfPageSize;
-                
-                // Smart edge handling: maintain pageSize items
-                if (startRank < 0)
-                {
-                    var deficit = -startRank;
-                    startRank = 0;
-                    endRank = Math.Min((int)totalCount - 1, endRank + deficit);
-                }
-                else if (endRank >= totalCount)
-                {
-                    var deficit = (int)(endRank - totalCount + 1);
-                    endRank = (int)(totalCount - 1);
-                    startRank = Math.Max(0, startRank - deficit);
-                }
-            }
-            else if (page > 1)
-            {
-                // Page 2+: Move forward from centered position
-                // Calculate how many items to skip from centered start
-                var centeredStart = Math.Max(0, currentPosition - halfPageSize);
-                var centeredEnd = Math.Min((int)totalCount - 1, currentPosition + halfPageSize);
-                var centeredSize = centeredEnd - centeredStart + 1;
-                
-                // Skip the centered page, then skip (page-2) * pageSize more
-                var itemsToSkip = centeredSize + ((page - 2) * pageSize);
-                startRank = centeredStart + itemsToSkip;
-                endRank = Math.Min((int)totalCount - 1, startRank + pageSize - 1);
-            }
-            else // page <= 0
-            {
-                // Page 0 or negative: Move backward from centered position
-                // Calculate how many items to go back
-                var centeredStart = Math.Max(0, currentPosition - halfPageSize);
-                var itemsToGoBack = Math.Abs(page - 1) * pageSize;
-                
-                endRank = centeredStart - 1;
-                startRank = Math.Max(0, endRank - pageSize + 1);
-            }
+            // Use the requested page parameter, but default to current page if page=1
+            // This allows frontend to request page 1 and get the "current" page
+            int actualPage = (page == 1) ? currentPageNumber : page;
             
-            // Final validation
+            // Standard absolute pagination
+            var startRank = (actualPage - 1) * pageSize;
+            var endRank = Math.Min((int)totalCount - 1, startRank + pageSize - 1);
+            
+            // Ensure valid range
             startRank = Math.Max(0, startRank);
-            endRank = Math.Min((int)totalCount - 1, endRank);
+            if (startRank >= totalCount)
+            {
+                startRank = Math.Max(0, (int)totalCount - pageSize);
+                endRank = (int)totalCount - 1;
+            }
 
             // Get collection IDs in range (O(log N + M))
             // ZRANGE by rank always uses ascending order (rank 0, 1, 2...)
@@ -350,11 +320,16 @@ public class RedisCollectionIndexService : ICollectionIndexService
             // Get collection summaries using batch MGET (10-20x faster!)
             var siblings = await BatchGetCollectionSummariesAsync(collectionIds);
 
+            // Calculate pagination info
+            var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
+
             return new CollectionSiblingsResult
             {
                 Siblings = siblings,
                 CurrentPosition = currentPosition + 1, // 1-based
-                TotalCount = (int)totalCount
+                CurrentPage = actualPage,
+                TotalCount = (int)totalCount,
+                TotalPages = totalPages
             };
         }
         catch (Exception ex)

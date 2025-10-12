@@ -20,7 +20,9 @@ public class CollectionSiblingsDto
 {
     public List<CollectionOverviewDto> Siblings { get; set; } = new();
     public int CurrentPosition { get; set; }
+    public int CurrentPage { get; set; }
     public int TotalCount { get; set; }
+    public int TotalPages { get; set; }
 }
 
 /// <summary>

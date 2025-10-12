@@ -51,9 +51,11 @@ const CollectionNavigationSidebar: React.FC<CollectionNavigationSidebarProps> = 
   React.useEffect(() => {
     if (siblingsData) {
       console.log(`[Sidebar] Siblings data loaded for page ${page}:`, {
-        page,
+        requestedPage: page,
+        currentPage: siblingsData.currentPage,
         pageSize,
         totalCount: siblingsData.totalCount,
+        totalPages: siblingsData.totalPages,
         itemsCount: siblingsData.siblings.length,
         currentPosition: siblingsData.currentPosition,
       });
@@ -207,11 +209,11 @@ const CollectionNavigationSidebar: React.FC<CollectionNavigationSidebarProps> = 
         <div className="flex-shrink-0 border-t border-slate-800 p-3 flex items-center justify-between bg-slate-900/30">
           <button
             onClick={() => {
-              const newPage = Math.max(1, page - 1);
-              console.log(`[Sidebar] Previous: ${page} -> ${newPage}`);
+              const newPage = siblingsData.currentPage - 1;
+              console.log(`[Sidebar] Previous: ${siblingsData.currentPage} -> ${newPage}`);
               setPage(newPage);
             }}
-            disabled={page === 1 || siblingsLoading}
+            disabled={siblingsData.currentPage === 1 || siblingsLoading}
             className="px-2 py-1 rounded text-slate-400 hover:text-white hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed text-xs font-medium transition-colors"
             title="Previous page"
           >
@@ -219,7 +221,7 @@ const CollectionNavigationSidebar: React.FC<CollectionNavigationSidebarProps> = 
           </button>
           <div className="flex flex-col items-center">
             <span className="text-xs text-slate-300 font-medium">
-              Page {page}
+              Page {siblingsData.currentPage} / {siblingsData.totalPages}
             </span>
             <span className="text-xs text-slate-500">
               {siblingsData.siblings.length} items
@@ -227,11 +229,11 @@ const CollectionNavigationSidebar: React.FC<CollectionNavigationSidebarProps> = 
           </div>
           <button
             onClick={() => {
-              const newPage = page + 1;
-              console.log(`[Sidebar] Next: ${page} -> ${newPage}`);
+              const newPage = siblingsData.currentPage + 1;
+              console.log(`[Sidebar] Next: ${siblingsData.currentPage} -> ${newPage}`);
               setPage(newPage);
             }}
-            disabled={siblingsLoading || (siblingsData && siblingsData.siblings.length === 0)}
+            disabled={siblingsData.currentPage >= siblingsData.totalPages || siblingsLoading}
             className="px-2 py-1 rounded text-slate-400 hover:text-white hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed text-xs font-medium transition-colors"
             title="Next page"
           >

@@ -19,7 +19,9 @@ export interface CollectionNavigationInfo {
 export interface CollectionSiblingsResponse {
   siblings: any[]; // CollectionOverviewDto
   currentPosition: number;
+  currentPage: number;
   totalCount: number;
+  totalPages: number;
 }
 
 /**
