@@ -24,7 +24,7 @@ public class RandomController : ControllerBase
     }
 
     /// <summary>
-    /// Get random collection
+    /// Get random collection (uses Redis index for O(1) random selection from all collections)
     /// </summary>
     [HttpGet]
     public async Task<ActionResult<CollectionOverviewDto>> GetRandomCollection()
@@ -33,20 +33,31 @@ public class RandomController : ControllerBase
         {
             _logger.LogInformation("Getting random collection");
             
-            // Get all collections using the available service method
-            var collections = await _collectionService.GetCollectionsAsync(1, 1000); // Get up to 1000 collections
-            var activeCollections = collections.Where(c => !c.IsDeleted).ToList();
+            // Get total count (fast O(1) with Redis)
+            var totalCount = await _collectionService.GetTotalCollectionsCountAsync();
             
-            if (!activeCollections.Any())
+            if (totalCount == 0)
             {
-                _logger.LogWarning("No active collections found");
+                _logger.LogWarning("No collections found");
                 return NotFound(new { error = "No collections found" });
             }
             
-            // Pick random collection
+            // Pick random page (1 to totalCount)
             var random = new Random();
-            var randomIndex = random.Next(0, activeCollections.Count);
-            var randomCollection = activeCollections[randomIndex];
+            var randomPosition = random.Next(1, (int)totalCount + 1);
+            
+            _logger.LogInformation("Selecting random collection at position {Position} of {Total}", 
+                randomPosition, totalCount);
+            
+            // Get single collection at that position (page = position, pageSize = 1)
+            var collections = await _collectionService.GetCollectionsAsync(randomPosition, 1, "updatedAt", "desc");
+            var randomCollection = collections.FirstOrDefault();
+            
+            if (randomCollection == null)
+            {
+                _logger.LogWarning("Failed to get collection at position {Position}", randomPosition);
+                return NotFound(new { error = "Collection not found" });
+            }
             
             _logger.LogInformation("Selected random collection {CollectionId} with name {CollectionName}", 
                 randomCollection.Id, randomCollection.Name);
