@@ -302,14 +302,14 @@ public class RedisCollectionIndexService : ICollectionIndexService
             {
                 var deficit = -idealStart; // How many missing from before
                 idealStart = 0;
-                idealEnd = Math.Min((long)totalCount - 1, idealEnd + deficit); // Get more from after
+                idealEnd = Math.Min((int)totalCount - 1, idealEnd + deficit); // Get more from after
             }
             
             // Adjust if near end (can't get enough items after)
             if (idealEnd >= totalCount)
             {
                 var deficit = (int)(idealEnd - totalCount + 1); // How many missing from after
-                idealEnd = totalCount - 1;
+                idealEnd = (int)(totalCount - 1);
                 idealStart = Math.Max(0, idealStart - deficit); // Get more from before
             }
             
