@@ -285,36 +285,51 @@ public class RedisCollectionIndexService : ICollectionIndexService
             var totalCount = await _db.SortedSetLengthAsync(key);
 
             // Calculate range CENTERED on current position with smart edge handling
-            // Goal: Always return pageSize items (or pageSize+1 with current in middle)
-            // Strategy: pageSize/2 before + current + pageSize/2 after
-            // If near edges, fetch more from other side to maintain pageSize
+            // Goal: Show pageSize items centered on current collection
+            // Page parameter is used for pagination when pageSize items don't include current
+            
+            // For page 1: Always center on current (pageSize/2 before + current + pageSize/2 after)
+            // For page 2+: Show next pages relative to centered range
             
             var halfPageSize = pageSize / 2;
-            var beforeCount = halfPageSize;
-            var afterCount = halfPageSize;
             
-            // Calculate ideal range
-            var idealStart = currentPosition - beforeCount;
-            var idealEnd = currentPosition + afterCount;
+            // Page 1 is special: always centered on current
+            int centerStart, centerEnd;
             
-            // Adjust if near start (can't get enough items before)
-            if (idealStart < 0)
+            if (page == 1)
             {
-                var deficit = -idealStart; // How many missing from before
-                idealStart = 0;
-                idealEnd = Math.Min((int)totalCount - 1, idealEnd + deficit); // Get more from after
+                // Center on current position
+                centerStart = currentPosition - halfPageSize;
+                centerEnd = currentPosition + halfPageSize;
+                
+                // Smart edge handling: maintain pageSize items
+                if (centerStart < 0)
+                {
+                    var deficit = -centerStart;
+                    centerStart = 0;
+                    centerEnd = Math.Min((int)totalCount - 1, centerEnd + deficit);
+                }
+                else if (centerEnd >= totalCount)
+                {
+                    var deficit = (int)(centerEnd - totalCount + 1);
+                    centerEnd = (int)(totalCount - 1);
+                    centerStart = Math.Max(0, centerStart - deficit);
+                }
+            }
+            else
+            {
+                // For pages 2+: Absolute pagination from start
+                // This allows scrolling through all collections
+                centerStart = (page - 1) * pageSize;
+                centerEnd = centerStart + pageSize - 1;
+                
+                // Clamp to valid range
+                centerStart = Math.Max(0, centerStart);
+                centerEnd = Math.Min((int)totalCount - 1, centerEnd);
             }
             
-            // Adjust if near end (can't get enough items after)
-            if (idealEnd >= totalCount)
-            {
-                var deficit = (int)(idealEnd - totalCount + 1); // How many missing from after
-                idealEnd = (int)(totalCount - 1);
-                idealStart = Math.Max(0, idealStart - deficit); // Get more from before
-            }
-            
-            var startRank = idealStart;
-            var endRank = idealEnd;
+            var startRank = centerStart;
+            var endRank = centerEnd;
 
             // Get collection IDs in range (O(log N + M))
             // ZRANGE by rank always uses ascending order (rank 0, 1, 2...)
