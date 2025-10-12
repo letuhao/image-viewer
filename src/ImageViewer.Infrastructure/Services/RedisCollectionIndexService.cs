@@ -54,8 +54,21 @@ public class RedisCollectionIndexService : ICollectionIndexService
             var collectionList = collections.ToList();
             _logger.LogInformation("📊 Found {Count} collections to index", collectionList.Count);
 
-            // Clear existing index
-            await ClearIndexAsync();
+            // Smart detection: If MongoDB has few collections but Redis has many keys, do a fast FLUSHDB
+            var redisKeyCount = await GetRedisKeyCountAsync();
+            var mongoCollectionCount = collectionList.Count;
+            
+            if (mongoCollectionCount < 100 && redisKeyCount > mongoCollectionCount * 10)
+            {
+                _logger.LogWarning("⚠️ Detected stale Redis data: {RedisKeys} keys but only {MongoCollections} collections. Using FLUSHDB for fast cleanup.", 
+                    redisKeyCount, mongoCollectionCount);
+                await FlushRedisAsync();
+            }
+            else
+            {
+                // Normal clear: scan and delete specific keys
+                await ClearIndexAsync();
+            }
 
             // Build sorted sets and hash entries
             var batch = _db.CreateBatch();
@@ -791,6 +804,45 @@ public class RedisCollectionIndexService : ICollectionIndexService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to get collections count for type {Type}", collectionType);
+            throw;
+        }
+    }
+    
+    /// <summary>
+    /// Get total number of keys in Redis (fast O(1) operation)
+    /// </summary>
+    private async Task<long> GetRedisKeyCountAsync()
+    {
+        try
+        {
+            var server = _redis.GetServer(_redis.GetEndPoints().First());
+            
+            // Use DBSIZE for fast key count (O(1) operation)
+            var keyCount = await server.DatabaseSizeAsync();
+            return keyCount;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to get Redis key count, assuming 0");
+            return 0;
+        }
+    }
+    
+    /// <summary>
+    /// Fast flush of entire Redis database (faster than scanning/deleting individual keys)
+    /// Use when MongoDB has been cleared but Redis still has stale data
+    /// </summary>
+    private async Task FlushRedisAsync()
+    {
+        try
+        {
+            var server = _redis.GetServer(_redis.GetEndPoints().First());
+            await server.FlushDatabaseAsync();
+            _logger.LogInformation("✅ Flushed entire Redis database (fast cleanup for stale data)");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to flush Redis database");
             throw;
         }
     }
