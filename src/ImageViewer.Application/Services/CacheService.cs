@@ -80,7 +80,7 @@ public class CacheService : ICacheService
 
     public async Task<IEnumerable<CacheFolderDto>> GetCacheFoldersAsync()
     {
-        _logger.LogInformation("Getting cache folders");
+        _logger.LogDebug("Getting cache folders");
 
         try
         {

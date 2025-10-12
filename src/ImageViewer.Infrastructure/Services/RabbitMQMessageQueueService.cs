@@ -71,7 +71,7 @@ public class RabbitMQMessageQueueService : IMessageQueueService, IDisposable
 
             var actualRoutingKey = routingKey ?? GetDefaultRoutingKey<T>();
             
-            _logger.LogInformation("Publishing message: Type={MessageType}, ID={MessageId}, Exchange={Exchange}, RoutingKey={RoutingKey}, Queue={Queue}", 
+            _logger.LogDebug("Publishing message: Type={MessageType}, ID={MessageId}, Exchange={Exchange}, RoutingKey={RoutingKey}, Queue={Queue}", 
                 message.MessageType, message.Id, _options.DefaultExchange, actualRoutingKey, queueName);
 
             await _channel.BasicPublishAsync(
@@ -81,7 +81,7 @@ public class RabbitMQMessageQueueService : IMessageQueueService, IDisposable
                 basicProperties: properties,
                 body: messageBody);
 
-            _logger.LogInformation("✓ Published successfully: {MessageType} with ID {MessageId} to {Exchange} via {RoutingKey}", 
+            _logger.LogDebug("✓ Published successfully: {MessageType} with ID {MessageId} to {Exchange} via {RoutingKey}", 
                 message.MessageType, message.Id, _options.DefaultExchange, actualRoutingKey);
         }
         catch (Exception ex)

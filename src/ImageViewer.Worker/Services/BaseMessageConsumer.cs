@@ -113,7 +113,7 @@ public abstract class BaseMessageConsumer : BackgroundService
             CancellationToken cancellationToken = default)
         {
             var message = Encoding.UTF8.GetString(body.ToArray());
-            _logger.LogInformation("Received message from queue {ConsumerTag}: {Message}", consumerTag, message);
+            _logger.LogDebug("Received message from queue {ConsumerTag}: {Message}", consumerTag, message);
 
             try
             {
