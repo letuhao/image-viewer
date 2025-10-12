@@ -560,7 +560,7 @@ public class BulkService : IBulkService
                 {
                     ImageId = image.Id,
                     CollectionId = collection.Id.ToString(),
-                    ImagePath = image.FullPath,
+                    ImagePath = image.GetFullPath(collection.Path),
                     ImageFilename = image.Filename,
                     ThumbnailWidth = request.ThumbnailWidth ?? 300,
                     ThumbnailHeight = request.ThumbnailHeight ?? 300,
@@ -579,10 +579,9 @@ public class BulkService : IBulkService
                 {
                     ImageId = image.Id,
                     CollectionId = collection.Id.ToString(),
-                    ImagePath = image.FullPath,
-                    ImageFilename = image.Filename,
-                    TargetWidth = request.CacheWidth ?? 1920,
-                    TargetHeight = request.CacheHeight ?? 1080,
+                    ImagePath = image.GetFullPath(collection.Path),
+                    CacheWidth = request.CacheWidth ?? 1920,
+                    CacheHeight = request.CacheHeight ?? 1080,
                     Quality = 85,
                     Format = "jpeg",
                     ForceRegenerate = false,
