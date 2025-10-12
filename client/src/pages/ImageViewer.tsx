@@ -614,7 +614,7 @@ const ImageViewer: React.FC = () => {
   }
 
   return (
-    <div className="fixed inset-0 bg-black z-50 flex">
+    <div key={`${collectionId}-${initialImageId}`} className="fixed inset-0 bg-black z-50 flex">
       {/* Collection Navigation Sidebar (toggleable) */}
       {showCollectionSidebar && (
         <CollectionNavigationSidebar 
