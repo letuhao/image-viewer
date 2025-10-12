@@ -72,6 +72,7 @@ public class ThumbnailGenerationConsumer : BaseMessageConsumer
             {
             var imageProcessingService = scope.ServiceProvider.GetRequiredService<IImageProcessingService>();
             var collectionRepository = scope.ServiceProvider.GetRequiredService<ICollectionRepository>();
+            var settingsService = scope.ServiceProvider.GetRequiredService<IImageProcessingSettingsService>();
 
             // Update progress heartbeat to show job is actively processing
             if (!string.IsNullOrEmpty(thumbnailMessage.JobId))
@@ -144,6 +145,9 @@ public class ThumbnailGenerationConsumer : BaseMessageConsumer
                 }
             }
 
+            // Get format from settings (needed for thumbnail path calculation)
+            var format = await settingsService.GetThumbnailFormatAsync();
+            
             // Check if thumbnail already exists in database
             var collectionId = ObjectId.Parse(thumbnailMessage.CollectionId);
             var collection = await collectionRepository.GetByIdAsync(collectionId);
@@ -157,7 +161,7 @@ public class ThumbnailGenerationConsumer : BaseMessageConsumer
 
                 if (existingThumbnail != null && File.Exists(existingThumbnail.ThumbnailPath))
                 {
-                    _logger.LogDebug("📁 Thumbnail already exists for image {ImageId}, skipping generation", thumbnailMessage.ImageId);
+                    _logger.LogDebug("📁 Thumbnail already exists in collection and on disk for image {ImageId}, skipping generation", thumbnailMessage.ImageId);
                     
                     // Track as skipped in FileProcessingJobState
                     if (!string.IsNullOrEmpty(thumbnailMessage.JobId))
@@ -174,7 +178,89 @@ public class ThumbnailGenerationConsumer : BaseMessageConsumer
                         }
                     }
                     
+                    // CRITICAL: Update job stage progress for skipped thumbnails
+                    if (!string.IsNullOrEmpty(thumbnailMessage.ScanJobId))
+                    {
+                        try
+                        {
+                            var backgroundJobService = scope.ServiceProvider.GetRequiredService<IBackgroundJobService>();
+                            await backgroundJobService.IncrementJobStageProgressAsync(
+                                ObjectId.Parse(thumbnailMessage.ScanJobId),
+                                "thumbnail",
+                                incrementBy: 1);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning(ex, "Failed to update job stage for skipped thumbnail {ImageId}", thumbnailMessage.ImageId);
+                        }
+                    }
+                    
                     return;
+                }
+                
+                // CRITICAL: Check if thumbnail file exists on disk but NOT in collection array
+                // This handles Resume Incomplete scenario where thumbnail array was cleared but disk files still exist
+                if (existingThumbnail == null)
+                {
+                    var thumbnailPath = await GetThumbnailPath(
+                        thumbnailMessage.ImagePath,
+                        thumbnailMessage.ThumbnailWidth,
+                        thumbnailMessage.ThumbnailHeight,
+                        collectionId,
+                        format);
+                    
+                    if (!string.IsNullOrEmpty(thumbnailPath) && File.Exists(thumbnailPath))
+                    {
+                        _logger.LogInformation("📝 Re-adding existing thumbnail file to collection for image {ImageId}", thumbnailMessage.ImageId);
+                        
+                        // Thumbnail file exists on disk but not in collection - add the entry
+                        var fileInfo = new FileInfo(thumbnailPath);
+                        var thumbnailEmbedded = new ThumbnailEmbedded(
+                            thumbnailMessage.ImageId,
+                            thumbnailPath,
+                            thumbnailMessage.ThumbnailWidth,
+                            thumbnailMessage.ThumbnailHeight,
+                            fileInfo.Length,
+                            fileInfo.Extension.TrimStart('.').ToUpperInvariant(),
+                            95 // quality
+                        );
+                        
+                        await collectionRepository.AtomicAddThumbnailAsync(collectionId, thumbnailEmbedded);
+                        
+                        // Track as skipped in FileProcessingJobState
+                        if (!string.IsNullOrEmpty(thumbnailMessage.JobId))
+                        {
+                            try
+                            {
+                                var jobStateRepository = scope.ServiceProvider.GetRequiredService<IFileProcessingJobStateRepository>();
+                                await jobStateRepository.AtomicIncrementSkippedAsync(thumbnailMessage.JobId, thumbnailMessage.ImageId);
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger.LogWarning(ex, "Failed to track skipped thumbnail for image {ImageId} in job {JobId}",
+                                    thumbnailMessage.ImageId, thumbnailMessage.JobId);
+                            }
+                        }
+                        
+                        // CRITICAL: Update job stage progress for re-added thumbnails
+                        if (!string.IsNullOrEmpty(thumbnailMessage.ScanJobId))
+                        {
+                            try
+                            {
+                                var backgroundJobService = scope.ServiceProvider.GetRequiredService<IBackgroundJobService>();
+                                await backgroundJobService.IncrementJobStageProgressAsync(
+                                    ObjectId.Parse(thumbnailMessage.ScanJobId),
+                                    "thumbnail",
+                                    incrementBy: 1);
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger.LogWarning(ex, "Failed to update job stage for re-added thumbnail {ImageId}", thumbnailMessage.ImageId);
+                            }
+                        }
+                        
+                        return;
+                    }
                 }
             }
 
