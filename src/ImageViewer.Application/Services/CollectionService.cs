@@ -773,16 +773,23 @@ public class CollectionService : ICollectionService
             );
             var nextCollection = nextCollections.FirstOrDefault();
 
-            // Get total count (can be cached separately if needed)
+            // Get total count
             var totalCount = await _collectionRepository.CountAsync(
                 Builders<Collection>.Filter.Eq(c => c.IsDeleted, false)
             );
+
+            // Calculate position by counting collections that come before current one
+            // For desc sort: count collections with higher sort values (they appear first)
+            // For asc sort: count collections with lower sort values (they appear first)
+            var positionFilter = BuildNavigationFilter(sortBy, currentSortValue, currentCollection.Id, !isAscending, true);
+            var collectionsBeforeCurrent = await _collectionRepository.CountAsync(positionFilter);
+            var currentPosition = (int)collectionsBeforeCurrent + 1; // 1-based position
 
             return new DTOs.Collections.CollectionNavigationDto
             {
                 PreviousCollectionId = previousCollection?.Id.ToString(),
                 NextCollectionId = nextCollection?.Id.ToString(),
-                CurrentPosition = 0, // Position is expensive to calculate precisely, set to 0 for now
+                CurrentPosition = currentPosition,
                 TotalCollections = (int)totalCount,
                 HasPrevious = previousCollection != null,
                 HasNext = nextCollection != null
