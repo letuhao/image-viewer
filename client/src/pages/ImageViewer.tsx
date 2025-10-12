@@ -193,9 +193,8 @@ const ImageViewer: React.FC = () => {
     }
   }, [imagesData, currentPage, collectionId]);
   
-  // CRITICAL: Only use images if they're loaded AND from current collection
-  // Prevent showing old collection images when navigating via sidebar
-  const images = (imagesData?.data && currentPage >= 1) ? allLoadedImages : [];
+  // Use allLoadedImages directly (we check length before rendering)
+  const images = allLoadedImages;
   const currentIndex = images.findIndex((img) => img.id === currentImageId);
   const currentImage = currentIndex >= 0 ? images[currentIndex] : null;
   
@@ -615,13 +614,15 @@ const ImageViewer: React.FC = () => {
     });
   }, [currentIndex, images, collectionId, navigationMode]);
 
-  if (!currentImage && images.length === 0) {
+  // Show loading while waiting for images to populate
+  // This prevents rendering with stale/old collection images
+  if (allLoadedImages.length === 0) {
     return <LoadingSpinner fullScreen text="Loading images..." />;
   }
   
-  if (!currentImage && images.length > 0) {
+  if (!currentImage) {
     // Images loaded but current not found, will auto-redirect
-    return <LoadingSpinner fullScreen text="Loading..." />;
+    return <LoadingSpinner fullScreen text="Finding image..." />;
   }
 
   return (
