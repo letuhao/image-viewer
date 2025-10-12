@@ -179,10 +179,10 @@ public class CompressedFileService : ICompressedFileService
             
             foreach (var entry in archive.Entries)
             {
-                // Skip macOS metadata files and hidden system files
-                if (entry.FullName.Contains("__MACOSX/") || 
-                    entry.FullName.StartsWith("._") ||
-                    entry.Name.StartsWith("._"))
+                // Skip macOS metadata files only
+                // __MACOSX/ is macOS resource fork folder
+                // ._ prefix is macOS AppleDouble format for extended attributes (paired with actual file)
+                if (entry.FullName.Contains("__MACOSX/") || entry.Name.StartsWith("._"))
                 {
                     _logger.LogDebug("Skipping macOS metadata file: {EntryName}", entry.FullName);
                     continue;
@@ -276,11 +276,9 @@ public class CompressedFileService : ICompressedFileService
         {
             using var archive = ZipFile.OpenRead(filePath);
             
-            // Filter out __MACOSX and ._ metadata files
+            // Filter out macOS metadata files only (__MACOSX/ folder and ._ prefix files)
             var validEntries = archive.Entries
-                .Where(entry => !entry.FullName.Contains("__MACOSX/") && 
-                               !entry.FullName.StartsWith("._") && 
-                               !entry.Name.StartsWith("._"))
+                .Where(entry => !entry.FullName.Contains("__MACOSX/") && !entry.Name.StartsWith("._"))
                 .ToList();
             
             info.TotalFiles = validEntries.Count;
