@@ -70,6 +70,7 @@ const ImageViewer: React.FC = () => {
   // Batch loading state
   const [currentBatch, setCurrentBatch] = useState(1);
   const [loadedImages, setLoadedImages] = useState<any[]>([]);
+  const loadedForCollectionRef = useRef<string | null>(null);
   
   // Load current batch
   const { data: batchData } = useImages({ 
@@ -128,12 +129,16 @@ const ImageViewer: React.FC = () => {
   useEffect(() => {
     setLoadedImages([]);
     setCurrentBatch(1);
+    loadedForCollectionRef.current = null;
     preloadedImagesRef.current.clear();
   }, [collectionId]);
   
   // Accumulate batch data into loadedImages
   useEffect(() => {
     if (batchData?.data && batchData.data.length > 0) {
+      // Mark which collection these images belong to
+      loadedForCollectionRef.current = collectionId!;
+      
       setLoadedImages(prev => {
         // For batch 1, replace. For batch 2+, append
         if (currentBatch === 1) {
@@ -146,9 +151,10 @@ const ImageViewer: React.FC = () => {
         }
       });
     }
-  }, [batchData, currentBatch]);
+  }, [batchData, currentBatch, collectionId]);
   
-  const images = loadedImages;
+  // Only use loadedImages if they're for the current collection (prevent 404s!)
+  const images = (loadedForCollectionRef.current === collectionId) ? loadedImages : [];
   const totalImages = batchData?.totalCount || 0;
   const currentIndex = images.findIndex((img) => img.id === currentImageId);
   const currentImage = currentIndex >= 0 ? images[currentIndex] : null;
