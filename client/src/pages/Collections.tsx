@@ -90,8 +90,7 @@ const Collections: React.FC = () => {
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showBulkAddDialog, setShowBulkAddDialog] = useState(false);
 
-  // Get pagination settings from user settings (backend)
-  const { data: userSettingsData } = useUserSettings();
+  // Get pagination settings from user settings (already declared above at line 52)
   const paginationSettings: PaginationSettings = {
     showFirstLast: userSettingsData?.pagination?.showFirstLast ?? true,
     showPageNumbers: userSettingsData?.pagination?.showPageNumbers ?? true,
