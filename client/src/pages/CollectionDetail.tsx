@@ -99,6 +99,13 @@ const CollectionDetail: React.FC = () => {
       window.removeEventListener('scroll', handleScroll);
     };
   }, [id]);
+  
+  // Update previousTotalPages when data arrives (MUST be before conditional returns)
+  useEffect(() => {
+    if (imagesData?.totalPages) {
+      setPreviousTotalPages(imagesData.totalPages);
+    }
+  }, [imagesData?.totalPages]);
 
   if (isLoading) {
     return <LoadingSpinner text="Loading collection..." />;
@@ -118,12 +125,6 @@ const CollectionDetail: React.FC = () => {
   }
 
   const images = imagesData?.data || [];
-  // Update previousTotalPages when data arrives
-  useEffect(() => {
-    if (imagesData?.totalPages) {
-      setPreviousTotalPages(imagesData.totalPages);
-    }
-  }, [imagesData?.totalPages]);
   
   const pagination = imagesData ? {
     totalPages: imagesData.totalPages,
