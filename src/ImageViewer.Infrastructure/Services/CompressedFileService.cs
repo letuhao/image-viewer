@@ -179,12 +179,11 @@ public class CompressedFileService : ICompressedFileService
             
             foreach (var entry in archive.Entries)
             {
-                // Skip macOS metadata files only
-                // __MACOSX/ is macOS resource fork folder
-                // ._ prefix is macOS AppleDouble format for extended attributes (paired with actual file)
-                if (entry.FullName.Contains("__MACOSX/") || entry.Name.StartsWith("._"))
+                // Only skip __MACOSX/ folder (definitely metadata)
+                // Don't skip ._ files - try to process them, skip if decode fails
+                if (entry.FullName.Contains("__MACOSX/"))
                 {
-                    _logger.LogDebug("Skipping macOS metadata file: {EntryName}", entry.FullName);
+                    _logger.LogDebug("Skipping __MACOSX metadata folder entry: {EntryName}", entry.FullName);
                     continue;
                 }
                 
@@ -195,6 +194,7 @@ public class CompressedFileService : ICompressedFileService
                     {
                         images.Add(image);
                     }
+                    // If null, already logged in ExtractImageFromZipEntryAsync
                 }
             }
         }
@@ -265,7 +265,15 @@ public class CompressedFileService : ICompressedFileService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error extracting image from ZIP entry: {EntryName}", entry.FullName);
+            // Distinguish between likely macOS metadata vs actual corruption
+            if (entry.Name.StartsWith("._"))
+            {
+                _logger.LogDebug("Failed to extract macOS metadata file (expected): {EntryName}", entry.FullName);
+            }
+            else
+            {
+                _logger.LogWarning(ex, "⚠️ Failed to extract image from ZIP entry (may be corrupted): {EntryName}", entry.FullName);
+            }
             return null;
         }
     }
@@ -276,9 +284,10 @@ public class CompressedFileService : ICompressedFileService
         {
             using var archive = ZipFile.OpenRead(filePath);
             
-            // Filter out macOS metadata files only (__MACOSX/ folder and ._ prefix files)
+            // Filter out __MACOSX/ folder only (definitely metadata)
+            // Don't filter ._ files - they might be valid (rare but possible)
             var validEntries = archive.Entries
-                .Where(entry => !entry.FullName.Contains("__MACOSX/") && !entry.Name.StartsWith("._"))
+                .Where(entry => !entry.FullName.Contains("__MACOSX/"))
                 .ToList();
             
             info.TotalFiles = validEntries.Count;
