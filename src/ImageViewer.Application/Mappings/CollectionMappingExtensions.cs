@@ -131,6 +131,9 @@ public static class CollectionMappingExtensions
                 AverageImagesPerCollection = collection.Statistics.AverageImagesPerCollection,
                 AverageSizePerCollection = collection.Statistics.AverageSizePerCollection,
                 LastViewed = collection.Statistics.LastViewed,
+                // Add thumbnail and cache counts from embedded arrays
+                TotalThumbnails = collection.Thumbnails?.Count ?? 0,
+                TotalCached = collection.CacheImages?.Count ?? 0,
             },
             WatchInfo = new WatchInfoDto
             {
@@ -151,13 +154,17 @@ public static class CollectionMappingExtensions
                 LastIndexed = collection.SearchIndex.LastIndexed,
                 IndexVersion = collection.SearchIndex.IndexVersion,
             },
-            Images = collection.Images.ToList(),
-            Thumbnails = collection.Thumbnails.ToList(),
-            CacheImages = collection.CacheImages.ToList(),
-            CacheBindings = collection.CacheBindings.ToList(),
+            // PERFORMANCE: Don't return embedded arrays in detail DTO
+            // Images are fetched separately via paginated /images/collection/{id} API
+            // This prevents 10-50MB responses for collections with 1000+ images
+            Images = new List<ImageEmbedded>(), // Empty - use images API instead
+            Thumbnails = new List<ThumbnailEmbedded>(), // Empty - counts in Statistics
+            CacheImages = new List<CacheImageEmbedded>(), // Empty - counts in Statistics
+            CacheBindings = collection.CacheBindings.ToList(), // Small array, keep it
             CreatedAt = collection.CreatedAt,
             UpdatedAt = collection.UpdatedAt,
         };
     }
 }
+
 

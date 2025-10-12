@@ -88,6 +88,10 @@ public class CollectionStatisticsDto
     public double AverageImagesPerCollection { get; set; }
     public double AverageSizePerCollection { get; set; }
     public DateTime? LastViewed { get; set; }
+    
+    // Processing progress counts (生成进度统计 / Thống kê tiến độ xử lý)
+    public int TotalThumbnails { get; set; }  // Number of thumbnails generated
+    public int TotalCached { get; set; }      // Number of cached images generated
 }
 
 public class WatchInfoDto
