@@ -265,11 +265,16 @@ public class CollectionsController : ControllerBase
     /// Get all collections with pagination (returns lightweight overview DTOs)
     /// </summary>
     [HttpGet]
-    public async Task<IActionResult> GetCollections([FromQuery] int page = 1, [FromQuery] int pageSize = 20)
+    public async Task<IActionResult> GetCollections(
+        [FromQuery] int page = 1, 
+        [FromQuery] int pageSize = 20,
+        [FromQuery] int? limit = null) // Support both pageSize and limit for compatibility
     {
         try
         {
-            var collections = await _collectionService.GetCollectionsAsync(page, pageSize);
+            // Use limit if provided, otherwise fall back to pageSize
+            var effectivePageSize = limit ?? pageSize;
+            var collections = await _collectionService.GetCollectionsAsync(page, effectivePageSize);
             var allCollections = collections.ToList();
             var overviewDtos = allCollections.Select(c => c.ToOverviewDto()).ToList();
             
@@ -291,13 +296,13 @@ public class CollectionsController : ControllerBase
             
             // Create paginated response
             var totalCount = await _collectionService.GetTotalCollectionsCountAsync();
-            var totalPages = (int)Math.Ceiling((double)totalCount / pageSize);
+            var totalPages = (int)Math.Ceiling((double)totalCount / effectivePageSize);
             
             var response = new
             {
                 data = overviewDtos,
                 page = page,
-                limit = pageSize,
+                limit = effectivePageSize, // Return the actual limit used
                 total = totalCount,
                 totalPages = totalPages,
                 hasNext = page < totalPages,
