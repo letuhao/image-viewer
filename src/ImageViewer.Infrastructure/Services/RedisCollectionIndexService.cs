@@ -284,18 +284,37 @@ public class RedisCollectionIndexService : ICollectionIndexService
             var currentPosition = (int)rank.Value;
             var totalCount = await _db.SortedSetLengthAsync(key);
 
-            // Calculate range AROUND current position (relative pagination)
-            // For page 1: Get pageSize/2 before and pageSize/2 after current
+            // Calculate range CENTERED on current position with smart edge handling
+            // Goal: Always return pageSize items (or pageSize+1 with current in middle)
+            // Strategy: pageSize/2 before + current + pageSize/2 after
+            // If near edges, fetch more from other side to maintain pageSize
+            
             var halfPageSize = pageSize / 2;
-            var offset = (page - 1) * pageSize; // Offset for additional pages
+            var beforeCount = halfPageSize;
+            var afterCount = halfPageSize;
             
-            // Center the range on current position, then apply page offset
-            var centerStart = currentPosition - halfPageSize + offset;
-            var centerEnd = currentPosition + halfPageSize - 1 + offset;
+            // Calculate ideal range
+            var idealStart = currentPosition - beforeCount;
+            var idealEnd = currentPosition + afterCount;
             
-            // Clamp to valid range [0, totalCount-1]
-            var startRank = Math.Max(0, centerStart);
-            var endRank = Math.Min((long)totalCount - 1, centerEnd);
+            // Adjust if near start (can't get enough items before)
+            if (idealStart < 0)
+            {
+                var deficit = -idealStart; // How many missing from before
+                idealStart = 0;
+                idealEnd = Math.Min((long)totalCount - 1, idealEnd + deficit); // Get more from after
+            }
+            
+            // Adjust if near end (can't get enough items after)
+            if (idealEnd >= totalCount)
+            {
+                var deficit = (int)(idealEnd - totalCount + 1); // How many missing from after
+                idealEnd = totalCount - 1;
+                idealStart = Math.Max(0, idealStart - deficit); // Get more from before
+            }
+            
+            var startRank = idealStart;
+            var endRank = idealEnd;
 
             // Get collection IDs in range (O(log N + M))
             // ZRANGE by rank always uses ascending order (rank 0, 1, 2...)

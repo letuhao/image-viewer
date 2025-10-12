@@ -23,7 +23,9 @@ const CollectionNavigationSidebar: React.FC<CollectionNavigationSidebarProps> = 
 }) => {
   const navigate = useNavigate();
   const [page, setPage] = useState(1);
-  const pageSize = 10;
+  
+  // Use same pageSize as collection list (from localStorage)
+  const pageSize = parseInt(localStorage.getItem('collectionsPageSize') || '20');
 
   const { data: navigationData, isLoading: navLoading } = useCollectionNavigation(
     collectionId,
