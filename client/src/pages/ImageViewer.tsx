@@ -193,7 +193,9 @@ const ImageViewer: React.FC = () => {
     }
   }, [imagesData, currentPage, collectionId]);
   
-  const images = allLoadedImages;
+  // CRITICAL: Only use images if they're loaded AND from current collection
+  // Prevent showing old collection images when navigating via sidebar
+  const images = (imagesData?.data && currentPage >= 1) ? allLoadedImages : [];
   const currentIndex = images.findIndex((img) => img.id === currentImageId);
   const currentImage = currentIndex >= 0 ? images[currentIndex] : null;
   
