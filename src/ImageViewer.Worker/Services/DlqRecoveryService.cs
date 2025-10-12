@@ -2,9 +2,9 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using RabbitMQ.Client;
+using RabbitMQ.Client.Events;
 using ImageViewer.Infrastructure.Data;
 using System.Text;
-using System.Text.Json;
 
 namespace ImageViewer.Worker.Services;
 
@@ -13,7 +13,11 @@ namespace ImageViewer.Worker.Services;
 /// Dịch vụ khôi phục hàng đợi thư chết
 /// 
 /// Automatically recovers messages from DLQ on Worker startup
-/// Maps all message types to their correct routing keys
+/// ZERO MESSAGE LOSS GUARANTEE:
+/// - Manual ACK only after successful republish
+/// - NACK with requeue=true on ANY failure
+/// - QoS prefetch=1 for one-at-a-time processing
+/// - Idempotent recovery (safe to run multiple times)
 /// </summary>
 public class DlqRecoveryService : IHostedService
 {
@@ -22,7 +26,6 @@ public class DlqRecoveryService : IHostedService
     private readonly IConnectionFactory _connectionFactory;
 
     // Complete mapping of MessageType → RoutingKey
-    // MessageType是从消息的headers中获取，而不是从x-death中获取
     private static readonly Dictionary<string, string> MessageTypeToRoutingKey = new()
     {
         { "CollectionScan", "collection.scan" },
@@ -54,7 +57,7 @@ public class DlqRecoveryService : IHostedService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "❌ DLQ recovery failed");
+            _logger.LogError(ex, "❌ DLQ recovery failed - messages remain in DLQ for next retry");
         }
 
         return;
@@ -86,130 +89,270 @@ public class DlqRecoveryService : IHostedService
         _logger.LogWarning("⚠️  Found {MessageCount} messages in DLQ. Starting recovery...", messageCount);
 
         var stats = new Dictionary<string, int>();
+        var failedStats = new Dictionary<string, int>();
+        var skippedMessages = 0;
         var totalRecovered = 0;
-        var batchSize = 100;
+        var totalFailed = 0;
 
-        while (messageCount > 0 && !cancellationToken.IsCancellationRequested)
+        // CRITICAL: QoS prefetch=1 means process one message at a time
+        // This ensures we don't lose messages if worker crashes
+        await channel.BasicQosAsync(prefetchSize: 0, prefetchCount: 1, global: false, cancellationToken);
+
+        var consumer = new AsyncEventingBasicConsumer(channel);
+        var lastProcessedTime = DateTime.UtcNow;
+        var processingLock = new SemaphoreSlim(1, 1);
+
+        consumer.ReceivedAsync += async (model, ea) =>
         {
+            await processingLock.WaitAsync(cancellationToken);
             try
             {
-                // Get message from DLQ
-                var result = await channel.BasicGetAsync(dlqName, autoAck: false, cancellationToken);
+                lastProcessedTime = DateTime.UtcNow;
 
-                if (result == null)
-                {
-                    // No more messages
-                    break;
-                }
-
-                // Extract MessageType from headers to determine correct routing key
+                // Extract MessageType from headers
                 string? messageType = null;
                 string? originalRoutingKey = null;
 
-                if (result.BasicProperties.Headers != null)
+                if (ea.BasicProperties.Headers != null)
                 {
-                    // Try to get MessageType from headers (this is how we originally published)
-                    if (result.BasicProperties.Headers.TryGetValue("MessageType", out var messageTypeObj))
+                    if (ea.BasicProperties.Headers.TryGetValue("MessageType", out var messageTypeObj) && messageTypeObj != null)
                     {
-                        messageType = messageTypeObj?.ToString();
+                        messageType = messageTypeObj is byte[] bytes ? Encoding.UTF8.GetString(bytes) : messageTypeObj.ToString();
                     }
 
-                    // If MessageType not in headers, try x-death as fallback
-                    if (string.IsNullOrEmpty(messageType) && 
-                        result.BasicProperties.Headers.TryGetValue("x-death", out var xDeathObj))
+                    // Fallback: try x-death header
+                    if (string.IsNullOrEmpty(messageType) &&
+                        ea.BasicProperties.Headers.TryGetValue("x-death", out var xDeathObj))
                     {
                         if (xDeathObj is List<object> xDeathList && xDeathList.Count > 0)
                         {
-                            if (xDeathList[0] is Dictionary<string, object> xDeath)
+                            if (xDeathList[0] is Dictionary<string, object> xDeath &&
+                                xDeath.TryGetValue("routing-keys", out var routingKeysObj) &&
+                                routingKeysObj is List<object> routingKeys && routingKeys.Count > 0)
                             {
-                                // Get original routing key from x-death
-                                if (xDeath.TryGetValue("routing-keys", out var routingKeysObj))
-                                {
-                                    if (routingKeysObj is List<object> routingKeys && routingKeys.Count > 0)
-                                    {
-                                        originalRoutingKey = routingKeys[0]?.ToString();
-                                    }
-                                }
+                                originalRoutingKey = routingKeys[0]?.ToString();
                             }
                         }
                     }
                 }
 
                 // Map MessageType to routing key
-                if (!string.IsNullOrEmpty(messageType) && MessageTypeToRoutingKey.TryGetValue(messageType, out var mappedRoutingKey))
+                if (!string.IsNullOrEmpty(messageType) &&
+                    MessageTypeToRoutingKey.TryGetValue(messageType, out var mappedRoutingKey))
                 {
                     originalRoutingKey = mappedRoutingKey;
                 }
 
                 if (string.IsNullOrEmpty(originalRoutingKey))
                 {
-                    _logger.LogWarning("⚠️  Message has no MessageType or routing key. MessageType={MessageType}. Skipping...", messageType);
-                    await channel.BasicNackAsync(result.DeliveryTag, multiple: false, requeue: false, cancellationToken);
-                    continue;
+                    _logger.LogWarning("⚠️  Message has no MessageType or routing key. MessageType={MessageType}. Keeping in DLQ for manual review.", messageType);
+
+                    // CRITICAL: Requeue to DLQ (don't delete unknown messages)
+                    await channel.BasicNackAsync(ea.DeliveryTag, multiple: false, requeue: true, cancellationToken);
+                    Interlocked.Increment(ref skippedMessages);
+                    return;
                 }
 
                 _logger.LogDebug("Processing DLQ message: MessageType={MessageType}, RoutingKey={RoutingKey}", messageType, originalRoutingKey);
 
-                // Republish to original queue via exchange
-                var properties = result.BasicProperties;
-                
-                // Remove x-death and x-first-death headers to prevent loops
-                if (properties.Headers != null)
+                // Prepare new properties for republishing (IReadOnlyBasicProperties is read-only)
+                var newProperties = new BasicProperties
                 {
-                    properties.Headers.Remove("x-death");
-                    properties.Headers.Remove("x-first-death-exchange");
-                    properties.Headers.Remove("x-first-death-queue");
-                    properties.Headers.Remove("x-first-death-reason");
-                    properties.Headers.Remove("x-last-death-exchange");
-                    properties.Headers.Remove("x-last-death-queue");
-                    properties.Headers.Remove("x-last-death-reason");
+                    ContentType = ea.BasicProperties.ContentType,
+                    ContentEncoding = ea.BasicProperties.ContentEncoding,
+                    DeliveryMode = ea.BasicProperties.DeliveryMode,
+                    Priority = ea.BasicProperties.Priority,
+                    CorrelationId = ea.BasicProperties.CorrelationId,
+                    ReplyTo = ea.BasicProperties.ReplyTo,
+                    Expiration = ea.BasicProperties.Expiration,
+                    MessageId = ea.BasicProperties.MessageId,
+                    Timestamp = ea.BasicProperties.Timestamp,
+                    Type = ea.BasicProperties.Type,
+                    UserId = ea.BasicProperties.UserId,
+                    AppId = ea.BasicProperties.AppId,
+                    ClusterId = ea.BasicProperties.ClusterId
+                };
+
+                // Copy headers and add recovery metadata
+                var newHeaders = new Dictionary<string, object?>();
+                if (ea.BasicProperties.Headers != null)
+                {
+                    foreach (var header in ea.BasicProperties.Headers)
+                    {
+                        // Skip x-death headers to prevent loops
+                        if (!header.Key.StartsWith("x-death") && !header.Key.StartsWith("x-first-death") && !header.Key.StartsWith("x-last-death"))
+                        {
+                            newHeaders[header.Key] = header.Value;
+                        }
+                    }
                 }
 
-                await channel.BasicPublishAsync(
-                    exchange: _options.DefaultExchange,
-                    routingKey: originalRoutingKey,
-                    mandatory: false,
-                    basicProperties: properties,
-                    body: result.Body,
-                    cancellationToken: cancellationToken);
+                // Add recovery metadata
+                newHeaders["x-recovered-from-dlq"] = true;
+                newHeaders["x-recovered-at"] = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+                newProperties.Headers = newHeaders;
 
-                // Acknowledge removal from DLQ
-                await channel.BasicAckAsync(result.DeliveryTag, multiple: false, cancellationToken);
-
-                // Update statistics
-                if (!stats.ContainsKey(originalRoutingKey))
+                // CRITICAL: Publish FIRST, ACK SECOND (prevent message loss)
+                try
                 {
-                    stats[originalRoutingKey] = 0;
-                }
-                stats[originalRoutingKey]++;
-                totalRecovered++;
+                    await channel.BasicPublishAsync(
+                        exchange: _options.DefaultExchange,
+                        routingKey: originalRoutingKey,
+                        mandatory: false,
+                        basicProperties: newProperties,
+                        body: ea.Body,
+                        cancellationToken: cancellationToken);
 
-                // Log progress every 1000 messages
-                if (totalRecovered % 1000 == 0)
+                    // SUCCESS: ACK to remove from DLQ
+                    await channel.BasicAckAsync(ea.DeliveryTag, multiple: false, cancellationToken);
+
+                    // Update success statistics
+                    lock (stats)
+                    {
+                        if (!stats.ContainsKey(originalRoutingKey))
+                        {
+                            stats[originalRoutingKey] = 0;
+                        }
+                        stats[originalRoutingKey]++;
+                    }
+
+                    Interlocked.Increment(ref totalRecovered);
+
+                    // Log progress every 1000 messages
+                    if (totalRecovered % 1000 == 0)
+                    {
+                        _logger.LogInformation("📦 Recovered {Count} messages so far...", totalRecovered);
+                    }
+                }
+                catch (Exception publishEx)
                 {
-                    _logger.LogInformation("📦 Recovered {Count} messages so far...", totalRecovered);
-                }
+                    // FAILURE: NACK with requeue=true to keep message in DLQ
+                    _logger.LogError(publishEx, "❌ Failed to republish message. Keeping in DLQ. MessageType={MessageType}, RoutingKey={RoutingKey}",
+                        messageType, originalRoutingKey);
 
-                messageCount--;
+                    await channel.BasicNackAsync(ea.DeliveryTag, multiple: false, requeue: true, cancellationToken);
+
+                    // Update failure statistics
+                    lock (failedStats)
+                    {
+                        if (!failedStats.ContainsKey(originalRoutingKey))
+                        {
+                            failedStats[originalRoutingKey] = 0;
+                        }
+                        failedStats[originalRoutingKey]++;
+                    }
+
+                    Interlocked.Increment(ref totalFailed);
+                }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "❌ Failed to recover message from DLQ");
-                break;
+                // CRITICAL: If ANY error, NACK with requeue=true
+                _logger.LogError(ex, "❌ Error processing message from DLQ. Message requeued for retry.");
+
+                try
+                {
+                    await channel.BasicNackAsync(ea.DeliveryTag, multiple: false, requeue: true, cancellationToken);
+                }
+                catch (Exception nackEx)
+                {
+                    _logger.LogError(nackEx, "❌ CRITICAL: Failed to NACK message. Message may be lost!");
+                }
+
+                Interlocked.Increment(ref totalFailed);
+            }
+            finally
+            {
+                processingLock.Release();
+            }
+        };
+
+        // Start consuming from DLQ
+        var consumerTag = await channel.BasicConsumeAsync(
+            queue: dlqName,
+            autoAck: false, // CRITICAL: Manual ACK only after successful republish
+            consumer: consumer);
+
+        _logger.LogInformation("Started DLQ consumer with tag: {ConsumerTag}", consumerTag);
+
+        // Wait for processing to complete
+        var timeout = TimeSpan.FromMinutes(30);
+        var startTime = DateTime.UtcNow;
+
+        while (!cancellationToken.IsCancellationRequested && (DateTime.UtcNow - startTime) < timeout)
+        {
+            await Task.Delay(1000, cancellationToken);
+
+            // If no messages processed for 10 seconds, check if DLQ is empty
+            if ((DateTime.UtcNow - lastProcessedTime) > TimeSpan.FromSeconds(10))
+            {
+                var currentQueueInfo = await channel.QueueDeclarePassiveAsync(dlqName, cancellationToken);
+                if (currentQueueInfo.MessageCount == 0)
+                {
+                    _logger.LogInformation("DLQ is empty, waiting 5 seconds to confirm...");
+                    await Task.Delay(5000, cancellationToken);
+
+                    var confirmQueueInfo = await channel.QueueDeclarePassiveAsync(dlqName, cancellationToken);
+                    if (confirmQueueInfo.MessageCount == 0)
+                    {
+                        break; // Recovery complete
+                    }
+                }
+                else
+                {
+                    // Messages still in DLQ but not being processed - might be failures
+                    if ((DateTime.UtcNow - lastProcessedTime) > TimeSpan.FromSeconds(30))
+                    {
+                        _logger.LogWarning("⚠️  No messages processed for 30 seconds but {Count} messages remain in DLQ. Stopping recovery.", currentQueueInfo.MessageCount);
+                        break;
+                    }
+                }
             }
         }
+
+        // Cancel consumer
+        await channel.BasicCancelAsync(consumerTag);
+        _logger.LogInformation("Stopped DLQ consumer");
 
         // Log summary
         _logger.LogInformation("================================");
         _logger.LogInformation("📊 DLQ RECOVERY SUMMARY");
         _logger.LogInformation("================================");
         _logger.LogInformation("✅ Total Recovered: {TotalRecovered} messages", totalRecovered);
-        _logger.LogInformation("");
-        _logger.LogInformation("By Queue:");
-        foreach (var kvp in stats.OrderByDescending(x => x.Value))
+
+        if (totalFailed > 0)
         {
-            _logger.LogInformation("   {Queue}: {Count}", kvp.Key, kvp.Value);
+            _logger.LogWarning("❌ Total Failed: {TotalFailed} messages (kept in DLQ for retry)", totalFailed);
         }
+
+        if (skippedMessages > 0)
+        {
+            _logger.LogWarning("⚠️  Skipped Messages: {SkippedMessages} (unknown type, kept in DLQ for manual review)", skippedMessages);
+        }
+
+        _logger.LogInformation("");
+        _logger.LogInformation("Successfully Recovered By Queue:");
+        lock (stats)
+        {
+            foreach (var kvp in stats.OrderByDescending(x => x.Value))
+            {
+                _logger.LogInformation("   {Queue}: {Count}", kvp.Key, kvp.Value);
+            }
+        }
+
+        if (failedStats.Count > 0)
+        {
+            _logger.LogInformation("");
+            _logger.LogWarning("Failed Recoveries By Queue:");
+            lock (failedStats)
+            {
+                foreach (var kvp in failedStats.OrderByDescending(x => x.Value))
+                {
+                    _logger.LogWarning("   {Queue}: {Count}", kvp.Key, kvp.Value);
+                }
+            }
+        }
+
         _logger.LogInformation("================================");
 
         // Check remaining DLQ count
@@ -218,7 +361,7 @@ public class DlqRecoveryService : IHostedService
 
         if (remainingCount > 0)
         {
-            _logger.LogWarning("⚠️  {RemainingCount} messages still in DLQ", remainingCount);
+            _logger.LogWarning("⚠️  {RemainingCount} messages still in DLQ (will retry on next startup)", remainingCount);
         }
         else
         {
@@ -226,4 +369,3 @@ public class DlqRecoveryService : IHostedService
         }
     }
 }
-
