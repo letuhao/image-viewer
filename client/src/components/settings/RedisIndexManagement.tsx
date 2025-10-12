@@ -4,7 +4,7 @@ import Button from '../ui/Button';
 import SettingsSection from './SettingsSection';
 import SettingItem from './SettingItem';
 import LoadingSpinner from '../ui/LoadingSpinner';
-import { apiClient } from '../../services/api';
+import { api } from '../../services/api';
 import toast from 'react-hot-toast';
 
 interface RedisIndexStats {
@@ -29,7 +29,7 @@ const RedisIndexManagement: React.FC = () => {
   const fetchStats = async () => {
     setIsLoading(true);
     try {
-      const response = await apiClient.get<RedisIndexStats>('/collections/index/stats');
+      const response = await api.get<RedisIndexStats>('/collections/index/stats');
       setStats(response.data);
     } catch (error: any) {
       console.error('Failed to fetch index stats:', error);
@@ -43,7 +43,7 @@ const RedisIndexManagement: React.FC = () => {
   const validateIndex = async () => {
     setIsValidating(true);
     try {
-      const response = await apiClient.get<{ isValid: boolean }>('/collections/index/validate');
+      const response = await api.get<{ isValid: boolean }>('/collections/index/validate');
       if (response.data.isValid) {
         toast.success('✅ Redis index is valid and up-to-date');
       } else {
@@ -67,7 +67,7 @@ const RedisIndexManagement: React.FC = () => {
 
     setIsRebuilding(true);
     try {
-      await apiClient.post('/collections/index/rebuild');
+      await api.post('/collections/index/rebuild');
       toast.success('✅ Index rebuild started! This will complete in the background.');
       
       // Wait a bit then refresh stats
