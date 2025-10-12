@@ -284,9 +284,18 @@ public class RedisCollectionIndexService : ICollectionIndexService
             var currentPosition = (int)rank.Value;
             var totalCount = await _db.SortedSetLengthAsync(key);
 
-            // Calculate range for pagination around current position
-            var startRank = (page - 1) * pageSize;
-            var endRank = startRank + pageSize - 1;
+            // Calculate range AROUND current position (relative pagination)
+            // For page 1: Get pageSize/2 before and pageSize/2 after current
+            var halfPageSize = pageSize / 2;
+            var offset = (page - 1) * pageSize; // Offset for additional pages
+            
+            // Center the range on current position, then apply page offset
+            var centerStart = currentPosition - halfPageSize + offset;
+            var centerEnd = currentPosition + halfPageSize - 1 + offset;
+            
+            // Clamp to valid range [0, totalCount-1]
+            var startRank = Math.Max(0, centerStart);
+            var endRank = Math.Min((long)totalCount - 1, centerEnd);
 
             // Get collection IDs in range (O(log N + M))
             // ZRANGE by rank always uses ascending order (rank 0, 1, 2...)
