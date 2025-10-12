@@ -201,6 +201,12 @@ public class SkiaSharpImageProcessingService : IImageProcessingService
             using var stream = File.OpenRead(imagePath);
             using var originalImage = SKImage.FromEncodedData(stream);
             
+            if (originalImage == null)
+            {
+                _logger.LogError("Failed to decode image: {ImagePath}. File may be corrupted or unsupported format.", imagePath);
+                throw new InvalidOperationException($"Failed to decode image: {imagePath}");
+            }
+            
             var originalInfo = originalImage.Info;
             var scaleX = (float)width / originalInfo.Width;
             var scaleY = (float)height / originalInfo.Height;
