@@ -55,19 +55,28 @@ public class RedisCollectionIndexService : ICollectionIndexService
             _logger.LogInformation("📊 Found {Count} collections to index", collectionList.Count);
 
             // Smart detection: If MongoDB has few collections but Redis has many keys, do a fast FLUSHDB
-            var redisKeyCount = await GetRedisKeyCountAsync();
-            var mongoCollectionCount = collectionList.Count;
-            
-            if (mongoCollectionCount < 100 && redisKeyCount > mongoCollectionCount * 10)
+            // Only if Redis connection is ready (avoid timeout if connection still establishing)
+            if (_redis.IsConnected)
             {
-                _logger.LogWarning("⚠️ Detected stale Redis data: {RedisKeys} keys but only {MongoCollections} collections. Using FLUSHDB for fast cleanup.", 
-                    redisKeyCount, mongoCollectionCount);
-                await FlushRedisAsync();
+                var redisKeyCount = await GetRedisKeyCountAsync();
+                var mongoCollectionCount = collectionList.Count;
+                
+                if (mongoCollectionCount < 100 && redisKeyCount > mongoCollectionCount * 10)
+                {
+                    _logger.LogWarning("⚠️ Detected stale Redis data: {RedisKeys} keys but only {MongoCollections} collections. Using FLUSHDB for fast cleanup.", 
+                        redisKeyCount, mongoCollectionCount);
+                    await FlushRedisAsync();
+                }
+                else
+                {
+                    // Normal clear: scan and delete specific keys
+                    await ClearIndexAsync();
+                }
             }
             else
             {
-                // Normal clear: scan and delete specific keys
-                await ClearIndexAsync();
+                _logger.LogWarning("⚠️ Redis connection not ready yet, using FLUSHDB as safe fallback");
+                await FlushRedisAsync();
             }
 
             // Build sorted sets and hash entries

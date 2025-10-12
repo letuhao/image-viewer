@@ -113,7 +113,32 @@ builder.Services.AddSingleton<StackExchange.Redis.IConnectionMultiplexer>(provid
 {
     var redisConfig = builder.Configuration.GetSection("Redis");
     var connectionString = redisConfig["ConnectionString"];
-    return StackExchange.Redis.ConnectionMultiplexer.Connect(connectionString!);
+    var logger = provider.GetRequiredService<ILogger<Program>>();
+    
+    logger.LogInformation("🔌 Connecting to Redis: {ConnectionString}", connectionString?.Split(',')[0]);
+    
+    var multiplexer = StackExchange.Redis.ConnectionMultiplexer.Connect(connectionString!);
+    
+    // Wait for connection to be fully established before returning
+    var maxWaitMs = 5000;
+    var waited = 0;
+    while (!multiplexer.IsConnected && waited < maxWaitMs)
+    {
+        logger.LogDebug("⏳ Waiting for Redis connection... ({Waited}ms)", waited);
+        Thread.Sleep(100);
+        waited += 100;
+    }
+    
+    if (multiplexer.IsConnected)
+    {
+        logger.LogInformation("✅ Redis connection established successfully");
+    }
+    else
+    {
+        logger.LogWarning("⚠️ Redis connection not fully established yet (will retry in background)");
+    }
+    
+    return multiplexer;
 });
 
 // Register Redis Image Cache Service
