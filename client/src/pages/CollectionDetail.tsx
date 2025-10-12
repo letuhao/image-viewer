@@ -7,7 +7,7 @@ import LoadingSpinner from '../components/ui/LoadingSpinner';
 import ImageGrid from '../components/ImageGrid';
 import CollectionNavigationSidebar from '../components/collections/CollectionNavigationSidebar';
 import { Pagination, PaginationSettings } from '../components/common/Pagination';
-import { useUserSettings } from '../hooks/useSettings';
+import { useUserSettings, useUpdateUserSettings } from '../hooks/useSettings';
 import { 
   ArrowLeft, 
   Play, 
@@ -44,9 +44,19 @@ const CollectionDetail: React.FC = () => {
     return savedPage ? parseInt(savedPage) : 1;
   });
   
-  const [limit, setLimit] = useState(() => 
-    parseInt(localStorage.getItem('collectionDetailPageSize') || '20')
-  );
+  // Get user settings from backend
+  const { data: userSettingsData, refetch: refetchSettings } = useUserSettings();
+  const updateSettingsMutation = useUpdateUserSettings();
+  
+  // Initialize limit from backend settings, fallback to localStorage, then default
+  const [limit, setLimit] = useState(() => {
+    // Priority: backend settings > localStorage > default
+    if (userSettingsData?.itemsPerPage) {
+      return userSettingsData.itemsPerPage;
+    }
+    return parseInt(localStorage.getItem('collectionDetailPageSize') || '20');
+  });
+  
   const [viewMode, setViewMode] = useState<ViewMode>(() => 
     (localStorage.getItem('collectionDetailViewMode') as ViewMode) || 'grid'
   );
@@ -54,8 +64,16 @@ const CollectionDetail: React.FC = () => {
     (localStorage.getItem('collectionDetailCardSize') as CardSize) || 'medium'
   );
   
-  // Get pagination settings from user settings (backend)
-  const { data: userSettingsData } = useUserSettings();
+  // Sync limit with backend settings when they change
+  useEffect(() => {
+    if (userSettingsData?.itemsPerPage && userSettingsData.itemsPerPage !== limit) {
+      console.log(`[CollectionDetail] Syncing pageSize from backend: ${userSettingsData.itemsPerPage}`);
+      setLimit(userSettingsData.itemsPerPage);
+      localStorage.setItem('collectionDetailPageSize', userSettingsData.itemsPerPage.toString());
+    }
+  }, [userSettingsData?.itemsPerPage]);
+  
+  // Pagination settings for UI controls
   const paginationSettings: PaginationSettings = {
     showFirstLast: userSettingsData?.pagination?.showFirstLast ?? true,
     showPageNumbers: userSettingsData?.pagination?.showPageNumbers ?? true,
@@ -162,10 +180,19 @@ const CollectionDetail: React.FC = () => {
     localStorage.setItem('collectionDetailCardSize', size);
   };
 
-  const savePageSize = (size: number) => {
+  const savePageSize = async (size: number) => {
+    console.log(`[CollectionDetail] Saving pageSize: ${size}`);
     setLimit(size);
     localStorage.setItem('collectionDetailPageSize', size.toString());
     setPage(1); // Reset to first page when changing page size
+    
+    // Also save to backend user settings
+    try {
+      await updateSettingsMutation.mutateAsync({ itemsPerPage: size });
+      console.log(`[CollectionDetail] PageSize synced to backend: ${size}`);
+    } catch (error) {
+      console.error('[CollectionDetail] Failed to sync pageSize to backend:', error);
+    }
   };
 
   // Get grid classes based on card size (same as Collections page)
