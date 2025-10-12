@@ -17,7 +17,6 @@ public class RedisCollectionIndexService : ICollectionIndexService
     private readonly IDatabase _db;
     private readonly ICollectionRepository _collectionRepository;
     private readonly ILogger<RedisCollectionIndexService> _logger;
-    private readonly IThumbnailService? _thumbnailService;
 
     // Redis key patterns
     private const string SORTED_SET_PREFIX = "collection_index:sorted:";
@@ -28,14 +27,12 @@ public class RedisCollectionIndexService : ICollectionIndexService
     public RedisCollectionIndexService(
         IConnectionMultiplexer redis,
         ICollectionRepository collectionRepository,
-        ILogger<RedisCollectionIndexService> logger,
-        IThumbnailService? thumbnailService = null)
+        ILogger<RedisCollectionIndexService> logger)
     {
         _redis = redis;
         _db = redis.GetDatabase();
         _collectionRepository = collectionRepository;
         _logger = logger;
-        _thumbnailService = thumbnailService;
     }
 
     public async Task RebuildIndexAsync(CancellationToken cancellationToken = default)
@@ -263,21 +260,7 @@ public class RedisCollectionIndexService : ICollectionIndexService
                 var summary = await GetCollectionSummaryAsync(id.ToString());
                 if (summary != null)
                 {
-                    // Load thumbnail URL if available
-                    if (_thumbnailService != null && !string.IsNullOrEmpty(summary.FirstImageId))
-                    {
-                        try
-                        {
-                            summary.FirstImageThumbnailUrl = await _thumbnailService.GetThumbnailUrlAsync(
-                                ObjectId.Parse(id.ToString()), 
-                                ObjectId.Parse(summary.FirstImageId), 
-                                200);
-                        }
-                        catch
-                        {
-                            // Ignore thumbnail errors
-                        }
-                    }
+                    // Note: Thumbnail URLs are loaded separately by the controller
                     siblings.Add(summary);
                 }
             }
@@ -523,21 +506,8 @@ public class RedisCollectionIndexService : ICollectionIndexService
                 var summary = await GetCollectionSummaryAsync(id.ToString());
                 if (summary != null)
                 {
-                    // Load thumbnail URL if available
-                    if (_thumbnailService != null && !string.IsNullOrEmpty(summary.FirstImageId))
-                    {
-                        try
-                        {
-                            summary.FirstImageThumbnailUrl = await _thumbnailService.GetThumbnailUrlAsync(
-                                ObjectId.Parse(id.ToString()),
-                                ObjectId.Parse(summary.FirstImageId),
-                                200);
-                        }
-                        catch
-                        {
-                            // Ignore thumbnail errors
-                        }
-                    }
+                    // Note: Thumbnail URLs are loaded separately by the controller
+                    // to avoid tight coupling with thumbnail service
                     collections.Add(summary);
                 }
             }
