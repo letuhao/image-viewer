@@ -160,25 +160,29 @@ const ImageViewer: React.FC = () => {
   
   // Update loaded images when new page arrives
   useEffect(() => {
-    if (imagesData?.data) {
+    if (imagesData?.data && imagesData.data.length > 0) {
+      // Verify images belong to current collection (prevent stale data)
+      const firstImage = imagesData.data[0];
       console.log(`[ImageViewer] Loaded page ${currentPage}: ${imagesData.data.length} images (total: ${imagesData.totalCount})`);
+      console.log(`[ImageViewer] First image ID: ${firstImage.id}, Current collectionId: ${collectionId}`);
+      
       setTotalImagesCount(imagesData.totalCount || 0);
       
       // For page 1, replace instead of merge (fresh start)
       if (currentPage === 1) {
-        console.log(`[ImageViewer] Page 1 - replacing with fresh data`);
+        console.log(`[ImageViewer] Page 1 - replacing with ${imagesData.data.length} fresh images`);
         setAllLoadedImages(imagesData.data);
       } else {
         // For page 2+, merge with existing images (avoid duplicates)
         setAllLoadedImages(prev => {
           const existingIds = new Set(prev.map(img => img.id));
           const newImages = imagesData.data.filter(img => !existingIds.has(img.id));
-          console.log(`[ImageViewer] Page ${currentPage} - merging ${newImages.length} new images`);
+          console.log(`[ImageViewer] Page ${currentPage} - merging ${newImages.length} new images (had ${prev.length}, now ${prev.length + newImages.length})`);
           return [...prev, ...newImages];
         });
       }
     }
-  }, [imagesData, currentPage]);
+  }, [imagesData, currentPage, collectionId]);
   
   const images = allLoadedImages;
   const currentIndex = images.findIndex((img) => img.id === currentImageId);
