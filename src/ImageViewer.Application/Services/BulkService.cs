@@ -555,6 +555,29 @@ public class BulkService : IBulkService
                 Description = $"Resume thumbnail/cache generation for {collection.Name}"
             });
             
+            // Initialize job stages with totals for progress tracking
+            if (imagesNeedingThumbnails.Count > 0)
+            {
+                await backgroundJobService.UpdateJobStageAsync(
+                    resumeJob.JobId,
+                    "thumbnail",
+                    "InProgress",
+                    completed: 0,
+                    total: imagesNeedingThumbnails.Count,
+                    message: $"Generating {imagesNeedingThumbnails.Count} thumbnails");
+            }
+            
+            if (imagesNeedingCache.Count > 0)
+            {
+                await backgroundJobService.UpdateJobStageAsync(
+                    resumeJob.JobId,
+                    "cache",
+                    "InProgress",
+                    completed: 0,
+                    total: imagesNeedingCache.Count,
+                    message: $"Generating {imagesNeedingCache.Count} cache images");
+            }
+            
             // Queue thumbnail generation jobs
             foreach (var image in imagesNeedingThumbnails)
             {
