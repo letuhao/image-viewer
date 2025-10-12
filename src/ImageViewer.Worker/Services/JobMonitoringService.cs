@@ -62,10 +62,10 @@ public class JobMonitoringService : BackgroundService
         var jobsCollection = mongoDatabase.GetCollection<Domain.Entities.BackgroundJob>("background_jobs");
         var collectionsCollection = mongoDatabase.GetCollection<Domain.Entities.Collection>("collections");
         
-        // Query ALL pending/in-progress collection-scan jobs with CollectionId
+        // Query ALL pending/in-progress collection-scan AND resume-collection jobs with CollectionId
         // This handles BOTH: stuck jobs AND jobs that need status transitions
         var filter = MongoDB.Driver.Builders<Domain.Entities.BackgroundJob>.Filter.And(
-            MongoDB.Driver.Builders<Domain.Entities.BackgroundJob>.Filter.Eq(j => j.JobType, "collection-scan"),
+            MongoDB.Driver.Builders<Domain.Entities.BackgroundJob>.Filter.In(j => j.JobType, new[] { "collection-scan", "resume-collection" }),
             MongoDB.Driver.Builders<Domain.Entities.BackgroundJob>.Filter.In(j => j.Status, new[] { "Pending", "InProgress" }),
             MongoDB.Driver.Builders<Domain.Entities.BackgroundJob>.Filter.Ne(j => j.CollectionId, null)
         );
@@ -81,7 +81,7 @@ public class JobMonitoringService : BackgroundService
             return; // No pending jobs
         }
         
-        _logger.LogDebug("📊 Monitoring {Count} pending collection-scan jobs for status transitions", 
+        _logger.LogDebug("📊 Monitoring {Count} pending collection-scan/resume-collection jobs for status transitions", 
             pendingJobs.Count);
         
         // BATCH query all collections at once (performance optimization)

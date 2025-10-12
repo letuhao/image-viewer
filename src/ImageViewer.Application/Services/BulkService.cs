@@ -552,7 +552,8 @@ public class BulkService : IBulkService
             var resumeJob = await backgroundJobService.CreateJobAsync(new CreateBackgroundJobDto
             {
                 Type = "resume-collection",
-                Description = $"Resume thumbnail/cache generation for {collection.Name}"
+                Description = $"Resume thumbnail/cache generation for {collection.Name}",
+                CollectionId = collection.Id // CRITICAL: Link job to collection for monitoring
             });
             
             // Initialize job stages with totals for progress tracking
