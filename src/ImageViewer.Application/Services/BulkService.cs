@@ -8,6 +8,8 @@ using ImageViewer.Domain.Events;
 using ImageViewer.Domain.Interfaces;
 using ImageViewer.Application.DTOs.BackgroundJobs;
 using MongoDB.Bson;
+using SharpCompress.Archives;
+using SharpCompress.Common;
 
 namespace ImageViewer.Application.Services;
 
@@ -491,31 +493,32 @@ public class BulkService : IBulkService
         try
         {
             var extension = Path.GetExtension(filePath).ToLowerInvariant();
+            var imageExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".tiff", ".svg" };
             
-            // For now, only support ZIP files for bulk operations
-            // Other formats require more complex libraries
-            if (extension == ".zip")
+            // Use SharpCompress for robust archive reading (handles partial corruption like 7-Zip)
+            // Supports: ZIP, RAR, 7Z, TAR, GZIP, BZIP2, CBZ, CBR, etc.
+            if (new[] { ".zip", ".rar", ".7z", ".tar", ".gz", ".bz2", ".cbz", ".cbr" }.Contains(extension))
             {
-                using var archive = System.IO.Compression.ZipFile.OpenRead(filePath);
-                var imageExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".tiff", ".svg" };
+                using var archive = ArchiveFactory.Open(filePath);
                 
                 // Check if any entry has an image extension
-                var hasImages = archive.Entries.Any(entry => 
-                    imageExtensions.Contains(Path.GetExtension(entry.Name).ToLowerInvariant()));
+                // SharpCompress can read good entries even if some are corrupted
+                var hasImages = archive.Entries
+                    .Where(e => !e.IsDirectory)
+                    .Any(entry => imageExtensions.Contains(Path.GetExtension(entry.Key).ToLowerInvariant()));
                 
-                _logger.LogDebug("ZIP file {FilePath} has images: {HasImages}", filePath, hasImages);
+                _logger.LogDebug("Archive {FilePath} has images: {HasImages}", filePath, hasImages);
                 return Task.FromResult(hasImages);
             }
             
             // For other compressed formats, assume they contain images if they exist
-            // This is a simplified approach - in production, you'd want proper archive libraries
             var exists = System.IO.File.Exists(filePath);
             _logger.LogDebug("Compressed file {FilePath} exists: {Exists}", filePath, exists);
             return Task.FromResult(exists);
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Error checking images in compressed file {FilePath}", filePath);
+            _logger.LogWarning(ex, "Error checking images in compressed file {FilePath}. File will be skipped.", filePath);
             return Task.FromResult(false);
         }
     }
