@@ -77,13 +77,21 @@ const Collections: React.FC = () => {
 
   const { data, isLoading, refetch} = useCollections({ page, limit });
   
-  // Preserve previous totalPages to prevent layout shift during loading
+  // Preserve previous pagination data to prevent layout shift during loading
   const [previousTotalPages, setPreviousTotalPages] = useState(1);
+  const [previousTotalCount, setPreviousTotalCount] = useState(0);
+  
   useEffect(() => {
     if (data?.totalPages) {
       setPreviousTotalPages(data.totalPages);
     }
   }, [data?.totalPages]);
+  
+  useEffect(() => {
+    if (data?.total !== undefined) {
+      setPreviousTotalCount(data.total);
+    }
+  }, [data?.total]);
 
   // Save current page to sessionStorage whenever it changes
   useEffect(() => {
@@ -196,7 +204,7 @@ const Collections: React.FC = () => {
               <div className="flex items-center gap-2 lg:gap-3">
                 <h1 className="text-lg lg:text-xl font-bold text-white">Collections</h1>
                 <span className="text-xs lg:text-sm text-slate-400 bg-slate-800 px-2 py-1 rounded-full">
-                  {data?.total || 0}
+                  {data?.total ?? previousTotalCount}
                 </span>
               </div>
             </div>
