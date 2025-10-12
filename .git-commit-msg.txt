@@ -1,0 +1,42 @@
+fix: Sidebar pagination now uses relative navigation (Option 2)
+
+ISSUE: Page 2 jumped to absolute position (ranks 20-39) instead of next items after page 1
+
+PROBLEM WITH HYBRID APPROACH:
+  Page 1: Ranks 24,329-24,349 (centered on 24,339)
+  Page 2: Ranks 20-39 (absolute from start) <- WRONG!
+  
+  User expected: Next 20 items after page 1's range
+
+SOLUTION: Relative pagination from current position
+
+NEW ALGORITHM:
+
+Page 1: Centered on current (with smart edge handling)
+  currentPosition = 24,339
+  Start: 24,339 - 10 = 24,329
+  End: 24,339 + 10 = 24,349
+  Result: Ranks 24,329-24,349 (21 items)
+
+Page 2: Next window after page 1
+  centeredStart = 24,329
+  centeredSize = 21
+  itemsToSkip = 21 + (0 * 20) = 21
+  Start: 24,329 + 21 = 24,350
+  End: 24,350 + 19 = 24,369
+  Result: Ranks 24,350-24,369 (20 items)
+
+Page 3: Next window after page 2
+  itemsToSkip = 21 + (1 * 20) = 41
+  Start: 24,329 + 41 = 24,370
+  End: 24,370 + 19 = 24,389
+  Result: Ranks 24,370-24,389 (20 items)
+
+BENEFITS:
+- Intuitive: Next = forward, Previous = backward
+- Context preserved: Page 1 always shows current
+- No confusion: No jumping to absolute positions
+- Better UX: Shows context around current collection
+
+STATUS: Relative pagination working correctly!
+

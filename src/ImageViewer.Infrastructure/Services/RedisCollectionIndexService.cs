@@ -284,52 +284,64 @@ public class RedisCollectionIndexService : ICollectionIndexService
             var currentPosition = (int)rank.Value;
             var totalCount = await _db.SortedSetLengthAsync(key);
 
-            // Calculate range CENTERED on current position with smart edge handling
-            // Goal: Show pageSize items centered on current collection
-            // Page parameter is used for pagination when pageSize items don't include current
-            
-            // For page 1: Always center on current (pageSize/2 before + current + pageSize/2 after)
-            // For page 2+: Show next pages relative to centered range
+            // RELATIVE PAGINATION: All pages relative to current position
+            // Goal: Show context AROUND current collection, then allow navigation
+            // 
+            // Page 1: Centered on current (pageSize/2 before + current + pageSize/2 after)
+            // Page 2: Next pageSize items after page 1's range
+            // Page 3: Next pageSize items after page 2's range
+            // Page 0 (or -1): Previous pageSize items before page 1's range
             
             var halfPageSize = pageSize / 2;
-            
-            // Page 1 is special: always centered on current
-            int centerStart, centerEnd;
+            int startRank, endRank;
             
             if (page == 1)
             {
-                // Center on current position
-                centerStart = currentPosition - halfPageSize;
-                centerEnd = currentPosition + halfPageSize;
+                // Page 1: Centered on current position
+                startRank = currentPosition - halfPageSize;
+                endRank = currentPosition + halfPageSize;
                 
                 // Smart edge handling: maintain pageSize items
-                if (centerStart < 0)
+                if (startRank < 0)
                 {
-                    var deficit = -centerStart;
-                    centerStart = 0;
-                    centerEnd = Math.Min((int)totalCount - 1, centerEnd + deficit);
+                    var deficit = -startRank;
+                    startRank = 0;
+                    endRank = Math.Min((int)totalCount - 1, endRank + deficit);
                 }
-                else if (centerEnd >= totalCount)
+                else if (endRank >= totalCount)
                 {
-                    var deficit = (int)(centerEnd - totalCount + 1);
-                    centerEnd = (int)(totalCount - 1);
-                    centerStart = Math.Max(0, centerStart - deficit);
+                    var deficit = (int)(endRank - totalCount + 1);
+                    endRank = (int)(totalCount - 1);
+                    startRank = Math.Max(0, startRank - deficit);
                 }
             }
-            else
+            else if (page > 1)
             {
-                // For pages 2+: Absolute pagination from start
-                // This allows scrolling through all collections
-                centerStart = (page - 1) * pageSize;
-                centerEnd = centerStart + pageSize - 1;
+                // Page 2+: Move forward from centered position
+                // Calculate how many items to skip from centered start
+                var centeredStart = Math.Max(0, currentPosition - halfPageSize);
+                var centeredEnd = Math.Min((int)totalCount - 1, currentPosition + halfPageSize);
+                var centeredSize = centeredEnd - centeredStart + 1;
                 
-                // Clamp to valid range
-                centerStart = Math.Max(0, centerStart);
-                centerEnd = Math.Min((int)totalCount - 1, centerEnd);
+                // Skip the centered page, then skip (page-2) * pageSize more
+                var itemsToSkip = centeredSize + ((page - 2) * pageSize);
+                startRank = centeredStart + itemsToSkip;
+                endRank = Math.Min((int)totalCount - 1, startRank + pageSize - 1);
+            }
+            else // page <= 0
+            {
+                // Page 0 or negative: Move backward from centered position
+                // Calculate how many items to go back
+                var centeredStart = Math.Max(0, currentPosition - halfPageSize);
+                var itemsToGoBack = Math.Abs(page - 1) * pageSize;
+                
+                endRank = centeredStart - 1;
+                startRank = Math.Max(0, endRank - pageSize + 1);
             }
             
-            var startRank = centerStart;
-            var endRank = centerEnd;
+            // Final validation
+            startRank = Math.Max(0, startRank);
+            endRank = Math.Min((int)totalCount - 1, endRank);
 
             // Get collection IDs in range (O(log N + M))
             // ZRANGE by rank always uses ascending order (rank 0, 1, 2...)
@@ -884,4 +896,5 @@ public class RedisCollectionIndexService : ICollectionIndexService
 
     #endregion
 }
+
 

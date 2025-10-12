@@ -202,8 +202,8 @@ const CollectionNavigationSidebar: React.FC<CollectionNavigationSidebarProps> = 
         })}
       </div>
 
-      {/* Pagination */}
-      {siblingsData && siblingsData.totalCount > pageSize && (
+      {/* Pagination - Always show for relative pagination */}
+      {siblingsData && (
         <div className="flex-shrink-0 border-t border-slate-800 p-3 flex items-center justify-between bg-slate-900/30">
           <button
             onClick={() => {
@@ -219,7 +219,7 @@ const CollectionNavigationSidebar: React.FC<CollectionNavigationSidebarProps> = 
           </button>
           <div className="flex flex-col items-center">
             <span className="text-xs text-slate-300 font-medium">
-              Page {page} / {Math.ceil(siblingsData.totalCount / pageSize)}
+              Page {page}
             </span>
             <span className="text-xs text-slate-500">
               {siblingsData.siblings.length} items
@@ -231,7 +231,7 @@ const CollectionNavigationSidebar: React.FC<CollectionNavigationSidebarProps> = 
               console.log(`[Sidebar] Next: ${page} -> ${newPage}`);
               setPage(newPage);
             }}
-            disabled={page >= Math.ceil(siblingsData.totalCount / pageSize) || siblingsLoading}
+            disabled={siblingsLoading || (siblingsData && siblingsData.siblings.length === 0)}
             className="px-2 py-1 rounded text-slate-400 hover:text-white hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed text-xs font-medium transition-colors"
             title="Next page"
           >
