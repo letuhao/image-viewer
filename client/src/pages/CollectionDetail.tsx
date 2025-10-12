@@ -50,10 +50,7 @@ const CollectionDetail: React.FC = () => {
   
   // Initialize limit from backend settings, fallback to localStorage, then default
   const [limit, setLimit] = useState(() => {
-    // Priority: backend settings > localStorage > default
-    if (userSettingsData?.itemsPerPage) {
-      return userSettingsData.itemsPerPage;
-    }
+    // Will be synced with backend in useEffect below
     return parseInt(localStorage.getItem('collectionDetailPageSize') || '20');
   });
   
@@ -66,12 +63,12 @@ const CollectionDetail: React.FC = () => {
   
   // Sync limit with backend settings when they change
   useEffect(() => {
-    if (userSettingsData?.itemsPerPage && userSettingsData.itemsPerPage !== limit) {
-      console.log(`[CollectionDetail] Syncing pageSize from backend: ${userSettingsData.itemsPerPage}`);
-      setLimit(userSettingsData.itemsPerPage);
-      localStorage.setItem('collectionDetailPageSize', userSettingsData.itemsPerPage.toString());
+    if (userSettingsData?.collectionDetailPageSize && userSettingsData.collectionDetailPageSize !== limit) {
+      console.log(`[CollectionDetail] Syncing pageSize from backend: ${userSettingsData.collectionDetailPageSize}`);
+      setLimit(userSettingsData.collectionDetailPageSize);
+      localStorage.setItem('collectionDetailPageSize', userSettingsData.collectionDetailPageSize.toString());
     }
-  }, [userSettingsData?.itemsPerPage]);
+  }, [userSettingsData?.collectionDetailPageSize]);
   
   // Pagination settings for UI controls
   const paginationSettings: PaginationSettings = {
@@ -188,7 +185,7 @@ const CollectionDetail: React.FC = () => {
     
     // Also save to backend user settings
     try {
-      await updateSettingsMutation.mutateAsync({ itemsPerPage: size });
+      await updateSettingsMutation.mutateAsync({ collectionDetailPageSize: size });
       console.log(`[CollectionDetail] PageSize synced to backend: ${size}`);
     } catch (error) {
       console.error('[CollectionDetail] Failed to sync pageSize to backend:', error);

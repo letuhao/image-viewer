@@ -1,28 +1,53 @@
-feat: Add 4 pageSize settings to frontend Settings screen
+feat: Sync all 3 screens with new pageSize settings
 
-PHASE 2 COMPLETE: Frontend Settings UI
+PHASE 3 COMPLETE: Apply Settings to Screens
 
 CHANGES:
 
-1. client/src/services/settingsApi.ts
-   - Added 4 new fields to UserSettings interface
-   - Added 4 new fields to UpdateUserSettingsRequest
-   - Kept itemsPerPage for backward compatibility
+1. client/src/pages/Collections.tsx
+   - Import useUserSettings and useUpdateUserSettings
+   - Read collectionsPageSize from backend
+   - Auto-sync when backend settings change (useEffect)
+   - Save local changes to backend (updateSettingsMutation)
+   - Bidirectional sync: Settings screen <-> Collections list
 
-2. client/src/pages/Settings.tsx
-   - Updated state to include 4 new pageSize fields
-   - Read from backend API (collectionsPageSize, collectionDetailPageSize, etc)
-   - Added new Page Sizes section with 4 separate inputs
-   - Removed duplicate Default Page Size from Collection Detail section
-   - Updated save handler to send all 4 fields to backend
+2. client/src/pages/CollectionDetail.tsx
+   - Fixed to use collectionDetailPageSize (was using itemsPerPage)
+   - Read from backend settings
+   - Auto-sync when backend settings change
+   - Save local changes to backend
+   - Bidirectional sync: Settings screen <-> Collection detail
 
-UI CHANGES:
-- New Page Sizes section (clear organization)
-- 4 separate labeled inputs with descriptions
-- Appropriate min/max validation for each
-- Save button sends all 4 to backend
+3. client/src/components/collections/CollectionNavigationSidebar.tsx
+   - Import useUserSettings
+   - Use sidebarPageSize from backend
+   - Auto-sync when backend settings change
+   - Read-only (no save, sidebar has no pageSize UI)
 
-NEXT PHASE: Apply to individual screens
+SYNC FLOW:
 
-STATUS: Settings UI ready!
+Direction 1: Settings screen -> Individual screens
+  User changes in Settings screen
+  -> Saves to backend
+  -> Backend updates user.settings
+  -> useUserSettings refetches
+  -> useEffect in each screen detects change
+  -> Updates local state
+  -> Updates localStorage
 
+Direction 2: Individual screens -> Settings screen
+  User changes pageSize in Collections/CollectionDetail UI
+  -> Updates local state
+  -> Saves to localStorage
+  -> Calls backend API (collectionsPageSize or collectionDetailPageSize)
+  -> Backend updates user.settings
+  -> Settings screen shows new value on next load
+
+BENEFITS:
+✅ All screens use correct pageSize
+✅ Changes in Settings affect all screens
+✅ Changes in screens persist to Settings
+✅ localStorage as cache layer
+✅ Backend as source of truth
+
+STATUS: All 3 screens synced!

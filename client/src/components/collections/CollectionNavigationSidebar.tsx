@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, Folder, Archive } from 'lucide-react';
 import { useCollectionNavigation, useCollectionSiblings } from '../../hooks/useCollectionNavigation';
+import { useUserSettings } from '../../hooks/useSettings';
 import LoadingSpinner from '../ui/LoadingSpinner';
 
 interface CollectionNavigationSidebarProps {
@@ -24,8 +25,22 @@ const CollectionNavigationSidebar: React.FC<CollectionNavigationSidebarProps> = 
   const navigate = useNavigate();
   const [page, setPage] = useState(1);
   
-  // Use same pageSize as collection list (from localStorage)
-  const pageSize = parseInt(localStorage.getItem('collectionsPageSize') || '20');
+  // Get user settings from backend
+  const { data: userSettingsData } = useUserSettings();
+  
+  // Use sidebarPageSize from backend, fallback to localStorage
+  const [pageSize, setPageSize] = useState(() => 
+    parseInt(localStorage.getItem('sidebarPageSize') || '20')
+  );
+  
+  // Sync pageSize with backend settings when they change
+  useEffect(() => {
+    if (userSettingsData?.sidebarPageSize && userSettingsData.sidebarPageSize !== pageSize) {
+      console.log(`[Sidebar] Syncing pageSize from backend: ${userSettingsData.sidebarPageSize}`);
+      setPageSize(userSettingsData.sidebarPageSize);
+      localStorage.setItem('sidebarPageSize', userSettingsData.sidebarPageSize.toString());
+    }
+  }, [userSettingsData?.sidebarPageSize, pageSize]);
 
   // Reset page to 1 when collection changes
   React.useEffect(() => {

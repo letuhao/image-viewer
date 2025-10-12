@@ -7,7 +7,7 @@ import LoadingSpinner from '../components/ui/LoadingSpinner';
 import AddCollectionDialog from '../components/collections/AddCollectionDialog';
 import BulkAddCollectionsDialog from '../components/collections/BulkAddCollectionsDialog';
 import { Pagination, PaginationSettings } from '../components/common/Pagination';
-import { useUserSettings } from '../hooks/useSettings';
+import { useUserSettings, useUpdateUserSettings } from '../hooks/useSettings';
 import { 
   FolderOpen, 
   Archive, 
@@ -48,9 +48,24 @@ const Collections: React.FC = () => {
     return sessionStorage.getItem('collectionsSearchQuery') || '';
   });
   
-  const [limit, setLimit] = useState(() => 
-    parseInt(localStorage.getItem('collectionsPageSize') || '100')
-  );
+  // Get user settings from backend
+  const { data: userSettingsData } = useUserSettings();
+  const updateSettingsMutation = useUpdateUserSettings();
+  
+  // Initialize limit from backend settings, fallback to localStorage, then default
+  const [limit, setLimit] = useState(() => {
+    // Will be synced with backend in useEffect below
+    return parseInt(localStorage.getItem('collectionsPageSize') || '100');
+  });
+  
+  // Sync limit with backend settings when they change
+  useEffect(() => {
+    if (userSettingsData?.collectionsPageSize && userSettingsData.collectionsPageSize !== limit) {
+      console.log(`[Collections] Syncing pageSize from backend: ${userSettingsData.collectionsPageSize}`);
+      setLimit(userSettingsData.collectionsPageSize);
+      localStorage.setItem('collectionsPageSize', userSettingsData.collectionsPageSize.toString());
+    }
+  }, [userSettingsData?.collectionsPageSize]);
 
   // Sort state (persisted to localStorage)
   const [sortBy, setSortBy] = useState<string>(() => 
@@ -164,11 +179,20 @@ const Collections: React.FC = () => {
     localStorage.setItem('compactMode', compact.toString());
   }, []);
 
-  const savePageSize = useCallback((size: number) => {
+  const savePageSize = useCallback(async (size: number) => {
+    console.log(`[Collections] Saving pageSize: ${size}`);
     setLimit(size);
     localStorage.setItem('collectionsPageSize', size.toString());
     setPage(1); // Reset to first page when changing page size
-  }, []);
+    
+    // Also save to backend user settings
+    try {
+      await updateSettingsMutation.mutateAsync({ collectionsPageSize: size });
+      console.log(`[Collections] PageSize synced to backend: ${size}`);
+    } catch (error) {
+      console.error('[Collections] Failed to sync pageSize to backend:', error);
+    }
+  }, [updateSettingsMutation]);
 
   const handleCollectionClick = (collection: Collection) => {
     navigate(`/collections/${collection.id}`);
