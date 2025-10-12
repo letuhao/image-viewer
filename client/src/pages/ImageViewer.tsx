@@ -564,6 +564,9 @@ const ImageViewer: React.FC = () => {
   }, [navigationMode, currentImageId, currentIndex]);
 
   // Image preloading with persistent cache (only in paging mode)
+  // DISABLED: Causes 404s and redundant loading during navigation
+  // Browser caching is sufficient for image viewer performance
+  /*
   useEffect(() => {
     // Don't preload if in scroll mode, no current image, no images, or no data loaded yet
     if (navigationMode === 'scroll' || currentIndex === -1 || images.length === 0 || !imagesData?.data) {
@@ -614,6 +617,7 @@ const ImageViewer: React.FC = () => {
       }
     });
   }, [currentIndex, images, collectionId, navigationMode]);
+  */
 
   // Show loading while waiting for images to populate
   // This prevents rendering with stale/old collection images
