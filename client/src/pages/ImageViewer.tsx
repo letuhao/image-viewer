@@ -3,6 +3,7 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useImages, useImage } from '../hooks/useImages';
 import { useCollection } from '../hooks/useCollections';
 import { useCollectionNavigation } from '../hooks/useCollectionNavigation';
+import { useUserSettings } from '../hooks/useSettings';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import CollectionNavigationSidebar from '../components/collections/CollectionNavigationSidebar';
 import ImagePreviewSidebar from '../components/viewer/ImagePreviewSidebar';
@@ -61,7 +62,22 @@ const ImageViewer: React.FC = () => {
   const initialImageId = searchParams.get('imageId');
   const goToLast = searchParams.get('goToLast') === 'true';
   const { data: collection } = useCollection(collectionId!);
-  const { data: imagesData } = useImages({ collectionId: collectionId!, limit: 1000 });
+  
+  // Get user settings for pageSize
+  const { data: userSettingsData } = useUserSettings();
+  const imageViewerPageSize = userSettingsData?.imageViewerPageSize || 200;
+  
+  // Paginated image loading
+  const [currentPage, setCurrentPage] = useState(1);
+  const [allLoadedImages, setAllLoadedImages] = useState<any[]>([]);
+  const [totalImagesCount, setTotalImagesCount] = useState(0);
+  
+  // Load initial page or page containing specific image
+  const { data: imagesData, refetch: refetchImages } = useImages({ 
+    collectionId: collectionId!, 
+    page: currentPage,
+    limit: imageViewerPageSize 
+  });
   
   // Use local state for current image ID to avoid URL changes on every navigation
   const [currentImageId, setCurrentImageId] = useState(initialImageId || '');
@@ -109,18 +125,75 @@ const ImageViewer: React.FC = () => {
     crossCollectionNav ? collectionId : undefined
   );
 
-  const images = imagesData?.data || [];
+  // Update loaded images when new page arrives
+  useEffect(() => {
+    if (imagesData?.data) {
+      console.log(`[ImageViewer] Loaded page ${currentPage}: ${imagesData.data.length} images`);
+      setTotalImagesCount(imagesData.totalCount || 0);
+      
+      // Merge with existing images (avoid duplicates)
+      setAllLoadedImages(prev => {
+        const existingIds = new Set(prev.map(img => img.id));
+        const newImages = imagesData.data.filter(img => !existingIds.has(img.id));
+        return [...prev, ...newImages];
+      });
+    }
+  }, [imagesData, currentPage]);
+  
+  // Reset loaded images when collection changes
+  useEffect(() => {
+    console.log(`[ImageViewer] Collection changed, resetting loaded images`);
+    setAllLoadedImages([]);
+    setCurrentPage(1);
+  }, [collectionId]);
+  
+  const images = allLoadedImages;
   const currentIndex = images.findIndex((img) => img.id === currentImageId);
   const currentImage = currentIndex >= 0 ? images[currentIndex] : null;
+  
+  // Load more pages function
+  const loadMorePages = useCallback((direction: 'next' | 'previous' = 'next') => {
+    const totalPages = Math.ceil(totalImagesCount / imageViewerPageSize);
+    
+    if (direction === 'next' && currentPage < totalPages) {
+      console.log(`[ImageViewer] Loading next page: ${currentPage + 1}`);
+      setCurrentPage(prev => prev + 1);
+    } else if (direction === 'previous' && currentPage > 1) {
+      console.log(`[ImageViewer] Loading previous page: ${currentPage - 1}`);
+      setCurrentPage(prev => prev - 1);
+    }
+  }, [currentPage, totalImagesCount, imageViewerPageSize]);
 
+  // Auto-load more pages when navigating near edges
+  useEffect(() => {
+    if (images.length === 0 || totalImagesCount === 0) return;
+    
+    const totalPages = Math.ceil(totalImagesCount / imageViewerPageSize);
+    const threshold = 20; // Load more when within 20 images of edge
+    
+    // Check if near end of loaded images
+    if (currentIndex >= 0 && currentIndex >= images.length - threshold && currentPage < totalPages) {
+      console.log(`[ImageViewer] Near end (${currentIndex}/${images.length}), auto-loading page ${currentPage + 1}`);
+      setCurrentPage(prev => prev + 1);
+    }
+  }, [currentIndex, images.length, currentPage, totalImagesCount, imageViewerPageSize]);
+  
   // Handle goToLast parameter for cross-collection navigation from previous collection
   useEffect(() => {
-    if (goToLast && images.length > 0 && !currentImageId) {
-      // Navigate to last image
-      const lastImage = images[images.length - 1];
-      setCurrentImageId(lastImage.id);
+    if (goToLast && totalImagesCount > 0 && !currentImageId) {
+      // Calculate which page contains the last image
+      const lastPage = Math.ceil(totalImagesCount / imageViewerPageSize);
+      
+      if (currentPage !== lastPage) {
+        console.log(`[ImageViewer] goToLast: loading page ${lastPage}`);
+        setCurrentPage(lastPage);
+      } else if (images.length > 0) {
+        // Navigate to last image once it's loaded
+        const lastImage = images[images.length - 1];
+        setCurrentImageId(lastImage.id);
+      }
     }
-  }, [goToLast, images, currentImageId]);
+  }, [goToLast, images, currentImageId, totalImagesCount, imageViewerPageSize, currentPage]);
   
   // Sync currentImageId with URL parameter
   useEffect(() => {
@@ -549,7 +622,11 @@ const ImageViewer: React.FC = () => {
             <div className="text-white">
               <h2 className="font-semibold">{currentImage.filename}</h2>
               <p className="text-sm text-slate-300">
-                {currentIndex + 1} of {images.length} • {currentImage.width} × {currentImage.height}
+                {currentIndex + 1} of {totalImagesCount > 0 ? totalImagesCount : images.length}
+                {totalImagesCount > images.length && (
+                  <span className="text-primary-400"> (Loaded: {images.length})</span>
+                )}
+                {' • '}{currentImage.width} × {currentImage.height}
               </p>
             </div>
           </div>
