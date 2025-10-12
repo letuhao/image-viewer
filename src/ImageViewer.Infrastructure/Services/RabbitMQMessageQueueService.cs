@@ -195,7 +195,7 @@ public class RabbitMQMessageQueueService : IMessageQueueService, IDisposable
             nameof(CollectionCreationMessage) => "collection.creation",
             nameof(BulkOperationMessage) => "bulk.operation",
             nameof(ImageProcessingMessage) => "image.processing",
-            nameof(LibraryScanMessage) => "library.scan",
+            nameof(LibraryScanMessage) => "library_scan_queue", // Match actual queue name
             _ => "image.processing"
         };
     }

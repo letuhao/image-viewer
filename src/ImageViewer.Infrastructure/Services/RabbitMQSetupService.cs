@@ -173,7 +173,7 @@ public class RabbitMQSetupService
             { _options.CollectionCreationQueue, "collection.creation" },
             { _options.BulkOperationQueue, "bulk.operation" },
             { _options.ImageProcessingQueue, "image.processing" },
-            { _options.LibraryScanQueue, "library.scan" }
+            { _options.LibraryScanQueue, "library_scan_queue" } // Use queue name as routing key for consistency
         };
 
         foreach (var binding in queueBindings)

@@ -81,6 +81,9 @@ builder.Services.AddScoped<IUserContextService, MockUserContextService>();
 builder.Services.AddScoped<RabbitMQSetupService>();
 builder.Services.AddHostedService<RabbitMQStartupHostedService>();
 
+// Register DLQ recovery service (runs on startup to recover failed messages)
+builder.Services.AddHostedService<DlqRecoveryService>();
+
 // Register centralized job monitoring service (runs every 5 seconds)
 builder.Services.AddHostedService<JobMonitoringService>();
 
