@@ -779,9 +779,11 @@ public class CollectionService : ICollectionService
             );
 
             // Calculate position by counting collections that come before current one
-            // For desc sort: count collections with higher sort values (they appear first)
-            // For asc sort: count collections with lower sort values (they appear first)
-            var positionFilter = BuildNavigationFilter(sortBy, currentSortValue, currentCollection.Id, !isAscending, true);
+            // For desc sort: count collections with GREATER sort values (they appear first)
+            //   - Need filter: UpdatedAt > currentValue, which is BuildNavigationFilter(greater=false, orEqual=false)
+            // For asc sort: count collections with LOWER sort values (they appear first)
+            //   - Need filter: UpdatedAt < currentValue, which is BuildNavigationFilter(greater=true, orEqual=false)
+            var positionFilter = BuildNavigationFilter(sortBy, currentSortValue, currentCollection.Id, isAscending, false);
             var collectionsBeforeCurrent = await _collectionRepository.CountAsync(positionFilter);
             var currentPosition = (int)collectionsBeforeCurrent + 1; // 1-based position
 
