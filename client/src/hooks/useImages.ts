@@ -11,12 +11,12 @@ interface UseImagesOptions {
 
 export const useImages = ({ collectionId, page = 1, limit = 100, enabled = true }: UseImagesOptions) => {
   return useQuery<PaginatedResponse<Image>, Error>({
-    queryKey: ['images', collectionId, { page, limit }],
+    queryKey: ['images', collectionId, { page, limit, filterValidOnly: true }],
     queryFn: async () => {
       const response = await api.get<PaginatedResponse<Image>>(
         `/images/collection/${collectionId}`,
         {
-          params: { page, limit },
+          params: { page, limit, filterValidOnly: true },
         }
       );
       return response.data;

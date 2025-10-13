@@ -87,7 +87,8 @@ public class ImagesController : ControllerBase
     public async Task<ActionResult<PaginationResponseDto<Domain.ValueObjects.ImageEmbedded>>> GetImagesByCollection(
         ObjectId collectionId,
         [FromQuery] PaginationRequestDto pagination,
-        [FromQuery] int? limit = null)
+        [FromQuery] int? limit = null,
+        [FromQuery] bool? filterValidOnly = false)
     {
         try
         {
@@ -97,7 +98,11 @@ public class ImagesController : ControllerBase
                 pagination.PageSize = limit.Value;
             }
 
-            var images = await _imageService.GetEmbeddedImagesByCollectionAsync(collectionId);
+            // Choose the appropriate service method based on filterValidOnly parameter
+            var images = filterValidOnly == true 
+                ? await _imageService.GetDisplayableImagesByCollectionAsync(collectionId)
+                : await _imageService.GetEmbeddedImagesByCollectionAsync(collectionId);
+                
             var totalCount = images.Count();
             var paginatedImages = images
                 .AsQueryable()

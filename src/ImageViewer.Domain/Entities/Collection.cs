@@ -217,6 +217,15 @@ public class Collection : BaseEntity
         return Images.Where(i => !i.IsDeleted).ToList();
     }
 
+    /// <summary>
+    /// Gets active images that have valid dimensions (width > 0 and height > 0)
+    /// Used for UI display where 0x0 images (like metadata files) should be filtered out
+    /// </summary>
+    public List<ImageEmbedded> GetDisplayableImages()
+    {
+        return Images.Where(i => !i.IsDeleted && i.Width > 0 && i.Height > 0).ToList();
+    }
+
     public List<ImageEmbedded> GetDeletedImages()
     {
         return Images.Where(i => i.IsDeleted).ToList();

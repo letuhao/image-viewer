@@ -102,6 +102,28 @@ public class ImageService : IImageService
         }
     }
 
+    public async Task<IEnumerable<ImageEmbedded>> GetDisplayableImagesByCollectionAsync(ObjectId collectionId, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            _logger.LogDebug("Getting displayable images from collection {CollectionId}", collectionId);
+            
+            var collection = await _collectionRepository.GetByIdAsync(collectionId);
+            if (collection == null)
+            {
+                _logger.LogWarning("Collection {CollectionId} not found", collectionId);
+                return Enumerable.Empty<ImageEmbedded>();
+            }
+
+            return collection.GetDisplayableImages();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting displayable images from collection {CollectionId}", collectionId);
+            throw;
+        }
+    }
+
     public async Task<IEnumerable<ImageEmbedded>> GetEmbeddedImagesByFormatAsync(string format, CancellationToken cancellationToken = default)
     {
         try
