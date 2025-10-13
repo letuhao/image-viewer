@@ -200,3 +200,11 @@ temp_extract2/
 src/ImageViewer.Scheduler/obj/
 
 src/ImageViewer.Scheduler/bin/
+
+tools/ImageViewer.Tools.ZipRecover/.vs/
+
+tools/ImageViewer.Tools.ZipRecover/data/
+
+tools/ImageViewer.Tools.ZipRecover/obj/
+
+tools/ImageViewer.Tools.ZipRecover/bin/

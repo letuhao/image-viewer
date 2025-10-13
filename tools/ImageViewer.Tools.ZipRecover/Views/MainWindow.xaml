@@ -1,0 +1,513 @@
+<Window x:Class="ImageViewer.Tools.ZipRecover.Views.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:converters="clr-namespace:ImageViewer.Tools.ZipRecover.Converters"
+        mc:Ignorable="d"
+        Title="ZIP Recovery Tool" 
+        Height="800" 
+        Width="1200"
+        MinHeight="600"
+        MinWidth="800"
+        WindowStartupLocation="CenterScreen">
+    
+    <Window.Resources>
+        <converters:InverseBooleanConverter x:Key="InverseBooleanConverter"/>
+    </Window.Resources>
+
+    <Grid Margin="10">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <TextBlock Grid.Row="0" 
+                   Text="ZIP Recovery Tool" 
+                   FontSize="24" 
+                   FontWeight="Bold" 
+                   HorizontalAlignment="Center" 
+                   Margin="0,0,0,20"/>
+
+        <!-- Configuration Panel -->
+        <GroupBox Grid.Row="1" Header="Configuration" Margin="0,0,0,10">
+            <Grid Margin="10">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <!-- Input File -->
+                <Label Grid.Row="0" Grid.Column="0" Content="Input File:" VerticalAlignment="Center"/>
+                <TextBox Grid.Row="0" Grid.Column="1" 
+                         Text="{Binding InputFilePath}" 
+                         Margin="5,0"/>
+                <Button Grid.Row="0" Grid.Column="2" 
+                        Content="Browse..." 
+                        Command="{Binding BrowseInputFileCommand}"
+                        Margin="5,0"/>
+
+                <!-- 7-Zip Path -->
+                <Label Grid.Row="1" Grid.Column="0" Content="7-Zip Path:" VerticalAlignment="Center"/>
+                <TextBox Grid.Row="1" Grid.Column="1" 
+                         Text="{Binding SevenZipPath}" 
+                         Margin="5,0"/>
+                <Button Grid.Row="1" Grid.Column="2" 
+                        Content="Browse..." 
+                        Command="{Binding BrowseSevenZipPathCommand}"
+                        Margin="5,0"/>
+
+                <!-- Backup Directory -->
+                <Label Grid.Row="2" Grid.Column="0" Content="Backup Directory:" VerticalAlignment="Center"/>
+                <TextBox Grid.Row="2" Grid.Column="1" 
+                         Text="{Binding BackupDirectory}" 
+                         Margin="5,0"/>
+                <Button Grid.Row="2" Grid.Column="2" 
+                        Content="Browse..." 
+                        Command="{Binding BrowseBackupDirectoryCommand}"
+                        Margin="5,0"/>
+
+                <!-- Options -->
+                <StackPanel Grid.Row="0" Grid.Column="3" Grid.RowSpan="3" 
+                            Orientation="Vertical" 
+                            Margin="20,0,0,0">
+                    <CheckBox Content="Validate Files" 
+                              IsChecked="{Binding ValidateFiles}" 
+                              Margin="0,5"/>
+                    <CheckBox Content="Skip Corrupted Files" 
+                              IsChecked="{Binding SkipCorruptedFiles}" 
+                              Margin="0,5"/>
+                    <CheckBox Content="Skip Healthy Archives" 
+                              IsChecked="{Binding SkipHealthyArchives}" 
+                              Margin="0,5"/>
+                    <StackPanel Orientation="Horizontal" Margin="0,5">
+                        <Label Content="Health Check Timeout:" VerticalAlignment="Center"/>
+                        <TextBox Text="{Binding HealthCheckTimeoutSeconds}" 
+                                 Width="50" 
+                                 Margin="5,0"/>
+                        <Label Content="seconds" VerticalAlignment="Center"/>
+                    </StackPanel>
+                    <CheckBox Content="Show Batch Windows (Debug)" 
+                              IsChecked="{Binding ShowBatchWindows}"
+                              Margin="0,5"
+                              Foreground="Orange"/>
+                </StackPanel>
+
+                <!-- Action Buttons -->
+                <StackPanel Grid.Row="0" Grid.Column="4" Grid.RowSpan="3" 
+                            Orientation="Vertical" 
+                            HorizontalAlignment="Right">
+                    <Button Content="Load Input File" 
+                            Command="{Binding LoadInputFileCommand}"
+                            IsEnabled="{Binding IsProcessing, Converter={StaticResource InverseBooleanConverter}}"
+                            Margin="0,5" 
+                            Padding="10,5"/>
+                    <Button Content="Check Health Status" 
+                            Command="{Binding CheckHealthStatusCommand}"
+                            IsEnabled="{Binding IsProcessing, Converter={StaticResource InverseBooleanConverter}}"
+                            Margin="0,5" 
+                            Padding="10,5"
+                            Background="LightBlue"/>
+                    <Button Content="Start Recovery" 
+                            Command="{Binding StartRecoveryCommand}"
+                            IsEnabled="{Binding IsProcessing, Converter={StaticResource InverseBooleanConverter}}"
+                            Margin="0,5" 
+                            Padding="10,5"
+                            Background="LightGreen"/>
+                </StackPanel>
+            </Grid>
+        </GroupBox>
+
+        <!-- Progress Panel -->
+        <GroupBox Grid.Row="2" Header="Progress" Margin="0,0,0,10">
+            <Grid Margin="10">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0">
+                    <TextBlock Text="{Binding CurrentStatus}" 
+                               FontWeight="Bold" 
+                               Margin="0,0,0,5"/>
+                    <ProgressBar Value="{Binding ProgressPercentage}" 
+                                 Height="20" 
+                                 Margin="0,0,0,5"/>
+                    <TextBlock Text="{Binding ProgressPercentage, StringFormat='{}{0:F1}%'}" 
+                               HorizontalAlignment="Center"/>
+                </StackPanel>
+
+                <StackPanel Grid.Column="1" Margin="10,0">
+                    <TextBlock Text="Total Files:" Margin="0,0,0,2"/>
+                    <TextBlock Text="{Binding TotalFiles}" FontWeight="Bold" FontSize="16"/>
+                </StackPanel>
+
+                <StackPanel Grid.Column="2" Margin="10,0">
+                    <TextBlock Text="Successful:" Margin="0,0,0,2"/>
+                    <TextBlock Text="{Binding SuccessfulFiles}" 
+                               FontWeight="Bold" 
+                               FontSize="16" 
+                               Foreground="Green"/>
+                </StackPanel>
+
+                <StackPanel Grid.Column="3" Margin="10,0">
+                    <TextBlock Text="Failed:" Margin="0,0,0,2"/>
+                    <TextBlock Text="{Binding FailedFiles}" 
+                               FontWeight="Bold" 
+                               FontSize="16" 
+                               Foreground="Red"/>
+                </StackPanel>
+            </Grid>
+        </GroupBox>
+
+        <!-- Main Content -->
+        <TabControl Grid.Row="3" Margin="0,0,0,10">
+            <!-- Files Tab -->
+            <TabItem Header="Files">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    
+                    <!-- File Selection Controls -->
+                    <StackPanel Grid.Row="0" 
+                                Orientation="Horizontal" 
+                                Margin="0,0,0,10">
+                        <Button Content="Select All" 
+                                Command="{Binding SelectAllFilesCommand}"
+                                Margin="0,0,10,0" 
+                                Padding="10,5"/>
+                        <Button Content="Deselect All" 
+                                Command="{Binding DeselectAllFilesCommand}"
+                                Margin="0,0,10,0" 
+                                Padding="10,5"/>
+                        <Button Content="Select Healthy Only" 
+                                Command="{Binding SelectOnlyHealthyFilesCommand}"
+                                Margin="0,0,10,0" 
+                                Padding="10,5"
+                                Background="LightGreen"/>
+                        <Button Content="Select Corrupted Only" 
+                                Command="{Binding SelectOnlyCorruptedFilesCommand}"
+                                Margin="0,0,10,0" 
+                                Padding="10,5"
+                                Background="LightCoral"/>
+                        <Button Content="Select Unknown Only" 
+                                Command="{Binding SelectOnlyUnknownFilesCommand}"
+                                Margin="0,0,10,0" 
+                                Padding="10,5"
+                                Background="LightYellow"/>
+                        <Separator Margin="10,0"/>
+                        <Button Content="Export CSV" 
+                                Command="{Binding ExportZipFilesToCsvCommand}"
+                                Margin="0,0,10,0" 
+                                Padding="10,5"
+                                Background="LightBlue"/>
+                        <Button Content="Export JSON" 
+                                Command="{Binding ExportZipFilesToJsonCommand}"
+                                Margin="0,0,10,0" 
+                                Padding="10,5"
+                                Background="LightGreen"/>
+                        <Button Content="Summary Report" 
+                                Command="{Binding ExportSummaryReportCommand}"
+                                Margin="0,0,10,0" 
+                                Padding="10,5"
+                                Background="LightCoral"/>
+                    </StackPanel>
+                    
+                    <!-- Files DataGrid -->
+                    <DataGrid Grid.Row="1" 
+                              ItemsSource="{Binding ZipFiles}" 
+                          AutoGenerateColumns="False" 
+                          CanUserAddRows="False" 
+                          CanUserDeleteRows="False"
+                          GridLinesVisibility="Horizontal"
+                          HeadersVisibility="Column">
+                    <DataGrid.Columns>
+                        <DataGridCheckBoxColumn Header="Select" 
+                                               Binding="{Binding IsSelected}" 
+                                               Width="60"/>
+                        <DataGridTextColumn Header="File Name" 
+                                            Binding="{Binding FileName}" 
+                                            Width="250"/>
+                        <DataGridTextColumn Header="Type" 
+                                            Binding="{Binding ArchiveType}" 
+                                            Width="60"/>
+                        <DataGridTextColumn Header="Status" 
+                                            Binding="{Binding StatusText}" 
+                                            Width="120">
+                            <DataGridTextColumn.ElementStyle>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Foreground" Value="{Binding StatusColor}"/>
+                                    <Setter Property="FontWeight" Value="Bold"/>
+                                </Style>
+                            </DataGridTextColumn.ElementStyle>
+                        </DataGridTextColumn>
+                        <DataGridTextColumn Header="Health" 
+                                            Binding="{Binding HealthStatus}" 
+                                            Width="100"/>
+                        <DataGridTextColumn Header="Valid Files" 
+                                            Binding="{Binding ValidFilesCount}" 
+                                            Width="80"/>
+                        <DataGridTextColumn Header="Total Files" 
+                                            Binding="{Binding TotalFilesCount}" 
+                                            Width="80"/>
+                        <DataGridTextColumn Header="Original Size" 
+                                            Binding="{Binding OriginalSize, StringFormat='{}{0:N0} bytes'}" 
+                                            Width="120"/>
+                        <DataGridTextColumn Header="Recovered Size" 
+                                            Binding="{Binding RecoveredSize, StringFormat='{}{0:N0} bytes'}" 
+                                            Width="120"/>
+                        <DataGridTextColumn Header="Current Step" 
+                                            Binding="{Binding CurrentStep}" 
+                                            Width="120"/>
+                        <DataGridTemplateColumn Header="Progress" 
+                                               Width="150">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <StackPanel>
+                                        <ProgressBar Value="{Binding FileProgressPercentage}" 
+                                                     Maximum="100" 
+                                                     Height="15" 
+                                                     Margin="2"/>
+                                        <TextBlock Text="{Binding FileProgressPercentage, StringFormat='{}{0:F0}%'}" 
+                                                   HorizontalAlignment="Center" 
+                                                   FontSize="10"/>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTextColumn Header="Details" 
+                                            Binding="{Binding ProcessingDetails}" 
+                                            Width="200"/>
+                        <DataGridTextColumn Header="Error Message" 
+                                            Binding="{Binding ErrorMessage}" 
+                                            Width="*"/>
+                    </DataGrid.Columns>
+                    </DataGrid>
+                    
+                    <!-- Selection Status -->
+                    <TextBlock Grid.Row="2" 
+                               Text="{Binding SelectedFilesCount, StringFormat='Selected Files: {0}'}" 
+                               Margin="5" 
+                               FontWeight="Bold"
+                               Foreground="Blue"/>
+                </Grid>
+            </TabItem>
+
+            <!-- Logs Tab -->
+            <TabItem Header="Logs">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Log Controls -->
+                    <StackPanel Grid.Row="0" 
+                                Orientation="Horizontal" 
+                                Margin="0,0,0,10">
+                        <Button Content="Clear Logs" 
+                                Command="{Binding ClearLogsCommand}"
+                                Margin="0,0,10,0" 
+                                Padding="10,5"/>
+                        <Button Content="Export Logs" 
+                                Command="{Binding ExportLogsCommand}"
+                                Margin="0,0,10,0" 
+                                Padding="10,5"/>
+                        <Button Content="Test Regex Pattern" 
+                                Command="{Binding TestPermissiveRegexCommand}"
+                                Margin="0,0,10,0" 
+                                Padding="10,5"
+                                Background="LightYellow"/>
+                        <Separator Margin="10,0"/>
+                        <Button Content="Export CSV" 
+                                Command="{Binding ExportLogsToCsvCommand}"
+                                Margin="0,0,10,0" 
+                                Padding="10,5"
+                                Background="LightBlue"/>
+                        <Button Content="Export JSON" 
+                                Command="{Binding ExportLogsToJsonCommand}"
+                                Margin="0,0,10,0" 
+                                Padding="10,5"
+                                Background="LightGreen"/>
+                    </StackPanel>
+
+                    <!-- Log List -->
+                    <ListBox Grid.Row="1" 
+                             ItemsSource="{Binding LogEntries}"
+                             ScrollViewer.HorizontalScrollBarVisibility="Auto"
+                             ScrollViewer.VerticalScrollBarVisibility="Auto">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal" Margin="2">
+                                    <TextBlock Text="{Binding Timestamp, StringFormat='{}{0:HH:mm:ss}'}" 
+                                               Width="80" 
+                                               FontFamily="Consolas"/>
+                                    <TextBlock Text="{Binding Level}" 
+                                               Width="80" 
+                                               FontFamily="Consolas"
+                                               Foreground="{Binding LevelColor}"/>
+                                    <TextBlock Text="{Binding Message}" 
+                                               FontFamily="Consolas"
+                                               TextWrapping="Wrap"/>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </Grid>
+            </TabItem>
+            
+            <TabItem Header="Unmatched Lines">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    
+                    <!-- Unmatched Lines Controls -->
+                    <StackPanel Grid.Row="0" 
+                                Orientation="Horizontal" 
+                                Margin="0,0,0,10">
+                        <Button Content="Extract Path from Selected" 
+                                Command="{Binding ExtractPathFromSelectedLineCommand}"
+                                Margin="0,0,10,0" 
+                                Padding="10,5"/>
+                        <Button Content="Add Selected to Processing" 
+                                Command="{Binding AddSelectedLinesToProcessingCommand}"
+                                Margin="0,0,10,0" 
+                                Padding="10,5"/>
+                        <Button Content="Select All" 
+                                Command="{Binding SelectAllUnmatchedLinesCommand}"
+                                Margin="0,0,10,0" 
+                                Padding="10,5"/>
+                        <Button Content="Deselect All" 
+                                Command="{Binding DeselectAllUnmatchedLinesCommand}"
+                                Margin="0,0,10,0" 
+                                Padding="10,5"/>
+                        <Separator Margin="10,0"/>
+                        <Button Content="Export CSV" 
+                                Command="{Binding ExportUnmatchedLinesToCsvCommand}"
+                                Margin="0,0,10,0" 
+                                Padding="10,5"
+                                Background="LightBlue"/>
+                        <Button Content="Export JSON" 
+                                Command="{Binding ExportUnmatchedLinesToJsonCommand}"
+                                Margin="0,0,10,0" 
+                                Padding="10,5"
+                                Background="LightGreen"/>
+                    </StackPanel>
+                    
+                    <!-- Unmatched Lines List -->
+                    <DataGrid Grid.Row="1" 
+                              ItemsSource="{Binding UnmatchedLines}" 
+                              AutoGenerateColumns="False"
+                              CanUserAddRows="False"
+                              CanUserDeleteRows="False"
+                              IsReadOnly="False"
+                              Margin="5">
+                        <DataGrid.Columns>
+                            <DataGridCheckBoxColumn Header="Select" 
+                                                   Binding="{Binding IsSelected}" 
+                                                   Width="60"/>
+                            <DataGridTextColumn Header="Original Line" 
+                                               Binding="{Binding Line}" 
+                                               Width="*"/>
+                            <DataGridTextColumn Header="Extracted Path" 
+                                               Binding="{Binding ExtractedPath}" 
+                                               Width="*"/>
+                            <DataGridTextColumn Header="Status" 
+                                               Binding="{Binding Status}" 
+                                               Width="120"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                    
+                    <!-- Status -->
+                    <TextBlock Grid.Row="2" 
+                               Text="{Binding UnmatchedLines.Count, StringFormat='Unmatched Lines: {0}'}" 
+                               Margin="5" 
+                               FontWeight="Bold"/>
+                </Grid>
+            </TabItem>
+            
+            <!-- Report Tab -->
+            <TabItem Header="📊 Report">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    
+                    <!-- Report Controls -->
+                    <StackPanel Grid.Row="0" 
+                                Orientation="Horizontal" 
+                                Margin="5" 
+                                Background="LightGray">
+                        <Button Content="🔄 Generate Report" 
+                                Command="{Binding GenerateReportCommand}"
+                                Margin="0,0,10,0" 
+                                Padding="10,5"
+                                Background="LightBlue"/>
+                        <Button Content="📋 Copy All" 
+                                Click="CopyReportToClipboard"
+                                Margin="0,0,10,0" 
+                                Padding="10,5"
+                                Background="LightGreen"/>
+                        <TextBlock Text="Select text and press Ctrl+C to copy specific sections" 
+                                   VerticalAlignment="Center"
+                                   FontStyle="Italic"
+                                   Foreground="DarkBlue"/>
+                    </StackPanel>
+                    
+                    <!-- Report Text -->
+                    <ScrollViewer Grid.Row="1" 
+                                  VerticalScrollBarVisibility="Auto"
+                                  HorizontalScrollBarVisibility="Auto"
+                                  Margin="5">
+                        <TextBox Text="{Binding RecoveryReport}" 
+                                 IsReadOnly="True"
+                                 TextWrapping="Wrap"
+                                 AcceptsReturn="True"
+                                 FontFamily="Consolas"
+                                 FontSize="11"
+                                 Background="White"
+                                 BorderThickness="1"
+                                 Padding="10"/>
+                    </ScrollViewer>
+                </Grid>
+            </TabItem>
+        </TabControl>
+
+        <!-- Status Bar -->
+        <StatusBar Grid.Row="4">
+            <StatusBarItem>
+                <TextBlock Text="{Binding CurrentStatus}"/>
+            </StatusBarItem>
+            <Separator/>
+            <StatusBarItem>
+                <TextBlock Text="{Binding ProcessedFiles, StringFormat='Processed: {0}'}"/>
+            </StatusBarItem>
+            <Separator/>
+            <StatusBarItem>
+                <TextBlock Text="{Binding TotalFiles, StringFormat='Total: {0}'}"/>
+            </StatusBarItem>
+        </StatusBar>
+    </Grid>
+</Window>
