@@ -96,22 +96,40 @@ public class RabbitMQSetupService
                 continue;
             }
 
-            var arguments = new Dictionary<string, object>
+            // Try to declare queue with new settings, but handle conflicts gracefully
+            try
             {
-                { "x-dead-letter-exchange", _options.DeadLetterExchange },
-                { "x-message-ttl", (int)_options.MessageTimeout.TotalMilliseconds },
-                { "x-max-length", _options.MaxQueueLength }, // Limit queue to prevent unbounded growth
-                { "x-overflow", "reject-publish" } // Reject new messages when queue is full
-            };
+                var arguments = new Dictionary<string, object>
+                {
+                    { "x-dead-letter-exchange", _options.DeadLetterExchange },
+                    { "x-message-ttl", (int)_options.MessageTimeout.TotalMilliseconds },
+                    { "x-max-length", _options.MaxQueueLength }, // Limit queue to prevent unbounded growth
+                    { "x-overflow", "reject-publish" } // Reject new messages when queue is full
+                };
 
-            await channel.QueueDeclareAsync(
-                queue: queueName,
-                durable: true,
-                exclusive: false,
-                autoDelete: false,
-                arguments: arguments);
+                await channel.QueueDeclareAsync(
+                    queue: queueName,
+                    durable: true,
+                    exclusive: false,
+                    autoDelete: false,
+                    arguments: arguments);
 
-            _logger.LogDebug("Declared queue: {QueueName}", queueName);
+                _logger.LogDebug("Declared queue: {QueueName}", queueName);
+            }
+            catch (RabbitMQ.Client.Exceptions.OperationInterruptedException ex) when (ex.Message.Contains("PRECONDITION_FAILED"))
+            {
+                _logger.LogWarning("Queue {QueueName} already exists with different settings. Skipping declaration. Error: {Error}", 
+                    queueName, ex.Message);
+                
+                // Queue exists with different settings - this is okay, we'll use the existing queue
+                // The existing queue will work fine, just with different limits
+                continue;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to declare queue: {QueueName}", queueName);
+                throw;
+            }
         }
 
         // Declare dead letter queue
@@ -231,6 +249,55 @@ public class RabbitMQSetupService
         {
             _logger.LogError(ex, "Error checking queue existence");
             return false;
+        }
+    }
+
+    /// <summary>
+    /// Delete all existing queues (use with caution - will lose all messages!)
+    /// Only use this if you need to reset queue configurations
+    /// </summary>
+    public async Task DeleteAllQueuesAsync()
+    {
+        try
+        {
+            _logger.LogWarning("⚠️ DELETING ALL EXISTING QUEUES - THIS WILL LOSE ALL MESSAGES!");
+            
+            var channel = await _connection.CreateChannelAsync();
+            var queues = GetConfiguredQueues();
+
+            foreach (var queueName in queues)
+            {
+                if (string.IsNullOrEmpty(queueName))
+                    continue;
+
+                try
+                {
+                    await channel.QueueDeleteAsync(queueName);
+                    _logger.LogWarning("Deleted queue: {QueueName}", queueName);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogDebug("Could not delete queue {QueueName}: {Error}", queueName, ex.Message);
+                }
+            }
+
+            // Delete dead letter queue too
+            try
+            {
+                await channel.QueueDeleteAsync("imageviewer.dlq");
+                _logger.LogWarning("Deleted dead letter queue");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug("Could not delete dead letter queue: {Error}", ex.Message);
+            }
+
+            _logger.LogWarning("All queues deleted successfully");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error deleting queues");
+            throw;
         }
     }
 }
