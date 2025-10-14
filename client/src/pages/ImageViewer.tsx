@@ -35,6 +35,8 @@ import {
   PanelRight,
   Images,
   Link2,
+  Smartphone,
+  Laptop,
 } from 'lucide-react';
 
 /**
@@ -137,7 +139,7 @@ const ImageViewer: React.FC = () => {
   const imageContainerRef = useRef<HTMLDivElement>(null);
   const preloadedImagesRef = useRef<Map<string, HTMLImageElement>>(new Map());
 
-  // Calculate auto-rotation based on image dimensions and mode
+  // Calculate auto-rotation based on image dimensions, mode, and viewport optimization
   const getAutoRotation = useCallback((imageWidth: number, imageHeight: number): number => {
     if (autoRotateMode === 'none') return 0;
     
@@ -152,6 +154,47 @@ const ImageViewer: React.FC = () => {
     }
     
     return 0; // No rotation needed
+  }, [autoRotateMode]);
+
+  // Calculate scale factor for auto-rotated images based on viewport fitting
+  const getAutoRotatedScale = useCallback((imageWidth: number, imageHeight: number): number => {
+    // TODO: Commented out scale logic - causing issues with 1:1 ratio images being scaled up unnecessarily
+    // Need to find better approach tomorrow
+    return 1;
+    
+    /* 
+    if (autoRotateMode === 'none') return 1;
+    
+    const isPortrait = imageHeight > imageWidth;
+    const shouldRotate = (autoRotateMode === 'portrait' && !isPortrait) || (autoRotateMode === 'landscape' && isPortrait);
+    
+    if (!shouldRotate) return 1;
+    
+    // Get viewport dimensions (accounting for UI controls)
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight - 100; // Subtract space for controls
+    
+    // After rotation: imageHeight becomes width, imageWidth becomes height
+    const rotatedImageWidth = imageHeight;
+    const rotatedImageHeight = imageWidth;
+    
+    // Calculate how the original image would fit in viewport
+    const originalScaleForWidth = viewportWidth / imageWidth;
+    const originalScaleForHeight = viewportHeight / imageHeight;
+    const originalScale = Math.min(originalScaleForWidth, originalScaleForHeight);
+    
+    // Calculate how the rotated image would fit in viewport
+    const rotatedScaleForWidth = viewportWidth / rotatedImageWidth;
+    const rotatedScaleForHeight = viewportHeight / rotatedImageHeight;
+    const rotatedScale = Math.min(rotatedScaleForWidth, rotatedScaleForHeight);
+    
+    // The scale factor is how much bigger the rotated image should be
+    // compared to the original to achieve the same viewport coverage
+    const scaleFactor = rotatedScale / originalScale;
+    
+    // Apply a conservative factor to avoid scrollbars (0.8 = 80% of calculated scale)
+    return Math.max(0.5, Math.min(2.0, scaleFactor * 0.8));
+    */
   }, [autoRotateMode]);
 
   // Fetch collection navigation info for cross-collection navigation
@@ -320,6 +363,20 @@ const ImageViewer: React.FC = () => {
     localStorage.setItem('imageViewerAutoRotateMode', newMode);
   }, [autoRotateMode]);
 
+  // Get icon for current auto-rotate mode
+  const getAutoRotateIcon = useCallback(() => {
+    switch (autoRotateMode) {
+      case 'none':
+        return <Monitor className="h-5 w-5 text-white" />; // Desktop/Original orientation
+      case 'portrait':
+        return <Smartphone className="h-5 w-5 text-white" />; // Portrait orientation
+      case 'landscape':
+        return <Laptop className="h-5 w-5 text-white" />; // Landscape orientation
+      default:
+        return <Monitor className="h-5 w-5 text-white" />;
+    }
+  }, [autoRotateMode]);
+
   // Handle mouse wheel for zoom (Ctrl+Wheel)
   const handleWheel = useCallback((e: WheelEvent) => {
     // Only zoom when Ctrl key is pressed
@@ -348,9 +405,25 @@ const ImageViewer: React.FC = () => {
   }, [handleWheel]);
 
   // Get image class based on fit mode and screen orientation
-  const getImageClass = useCallback(() => {
+  const getImageClass = useCallback((imageWidth?: number, imageHeight?: number) => {
     if (!fitToScreen) {
       return "max-w-full max-h-[calc(100vh-8rem)] object-contain transition-transform duration-200";
+    }
+
+    // For auto-rotated images, we need special handling
+    if (imageWidth && imageHeight && autoRotateMode !== 'none') {
+      const isPortrait = imageHeight > imageWidth;
+      const shouldRotate = (autoRotateMode === 'portrait' && !isPortrait) || (autoRotateMode === 'landscape' && isPortrait);
+      
+      if (shouldRotate) {
+        // For rotated images, use viewport dimensions to fill properly
+        const isLandscapeScreen = window.innerWidth > window.innerHeight;
+        if (isLandscapeScreen) {
+          return "h-[100vh] w-auto object-contain transition-transform duration-200";
+        } else {
+          return "w-[100vw] h-auto object-contain transition-transform duration-200";
+        }
+      }
     }
 
     // Fit to screen mode: use screen orientation, not image orientation
@@ -362,7 +435,7 @@ const ImageViewer: React.FC = () => {
     } else {
       return "w-[100vw] h-auto object-contain transition-transform duration-200";
     }
-  }, [fitToScreen]);
+  }, [fitToScreen, autoRotateMode]);
 
   // Toggle fullscreen
   const toggleFullscreen = useCallback(() => {
@@ -514,6 +587,11 @@ const ImageViewer: React.FC = () => {
           break;
         case 'r':
           setRotation((r) => (r + 90) % 360);
+          break;
+        case 'f':
+          if (e.ctrlKey || e.metaKey) {
+            setRotation((r) => (r + 180) % 360);
+          }
           break;
         case 'i':
           setShowInfo((s) => !s);
@@ -793,7 +871,7 @@ const ImageViewer: React.FC = () => {
                   : 'Auto-rotate: Landscape (rotate portrait images to landscape)'
               }
             >
-              <RotateCcw className="h-5 w-5 text-white" />
+              {getAutoRotateIcon()}
             </button>
 
             {/* View Mode Controls */}
@@ -866,6 +944,13 @@ const ImageViewer: React.FC = () => {
               title="Rotate (R)"
             >
               <RotateCw className="h-5 w-5 text-white" />
+            </button>
+            <button
+              onClick={() => setRotation((r) => (r + 180) % 360)}
+              className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+              title="Flip (Ctrl+F)"
+            >
+              <RotateCcw className="h-5 w-5 text-white" />
             </button>
             <button
               onClick={() => setZoom((z) => Math.max(z - 0.25, 0.25))}
@@ -982,7 +1067,7 @@ const ImageViewer: React.FC = () => {
                   alt={image.filename}
                   className={getImageClass()}
                   style={{
-                    transform: `scale(${zoom}) rotate(${rotation + getAutoRotation(image.width, image.height)}deg)`,
+                    transform: `scale(${zoom * getAutoRotatedScale(image.width, image.height)}) rotate(${rotation + getAutoRotation(image.width, image.height)}deg)`,
                     transformOrigin: 'center center',
                     transition: 'transform 0.2s ease-out',
                   }}
@@ -1046,7 +1131,7 @@ const ImageViewer: React.FC = () => {
                 alt={image.filename}
                 className={getImageClass()}
                 style={{
-                  transform: `rotate(${rotation + getAutoRotation(image.width, image.height)}deg)`,
+                  transform: `scale(${zoom * getAutoRotatedScale(image.width, image.height)}) rotate(${rotation + getAutoRotation(image.width, image.height)}deg)`,
                 }}
                 onLoad={() => index === 0 && setImageLoading(false)}
                 onError={() => {
@@ -1136,6 +1221,7 @@ const ImageViewer: React.FC = () => {
               <p>0 : Reset Zoom/Rotation</p>
               <p>Ctrl+Wheel : Zoom (Scroll Mode)</p>
               <p>R : Rotate</p>
+              <p>Ctrl+F : Flip (180°)</p>
               <p>I : Info</p>
               <p>T : Thumbnails</p>
               <p>Space : Slideshow</p>
