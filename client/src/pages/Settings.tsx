@@ -10,6 +10,7 @@ import Button from '../components/ui/Button';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import CacheFolderManager from '../components/settings/CacheFolderManager';
 import RedisIndexManagement from '../components/settings/RedisIndexManagement';
+import CollectionCleanup from '../components/settings/CollectionCleanup';
 import { useUserSettings, useUpdateUserSettings, useResetUserSettings, useSystemSettings, useBatchUpdateSystemSettings } from '../hooks/useSettings';
 import toast from 'react-hot-toast';
 
@@ -674,6 +675,13 @@ const Settings: React.FC = () => {
                   </SettingsSection>
 
                   <RedisIndexManagement />
+
+                  <SettingsSection
+                    title="Collection Management"
+                    description="Manage and maintain your collection database"
+                  >
+                    <CollectionCleanup />
+                  </SettingsSection>
 
                   {/* Save Button */}
                   <div className="flex justify-end space-x-3">
