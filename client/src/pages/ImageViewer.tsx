@@ -3,8 +3,11 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useImages, useImage } from '../hooks/useImages';
 import { useCollection } from '../hooks/useCollections';
 import { useCollectionNavigation } from '../hooks/useCollectionNavigation';
+import { useCrossCollectionNavigation } from '../hooks/useCrossCollectionNavigation';
 import { useUserSettings } from '../hooks/useSettings';
+import { useHotkeys, CommonHotkeys } from '../hooks/useHotkeys';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
+import { useUI } from '../contexts/UIContext';
 import CollectionNavigationSidebar from '../components/collections/CollectionNavigationSidebar';
 import ImagePreviewSidebar from '../components/viewer/ImagePreviewSidebar';
 import {
@@ -14,6 +17,7 @@ import {
   ZoomIn,
   ZoomOut,
   RotateCw,
+  RotateCcw,
   Play,
   Pause,
   Grid,
@@ -116,14 +120,47 @@ const ImageViewer: React.FC = () => {
   const [crossCollectionNav, setCrossCollectionNav] = useState(() => 
     localStorage.getItem('imageViewerCrossCollectionNav') === 'true' // Default: disabled
   );
+  
+  // Get global UI state for hiding DevTools
+  const { hideDevTools, setHideDevTools } = useUI();
+  
+  // Hide all controls state
+  const [hideAllControls, setHideAllControls] = useState(false);
+  
+  // Auto-rotate modes
+  type AutoRotateMode = 'none' | 'portrait' | 'landscape';
+  const [autoRotateMode, setAutoRotateMode] = useState<AutoRotateMode>(() => 
+    (localStorage.getItem('imageViewerAutoRotateMode') as AutoRotateMode) || 'none'
+  );
+  
   const slideshowRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const imageContainerRef = useRef<HTMLDivElement>(null);
   const preloadedImagesRef = useRef<Map<string, HTMLImageElement>>(new Map());
+
+  // Calculate auto-rotation based on image dimensions and mode
+  const getAutoRotation = useCallback((imageWidth: number, imageHeight: number): number => {
+    if (autoRotateMode === 'none') return 0;
+    
+    const isPortrait = imageHeight > imageWidth;
+    
+    if (autoRotateMode === 'portrait' && !isPortrait) {
+      // Image is landscape but we want portrait - rotate 90 degrees
+      return 90;
+    } else if (autoRotateMode === 'landscape' && isPortrait) {
+      // Image is portrait but we want landscape - rotate 90 degrees
+      return 90;
+    }
+    
+    return 0; // No rotation needed
+  }, [autoRotateMode]);
 
   // Fetch collection navigation info for cross-collection navigation
   const { data: collectionNav } = useCollectionNavigation(
     crossCollectionNav ? collectionId : undefined
   );
+
+  // Cross-collection navigation hook
+  const { navigate: navigateCrossCollection, isNavigating: isCrossNavigating } = useCrossCollectionNavigation();
 
   // Reset when collection changes
   useEffect(() => {
@@ -155,7 +192,7 @@ const ImageViewer: React.FC = () => {
   
   // Only use loadedImages if they're for the current collection (prevent 404s!)
   const images = (loadedForCollectionRef.current === collectionId) ? loadedImages : [];
-  const totalImages = batchData?.totalCount || 0;
+  const totalImages = batchData?.total || 0;
   const currentIndex = images.findIndex((img) => img.id === currentImageId);
   const currentImage = currentIndex >= 0 ? images[currentIndex] : null;
   
@@ -177,6 +214,21 @@ const ImageViewer: React.FC = () => {
     }
   }, [currentIndex, images.length, totalImages, currentBatch, batchSize]);
 
+  // Aggressive loading when looking for a specific image that's not found
+  useEffect(() => {
+    if (currentIndex === -1 && currentImageId && images.length > 0 && totalImages > 0) {
+      // We're looking for a specific image that's not in the current batch
+      const hasMoreImages = images.length < totalImages;
+      const maxBatch = Math.ceil(totalImages / batchSize);
+      const nextBatch = currentBatch + 1;
+      
+      if (hasMoreImages && nextBatch <= maxBatch) {
+        console.log(`Loading next batch (${nextBatch}/${maxBatch}) to find target image ${currentImageId}`);
+        setCurrentBatch(nextBatch);
+      }
+    }
+  }, [currentIndex, currentImageId, images.length, totalImages, currentBatch, batchSize]);
+
   // Handle goToLast parameter for cross-collection navigation from previous collection
   useEffect(() => {
     if (goToLast && images.length > 0 && !currentImageId) {
@@ -193,13 +245,22 @@ const ImageViewer: React.FC = () => {
     }
   }, [initialImageId]);
   
-  // Handle invalid currentIndex
+  // Handle invalid currentIndex - only fallback if we've loaded all images
   useEffect(() => {
     if (images.length > 0 && currentIndex === -1 && currentImageId) {
-      // Image not found, set to first image
-      setCurrentImageId(images[0].id);
+      // Check if we have all images loaded (no more batches to load)
+      const hasAllImages = !batchData?.hasNext || (batchData && batchData.total && images.length >= batchData.total);
+      
+      if (hasAllImages) {
+        // We have all images loaded and the target image is not found, so it doesn't exist
+        // Fall back to first image
+        console.warn(`Target image ${currentImageId} not found in collection ${collectionId}, falling back to first image`);
+        setCurrentImageId(images[0].id);
+      }
+      // If we don't have all images loaded, keep trying to load more batches
+      // The target image might be in a future batch
     }
-  }, [currentIndex, images, currentImageId]);
+  }, [currentIndex, images, currentImageId, batchData, collectionId]);
 
   // Reset loading/error state when image changes
   useEffect(() => {
@@ -247,6 +308,17 @@ const ImageViewer: React.FC = () => {
     setShowImagePreviewSidebar(newValue);
     localStorage.setItem('imageViewerShowPreviewSidebar', newValue.toString());
   }, [showImagePreviewSidebar]);
+
+  // Toggle auto-rotate mode
+  const toggleAutoRotateMode = useCallback(() => {
+    const modes: AutoRotateMode[] = ['none', 'portrait', 'landscape'];
+    const currentIndex = modes.indexOf(autoRotateMode);
+    const nextIndex = (currentIndex + 1) % modes.length;
+    const newMode = modes[nextIndex];
+    
+    setAutoRotateMode(newMode);
+    localStorage.setItem('imageViewerAutoRotateMode', newMode);
+  }, [autoRotateMode]);
 
   // Handle mouse wheel for zoom (Ctrl+Wheel)
   const handleWheel = useCallback((e: WheelEvent) => {
@@ -327,10 +399,10 @@ const ImageViewer: React.FC = () => {
     return visibleImages;
   }, [images, currentIndex, viewMode]);
 
-  // Navigate to next/previous image
+  // Navigate to next/previous image using backend API
   const navigateToImage = useCallback(
-    (direction: 'next' | 'prev') => {
-      if (images.length === 0) return;
+    async (direction: 'next' | 'prev') => {
+      if (images.length === 0 || !currentImageId) return;
 
       // Cross-collection navigation disabled in scroll mode and shuffle mode
       const canCrossNavigate = crossCollectionNav && 
@@ -345,50 +417,90 @@ const ImageViewer: React.FC = () => {
         quad: 4,
       }[viewMode];
 
-      let newIndex = currentIndex;
-      if (direction === 'next') {
-        newIndex = currentIndex + imagesPerView;
-        
-        // Check if we need to move to next collection
-        if (newIndex >= images.length) {
-          if (canCrossNavigate && collectionNav.hasNext && collectionNav.nextCollectionId) {
-            // Navigate to first image of next collection
-            navigate(`/collections/${collectionNav.nextCollectionId}/viewer`);
+      // For multi-image view modes, handle navigation within current collection first
+      if (imagesPerView > 1) {
+        let newIndex = currentIndex;
+        if (direction === 'next') {
+          newIndex = currentIndex + imagesPerView;
+          if (newIndex < images.length) {
+            const newImageId = images[newIndex].id;
+            setCurrentImageId(newImageId);
+            setZoom(1);
+            setRotation(0);
+            setPanPosition({ x: 0, y: 0 });
             return;
-          } else {
-            // Wrap to beginning of current collection
-            newIndex = 0;
           }
-        }
-      } else {
-        newIndex = currentIndex - imagesPerView;
-        
-        // Check if we need to move to previous collection
-        if (newIndex < 0) {
-          if (canCrossNavigate && collectionNav.hasPrevious && collectionNav.previousCollectionId) {
-            // Navigate to last image of previous collection
-            // We don't know the last image ID yet, so navigate to collection and let it load
-            navigate(`/collections/${collectionNav.previousCollectionId}/viewer?goToLast=true`);
+        } else {
+          newIndex = currentIndex - imagesPerView;
+          if (newIndex >= 0) {
+            const newImageId = images[newIndex].id;
+            setCurrentImageId(newImageId);
+            setZoom(1);
+            setRotation(0);
+            setPanPosition({ x: 0, y: 0 });
             return;
-          } else {
-            // Wrap to end of current collection
-            newIndex = Math.max(0, images.length - imagesPerView);
           }
         }
       }
 
-      const newImageId = images[newIndex].id;
-      
-      // Update local state instead of URL for seamless navigation
-      setCurrentImageId(newImageId);
-      
-      // Reset zoom, rotation, and pan when changing images
-      setZoom(1);
-      setRotation(0);
-      setPanPosition({ x: 0, y: 0 });
+      // Single image view or need to cross collections - use backend API
+      if (canCrossNavigate) {
+        try {
+          const result = await navigateCrossCollection({
+            collectionId: collectionId!,
+            imageId: currentImageId,
+            direction,
+            sortBy: 'updatedAt',
+            sortDirection: 'desc'
+          });
+
+          if (result.hasTarget && result.targetImageId) {
+            if (result.isCrossCollection && result.targetCollectionId) {
+              // Cross-collection navigation
+              navigate(`/collections/${result.targetCollectionId}/viewer?imageId=${result.targetImageId}`);
+            } else {
+              // Stay in current collection
+              setCurrentImageId(result.targetImageId);
+              setZoom(1);
+              setRotation(0);
+              setPanPosition({ x: 0, y: 0 });
+            }
+          }
+        } catch (error) {
+          console.error('Cross-collection navigation failed:', error);
+          // Fall back to local navigation
+          handleLocalNavigation(direction, imagesPerView);
+        }
+      } else {
+        // Local navigation only
+        handleLocalNavigation(direction, imagesPerView);
+      }
     },
-    [images, currentIndex, viewMode, crossCollectionNav, navigationMode, isShuffleMode, collectionNav, navigate]
+    [images, currentIndex, currentImageId, viewMode, crossCollectionNav, navigationMode, isShuffleMode, collectionNav, navigate, navigateCrossCollection, collectionId]
   );
+
+  // Helper function for local navigation when cross-collection is disabled
+  const handleLocalNavigation = useCallback((direction: 'next' | 'prev', imagesPerView: number) => {
+    let newIndex = currentIndex;
+    
+    if (direction === 'next') {
+      newIndex = currentIndex + imagesPerView;
+      if (newIndex >= images.length) {
+        newIndex = 0; // Wrap to beginning
+      }
+    } else {
+      newIndex = currentIndex - imagesPerView;
+      if (newIndex < 0) {
+        newIndex = Math.max(0, images.length - imagesPerView); // Wrap to end
+      }
+    }
+
+    const newImageId = images[newIndex].id;
+    setCurrentImageId(newImageId);
+    setZoom(1);
+    setRotation(0);
+    setPanPosition({ x: 0, y: 0 });
+  }, [images, currentIndex]);
 
   // Keyboard navigation
   useEffect(() => {
@@ -411,8 +523,16 @@ const ImageViewer: React.FC = () => {
           setZoom((z) => Math.max(z - 0.25, 0.25));
           break;
         case '0':
-          setZoom(1);
-          setRotation(0);
+          if (e.ctrlKey) {
+            // Ctrl+0: Hide/show all controls and DevTools
+            const newHideState = !hideAllControls;
+            setHideAllControls(newHideState);
+            setHideDevTools(newHideState);
+          } else {
+            // 0: Reset zoom and rotation
+            setZoom(1);
+            setRotation(0);
+          }
           break;
         case 'r':
           setRotation((r) => (r + 90) % 360);
@@ -454,7 +574,30 @@ const ImageViewer: React.FC = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [collectionId, navigate, navigateToImage, saveViewMode, toggleFullscreen, toggleImagePreviewSidebar]);
+  }, [collectionId, navigate, navigateToImage, saveViewMode, toggleFullscreen, toggleImagePreviewSidebar, hideAllControls, setHideDevTools]);
+
+  // Hotkey handlers for collection navigation (always move to first image)
+  const handleNextCollection = useCallback(() => {
+    if (collectionNav?.hasNext && collectionNav.nextCollectionId) {
+      // Navigate to next collection and load first image
+      navigate(`/collections/${collectionNav.nextCollectionId}/viewer`);
+    }
+  }, [collectionNav?.hasNext, collectionNav?.nextCollectionId, navigate]);
+
+  const handlePrevCollection = useCallback(() => {
+    if (collectionNav?.hasPrevious && collectionNav.previousCollectionId) {
+      // Navigate to previous collection and load first image
+      navigate(`/collections/${collectionNav.previousCollectionId}/viewer`);
+    }
+  }, [collectionNav?.hasPrevious, collectionNav?.previousCollectionId, navigate]);
+
+  // Setup hotkeys for collection navigation (Ctrl+Arrow keys)
+  useHotkeys([
+    CommonHotkeys.nextCollection(handleNextCollection),
+    CommonHotkeys.prevCollection(handlePrevCollection),
+  ], {
+    enabled: !isSlideshow,
+  });
 
   // Slideshow
   useEffect(() => {
@@ -570,7 +713,7 @@ const ImageViewer: React.FC = () => {
   return (
     <div key={`${collectionId}-${initialImageId}`} className="fixed inset-0 bg-black z-50 flex">
       {/* Collection Navigation Sidebar (toggleable) */}
-      {showCollectionSidebar && (
+      {showCollectionSidebar && !hideAllControls && (
         <CollectionNavigationSidebar
           key={`collection-sidebar-${collectionId}`}
           collectionId={collectionId!}
@@ -594,7 +737,8 @@ const ImageViewer: React.FC = () => {
         {/* Image Display Area */}
         <div className="flex-1 flex flex-col">
       {/* Header */}
-      <div className="absolute top-0 left-0 right-0 z-10 bg-gradient-to-b from-black/80 to-transparent p-4">
+      {!hideAllControls && (
+        <div className="absolute top-0 left-0 right-0 z-10 bg-gradient-to-b from-black/80 to-transparent p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
             <button
@@ -654,6 +798,24 @@ const ImageViewer: React.FC = () => {
               }
             >
               <Link2 className="h-5 w-5 text-white" />
+            </button>
+
+            {/* Auto-Rotate Mode Toggle */}
+            <button
+              onClick={toggleAutoRotateMode}
+              className={`p-2 hover:bg-white/10 rounded-lg transition-colors ${
+                autoRotateMode === 'portrait' ? 'bg-blue-500' : 
+                autoRotateMode === 'landscape' ? 'bg-green-500' : ''
+              }`}
+              title={
+                autoRotateMode === 'none' 
+                  ? 'Auto-rotate: None (keep original orientation)' 
+                  : autoRotateMode === 'portrait'
+                  ? 'Auto-rotate: Portrait (rotate landscape images to portrait)'
+                  : 'Auto-rotate: Landscape (rotate portrait images to landscape)'
+              }
+            >
+              <RotateCcw className="h-5 w-5 text-white" />
             </button>
 
             {/* View Mode Controls */}
@@ -816,7 +978,8 @@ const ImageViewer: React.FC = () => {
             </button>
           </div>
         </div>
-      </div>
+        </div>
+      )}
 
       {/* Main Images */}
       <div 
@@ -841,7 +1004,7 @@ const ImageViewer: React.FC = () => {
                   alt={image.filename}
                   className={getImageClass()}
                   style={{
-                    transform: `scale(${zoom}) rotate(${rotation}deg)`,
+                    transform: `scale(${zoom}) rotate(${rotation + getAutoRotation(image.width, image.height)}deg)`,
                     transformOrigin: 'center center',
                     transition: 'transform 0.2s ease-out',
                   }}
@@ -905,7 +1068,7 @@ const ImageViewer: React.FC = () => {
                 alt={image.filename}
                 className={getImageClass()}
                 style={{
-                  transform: `rotate(${rotation}deg)`,
+                  transform: `rotate(${rotation + getAutoRotation(image.width, image.height)}deg)`,
                 }}
                 onLoad={() => index === 0 && setImageLoading(false)}
                 onError={() => {
@@ -928,24 +1091,34 @@ const ImageViewer: React.FC = () => {
       </div>
 
       {/* Navigation Buttons (Only in paging mode) */}
-      {navigationMode === 'paging' && (
-        <>
-          <button
-            onClick={() => navigateToImage('prev')}
-            className="absolute left-4 top-1/2 -translate-y-1/2 p-3 bg-black/50 hover:bg-black/70 rounded-full transition-colors"
-            title="Previous (←)"
-          >
-            <ChevronLeft className="h-8 w-8 text-white" />
-          </button>
-          <button
-            onClick={() => navigateToImage('next')}
-            className="absolute right-4 top-1/2 -translate-y-1/2 p-3 bg-black/50 hover:bg-black/70 rounded-full transition-colors"
-            title="Next (→)"
-          >
-            <ChevronRight className="h-8 w-8 text-white" />
-          </button>
-        </>
-      )}
+        {navigationMode === 'paging' && !hideAllControls && (
+          <>
+            <button
+              onClick={() => navigateToImage('prev')}
+              disabled={isCrossNavigating}
+              className="absolute left-4 top-1/2 -translate-y-1/2 p-3 bg-black/50 hover:bg-black/70 disabled:opacity-50 disabled:cursor-not-allowed rounded-full transition-colors"
+              title="Previous (←)"
+            >
+              {isCrossNavigating ? (
+                <LoadingSpinner size="sm" />
+              ) : (
+                <ChevronLeft className="h-8 w-8 text-white" />
+              )}
+            </button>
+            <button
+              onClick={() => navigateToImage('next')}
+              disabled={isCrossNavigating}
+              className="absolute right-4 top-1/2 -translate-y-1/2 p-3 bg-black/50 hover:bg-black/70 disabled:opacity-50 disabled:cursor-not-allowed rounded-full transition-colors"
+              title="Next (→)"
+            >
+              {isCrossNavigating ? (
+                <LoadingSpinner size="sm" />
+              ) : (
+                <ChevronRight className="h-8 w-8 text-white" />
+              )}
+            </button>
+          </>
+        )}
 
       {/* Info Panel */}
       {showInfo && (
@@ -982,6 +1155,7 @@ const ImageViewer: React.FC = () => {
               <p>← → : Navigate</p>
               <p>Esc : Close</p>
               <p>+/- : Zoom</p>
+              <p>0 : Reset Zoom/Rotation</p>
               <p>Ctrl+Wheel : Zoom (Scroll Mode)</p>
               <p>R : Rotate</p>
               <p>I : Info</p>
@@ -989,6 +1163,8 @@ const ImageViewer: React.FC = () => {
               <p>Space : Slideshow</p>
               <p>1-4 : View Modes</p>
               <p>F : Fullscreen</p>
+              <p>Ctrl+0 : Hide Controls</p>
+              <p>Ctrl+←/→ : Collection Nav</p>
             </div>
             <p className="text-center text-xs text-slate-400 mt-2">
               Press ? or click Help icon to toggle
@@ -1007,7 +1183,7 @@ const ImageViewer: React.FC = () => {
         {/* End Image Display Area */}
         
         {/* Image Preview Sidebar (thumbnails strip on right) */}
-        {showImagePreviewSidebar && (
+        {showImagePreviewSidebar && !hideAllControls && (
           <ImagePreviewSidebar
             key={`preview-${collectionId}`}
             images={images}

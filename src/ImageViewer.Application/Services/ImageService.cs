@@ -19,15 +19,18 @@ public class ImageService : IImageService
     private readonly ICacheService _cacheService;
     private readonly ILogger<ImageService> _logger;
     private readonly ImageSizeOptions _sizeOptions;
+    private readonly ICollectionService _collectionService;
 
     public ImageService(
         ICollectionRepository collectionRepository,
         IImageProcessingService imageProcessingService,
         ICacheService cacheService,
         ILogger<ImageService> logger,
-        IOptions<ImageSizeOptions> sizeOptions)
+        IOptions<ImageSizeOptions> sizeOptions,
+        ICollectionService collectionService)
     {
         _collectionRepository = collectionRepository ?? throw new ArgumentNullException(nameof(collectionRepository));
+        _collectionService = collectionService ?? throw new ArgumentNullException(nameof(collectionService));
         _imageProcessingService = imageProcessingService ?? throw new ArgumentNullException(nameof(imageProcessingService));
         _cacheService = cacheService ?? throw new ArgumentNullException(nameof(cacheService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -312,6 +315,139 @@ public class ImageService : IImageService
         {
             _logger.LogError(ex, "Error getting previous embedded image before {ImageId} in collection {CollectionId}", currentImageId, collectionId);
             throw;
+        }
+    }
+
+    public async Task<CrossCollectionNavigationResult> GetCrossCollectionNavigationAsync(string currentImageId, ObjectId collectionId, string direction, string sortBy = "updatedAt", string sortDirection = "desc", CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            _logger.LogDebug("Getting cross-collection navigation for image {ImageId} in collection {CollectionId}, direction: {Direction}", 
+                currentImageId, collectionId, direction);
+
+            var result = new CrossCollectionNavigationResult();
+
+            // Get current collection
+            var currentCollection = await _collectionRepository.GetByIdAsync(collectionId);
+            if (currentCollection == null)
+            {
+                result.ErrorMessage = "Current collection not found";
+                return result;
+            }
+
+            var currentImages = currentCollection.GetActiveImages().ToList();
+            var currentIndex = currentImages.FindIndex(i => i.Id == currentImageId);
+            
+            if (currentIndex == -1)
+            {
+                result.ErrorMessage = "Current image not found in collection";
+                return result;
+            }
+
+            // Check if we can navigate within current collection
+            if (direction == "next")
+            {
+                if (currentIndex < currentImages.Count - 1)
+                {
+                    // Stay in current collection
+                    var nextImage = currentImages[currentIndex + 1];
+                    result.TargetImageId = nextImage.Id;
+                    result.TargetCollectionId = collectionId.ToString();
+                    result.IsCrossCollection = false;
+                    result.TargetCollectionName = currentCollection.Name;
+                    result.TargetImagePosition = currentIndex + 1;
+                    result.TotalImagesInTargetCollection = currentImages.Count;
+                    result.HasTarget = true;
+                    return result;
+                }
+            }
+            else if (direction == "prev")
+            {
+                if (currentIndex > 0)
+                {
+                    // Stay in current collection
+                    var prevImage = currentImages[currentIndex - 1];
+                    result.TargetImageId = prevImage.Id;
+                    result.TargetCollectionId = collectionId.ToString();
+                    result.IsCrossCollection = false;
+                    result.TargetCollectionName = currentCollection.Name;
+                    result.TargetImagePosition = currentIndex - 1;
+                    result.TotalImagesInTargetCollection = currentImages.Count;
+                    result.HasTarget = true;
+                    return result;
+                }
+            }
+
+            // Need to cross collections - get collection navigation info
+            var collectionNav = await _collectionService.GetCollectionNavigationAsync(collectionId, sortBy, sortDirection);
+            
+            if (direction == "next")
+            {
+                if (collectionNav.HasNext && collectionNav.NextCollectionId != null)
+                {
+                    // Navigate to first image of next collection
+                    var nextCollectionId = ObjectId.Parse(collectionNav.NextCollectionId);
+                    var nextCollection = await _collectionRepository.GetByIdAsync(nextCollectionId);
+                    
+                    if (nextCollection != null)
+                    {
+                        var nextImages = nextCollection.GetActiveImages().ToList();
+                        if (nextImages.Any())
+                        {
+                            var firstImage = nextImages[0];
+                            result.TargetImageId = firstImage.Id;
+                            result.TargetCollectionId = nextCollectionId.ToString();
+                            result.IsCrossCollection = true;
+                            result.TargetCollectionName = nextCollection.Name;
+                            result.TargetImagePosition = 0;
+                            result.TotalImagesInTargetCollection = nextImages.Count;
+                            result.HasTarget = true;
+                            return result;
+                        }
+                    }
+                }
+            }
+            else if (direction == "prev")
+            {
+                if (collectionNav.HasPrevious && collectionNav.PreviousCollectionId != null)
+                {
+                    // Navigate to last image of previous collection
+                    var prevCollectionId = ObjectId.Parse(collectionNav.PreviousCollectionId);
+                    var prevCollection = await _collectionRepository.GetByIdAsync(prevCollectionId);
+                    
+                    if (prevCollection != null)
+                    {
+                        var prevImages = prevCollection.GetActiveImages().ToList();
+                        if (prevImages.Any())
+                        {
+                            var lastImage = prevImages[prevImages.Count - 1];
+                            result.TargetImageId = lastImage.Id;
+                            result.TargetCollectionId = prevCollectionId.ToString();
+                            result.IsCrossCollection = true;
+                            result.TargetCollectionName = prevCollection.Name;
+                            result.TargetImagePosition = prevImages.Count - 1;
+                            result.TotalImagesInTargetCollection = prevImages.Count;
+                            result.HasTarget = true;
+                            return result;
+                        }
+                    }
+                }
+            }
+
+            // No navigation possible
+            result.HasTarget = false;
+            result.ErrorMessage = $"Cannot navigate {direction} - no more collections available";
+            return result;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting cross-collection navigation for image {ImageId} in collection {CollectionId}", 
+                currentImageId, collectionId);
+            return new CrossCollectionNavigationResult 
+            { 
+                HasTarget = false, 
+                ErrorMessage = $"Navigation error: {ex.Message}" 
+            };
         }
     }
 

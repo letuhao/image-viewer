@@ -39,8 +39,10 @@ public class BasicCollectionServiceTests
             _mockServiceProvider.Setup(sp => sp.GetService(typeof(IBackgroundJobService)))
                 .Returns(mockBackgroundJobService.Object);
 
+            var mockCollectionArchiveRepository = new Mock<ICollectionArchiveRepository>();
             _collectionService = new CollectionService(
                 _mockCollectionRepository.Object,
+                mockCollectionArchiveRepository.Object,
                 _mockMessageQueueService.Object,
                 _mockServiceProvider.Object,
                 _mockLogger.Object);

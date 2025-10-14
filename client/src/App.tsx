@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './contexts/AuthContext';
+import { UIProvider, useUI } from './contexts/UIContext';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import Layout from './components/layout/Layout';
 import Login from './pages/Login';
@@ -26,10 +27,22 @@ const queryClient = new QueryClient({
   },
 });
 
+// Component to conditionally render DevTools based on UI state
+function DevToolsWrapper() {
+  const { hideDevTools } = useUI();
+  
+  if (hideDevTools) {
+    return null;
+  }
+  
+  return <ReactQueryDevtools initialIsOpen={false} />;
+}
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
+      <UIProvider>
+        <AuthProvider>
         <Router>
           <Routes>
             {/* Public Routes */}
@@ -56,34 +69,35 @@ function App() {
             </Route>
           </Routes>
         </Router>
-      </AuthProvider>
-      
-      <Toaster
-        position="top-right"
-        toastOptions={{
-          duration: 3000,
-          style: {
-            background: '#1e293b',
-            color: '#f1f5f9',
-            border: '1px solid #334155',
-          },
-          success: {
-            iconTheme: {
-              primary: '#10b981',
-              secondary: '#f1f5f9',
+        </AuthProvider>
+        
+        <Toaster
+          position="top-right"
+          toastOptions={{
+            duration: 3000,
+            style: {
+              background: '#1e293b',
+              color: '#f1f5f9',
+              border: '1px solid #334155',
             },
-          },
-          error: {
-            iconTheme: {
-              primary: '#ef4444',
-              secondary: '#f1f5f9',
+            success: {
+              iconTheme: {
+                primary: '#10b981',
+                secondary: '#f1f5f9',
+              },
             },
-          },
-        }}
-      />
-      
-      {/* React Query DevTools (only in development) */}
-      <ReactQueryDevtools initialIsOpen={false} />
+            error: {
+              iconTheme: {
+                primary: '#ef4444',
+                secondary: '#f1f5f9',
+              },
+            },
+          }}
+        />
+        
+        {/* React Query DevTools (only in development) */}
+        <DevToolsWrapper />
+      </UIProvider>
     </QueryClientProvider>
   );
 }

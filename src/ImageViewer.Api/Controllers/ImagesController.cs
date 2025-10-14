@@ -336,4 +336,51 @@ public class ImagesController : ControllerBase
             throw;
         }
     }
+
+    /// <summary>
+    /// Get cross-collection navigation for an image (next/previous with cross-collection support)
+    /// </summary>
+    [HttpGet("collection/{collectionId}/navigation/{imageId}")]
+    public async Task<ActionResult<CrossCollectionNavigationResult>> GetCrossCollectionNavigation(
+        ObjectId collectionId,
+        string imageId,
+        [FromQuery] string direction = "next",
+        [FromQuery] string sortBy = "updatedAt",
+        [FromQuery] string sortDirection = "desc")
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(direction) || (direction != "next" && direction != "prev"))
+            {
+                return BadRequest(new { message = "Direction must be 'next' or 'prev'" });
+            }
+
+            _logger.LogDebug("Getting cross-collection navigation for image {ImageId} in collection {CollectionId}, direction: {Direction}", 
+                imageId, collectionId, direction);
+
+            var result = await _imageService.GetCrossCollectionNavigationAsync(
+                imageId, 
+                collectionId, 
+                direction, 
+                sortBy, 
+                sortDirection);
+
+            if (!result.HasTarget)
+            {
+                _logger.LogDebug("No navigation target found for image {ImageId} in collection {CollectionId}, direction: {Direction}", 
+                    imageId, collectionId, direction);
+                return NotFound(new { message = result.ErrorMessage ?? "No navigation target found" });
+            }
+
+            _logger.LogDebug("Cross-collection navigation result: TargetImage={TargetImageId}, TargetCollection={TargetCollectionId}, IsCrossCollection={IsCrossCollection}", 
+                result.TargetImageId, result.TargetCollectionId, result.IsCrossCollection);
+
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting cross-collection navigation for image {ImageId} in collection {CollectionId}", imageId, collectionId);
+            return StatusCode(500, new { message = "Internal server error", error = ex.Message });
+        }
+    }
 }

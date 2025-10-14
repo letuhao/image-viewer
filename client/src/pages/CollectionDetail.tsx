@@ -1,7 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useCollection } from '../hooks/useCollections';
 import { useImages } from '../hooks/useImages';
+import { useCollectionNavigation } from '../hooks/useCollectionNavigation';
+import { useHotkeys, CommonHotkeys } from '../hooks/useHotkeys';
 import Button from '../components/ui/Button';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import ImageGrid from '../components/ImageGrid';
@@ -87,6 +89,10 @@ const CollectionDetail: React.FC = () => {
     limit,
   });
 
+  // Get collection navigation info for hotkey navigation
+  const { data: collectionNav } = useCollectionNavigation(id!, 'updatedAt', 'desc');
+
+
   // Save current page to sessionStorage whenever it changes (per collection)
   useEffect(() => {
     sessionStorage.setItem(sessionKey, page.toString());
@@ -122,6 +128,50 @@ const CollectionDetail: React.FC = () => {
     }
   }, [imagesData?.totalPages]);
 
+  // Hotkey handlers for page navigation and collection navigation
+  const handleNextPage = useCallback(() => {
+    const totalPages = imagesData?.totalPages || previousTotalPages;
+    const canNavigate = page < totalPages;
+    
+    if (canNavigate) {
+      setPage(page + 1);
+    }
+  }, [imagesData?.totalPages, page, previousTotalPages]);
+
+  const handlePrevPage = useCallback(() => {
+    const canNavigate = page > 1;
+    
+    if (canNavigate) {
+      setPage(page - 1);
+    }
+  }, [page]);
+
+  const handleNextCollection = useCallback(() => {
+    if (collectionNav?.hasNext && collectionNav.nextCollectionId) {
+      navigate(`/collections/${collectionNav.nextCollectionId}`);
+    }
+  }, [collectionNav?.hasNext, collectionNav?.nextCollectionId, navigate]);
+
+  const handlePrevCollection = useCallback(() => {
+    if (collectionNav?.hasPrevious && collectionNav.previousCollectionId) {
+      navigate(`/collections/${collectionNav.previousCollectionId}`);
+    }
+  }, [collectionNav?.hasPrevious, collectionNav?.previousCollectionId, navigate]);
+
+  // Setup hotkeys for page navigation and collection navigation
+  useHotkeys([
+    CommonHotkeys.nextPage(handleNextPage),
+    CommonHotkeys.prevPage(handlePrevPage),
+    CommonHotkeys.nextCollection(handleNextCollection),
+    CommonHotkeys.prevCollection(handlePrevCollection),
+    CommonHotkeys.nextImage(handleNextPage), // Right arrow for next image page
+    CommonHotkeys.prevImage(handlePrevPage), // Left arrow for previous image page
+    CommonHotkeys.nextCollectionUpDown(handleNextCollection), // Down arrow for next collection
+    CommonHotkeys.prevCollectionUpDown(handlePrevCollection), // Up arrow for previous collection
+  ], {
+    enabled: !isLoading && !imagesLoading,
+  });
+
   if (isLoading) {
     return <LoadingSpinner text="Loading collection..." />;
   }
@@ -143,10 +193,10 @@ const CollectionDetail: React.FC = () => {
   
   const pagination = imagesData ? {
     totalPages: imagesData.totalPages,
-    hasPrevious: imagesData.hasPreviousPage,
-    hasNext: imagesData.hasNextPage,
+    hasPrevious: imagesData.hasPrevious,
+    hasNext: imagesData.hasNext,
     page: imagesData.page,
-    total: imagesData.totalCount
+    total: imagesData.total
   } : null;
 
   const formatBytes = (bytes: number) => {
@@ -273,7 +323,7 @@ const CollectionDetail: React.FC = () => {
               <div className="flex items-center space-x-6">
                 <div className="flex items-center space-x-2">
                   <ImageIcon className="h-4 w-4 text-blue-400" />
-                  <span className="text-sm font-medium text-white">{(imagesData?.totalCount ?? collection.statistics?.totalItems ?? collection.imageCount ?? 0).toLocaleString()}</span>
+                  <span className="text-sm font-medium text-white">{(imagesData?.total ?? collection.statistics?.totalItems ?? collection.imageCount ?? 0).toLocaleString()}</span>
                   <span className="text-xs text-slate-400">images</span>
                 </div>
                 <div className="flex items-center space-x-2">
@@ -405,12 +455,12 @@ const CollectionDetail: React.FC = () => {
                     <div className="flex-shrink-0">
                       <img
                         src={`/api/v1/images/${id}/${image.id}/thumbnail`}
-                        alt={image.fileName}
+                        alt={image.filename}
                         className="w-16 h-16 object-cover rounded border border-slate-600"
                       />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-white truncate">{image.fileName}</p>
+                      <p className="text-sm font-medium text-white truncate">{image.filename}</p>
                       <p className="text-xs text-slate-400">
                         {formatBytes(image.fileSize)} • {image.width}×{image.height}
                       </p>
@@ -430,12 +480,12 @@ const CollectionDetail: React.FC = () => {
                     <div className="mb-3">
                       <img
                         src={`/api/v1/images/${id}/${image.id}/thumbnail`}
-                        alt={image.fileName}
+                        alt={image.filename}
                         className="w-full h-48 object-cover rounded border border-slate-600"
                       />
                     </div>
                     <div className="space-y-2">
-                      <p className="text-sm font-medium text-white truncate">{image.fileName}</p>
+                      <p className="text-sm font-medium text-white truncate">{image.filename}</p>
                       <div className="grid grid-cols-2 gap-2 text-xs">
                         <div>
                           <span className="text-slate-500">Size:</span>

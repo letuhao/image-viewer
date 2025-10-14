@@ -44,12 +44,14 @@ public class ImageServiceTests
         
         _mockImageSizeOptions.Setup(x => x.Value).Returns(imageSizeOptions);
 
+        var mockCollectionService = new Mock<ICollectionService>();
         _imageService = new ImageService(
             _mockCollectionRepository.Object,
             _mockImageProcessingService.Object,
             _mockCacheService.Object,
             _mockLogger.Object,
-            _mockImageSizeOptions.Object);
+            _mockImageSizeOptions.Object,
+            mockCollectionService.Object);
     }
 
     [Fact]

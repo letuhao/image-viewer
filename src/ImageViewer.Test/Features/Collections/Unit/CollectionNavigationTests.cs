@@ -30,8 +30,10 @@ public class CollectionNavigationTests
         _mockServiceProvider = new Mock<IServiceProvider>();
         _mockLogger = new Mock<ILogger<CollectionService>>();
 
+        var mockCollectionArchiveRepository = new Mock<ICollectionArchiveRepository>();
         _collectionService = new CollectionService(
             _mockCollectionRepository.Object,
+            mockCollectionArchiveRepository.Object,
             _mockMessageQueueService.Object,
             _mockServiceProvider.Object,
             _mockLogger.Object

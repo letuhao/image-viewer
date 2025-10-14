@@ -25,6 +25,9 @@ public interface IImageService
     Task<ImageEmbedded?> GetNextEmbeddedImageAsync(string currentImageId, ObjectId collectionId, CancellationToken cancellationToken = default);
     Task<ImageEmbedded?> GetPreviousEmbeddedImageAsync(string currentImageId, ObjectId collectionId, CancellationToken cancellationToken = default);
     
+    // Cross-collection navigation operations
+    Task<CrossCollectionNavigationResult> GetCrossCollectionNavigationAsync(string currentImageId, ObjectId collectionId, string direction, string sortBy = "updatedAt", string sortDirection = "desc", CancellationToken cancellationToken = default);
+    
     // File operations
     Task<byte[]?> GetImageFileAsync(string imageId, ObjectId collectionId, CancellationToken cancellationToken = default);
     Task<byte[]?> GetThumbnailAsync(string imageId, ObjectId collectionId, int? width = null, int? height = null, CancellationToken cancellationToken = default);
@@ -46,5 +49,20 @@ public interface IImageService
     Task<ImageCacheInfoEmbedded> GenerateCacheAsync(string imageId, ObjectId collectionId, int width, int height, CancellationToken cancellationToken = default);
     Task CleanupExpiredThumbnailsAsync(CancellationToken cancellationToken = default);
     
+}
+
+/// <summary>
+/// Result of cross-collection navigation
+/// </summary>
+public class CrossCollectionNavigationResult
+{
+    public string? TargetImageId { get; set; }
+    public string? TargetCollectionId { get; set; }
+    public bool IsCrossCollection { get; set; }
+    public string? TargetCollectionName { get; set; }
+    public int TargetImagePosition { get; set; }
+    public int TotalImagesInTargetCollection { get; set; }
+    public bool HasTarget { get; set; }
+    public string? ErrorMessage { get; set; }
 }
 

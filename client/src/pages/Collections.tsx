@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCollections } from '../hooks/useCollections';
+import { useHotkeys, CommonHotkeys } from '../hooks/useHotkeys';
 import { Card, CardContent } from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
@@ -133,6 +134,29 @@ const Collections: React.FC = () => {
   useEffect(() => {
     sessionStorage.setItem('collectionsSearchQuery', search);
   }, [search]);
+
+  // Hotkey handlers for page navigation
+  const handleNextPage = useCallback(() => {
+    if (data?.hasNext && page < (data.totalPages || 1)) {
+      setPage(page + 1);
+    }
+  }, [data?.hasNext, data?.totalPages, page]);
+
+  const handlePrevPage = useCallback(() => {
+    if (data?.hasPrevious && page > 1) {
+      setPage(page - 1);
+    }
+  }, [data?.hasPrevious, page]);
+
+  // Setup hotkeys for page navigation
+  useHotkeys([
+    CommonHotkeys.nextPage(handleNextPage),
+    CommonHotkeys.prevPage(handlePrevPage),
+    CommonHotkeys.nextImage(handleNextPage), // Right arrow for next page
+    CommonHotkeys.prevImage(handlePrevPage), // Left arrow for previous page
+  ], {
+    enabled: !isLoading && !showAddDialog && !showBulkAddDialog,
+  });
 
   // Restore scroll position when returning to this page
   useEffect(() => {
