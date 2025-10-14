@@ -10,6 +10,7 @@ using ImageViewer.Application.DTOs.BackgroundJobs;
 using ImageViewer.Application.Mappings;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
+using System.IO;
 
 namespace ImageViewer.Application.Services;
 
@@ -19,25 +20,31 @@ namespace ImageViewer.Application.Services;
 public class CollectionService : ICollectionService
 {
     private readonly ICollectionRepository _collectionRepository;
+    private readonly ICollectionArchiveRepository _collectionArchiveRepository;
     private readonly IMessageQueueService _messageQueueService;
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<CollectionService> _logger;
     private readonly IThumbnailCacheService? _thumbnailCacheService;
+    private readonly ICacheService? _cacheService;
     private readonly ICollectionIndexService? _collectionIndexService;
 
     public CollectionService(
-        ICollectionRepository collectionRepository, 
+        ICollectionRepository collectionRepository,
+        ICollectionArchiveRepository collectionArchiveRepository,
         IMessageQueueService messageQueueService, 
         IServiceProvider serviceProvider, 
         ILogger<CollectionService> logger,
         IThumbnailCacheService? thumbnailCacheService = null,
+        ICacheService? cacheService = null,
         ICollectionIndexService? collectionIndexService = null)
     {
         _collectionRepository = collectionRepository ?? throw new ArgumentNullException(nameof(collectionRepository));
+        _collectionArchiveRepository = collectionArchiveRepository ?? throw new ArgumentNullException(nameof(collectionArchiveRepository));
         _messageQueueService = messageQueueService ?? throw new ArgumentNullException(nameof(messageQueueService));
         _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _thumbnailCacheService = thumbnailCacheService; // Optional for unit tests
+        _cacheService = cacheService; // Optional for unit tests
         _collectionIndexService = collectionIndexService; // Optional, fallback to MongoDB if not available
     }
 
@@ -1161,5 +1168,155 @@ public class CollectionService : ICollectionService
         };
     }
 
+    #endregion
+    
+    #region Collection Cleanup
+    
+    public async Task<CollectionCleanupResult> CleanupNonExistentCollectionsAsync()
+    {
+        var result = new CollectionCleanupResult
+        {
+            StartedAt = DateTime.UtcNow
+        };
+        
+        try
+        {
+            _logger.LogInformation("Starting cleanup of non-existent collections");
+            
+            // Get all collections
+            var collections = await _collectionRepository.GetAllAsync();
+            result.TotalCollectionsChecked = collections.Count();
+            
+            _logger.LogInformation("Found {TotalCollections} collections to check", result.TotalCollectionsChecked);
+            
+            foreach (var collection in collections)
+            {
+                try
+                {
+                    // Check if the collection path exists on disk
+                    var pathExists = await CheckPathExistsAsync(collection.Path);
+                    
+                    if (!pathExists)
+                    {
+                        result.NonExistentCollectionsFound++;
+                        _logger.LogWarning("Collection path does not exist: {CollectionPath} (ID: {CollectionId})", 
+                            collection.Path, collection.Id);
+                        
+                        // Archive the collection instead of deleting it
+                        await ArchiveCollectionAsync(collection, "Path no longer exists on disk");
+                        result.CollectionsDeleted++; // Keep the same field name for API compatibility
+                        result.DeletedCollectionPaths.Add(collection.Path);
+                        
+                        _logger.LogInformation("Archived non-existent collection: {CollectionPath} (ID: {CollectionId})", 
+                            collection.Path, collection.Id);
+                    }
+                    else
+                    {
+                        _logger.LogDebug("Collection path exists: {CollectionPath} (ID: {CollectionId})", 
+                            collection.Path, collection.Id);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    result.Errors++;
+                    var errorMessage = $"Error processing collection {collection.Id}: {ex.Message}";
+                    result.ErrorMessages.Add(errorMessage);
+                    _logger.LogError(ex, "Error processing collection {CollectionId} at path {CollectionPath}", 
+                        collection.Id, collection.Path);
+                }
+            }
+            
+            _logger.LogInformation("Collection cleanup completed. Deleted {DeletedCount} out of {NonExistentCount} non-existent collections", 
+                result.CollectionsDeleted, result.NonExistentCollectionsFound);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during collection cleanup");
+            result.Errors++;
+            result.ErrorMessages.Add($"Cleanup operation failed: {ex.Message}");
+        }
+        finally
+        {
+            result.CompletedAt = DateTime.UtcNow;
+        }
+        
+        return result;
+    }
+    
+    private async Task<bool> CheckPathExistsAsync(string path)
+    {
+        try
+        {
+            // Check if it's a file or directory
+            if (File.Exists(path))
+            {
+                return true;
+            }
+            
+            if (Directory.Exists(path))
+            {
+                return true;
+            }
+            
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error checking path existence: {Path}", path);
+            return false; // Assume it doesn't exist if we can't check
+        }
+    }
+    
+    private async Task ArchiveCollectionAsync(Collection collection, string archiveReason, string? archivedBy = null)
+    {
+        try
+        {
+            // Create archived collection
+            var archivedCollection = new CollectionArchive(collection, archiveReason, archivedBy);
+            await _collectionArchiveRepository.CreateAsync(archivedCollection);
+            
+            // Clean up cache and index
+            await CleanupCollectionResourcesAsync(collection);
+            
+            // Delete the original collection
+            await _collectionRepository.DeleteAsync(collection.Id);
+            
+            _logger.LogInformation("Successfully archived collection {CollectionId} with reason: {ArchiveReason}", 
+                collection.Id, archiveReason);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to archive collection {CollectionId}", collection.Id);
+            throw;
+        }
+    }
+    
+    private async Task CleanupCollectionResourcesAsync(Collection collection)
+    {
+        try
+        {
+            // Clean up cache
+            if (_cacheService != null)
+            {
+                await _cacheService.ClearCollectionCacheAsync(collection.Id);
+                _logger.LogDebug("Cleared cache for collection {CollectionId}", collection.Id);
+            }
+            
+            // Remove from Redis index
+            if (_collectionIndexService != null)
+            {
+                await _collectionIndexService.RemoveCollectionAsync(collection.Id);
+                _logger.LogDebug("Removed collection {CollectionId} from Redis index", collection.Id);
+            }
+            
+            _logger.LogDebug("Cleaned up resources for archived collection {CollectionId}", collection.Id);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error cleaning up resources for collection {CollectionId}", collection.Id);
+            // Don't throw - cleanup should continue even if resource cleanup fails
+        }
+    }
+    
     #endregion
 }

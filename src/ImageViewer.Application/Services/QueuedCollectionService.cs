@@ -493,4 +493,13 @@ public class QueuedCollectionService : ICollectionService
     }
 
     #endregion
+    
+    #region Collection Cleanup
+    
+    public async Task<CollectionCleanupResult> CleanupNonExistentCollectionsAsync()
+    {
+        return await _collectionService.CleanupNonExistentCollectionsAsync();
+    }
+    
+    #endregion
 }

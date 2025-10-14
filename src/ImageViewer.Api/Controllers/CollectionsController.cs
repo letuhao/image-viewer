@@ -921,6 +921,40 @@ public class CollectionsController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Clean up collections that no longer exist on disk (archives them for backup)
+    /// </summary>
+    [HttpPost("cleanup")]
+    public async Task<IActionResult> CleanupNonExistentCollections()
+    {
+        try
+        {
+            _logger.LogInformation("Starting collection cleanup operation");
+            
+            var result = await _collectionService.CleanupNonExistentCollectionsAsync();
+            
+            _logger.LogInformation("Collection cleanup completed. Archived {ArchivedCount} collections", 
+                result.CollectionsDeleted);
+            
+            return Ok(new
+            {
+                message = "Collection cleanup completed successfully",
+                result.TotalCollectionsChecked,
+                result.NonExistentCollectionsFound,
+                result.CollectionsDeleted,
+                result.Errors,
+                result.Duration,
+                DeletedPaths = result.DeletedCollectionPaths.Take(10), // Show first 10 paths
+                ErrorMessages = result.ErrorMessages.Take(5) // Show first 5 errors
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to cleanup non-existent collections");
+            return StatusCode(500, new { message = "Collection cleanup failed", error = ex.Message });
+        }
+    }
+
     #endregion
 }
 

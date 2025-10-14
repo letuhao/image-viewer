@@ -81,6 +81,15 @@ public interface ICollectionService
     Task<IEnumerable<Collection>> GetSortedCollectionsAsync(string sortBy = "updatedAt", string sortDirection = "desc", int? limit = null);
     
     #endregion
+    
+    #region Collection Cleanup
+    
+    /// <summary>
+    /// Clean up collections that no longer exist on disk
+    /// </summary>
+    Task<CollectionCleanupResult> CleanupNonExistentCollectionsAsync();
+    
+    #endregion
 }
 
 /// <summary>
@@ -156,4 +165,20 @@ public class CollectionFilterRequest
     public string? Path { get; set; }
     public List<string>? Tags { get; set; }
     public List<string>? Categories { get; set; }
+}
+
+/// <summary>
+/// Result model for collection cleanup operation
+/// </summary>
+public class CollectionCleanupResult
+{
+    public int TotalCollectionsChecked { get; set; }
+    public int NonExistentCollectionsFound { get; set; }
+    public int CollectionsDeleted { get; set; }
+    public int Errors { get; set; }
+    public List<string> DeletedCollectionPaths { get; set; } = new();
+    public List<string> ErrorMessages { get; set; } = new();
+    public DateTime StartedAt { get; set; }
+    public DateTime CompletedAt { get; set; }
+    public TimeSpan Duration => CompletedAt - StartedAt;
 }

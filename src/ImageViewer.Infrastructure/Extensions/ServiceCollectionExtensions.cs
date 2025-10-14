@@ -100,6 +100,12 @@ public static class ServiceCollectionExtensions
             var database = provider.GetRequiredService<IMongoDatabase>();
             return database.GetCollection<ViewSession>("view_sessions");
         });
+        
+        services.AddScoped<IMongoCollection<CollectionArchive>>(provider =>
+        {
+            var database = provider.GetRequiredService<IMongoDatabase>();
+            return database.GetCollection<CollectionArchive>("collection_archives");
+        });
 
         // Register MongoDB context
         services.AddScoped<MongoDbContext>(provider =>
@@ -118,6 +124,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ISessionRepository, MongoSessionRepository>();
         services.AddScoped<ILibraryRepository, LibraryRepository>();
         services.AddScoped<ICollectionRepository, MongoCollectionRepository>();
+        services.AddScoped<ICollectionArchiveRepository, CollectionArchiveRepository>();
         services.AddScoped<IScheduledJobRepository, MongoScheduledJobRepository>();
         services.AddScoped<IScheduledJobRunRepository, MongoScheduledJobRunRepository>();
         services.AddScoped<IMediaItemRepository, MediaItemRepository>();
