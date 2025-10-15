@@ -207,6 +207,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ISecurityService, SecurityService>();
         services.AddScoped<IWindowsDriveService, WindowsDriveService>();
         services.AddScoped<ISystemSettingService, SystemSettingService>();
+        services.AddScoped<IMacOSXCleanupService, MacOSXCleanupService>();
         
         // Scheduler repositories
         services.AddScoped<IScheduledJobRepository>(provider =>

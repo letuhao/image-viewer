@@ -264,6 +264,40 @@ public class MongoCollectionRepository : MongoRepository<Collection>, ICollectio
         return result.ModifiedCount > 0;
     }
 
+    public async Task<bool> AtomicAddThumbnailsAsync(ObjectId collectionId, IEnumerable<Domain.ValueObjects.ThumbnailEmbedded> thumbnails)
+    {
+        var thumbnailList = thumbnails.ToList();
+        if (!thumbnailList.Any())
+        {
+            return true; // Nothing to add
+        }
+
+        var filter = Builders<Collection>.Filter.Eq(x => x.Id, collectionId);
+        var update = Builders<Collection>.Update
+            .PushEach(x => x.Thumbnails, thumbnailList)
+            .Set(x => x.UpdatedAt, DateTime.UtcNow);
+        
+        var result = await _collection.UpdateOneAsync(filter, update);
+        return result.ModifiedCount > 0;
+    }
+
+    public async Task<bool> AtomicAddCacheImagesAsync(ObjectId collectionId, IEnumerable<Domain.ValueObjects.CacheImageEmbedded> cacheImages)
+    {
+        var cacheImageList = cacheImages.ToList();
+        if (!cacheImageList.Any())
+        {
+            return true; // Nothing to add
+        }
+
+        var filter = Builders<Collection>.Filter.Eq(x => x.Id, collectionId);
+        var update = Builders<Collection>.Update
+            .PushEach(x => x.CacheImages, cacheImageList)
+            .Set(x => x.UpdatedAt, DateTime.UtcNow);
+        
+        var result = await _collection.UpdateOneAsync(filter, update);
+        return result.ModifiedCount > 0;
+    }
+
     public async Task<bool> AtomicAddCacheImageAsync(ObjectId collectionId, Domain.ValueObjects.CacheImageEmbedded cacheImage)
     {
         var filter = Builders<Collection>.Filter.Eq(x => x.Id, collectionId);

@@ -57,10 +57,22 @@ public interface ICollectionRepository : IRepository<Collection>
     Task<bool> AtomicAddThumbnailAsync(ObjectId collectionId, ThumbnailEmbedded thumbnail);
     
     /// <summary>
+    /// Atomically adds multiple thumbnails to the collection using MongoDB $push
+    /// This is thread-safe and prevents race conditions for batch operations
+    /// </summary>
+    Task<bool> AtomicAddThumbnailsAsync(ObjectId collectionId, IEnumerable<ThumbnailEmbedded> thumbnails);
+    
+    /// <summary>
     /// Atomically adds a cache image to the collection using MongoDB $push
     /// This is thread-safe and prevents race conditions
     /// </summary>
     Task<bool> AtomicAddCacheImageAsync(ObjectId collectionId, CacheImageEmbedded cacheImage);
+    
+    /// <summary>
+    /// Atomically adds multiple cache images to the collection using MongoDB $pushEach
+    /// This is thread-safe and prevents race conditions for batch operations
+    /// </summary>
+    Task<bool> AtomicAddCacheImagesAsync(ObjectId collectionId, IEnumerable<CacheImageEmbedded> cacheImages);
     
     /// <summary>
     /// Clears all image arrays (Images, Thumbnails, CacheImages) for a collection

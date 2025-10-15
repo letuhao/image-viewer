@@ -2,6 +2,7 @@ using System.IO.Compression;
 using SharpCompress.Archives;
 using SharpCompress.Common;
 using Microsoft.Extensions.Logging;
+using ImageViewer.Application.Helpers;
 
 namespace ImageViewer.Worker.Services;
 
@@ -40,6 +41,7 @@ public static class ArchiveFileHelper
             using var archive = ArchiveFactory.Open(archivePath);
             var entry = archive.Entries.FirstOrDefault(e => 
                 !e.IsDirectory && 
+                MacOSXFilterHelper.IsSafeToProcess(e.Key, "archive entry extraction") &&
                 (e.Key == entryName || e.Key.Replace('\\', '/') == entryName.Replace('\\', '/')));
             
             if (entry == null)
@@ -100,6 +102,7 @@ public static class ArchiveFileHelper
             using var archive = ArchiveFactory.Open(archivePath);
             var entry = archive.Entries.FirstOrDefault(e => 
                 !e.IsDirectory && 
+                MacOSXFilterHelper.IsSafeToProcess(e.Key, "archive entry size check") &&
                 (e.Key == entryName || e.Key.Replace('\\', '/') == entryName.Replace('\\', '/')));
             
             if (entry == null)

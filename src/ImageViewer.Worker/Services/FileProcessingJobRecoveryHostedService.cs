@@ -26,8 +26,16 @@ public class FileProcessingJobRecoveryHostedService : IHostedService
     {
         _logger.LogInformation("🔄 FileProcessingJobRecoveryHostedService starting...");
         
-        // Wait 5 seconds for other services to initialize
-        await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken);
+        // Wait 3 seconds for other services to initialize (reduced from 5 seconds)
+        try
+        {
+            await Task.Delay(TimeSpan.FromSeconds(3), cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogWarning("⚠️ Startup cancelled during initialization delay, skipping job recovery");
+            return;
+        }
         
         if (cancellationToken.IsCancellationRequested)
         {
@@ -46,6 +54,11 @@ public class FileProcessingJobRecoveryHostedService : IHostedService
             await recoveryService.RecoverIncompleteJobsAsync();
             
             _logger.LogInformation("✅ Automatic job recovery completed successfully");
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogWarning("⚠️ Job recovery cancelled during execution");
+            // Don't throw - worker should continue even if recovery is cancelled
         }
         catch (Exception ex)
         {

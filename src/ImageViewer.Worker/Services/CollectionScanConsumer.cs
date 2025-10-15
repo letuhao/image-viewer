@@ -12,6 +12,7 @@ using ImageViewer.Domain.Interfaces;
 using ImageViewer.Application.Services;
 using ImageViewer.Domain.Enums;
 using ImageViewer.Infrastructure.Data;
+using ImageViewer.Application.Helpers;
 using MongoDB.Bson;
 
 namespace ImageViewer.Worker.Services;
@@ -286,7 +287,8 @@ public class CollectionScanConsumer : BaseMessageConsumer
             using var archive = ArchiveFactory.Open(archivePath);
             foreach (var entry in archive.Entries)
             {
-                if (!entry.IsDirectory && IsMediaFile(entry.Key))
+                // CRITICAL FIX: Filter out __MACOSX metadata entries to prevent broken collections
+                if (!entry.IsDirectory && MacOSXFilterHelper.IsSafeToProcess(entry.Key, "collection scanning") && IsMediaFile(entry.Key))
                 {
                     mediaFiles.Add(new MediaFileInfo
                     {

@@ -379,6 +379,114 @@ public class SkiaSharpImageProcessingService : IImageProcessingService
         }
     }
 
+    public Task<byte[]> GenerateCacheAsync(string imagePath, int width, int height, string format = "jpeg", int quality = 95, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            _logger.LogDebug("🎨 Generating cache image from {ImagePath} ({Width}x{Height}, {Format}, Quality: {Quality})", 
+                imagePath, width, height, format, quality);
+
+            using var stream = File.OpenRead(imagePath);
+            using var originalBitmap = SKBitmap.Decode(stream);
+            
+            if (originalBitmap == null)
+            {
+                _logger.LogWarning("⚠️ Failed to decode image from {ImagePath}", imagePath);
+                return Task.FromResult(Array.Empty<byte>());
+            }
+
+            // Calculate scale factor to maintain aspect ratio
+            var scaleX = (float)width / originalBitmap.Width;
+            var scaleY = (float)height / originalBitmap.Height;
+            var scale = Math.Min(scaleX, scaleY);
+            
+            var scaledWidth = (int)(originalBitmap.Width * scale);
+            var scaledHeight = (int)(originalBitmap.Height * scale);
+            
+            // Create scaled bitmap
+            using var scaledBitmap = new SKBitmap(scaledWidth, scaledHeight);
+            using var canvas = new SKCanvas(scaledBitmap);
+            
+            // Draw scaled image
+            canvas.Clear(SKColors.White);
+            canvas.DrawBitmap(originalBitmap, new SKRect(0, 0, scaledWidth, scaledHeight));
+            
+            // Encode to desired format
+            var imageFormat = ParseImageFormat(format);
+            using var encodedData = scaledBitmap.Encode(imageFormat, quality);
+            
+            if (encodedData == null)
+            {
+                _logger.LogWarning("⚠️ Failed to encode cache image");
+                return Task.FromResult(Array.Empty<byte>());
+            }
+            
+            var result = encodedData.ToArray();
+            _logger.LogDebug("✅ Generated cache image: {Size} bytes", result.Length);
+            
+            return Task.FromResult(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "❌ Error generating cache from {ImagePath}", imagePath);
+            return Task.FromResult(Array.Empty<byte>());
+        }
+    }
+
+    public Task<byte[]> GenerateCacheFromBytesAsync(byte[] imageData, int width, int height, string format = "jpeg", int quality = 90, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            _logger.LogDebug("🎨 Generating cache image from bytes ({Width}x{Height}, {Format}, Quality: {Quality})", 
+                width, height, format, quality);
+
+            using var data = SKData.CreateCopy(imageData);
+            using var originalBitmap = SKBitmap.Decode(data);
+            
+            if (originalBitmap == null)
+            {
+                _logger.LogWarning("⚠️ Failed to decode image from bytes");
+                return Task.FromResult(Array.Empty<byte>());
+            }
+
+            // Calculate scale factor to maintain aspect ratio
+            var scaleX = (float)width / originalBitmap.Width;
+            var scaleY = (float)height / originalBitmap.Height;
+            var scale = Math.Min(scaleX, scaleY);
+            
+            var scaledWidth = (int)(originalBitmap.Width * scale);
+            var scaledHeight = (int)(originalBitmap.Height * scale);
+            
+            // Create scaled bitmap
+            using var scaledBitmap = new SKBitmap(scaledWidth, scaledHeight);
+            using var canvas = new SKCanvas(scaledBitmap);
+            
+            // Draw scaled image
+            canvas.Clear(SKColors.White);
+            canvas.DrawBitmap(originalBitmap, new SKRect(0, 0, scaledWidth, scaledHeight));
+            
+            // Encode to desired format
+            var imageFormat = ParseImageFormat(format);
+            using var encodedData = scaledBitmap.Encode(imageFormat, quality);
+            
+            if (encodedData == null)
+            {
+                _logger.LogWarning("⚠️ Failed to encode cache image");
+                return Task.FromResult(Array.Empty<byte>());
+            }
+            
+            var result = encodedData.ToArray();
+            _logger.LogDebug("✅ Generated cache image: {Size} bytes", result.Length);
+            
+            return Task.FromResult(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "❌ Error generating cache from bytes");
+            return Task.FromResult(Array.Empty<byte>());
+        }
+    }
+
     /// <summary>
     /// Parse image format string to SKEncodedImageFormat enum
     /// </summary>

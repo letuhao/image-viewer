@@ -11,6 +11,7 @@ import LoadingSpinner from '../components/ui/LoadingSpinner';
 import CacheFolderManager from '../components/settings/CacheFolderManager';
 import RedisIndexManagement from '../components/settings/RedisIndexManagement';
 import CollectionCleanup from '../components/settings/CollectionCleanup';
+import MacOSXCleanup from '../components/settings/MacOSXCleanup';
 import { useUserSettings, useUpdateUserSettings, useResetUserSettings, useSystemSettings, useBatchUpdateSystemSettings } from '../hooks/useSettings';
 import toast from 'react-hot-toast';
 
@@ -681,6 +682,13 @@ const Settings: React.FC = () => {
                     description="Manage and maintain your collection database"
                   >
                     <CollectionCleanup />
+                  </SettingsSection>
+
+                  <SettingsSection
+                    title="System Maintenance"
+                    description="Clean up system files and metadata"
+                  >
+                    <MacOSXCleanup />
                   </SettingsSection>
 
                   {/* Save Button */}

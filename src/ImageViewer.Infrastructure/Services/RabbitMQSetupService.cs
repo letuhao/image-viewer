@@ -49,7 +49,8 @@ public class RabbitMQSetupService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to set up RabbitMQ queues and exchanges");
-            throw;
+            _logger.LogWarning("⚠️ Continuing with application startup despite RabbitMQ setup failure - some features may not work properly");
+            // Don't throw - let the application continue so batch consumers can start
         }
     }
 
@@ -128,16 +129,24 @@ public class RabbitMQSetupService
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to declare queue: {QueueName}", queueName);
-                throw;
+                _logger.LogWarning("⚠️ Continuing with other queues despite failure to declare {QueueName}", queueName);
+                // Don't throw - continue with other queues
             }
         }
 
         // Declare dead letter queue
-        await channel.QueueDeclareAsync(
-            queue: "imageviewer.dlq",
-            durable: true,
-            exclusive: false,
-            autoDelete: false);
+        try
+        {
+            await channel.QueueDeclareAsync(
+                queue: "imageviewer.dlq",
+                durable: true,
+                exclusive: false,
+                autoDelete: false);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "⚠️ Failed to declare DLQ, continuing without it");
+        }
 
         _logger.LogDebug("Queues declared successfully");
         await Task.CompletedTask;

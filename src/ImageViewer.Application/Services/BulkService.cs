@@ -7,6 +7,7 @@ using ImageViewer.Domain.ValueObjects;
 using ImageViewer.Domain.Events;
 using ImageViewer.Domain.Interfaces;
 using ImageViewer.Application.DTOs.BackgroundJobs;
+using ImageViewer.Application.Helpers;
 using MongoDB.Bson;
 using SharpCompress.Archives;
 using SharpCompress.Common;
@@ -503,8 +504,10 @@ public class BulkService : IBulkService
                 
                 // Check if any entry has an image extension
                 // SharpCompress can read good entries even if some are corrupted
+                // CRITICAL FIX: Filter out __MACOSX metadata entries to prevent broken collections
                 var hasImages = archive.Entries
                     .Where(e => !e.IsDirectory)
+                    .Where(entry => MacOSXFilterHelper.IsSafeToProcess(entry.Key, "archive image check"))
                     .Any(entry => imageExtensions.Contains(Path.GetExtension(entry.Key).ToLowerInvariant()));
                 
                 _logger.LogDebug("Archive {FilePath} has images: {HasImages}", filePath, hasImages);

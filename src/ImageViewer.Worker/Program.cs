@@ -11,6 +11,8 @@ using ImageViewer.Application.Services;
 using ImageViewer.Infrastructure.Services;
 using ImageViewer.Domain.Interfaces;
 
+Console.WriteLine("Start worker ...");
+
 var builder = Host.CreateApplicationBuilder(args);
 
 // Configure Serilog - READ FROM appsettings.json
@@ -27,6 +29,12 @@ builder.Services.AddMongoDb(builder.Configuration);
 
 // Configure RabbitMQ
 builder.Services.Configure<RabbitMQOptions>(builder.Configuration.GetSection("RabbitMQ"));
+
+// Configure Batch Processing
+builder.Services.Configure<BatchProcessingOptions>(builder.Configuration.GetSection("BatchProcessing"));
+
+// Configure Memory Optimization
+builder.Services.Configure<MemoryOptimizationOptions>(builder.Configuration.GetSection("MemoryOptimization"));
 
 // Register RabbitMQ ConnectionFactory
 builder.Services.AddSingleton<IConnectionFactory>(provider =>
@@ -96,15 +104,27 @@ builder.Services.AddHostedService<JobMonitoringService>();
 // Register file processing job recovery service (runs on startup)
 builder.Services.AddHostedService<FileProcessingJobRecoveryHostedService>();
 
-// Register consumers
-builder.Services.AddHostedService<LibraryScanConsumer>();
-builder.Services.AddHostedService<CollectionScanConsumer>();
-builder.Services.AddHostedService<ImageProcessingConsumer>();
-builder.Services.AddHostedService<ThumbnailGenerationConsumer>();
-builder.Services.AddHostedService<CacheGenerationConsumer>();
-builder.Services.AddHostedService<BulkOperationConsumer>();
+// Register consumers - OPTIMIZED BATCH PROCESSING MODE
+builder.Services.AddHostedService<LibraryScanConsumer>();           // ✅ KEEP - Library scanning
+builder.Services.AddHostedService<CollectionScanConsumer>();        // ✅ KEEP - Collection scanning  
+builder.Services.AddHostedService<ImageProcessingConsumer>();       // ✅ KEEP - Creates embedded images + queues messages
+
+// Use batch thumbnail generation consumer (replaces old individual consumer)
+builder.Services.AddHostedService<BatchThumbnailGenerationConsumer>(); // ✅ NEW OPTIMIZED - Batch thumbnail processing
+
+// Use batch cache generation consumer (replaces old individual consumer)
+builder.Services.AddHostedService<BatchCacheGenerationConsumer>(); // ✅ NEW OPTIMIZED - Batch cache processing
+
+// LEGACY CONSUMERS - COMMENTED OUT TO PREVENT CONFLICTS WITH NEW BATCH LOGIC
+// builder.Services.AddHostedService<CacheGenerationConsumer>();    // ❌ COMMENTED - Still uses old individual processing
+builder.Services.AddHostedService<BulkOperationConsumer>();        // ✅ KEEP - Bulk operations support
+
+// Register optimized image processing service
+builder.Services.AddSingleton<IImageProcessingService, MemoryOptimizedImageProcessingService>();
 
 var host = builder.Build();
+
+Console.WriteLine("Host is building ...");
 
 // Initialize MongoDB indexes on startup
 using (var scope = host.Services.CreateScope())
@@ -125,7 +145,27 @@ using (var scope = host.Services.CreateScope())
 try
 {
     Log.Information("Starting ImageViewer Worker Service");
-    await host.RunAsync();
+    
+    // Start the host (this starts all hosted services)
+    await host.StartAsync();
+    
+    Log.Information("ImageViewer Worker Service started successfully. Press Ctrl+C to stop.");
+    
+    // Wait for cancellation (Ctrl+C or shutdown signal)
+    var cancellationToken = new CancellationTokenSource();
+    Console.CancelKeyPress += (sender, eventArgs) =>
+    {
+        eventArgs.Cancel = true;
+        Log.Information("Shutdown signal received. Stopping worker service...");
+        cancellationToken.Cancel();
+    };
+    
+    // Keep the service running until cancellation
+    await Task.Delay(Timeout.Infinite, cancellationToken.Token);
+}
+catch (OperationCanceledException)
+{
+    Log.Information("Worker service shutdown requested");
 }
 catch (Exception ex)
 {
@@ -133,5 +173,17 @@ catch (Exception ex)
 }
 finally
 {
+    Log.Information("Stopping ImageViewer Worker Service...");
+    
+    // Stop the host gracefully
+    if (host is IAsyncDisposable asyncDisposable)
+    {
+        await asyncDisposable.DisposeAsync();
+    }
+    else
+    {
+        host.Dispose();
+    }
+    
     Log.CloseAndFlush();
 }

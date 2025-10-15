@@ -2,6 +2,7 @@ using System.IO.Compression;
 using SharpCompress.Archives;
 using SharpCompress.Common;
 using Microsoft.Extensions.Logging;
+using ImageViewer.Application.Helpers;
 
 namespace ImageViewer.Worker.Services;
 
@@ -36,10 +37,18 @@ public static class ZipFileHelper
                 return null;
             }
 
+            // Check if the entry is a __MACOSX metadata file before processing
+            if (!MacOSXFilterHelper.IsSafeToProcess(entryName, "ZIP entry extraction"))
+            {
+                logger?.LogDebug("Skipping __MACOSX metadata entry: {Entry}", entryName);
+                return null;
+            }
+
             // Use SharpCompress to support multiple archive formats
             using var archive = ArchiveFactory.Open(archivePath);
             var entry = archive.Entries.FirstOrDefault(e => 
                 !e.IsDirectory && 
+                MacOSXFilterHelper.IsSafeToProcess(e.Key, "archive entry lookup") &&
                 (e.Key == entryName || e.Key.Replace('\\', '/') == entryName.Replace('\\', '/')));
             
             if (entry == null)

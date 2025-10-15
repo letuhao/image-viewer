@@ -119,7 +119,7 @@ public abstract class BaseMessageConsumer : BackgroundService
             {
                 await _handler(message, cancellationToken);
 
-                if (!_options.AutoAck)
+                if (!_options.AutoAck && _channel.IsOpen)
                 {
                     await _channel.BasicAckAsync(deliveryTag, false);
                 }
@@ -127,9 +127,16 @@ public abstract class BaseMessageConsumer : BackgroundService
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error processing message (deliveryTag: {DeliveryTag})", deliveryTag);
-                if (!_options.AutoAck)
+                if (!_options.AutoAck && _channel.IsOpen)
                 {
-                    await _channel.BasicNackAsync(deliveryTag, false, true);
+                    try
+                    {
+                        await _channel.BasicNackAsync(deliveryTag, false, true);
+                    }
+                    catch (Exception nackEx)
+                    {
+                        _logger.LogWarning(nackEx, "Failed to send NACK for deliveryTag {DeliveryTag} - channel may be closed", deliveryTag);
+                    }
                 }
             }
         }

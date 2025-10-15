@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using ImageViewer.Application.Services;
 using ImageViewer.Domain.Interfaces;
+using ImageViewer.Application.Helpers;
 using System.IO.Compression;
 
 namespace ImageViewer.Infrastructure.Services;
@@ -181,7 +182,7 @@ public class CompressedFileService : ICompressedFileService
             {
                 // Only skip __MACOSX/ folder (definitely metadata)
                 // Don't skip ._ files - try to process them, skip if decode fails
-                if (entry.FullName.Contains("__MACOSX/"))
+                if (!MacOSXFilterHelper.IsSafeToProcess(entry.FullName, "ZIP extraction"))
                 {
                     _logger.LogDebug("Skipping __MACOSX metadata folder entry: {EntryName}", entry.FullName);
                     continue;
@@ -287,7 +288,7 @@ public class CompressedFileService : ICompressedFileService
             // Filter out __MACOSX/ folder only (definitely metadata)
             // Don't filter ._ files - they might be valid (rare but possible)
             var validEntries = archive.Entries
-                .Where(entry => !entry.FullName.Contains("__MACOSX/"))
+                .Where(entry => MacOSXFilterHelper.IsSafeToProcess(entry.FullName, "file info extraction"))
                 .ToList();
             
             info.TotalFiles = validEntries.Count;
