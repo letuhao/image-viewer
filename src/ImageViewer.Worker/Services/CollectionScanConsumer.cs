@@ -13,6 +13,7 @@ using ImageViewer.Application.Services;
 using ImageViewer.Domain.Enums;
 using ImageViewer.Infrastructure.Data;
 using ImageViewer.Application.Helpers;
+using ImageViewer.Worker.Services;
 using MongoDB.Bson;
 
 namespace ImageViewer.Worker.Services;
@@ -367,9 +368,9 @@ public class CollectionScanConsumer : BaseMessageConsumer
             var imageProcessingService = scope.ServiceProvider.GetRequiredService<IImageProcessingService>();
             
             // For ZIP files, we can't easily extract dimensions without extracting the file
-            if (imagePath.Contains("#"))
+            if (ArchiveFileHelper.IsArchiveEntryPath(imagePath))
             {
-                _logger.LogDebug("📦 ZIP file entry detected, skipping dimension extraction for {Path}", imagePath);
+                _logger.LogDebug("📦 Archive entry detected, skipping dimension extraction for {Path}", imagePath);
                 return (0, 0); // Will be extracted during image processing
             }
             

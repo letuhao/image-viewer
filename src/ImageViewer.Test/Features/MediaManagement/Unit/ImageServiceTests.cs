@@ -86,7 +86,7 @@ public class ImageServiceTests
         // Assert
         result.Should().NotBeNull();
         result!.Filename.Should().Be("test.jpg");
-        result.RelativePath.Should().Be("/images/test.jpg");
+        result.GetDisplayPath().Should().Be("/images/test.jpg");
         result.FileSize.Should().Be(1024000);
         result.Width.Should().Be(1920);
         result.Height.Should().Be(1080);

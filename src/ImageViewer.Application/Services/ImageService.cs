@@ -476,9 +476,10 @@ public class ImageService : IImageService
                 return null;
             }
 
-            var fullPath = Path.Combine(collection.Path, image.RelativePath);
+            var fullPath = image.GetFullPath(collection.Path);
             
-            if (!File.Exists(fullPath))
+            // For archive entries, skip File.Exists check
+            if (!image.IsArchiveEntry() && !File.Exists(fullPath))
             {
                 _logger.LogWarning("Image file does not exist: {FullPath}", fullPath);
                 return null;
@@ -603,7 +604,7 @@ public class ImageService : IImageService
 
             // Check if image already exists (prevent duplicates from double-scans)
             var existingImage = collection.Images?.FirstOrDefault(img => 
-                img.Filename == filename && img.RelativePath == relativePath);
+                img.Filename == filename && img.GetDisplayPath() == relativePath);
             
             if (existingImage != null)
             {
@@ -773,13 +774,13 @@ public class ImageService : IImageService
                 throw new InvalidOperationException($"Image {imageId} not found in collection {collectionId}");
             }
 
-            // Get the full image path
-            var fullImagePath = Path.Combine(collection.Path, image.RelativePath);
+            // Get the full image path using the new DTO method
+            var fullImagePath = image.GetFullPath(collection.Path);
             
-            // Check if this is an archive entry (ZIP, 7Z, etc.)
-            bool isArchiveEntry = fullImagePath.Contains("#");
+            // Check if this is an archive entry using the new DTO method
+            bool isArchiveEntry = image.IsArchiveEntry();
             
-            // For archive entries, we don't check File.Exists because the path format is "archive.zip#entry.png"
+            // For archive entries, we don't check File.Exists because the path format is "archive.zip::entry.png"
             if (!isArchiveEntry && !File.Exists(fullImagePath))
             {
                 throw new InvalidOperationException($"Image file does not exist: {fullImagePath}");
@@ -856,13 +857,13 @@ public class ImageService : IImageService
                 throw new InvalidOperationException($"Image {imageId} not found in collection {collectionId}");
             }
 
-            // Get the full image path
-            var fullImagePath = Path.Combine(collection.Path, image.RelativePath);
+            // Get the full image path using the new DTO method
+            var fullImagePath = image.GetFullPath(collection.Path);
             
-            // Check if this is an archive entry (ZIP, 7Z, etc.)
-            bool isArchiveEntry = fullImagePath.Contains("#");
+            // Check if this is an archive entry using the new DTO method
+            bool isArchiveEntry = image.IsArchiveEntry();
             
-            // For archive entries, we don't check File.Exists because the path format is "archive.zip#entry.png"
+            // For archive entries, we don't check File.Exists because the path format is "archive.zip::entry.png"
             if (!isArchiveEntry && !File.Exists(fullImagePath))
             {
                 throw new InvalidOperationException($"Image file does not exist: {fullImagePath}");
@@ -873,7 +874,7 @@ public class ImageService : IImageService
             if (isArchiveEntry)
             {
                 // For archive entries, we need to extract and process from bytes
-                // The fullImagePath is in format "archive.zip#entry.png"
+                // The fullImagePath is in format "archive.zip::entry.png"
                 _logger.LogDebug("Processing cache for archive entry: {Path}", fullImagePath);
                 
                 // Note: The actual archive extraction is handled by the consumer

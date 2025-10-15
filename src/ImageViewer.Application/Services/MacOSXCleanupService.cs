@@ -103,7 +103,7 @@ public class MacOSXCleanupService : IMacOSXCleanupService
             {
                 var originalCount = collection.Images.Count;
                 var macosxImages = collection.Images
-                    .Where(img => MacOSXFilterHelper.IsMacOSXPath(img.RelativePath) || MacOSXFilterHelper.IsMacOSXPath(img.Filename))
+                    .Where(img => MacOSXFilterHelper.IsMacOSXPath(img.GetDisplayPath()) || MacOSXFilterHelper.IsMacOSXPath(img.Filename))
                     .ToList();
 
                 if (macosxImages.Any())
@@ -251,7 +251,7 @@ public class MacOSXCleanupService : IMacOSXCleanupService
         if (collection.Images?.Any() == true)
         {
             var macosxImages = collection.Images
-                .Where(img => MacOSXFilterHelper.IsMacOSXPath(img.RelativePath) || MacOSXFilterHelper.IsMacOSXPath(img.Filename))
+                .Where(img => MacOSXFilterHelper.IsMacOSXPath(img.GetDisplayPath()) || MacOSXFilterHelper.IsMacOSXPath(img.Filename))
                 .ToList();
 
             preview.ImagesToRemove = macosxImages.Count;

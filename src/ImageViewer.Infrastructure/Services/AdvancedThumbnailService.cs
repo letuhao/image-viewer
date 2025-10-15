@@ -62,8 +62,8 @@ public class AdvancedThumbnailService : IAdvancedThumbnailService
             }
 
             // Generate new thumbnail
-            var sourcePath = Path.Combine(collection.Path, sourceImage.RelativePath);
-            if (!File.Exists(sourcePath))
+            var sourcePath = sourceImage.GetFullPath(collection.Path);
+            if (!sourceImage.IsArchiveEntry() && !File.Exists(sourcePath))
             {
                 _logger.LogWarning("Source image not found: {SourcePath}", sourcePath);
                 return null;

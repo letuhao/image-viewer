@@ -1,5 +1,6 @@
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
+using ImageViewer.Domain.Enums;
 
 #pragma warning disable CS8618 // MongoDB entities/value objects are initialized by the driver
 
@@ -19,6 +20,15 @@ public class ImageEmbedded
     
     [BsonElement("relativePath")]
     public string RelativePath { get; private set; }
+    
+    [BsonElement("legacyRelativePath")]
+    public string LegacyRelativePath { get; private set; }
+    
+    [BsonElement("archiveEntry")]
+    public ArchiveEntryInfo? ArchiveEntry { get; private set; }
+    
+    [BsonElement("fileType")]
+    public ImageFileType FileType { get; private set; } = ImageFileType.RegularFile;
     
     [BsonElement("fileSize")]
     public long FileSize { get; private set; }
@@ -61,6 +71,45 @@ public class ImageEmbedded
     {
         Filename = filename ?? throw new ArgumentNullException(nameof(filename));
         RelativePath = relativePath ?? throw new ArgumentNullException(nameof(relativePath));
+        LegacyRelativePath = relativePath; // Keep for backward compatibility
+        ArchiveEntry = null; // Regular file
+        FileType = ImageFileType.RegularFile;
+        FileSize = fileSize;
+        Width = width;
+        Height = height;
+        Format = format ?? throw new ArgumentNullException(nameof(format));
+        ViewCount = 0;
+        CreatedAt = DateTime.UtcNow;
+        UpdatedAt = DateTime.UtcNow;
+        IsDeleted = false;
+    }
+
+    public ImageEmbedded(string filename, string relativePath, ArchiveEntryInfo archiveEntry, 
+        long fileSize, int width, int height, string format)
+    {
+        Filename = filename ?? throw new ArgumentNullException(nameof(filename));
+        RelativePath = relativePath ?? throw new ArgumentNullException(nameof(relativePath));
+        LegacyRelativePath = relativePath; // Keep for backward compatibility
+        ArchiveEntry = archiveEntry ?? throw new ArgumentNullException(nameof(archiveEntry));
+        FileType = archiveEntry.FileType; // Use the file type from ArchiveEntryInfo
+        FileSize = fileSize;
+        Width = width;
+        Height = height;
+        Format = format ?? throw new ArgumentNullException(nameof(format));
+        ViewCount = 0;
+        CreatedAt = DateTime.UtcNow;
+        UpdatedAt = DateTime.UtcNow;
+        IsDeleted = false;
+    }
+
+    public ImageEmbedded(string filename, string relativePath, ImageFileType fileType,
+        long fileSize, int width, int height, string format)
+    {
+        Filename = filename ?? throw new ArgumentNullException(nameof(filename));
+        RelativePath = relativePath ?? throw new ArgumentNullException(nameof(relativePath));
+        LegacyRelativePath = relativePath; // Keep for backward compatibility
+        ArchiveEntry = null; // Set based on file type
+        FileType = fileType;
         FileSize = fileSize;
         Width = width;
         Height = height;
@@ -125,30 +174,39 @@ public class ImageEmbedded
     {
         if (string.IsNullOrEmpty(collectionPath))
         {
-            return RelativePath;
+            return GetDisplayPath();
         }
 
-        // Handle ZIP entries (format: "archive.zip::entry.jpg" or "archive.zip#entry.jpg")
-        if (RelativePath.Contains("::") || RelativePath.Contains("#"))
+        // Handle archive entries using the new ArchiveEntry property
+        if (ArchiveEntry != null)
         {
-            // Try :: separator first, then fallback to # for backward compatibility
-            var parts = RelativePath.Split(new[] { "::" }, 2, StringSplitOptions.None);
-            if (parts.Length != 2)
-            {
-                parts = RelativePath.Split('#');
-            }
+            var archivePath = ArchiveEntry.ArchivePath;
             
-            var zipPath = parts[0];
-            var entryName = parts.Length > 1 ? parts[1] : string.Empty;
-
-            // If ZIP path is not rooted, combine with collection path
-            if (!Path.IsPathRooted(zipPath))
+            // If archive path is not rooted, combine with collection path
+            if (!Path.IsPathRooted(archivePath))
             {
-                zipPath = Path.Combine(collectionPath, zipPath);
+                archivePath = Path.Combine(collectionPath, archivePath);
             }
 
-            // Use :: as the new separator
-            return $"{zipPath}::{entryName}";
+            return $"{archivePath}::{ArchiveEntry.EntryName}";
+        }
+
+        // Handle legacy ZIP entries in LegacyRelativePath (backward compatibility)
+        if (LegacyRelativePath.Contains("::") || LegacyRelativePath.Contains("#"))
+        {
+            var archiveEntry = ArchiveEntryInfo.FromPath(LegacyRelativePath);
+            if (archiveEntry != null)
+            {
+                var archivePath = archiveEntry.ArchivePath;
+                
+                // If archive path is not rooted, combine with collection path
+                if (!Path.IsPathRooted(archivePath))
+                {
+                    archivePath = Path.Combine(collectionPath, archivePath);
+                }
+
+                return $"{archivePath}::{archiveEntry.EntryName}";
+            }
         }
 
         // Handle regular files
@@ -158,5 +216,62 @@ public class ImageEmbedded
         }
 
         return RelativePath;
+    }
+
+    /// <summary>
+    /// Get display path for the image (for logging and display purposes)
+    /// </summary>
+    public string GetDisplayPath()
+    {
+        if (ArchiveEntry != null)
+        {
+            return ArchiveEntry.GetFullPath();
+        }
+
+        if (LegacyRelativePath.Contains("::") || LegacyRelativePath.Contains("#"))
+        {
+            return LegacyRelativePath;
+        }
+
+        return RelativePath;
+    }
+
+    /// <summary>
+    /// Check if this image is inside an archive
+    /// </summary>
+    public bool IsArchiveEntry() => FileType == ImageFileType.ArchiveEntry && ArchiveEntry != null;
+
+    /// <summary>
+    /// Check if this image is an archive file itself
+    /// </summary>
+    public bool IsArchiveFile() => FileType == ImageFileType.ArchiveFile;
+
+    /// <summary>
+    /// Check if this image is a regular file
+    /// </summary>
+    public bool IsRegularFile() => FileType == ImageFileType.RegularFile;
+
+    /// <summary>
+    /// Get the archive path if this is an archive entry, otherwise return null
+    /// </summary>
+    public string? GetArchivePath() => ArchiveEntry?.ArchivePath;
+
+    /// <summary>
+    /// Get the entry name if this is an archive entry, otherwise return null
+    /// </summary>
+    public string? GetEntryName() => ArchiveEntry?.EntryName;
+
+    /// <summary>
+    /// Get the display name based on file type
+    /// </summary>
+    public string GetDisplayName()
+    {
+        return FileType switch
+        {
+            ImageFileType.ArchiveEntry => ArchiveEntry?.GetDisplayName() ?? Filename,
+            ImageFileType.ArchiveFile => $"{Filename} (Archive)",
+            ImageFileType.RegularFile => Filename,
+            _ => Filename
+        };
     }
 }

@@ -283,8 +283,8 @@ public class ImagesController : ControllerBase
                 return;
             }
 
-            // Build full image path
-            var imagePath = Path.Combine(collection.Path, image.RelativePath);
+            // Build full image path using the new DTO method
+            var imagePath = image.GetFullPath(collection.Path);
 
             // Cache generation parameters
             const int cacheWidth = 1920;

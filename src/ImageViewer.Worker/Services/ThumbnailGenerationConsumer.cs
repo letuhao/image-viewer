@@ -89,7 +89,7 @@ public class ThumbnailGenerationConsumer : BaseMessageConsumer
             }
 
             // Check if image file exists
-            if (!File.Exists(thumbnailMessage.ImagePath) && !thumbnailMessage.ImagePath.Contains("#"))
+            if (!File.Exists(thumbnailMessage.ImagePath) && !ArchiveFileHelper.IsArchiveEntryPath(thumbnailMessage.ImagePath))
             {
                 _logger.LogWarning("❌ Image file {Path} does not exist, skipping thumbnail generation", thumbnailMessage.ImagePath);
                 return;
