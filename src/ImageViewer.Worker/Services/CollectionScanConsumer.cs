@@ -10,8 +10,8 @@ using RabbitMQ.Client.Events;
 using ImageViewer.Domain.Events;
 using ImageViewer.Domain.Interfaces;
 using ImageViewer.Domain.ValueObjects;
-using ImageViewer.Application.Services;
 using ImageViewer.Domain.Enums;
+using ImageViewer.Application.Services;
 using ImageViewer.Infrastructure.Data;
 using ImageViewer.Application.Helpers;
 using ImageViewer.Worker.Services;
@@ -153,8 +153,20 @@ public class CollectionScanConsumer : BaseMessageConsumer
                     // Extract basic metadata for the image processing message
                     var (width, height) = await ExtractImageDimensions(mediaFile.FullPath);
                     
-                    // Check if this is an archive entry and create ArchiveEntryInfo if needed
-                    var archiveEntry = ArchiveEntryInfo.FromPath(mediaFile.FullPath);
+                    // Create ArchiveEntryInfo for archive entries
+                    // For archive entries, we know the archive path and entry name separately
+                    ArchiveEntryInfo? archiveEntry = null;
+                    if (collection.Type != CollectionType.Folder)
+                    {
+                        // This is an archive file - create ArchiveEntryInfo with the full archive path
+                        archiveEntry = new ArchiveEntryInfo
+                        {
+                            ArchivePath = collection.Path, // Full archive path from collection
+                            EntryName = mediaFile.RelativePath, // Entry name from mediaFile
+                            EntryPath = mediaFile.RelativePath,
+                            FileType = ImageFileType.ArchiveEntry
+                        };
+                    }
                     
                     var imageProcessingMessage = new ImageProcessingMessage
                     {
