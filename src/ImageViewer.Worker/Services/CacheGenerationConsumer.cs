@@ -149,7 +149,7 @@ public class CacheGenerationConsumer : BaseMessageConsumer
             {
                 // This should not happen - ArchiveEntry should always be provided
                 _logger.LogError("❌ No ArchiveEntry provided for cache generation");
-                return false;
+                return Task.FromResult(false);
             }
 
             // Check if cache already exists on disk and force regeneration is disabled
@@ -374,7 +374,7 @@ cacheMessage.ArchiveEntry?.GetFullPath() ?? "Unknown",
             
             if (isSkippableError)
             {
-                _logger.LogWarning(ex, "⚠️ Skipping corrupted/unsupported image file: {ImagePath}. This message will NOT be retried.", cacheMsg?.ImagePath);
+                _logger.LogWarning(ex, "⚠️ Skipping corrupted/unsupported image file: {ImagePath}. This message will NOT be retried.", cacheMsg?.ArchiveEntry?.GetFullPath() ?? "Unknown");
                 
                 // Create dummy cache entry for failed processing
                 if (!string.IsNullOrEmpty(cacheMsg?.JobId) && !string.IsNullOrEmpty(cacheMsg?.ImageId))

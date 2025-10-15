@@ -706,9 +706,8 @@ public class BatchThumbnailGenerationConsumer : BaseMessageConsumer
                 _logger.LogWarning("⚠️ Image file too large ({SizeMB}MB), skipping thumbnail generation for {ImageId}", 
                     fileSize / 1024.0 / 1024.0, message.ImageId);
                     
-                    await jobStateRepository.AtomicIncrementFailedAsync(message.JobId, message.ImageId);
-                    return false;
-                }
+                await jobStateRepository.AtomicIncrementFailedAsync(message.JobId, message.ImageId);
+                return false;
             }
             
             return true;
