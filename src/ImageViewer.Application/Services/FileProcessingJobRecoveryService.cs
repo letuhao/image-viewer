@@ -1,6 +1,7 @@
 using ImageViewer.Domain.Entities;
 using ImageViewer.Domain.Interfaces;
 using ImageViewer.Domain.Events;
+using ImageViewer.Domain.ValueObjects;
 using Microsoft.Extensions.Logging;
 using MongoDB.Bson;
 using System.Text.Json;
