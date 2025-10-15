@@ -617,16 +617,6 @@ public class BatchCacheGenerationConsumer : BaseMessageConsumer
                 return false;
             }
             
-            if (fileSize > maxSize)
-            {
-                _logger.LogWarning("⚠️ Image file too large ({SizeMB}MB), skipping cache generation for {ImageId}", 
-                    fileSize / 1024.0 / 1024.0, message.ImageId);
-                    
-                    await jobStateRepository.AtomicIncrementFailedAsync(message.JobId, message.ImageId);
-                    return false;
-                }
-            }
-            
             return true;
         }
         catch (Exception ex)

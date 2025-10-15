@@ -60,7 +60,7 @@ public class CacheGenerationConsumer : BaseMessageConsumer
             }
 
             _logger.LogDebug("Processing cache generation for image {ImageId} ({Path})", 
-                cacheMessage.ImageId, cacheMessage.ImagePath);
+                cacheMessage.ImageId, cacheMessage.ArchiveEntry?.GetFullPath() ?? "Unknown");
 
             // Try to create scope, handle disposal gracefully
             IServiceScope? scope = null;
@@ -123,10 +123,10 @@ public class CacheGenerationConsumer : BaseMessageConsumer
             long fileSize = 0;
             long maxSize = 0;
             
-            if (ArchiveFileHelper.IsArchiveEntryPath(cacheMessage.ImagePath))
+            if (cacheMessage.ArchiveEntry != null)
             {
                 // ZIP entry - get uncompressed size without extraction
-                fileSize = ArchiveFileHelper.GetArchiveEntrySize(cacheMessage.ImagePath, _logger);
+                fileSize = ArchiveFileHelper.GetArchiveEntrySize(cacheMessage.ArchiveEntry.GetFullPath(), _logger);
                 maxSize = _rabbitMQOptions.MaxZipEntrySizeBytes; // 20GB for ZIP entries
                 
                 if (fileSize > maxSize)
@@ -147,26 +147,9 @@ public class CacheGenerationConsumer : BaseMessageConsumer
             }
             else
             {
-                // Regular file - check file size on disk
-                var imageFile = new FileInfo(cacheMessage.ImagePath);
-                fileSize = imageFile.Exists ? imageFile.Length : 0;
-                maxSize = _rabbitMQOptions.MaxImageSizeBytes; // 500MB for regular files
-                
-                if (fileSize > maxSize)
-                {
-                    _logger.LogWarning("⚠️ Image file too large ({SizeMB}MB), skipping cache generation for {ImageId}", 
-                        fileSize / 1024.0 / 1024.0, cacheMessage.ImageId);
-                    
-                    if (!string.IsNullOrEmpty(cacheMessage.JobId))
-                    {
-                        var jobStateRepository = scope.ServiceProvider.GetRequiredService<IFileProcessingJobStateRepository>();
-                        _logger.LogError("Image file too large: {SizeMB}MB (max {MaxMB}MB) for {ImageId}", 
-                            fileSize / 1024.0 / 1024.0, maxSize / 1024.0 / 1024.0, cacheMessage.ImageId);
-                        await jobStateRepository.AtomicIncrementFailedAsync(cacheMessage.JobId, cacheMessage.ImageId);
-                    }
-                    
-                    return;
-                }
+                // This should not happen - ArchiveEntry should always be provided
+                _logger.LogError("❌ No ArchiveEntry provided for cache generation");
+                return false;
             }
 
             // Check if cache already exists on disk and force regeneration is disabled
@@ -256,12 +239,12 @@ public class CacheGenerationConsumer : BaseMessageConsumer
                 _logger.LogDebug("Preserving original quality for image {ImageId} (no resize)", cacheMessage.ImageId);
                 
                 // Handle ZIP entries - extract bytes
-                if (ArchiveFileHelper.IsZipEntryPath(cacheMessage.ImagePath))
+                if (cacheMessage.ArchiveEntry != null)
                 {
-                    var imageBytes = await ArchiveFileHelper.ExtractZipEntryBytes(cacheMessage.ImagePath, null, cancellationToken);
+                    var imageBytes = await ArchiveFileHelper.ExtractArchiveEntryBytes(cacheMessage.ArchiveEntry.GetFullPath(), null, cancellationToken);
                     if (imageBytes == null || imageBytes.Length == 0)
                     {
-                        _logger.LogWarning("❌ Failed to extract ZIP entry for cache: {Path}", cacheMessage.ImagePath);
+                        _logger.LogWarning("❌ Failed to extract ZIP entry for cache: {Path}", cacheMessage.ArchiveEntry?.GetFullPath() ?? "Unknown");
                         return;
                     }
                     cacheImageData = imageBytes; // Use original bytes, no resize
@@ -269,7 +252,9 @@ public class CacheGenerationConsumer : BaseMessageConsumer
                 else
                 {
                     // Regular file - read original file
-                    cacheImageData = await File.ReadAllBytesAsync(cacheMessage.ImagePath, cancellationToken);
+                    // This should not happen - ArchiveEntry should always be provided
+                    _logger.LogError("❌ No ArchiveEntry provided for cache generation");
+                    return;
                 }
             }
             else
@@ -279,13 +264,13 @@ public class CacheGenerationConsumer : BaseMessageConsumer
                 
                 // Resize to cache dimensions with smart quality
                 // Handle ZIP entries
-                if (ArchiveFileHelper.IsZipEntryPath(cacheMessage.ImagePath))
+                if (cacheMessage.ArchiveEntry != null)
                 {
                     // Extract image bytes from ZIP
-                    var imageBytes = await ArchiveFileHelper.ExtractZipEntryBytes(cacheMessage.ImagePath, null, cancellationToken);
+                    var imageBytes = await ArchiveFileHelper.ExtractArchiveEntryBytes(cacheMessage.ArchiveEntry.GetFullPath(), null, cancellationToken);
                     if (imageBytes == null || imageBytes.Length == 0)
                     {
-                        _logger.LogWarning("❌ Failed to extract ZIP entry for cache: {Path}", cacheMessage.ImagePath);
+                        _logger.LogWarning("❌ Failed to extract ZIP entry for cache: {Path}", cacheMessage.ArchiveEntry?.GetFullPath() ?? "Unknown");
                         return;
                     }
                     
@@ -482,7 +467,7 @@ cacheMessage.ArchiveEntry?.GetFullPath() ?? "Unknown",
                 "jpg" => ".jpg",
                 "png" => ".png",
                 "webp" => ".webp",
-                "original" => Path.GetExtension(cacheMessage.ImagePath), // Preserve original extension
+                "original" => Path.GetExtension(cacheMessage.ArchiveEntry?.EntryName ?? ""), // Preserve original extension
                 _ => ".jpg" // Default fallback
             };
             
@@ -629,15 +614,16 @@ cacheMessage.ArchiveEntry?.GetFullPath() ?? "Unknown",
             long fileSize = 0;
             int requestedQuality = cacheMessage.Quality;
             
-            if (ArchiveFileHelper.IsArchiveEntryPath(cacheMessage.ImagePath))
+            if (cacheMessage.ArchiveEntry != null)
             {
-                imageBytes = await ArchiveFileHelper.ExtractZipEntryBytes(cacheMessage.ImagePath, null, cancellationToken);
+                imageBytes = await ArchiveFileHelper.ExtractArchiveEntryBytes(cacheMessage.ArchiveEntry.GetFullPath(), null, cancellationToken);
                 fileSize = imageBytes?.Length ?? 0;
             }
-            else if (File.Exists(cacheMessage.ImagePath))
+            else
             {
-                var fileInfo = new FileInfo(cacheMessage.ImagePath);
-                fileSize = fileInfo.Length;
+                // This should not happen - ArchiveEntry should always be provided
+                _logger.LogError("❌ No ArchiveEntry provided for cache quality analysis");
+                return requestedQuality;
             }
             
             // Get image dimensions from metadata (we should have this from ImageProcessingConsumer)
