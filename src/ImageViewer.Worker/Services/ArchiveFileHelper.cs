@@ -21,11 +21,16 @@ public static class ArchiveFileHelper
     {
         try
         {
-            var parts = archiveEntryPath.Split('#', 2);
+            // Try :: separator first, then fallback to # for backward compatibility
+            var parts = archiveEntryPath.Split(new[] { "::" }, 2, StringSplitOptions.None);
             if (parts.Length != 2)
             {
-                logger?.LogWarning("Invalid archive entry path format: {Path}", archiveEntryPath);
-                return null;
+                parts = archiveEntryPath.Split('#', 2);
+                if (parts.Length != 2)
+                {
+                    logger?.LogWarning("Invalid archive entry path format: {Path}", archiveEntryPath);
+                    return null;
+                }
             }
 
             var archivePath = parts[0];
@@ -71,7 +76,7 @@ public static class ArchiveFileHelper
     /// </summary>
     public static bool IsArchiveEntryPath(string path)
     {
-        return !string.IsNullOrEmpty(path) && path.Contains("#");
+        return !string.IsNullOrEmpty(path) && (path.Contains("::") || path.Contains("#"));
     }
 
     /// <summary>
@@ -82,11 +87,16 @@ public static class ArchiveFileHelper
     {
         try
         {
-            var parts = archiveEntryPath.Split('#', 2);
+            // Try :: separator first, then fallback to # for backward compatibility
+            var parts = archiveEntryPath.Split(new[] { "::" }, 2, StringSplitOptions.None);
             if (parts.Length != 2)
             {
-                logger?.LogWarning("Invalid archive entry path format: {Path}", archiveEntryPath);
-                return 0;
+                parts = archiveEntryPath.Split('#', 2);
+                if (parts.Length != 2)
+                {
+                    logger?.LogWarning("Invalid archive entry path format: {Path}", archiveEntryPath);
+                    return 0;
+                }
             }
 
             var archivePath = parts[0];
@@ -126,11 +136,20 @@ public static class ArchiveFileHelper
     /// </summary>
     public static (string archivePath, string entryName) SplitArchiveEntryPath(string archiveEntryPath)
     {
-        var parts = archiveEntryPath.Split('#', 2);
+        // Use :: as separator to avoid conflicts with # in filenames
+        var parts = archiveEntryPath.Split(new[] { "::" }, 2, StringSplitOptions.None);
         if (parts.Length == 2)
         {
             return (parts[0], parts[1]);
         }
+        
+        // Fallback to # for backward compatibility
+        var hashParts = archiveEntryPath.Split('#', 2);
+        if (hashParts.Length == 2)
+        {
+            return (hashParts[0], hashParts[1]);
+        }
+        
         return (archiveEntryPath, string.Empty);
     }
 

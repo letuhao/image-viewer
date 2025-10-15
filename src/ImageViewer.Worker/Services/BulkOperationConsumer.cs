@@ -260,9 +260,28 @@ public class BulkOperationConsumer : BaseMessageConsumer
     {
         _logger.LogInformation("🖼️ Processing generate all thumbnails operation");
         
-                using var scope = _serviceScopeFactory.CreateScope();
+        using var scope = _serviceScopeFactory.CreateScope();
         var imageService = scope.ServiceProvider.GetRequiredService<IImageService>();
         var collectionService = scope.ServiceProvider.GetRequiredService<ICollectionService>();
+        var imageProcessingSettingsService = scope.ServiceProvider.GetService<IImageProcessingSettingsService>();
+        
+        // Load thumbnail settings from system settings
+        int thumbnailWidth = 300; // Default fallback
+        int thumbnailHeight = 300; // Default fallback
+        
+        if (imageProcessingSettingsService != null)
+        {
+            try
+            {
+                thumbnailWidth = await imageProcessingSettingsService.GetThumbnailSizeAsync();
+                thumbnailHeight = thumbnailWidth; // Use same size for width and height
+                _logger.LogInformation("📐 Loaded thumbnail size from settings: {Size}x{Size}", thumbnailWidth, thumbnailHeight);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Failed to load thumbnail size from ImageProcessingSettingsService, using default 300x300");
+            }
+        }
         
         // Get all images using embedded design - iterate through collections
         var collections = await collectionService.GetCollectionsAsync(page: 1, pageSize: 1000);
@@ -284,8 +303,8 @@ public class BulkOperationConsumer : BaseMessageConsumer
                         CollectionId = collection.Id.ToString(), // Use collection.Id from outer loop
                         ImagePath = image.RelativePath, // This should be the full path
                         ImageFilename = image.Filename,
-                        ThumbnailWidth = 300, // Default thumbnail size
-                        ThumbnailHeight = 300,
+                        ThumbnailWidth = thumbnailWidth, // Loaded from system settings
+                        ThumbnailHeight = thumbnailHeight, // Loaded from system settings
                     };
 
                     // Queue the thumbnail generation job
@@ -415,8 +434,10 @@ public class BulkOperationConsumer : BaseMessageConsumer
         var thumbnailQuality = imageProcessingSettingsService != null 
             ? await imageProcessingSettingsService.GetThumbnailQualityAsync() 
             : 90;
-        var thumbnailWidth = 300;
-        var thumbnailHeight = 300;
+        var thumbnailWidth = imageProcessingSettingsService != null 
+            ? await imageProcessingSettingsService.GetThumbnailSizeAsync() 
+            : 300;
+        var thumbnailHeight = thumbnailWidth; // Use same size for width and height
         
         // Get images for specified collections using embedded design
         int totalImages = 0;

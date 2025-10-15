@@ -222,6 +222,9 @@ public class BatchCacheGenerationConsumer : BaseMessageConsumer
         var cacheFormat = await settingsService.GetCacheFormatAsync();
         var cacheQuality = await settingsService.GetCacheQualityAsync();
         
+        _logger.LogInformation("🔧 BatchCacheGenerationConsumer: Loaded settings - Format: {Format}, Quality: {Quality}", 
+            cacheFormat, cacheQuality);
+        
         var collectionObjectId = ObjectId.Parse(collectionId);
         
         // Update job status to "Running" for all jobs in this batch
@@ -253,10 +256,13 @@ public class BatchCacheGenerationConsumer : BaseMessageConsumer
                 }
                 
                 // Process cache image in memory with smart quality adjustment
+                _logger.LogDebug("🎨 Processing cache for image {ImageId} with format: {Format}, quality: {Quality}", 
+                    message.ImageId, cacheFormat, cacheQuality);
+                    
                 var processedData = await ProcessCacheImageInMemoryAsync(
                     imageProcessingService, 
                     message, 
-                    cacheFormat, 
+                    cacheFormat,
                     cacheQuality);
                 if (processedData != null)
                 {
@@ -282,10 +288,10 @@ public class BatchCacheGenerationConsumer : BaseMessageConsumer
         }
         
         // Step 2: Write all cache images to disk in organized batches
-        _logger.LogInformation("💾 Writing {Count} cache images to disk for collection {CollectionId}", 
-            processedImages.Count, collectionId);
+        _logger.LogInformation("💾 Writing {Count} cache images to disk for collection {CollectionId} with format: {Format}", 
+            processedImages.Count, collectionId, cacheFormat);
         
-        var cachePaths = await WriteCacheImagesToDiskAsync(processedImages, collectionObjectId);
+        var cachePaths = await WriteCacheImagesToDiskAsync(processedImages, collectionObjectId, cacheFormat);
         
         // Step 2.5: Update cache folder sizes (commented out - not available in ICacheService)
         // await UpdateCacheFolderSizesAsync(serviceProvider, cachePaths);
@@ -325,6 +331,9 @@ public class BatchCacheGenerationConsumer : BaseMessageConsumer
                 imageProcessingService, 
                 cacheFormat, 
                 cacheQuality);
+                
+            _logger.LogDebug("🎨 ProcessCacheImageInMemoryAsync: Using format {Format}, quality {Quality} (adjusted from {OriginalQuality})", 
+                cacheFormat, adjustedQuality, cacheQuality);
             
             // Handle ZIP entries
             if (ArchiveFileHelper.IsArchiveEntryPath(message.ImagePath))
@@ -367,15 +376,19 @@ public class BatchCacheGenerationConsumer : BaseMessageConsumer
 
     private async Task<List<CachePathData>> WriteCacheImagesToDiskAsync(
         List<ProcessedCacheData> processedImages,
-        ObjectId collectionId)
+        ObjectId collectionId,
+        string cacheFormat)
     {
         var cachePaths = new List<CachePathData>();
         
         // Determine cache paths for all messages if not set
+        // CRITICAL: Use the same format that was used for processing, not the message format
         foreach (var processedImage in processedImages)
         {
             if (string.IsNullOrEmpty(processedImage.Message.CachePath))
             {
+                // Override the message format with the correct format from settings
+                processedImage.Message.Format = cacheFormat;
                 processedImage.Message.CachePath = await DetermineCachePath(processedImage.Message);
             }
         }
@@ -396,6 +409,9 @@ public class BatchCacheGenerationConsumer : BaseMessageConsumer
         foreach (var processedImage in processedImages)
         {
             var cachePath = processedImage.Message.CachePath;
+            
+            _logger.LogDebug("💾 Writing cache file: {CachePath} (Size: {Size} bytes)", 
+                cachePath, processedImage.CacheData.Length);
             
             await File.WriteAllBytesAsync(cachePath, processedImage.CacheData);
             

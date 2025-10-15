@@ -109,16 +109,34 @@ public class ImageProcessingConsumer : BaseMessageConsumer
             {
                 try
                 {
-                var thumbnailMessage = new ThumbnailGenerationMessage
-                {
-                    ImageId = embeddedImage.Id, // Already a string
-                    CollectionId = imageMessage.CollectionId, // Already a string
-                    ImagePath = imageMessage.ImagePath,
-                    ImageFilename = Path.GetFileName(imageMessage.ImagePath),
-                    ThumbnailWidth = 300, // Default thumbnail size
-                    ThumbnailHeight = 300,
-                    ScanJobId = imageMessage.ScanJobId // Pass scan job ID for tracking
-                };
+                    // Load thumbnail settings from system settings
+                    var imageProcessingSettingsService = serviceProvider.GetService<IImageProcessingSettingsService>();
+                    int thumbnailWidth = 300; // Default fallback
+                    int thumbnailHeight = 300; // Default fallback
+                    
+                    if (imageProcessingSettingsService != null)
+                    {
+                        try
+                        {
+                            thumbnailWidth = await imageProcessingSettingsService.GetThumbnailSizeAsync();
+                            thumbnailHeight = thumbnailWidth; // Use same size for width and height
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogDebug(ex, "Failed to load thumbnail size from ImageProcessingSettingsService, using default 300x300");
+                        }
+                    }
+                    
+                    var thumbnailMessage = new ThumbnailGenerationMessage
+                    {
+                        ImageId = embeddedImage.Id, // Already a string
+                        CollectionId = imageMessage.CollectionId, // Already a string
+                        ImagePath = imageMessage.ImagePath,
+                        ImageFilename = Path.GetFileName(imageMessage.ImagePath),
+                        ThumbnailWidth = thumbnailWidth, // Loaded from system settings
+                        ThumbnailHeight = thumbnailHeight, // Loaded from system settings
+                        ScanJobId = imageMessage.ScanJobId // Pass scan job ID for tracking
+                    };
 
                     // Queue the thumbnail generation job
                     await messageQueueService.PublishAsync(thumbnailMessage, "thumbnail.generation");
@@ -145,16 +163,21 @@ public class ImageProcessingConsumer : BaseMessageConsumer
                 bool preserveOriginal = false; // Default
 
                 // Get settings from IImageProcessingSettingsService (prioritized) or fallback to SystemSettingService
+                _logger.LogDebug("🔧 ImageProcessingConsumer: imageProcessingSettingsService is {Status}", 
+                    imageProcessingSettingsService != null ? "available" : "null");
+                    
                 if (imageProcessingSettingsService != null)
                 {
                     try
                     {
                         cacheFormat = await imageProcessingSettingsService.GetCacheFormatAsync();
                         cacheQuality = await imageProcessingSettingsService.GetCacheQualityAsync();
+                        _logger.LogDebug("🔧 ImageProcessingConsumer: Loaded cache settings - Format: {Format}, Quality: {Quality}", 
+                            cacheFormat, cacheQuality);
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogDebug(ex, "Failed to load settings from ImageProcessingSettingsService, trying SystemSettingService");
+                        _logger.LogWarning(ex, "Failed to load settings from ImageProcessingSettingsService, trying SystemSettingService");
                     }
                 }
                 else if (systemSettingService != null)
@@ -178,12 +201,14 @@ public class ImageProcessingConsumer : BaseMessageConsumer
                 
                 if (cacheFolderSelectionService != null)
                 {
+                    _logger.LogDebug("🔧 ImageProcessingConsumer: Calling SelectCacheFolderForCacheAsync with format: {Format}", cacheFormat);
                     cachePath = await cacheFolderSelectionService.SelectCacheFolderForCacheAsync(
                         collectionObjectId,
                         embeddedImage.Id,
                         cacheWidth,
                         cacheHeight,
                         cacheFormat);
+                    _logger.LogDebug("🔧 ImageProcessingConsumer: Generated cache path: {CachePath}", cachePath);
                 }
 
                 if (string.IsNullOrEmpty(cachePath))
@@ -192,6 +217,8 @@ public class ImageProcessingConsumer : BaseMessageConsumer
                     cachePath = ""; // Fallback: consumer will determine
                 }
 
+                _logger.LogDebug("🔧 ImageProcessingConsumer: Creating cache message with format: {Format}", cacheFormat);
+                
                 var cacheMessage = new CacheGenerationMessage
                 {
                     ImageId = embeddedImage.Id, // Already a string

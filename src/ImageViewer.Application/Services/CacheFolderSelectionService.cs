@@ -27,6 +27,8 @@ public class CacheFolderSelectionService : ICacheFolderSelectionService
     {
         try
         {
+            _logger.LogDebug("🔧 CacheFolderSelectionService: Received format: '{Format}' for image {ImageId}", format, imageId);
+            
             // Determine file extension based on format
             var extension = format.ToLowerInvariant() switch
             {
@@ -36,6 +38,8 @@ public class CacheFolderSelectionService : ICacheFolderSelectionService
                 "webp" => ".webp",
                 _ => ".jpg" // Default fallback
             };
+            
+            _logger.LogDebug("🔧 CacheFolderSelectionService: Generated extension: '{Extension}' for format: '{Format}'", extension, format);
 
             // Get all cache folders
             var cacheFolders = await _cacheService.GetCacheFoldersAsync();

@@ -21,11 +21,16 @@ public static class ZipFileHelper
     {
         try
         {
-            var parts = archiveEntryPath.Split('#', 2);
+            // Try :: separator first, then fallback to # for backward compatibility
+            var parts = archiveEntryPath.Split(new[] { "::" }, 2, StringSplitOptions.None);
             if (parts.Length != 2)
             {
-                logger?.LogWarning("Invalid archive entry path format: {Path}", archiveEntryPath);
-                return null;
+                parts = archiveEntryPath.Split('#', 2);
+                if (parts.Length != 2)
+                {
+                    logger?.LogWarning("Invalid archive entry path format: {Path}", archiveEntryPath);
+                    return null;
+                }
             }
 
             var archivePath = parts[0];
@@ -78,7 +83,7 @@ public static class ZipFileHelper
     /// </summary>
     public static bool IsZipEntryPath(string path)
     {
-        return !string.IsNullOrEmpty(path) && path.Contains("#");
+        return !string.IsNullOrEmpty(path) && (path.Contains("::") || path.Contains("#"));
     }
 
     /// <summary>
@@ -86,11 +91,19 @@ public static class ZipFileHelper
     /// </summary>
     public static (string zipPath, string entryName) SplitZipEntryPath(string zipEntryPath)
     {
-        var parts = zipEntryPath.Split('#', 2);
+        // Try :: separator first, then fallback to # for backward compatibility
+        var parts = zipEntryPath.Split(new[] { "::" }, 2, StringSplitOptions.None);
         if (parts.Length == 2)
         {
             return (parts[0], parts[1]);
         }
+        
+        parts = zipEntryPath.Split('#', 2);
+        if (parts.Length == 2)
+        {
+            return (parts[0], parts[1]);
+        }
+        
         return (zipEntryPath, string.Empty);
     }
 }

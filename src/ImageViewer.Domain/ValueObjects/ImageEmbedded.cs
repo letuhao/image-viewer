@@ -128,10 +128,16 @@ public class ImageEmbedded
             return RelativePath;
         }
 
-        // Handle ZIP entries (format: "archive.zip#entry.jpg")
-        if (RelativePath.Contains("#"))
+        // Handle ZIP entries (format: "archive.zip::entry.jpg" or "archive.zip#entry.jpg")
+        if (RelativePath.Contains("::") || RelativePath.Contains("#"))
         {
-            var parts = RelativePath.Split('#');
+            // Try :: separator first, then fallback to # for backward compatibility
+            var parts = RelativePath.Split(new[] { "::" }, 2, StringSplitOptions.None);
+            if (parts.Length != 2)
+            {
+                parts = RelativePath.Split('#');
+            }
+            
             var zipPath = parts[0];
             var entryName = parts.Length > 1 ? parts[1] : string.Empty;
 
@@ -141,7 +147,8 @@ public class ImageEmbedded
                 zipPath = Path.Combine(collectionPath, zipPath);
             }
 
-            return $"{zipPath}#{entryName}";
+            // Use :: as the new separator
+            return $"{zipPath}::{entryName}";
         }
 
         // Handle regular files

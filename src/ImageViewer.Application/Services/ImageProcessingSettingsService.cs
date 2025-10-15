@@ -93,7 +93,10 @@ public class ImageProcessingSettingsService : IImageProcessingSettingsService
             await Task.WhenAll(cacheFormatTask, cacheQualityTask, thumbnailFormatTask, thumbnailQualityTask, thumbnailSizeTask);
 
             // Parse and cache results
-            _cachedCacheFormat = cacheFormatTask.Result?.SettingValue?.ToLowerInvariant() ?? "jpeg";
+            var cacheFormatResult = cacheFormatTask.Result;
+            _logger.LogDebug("🔧 ImageProcessingSettingsService: Loaded cache.default.format from DB: {SettingValue}", cacheFormatResult?.SettingValue);
+            
+            _cachedCacheFormat = cacheFormatResult?.SettingValue?.ToLowerInvariant() ?? "jpeg";
             _cachedCacheQuality = int.TryParse(cacheQualityTask.Result?.SettingValue, out var cq) ? cq : 85;
             _cachedThumbnailFormat = thumbnailFormatTask.Result?.SettingValue?.ToLowerInvariant() ?? "jpeg";
             _cachedThumbnailQuality = int.TryParse(thumbnailQualityTask.Result?.SettingValue, out var tq) ? tq : 90;
@@ -103,6 +106,9 @@ public class ImageProcessingSettingsService : IImageProcessingSettingsService
 
             _logger.LogDebug("Image processing settings refreshed: CacheFormat={CacheFormat}, CacheQuality={CacheQuality}, ThumbnailFormat={ThumbnailFormat}, ThumbnailQuality={ThumbnailQuality}, ThumbnailSize={ThumbnailSize}",
                 _cachedCacheFormat, _cachedCacheQuality, _cachedThumbnailFormat, _cachedThumbnailQuality, _cachedThumbnailSize);
+                
+            _logger.LogInformation("🔧 ImageProcessingSettingsService: Final cached format: {Format} (from DB: {DbValue})", 
+                _cachedCacheFormat, cacheFormatResult?.SettingValue);
         }
         catch (Exception ex)
         {
