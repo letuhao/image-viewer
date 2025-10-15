@@ -383,7 +383,7 @@ public class BatchThumbnailGenerationConsumer : BaseMessageConsumer
             await File.WriteAllBytesAsync(thumbnailPath, processedImage.ThumbnailData);
             
             // Update cache folder statistics after successful file write
-            await UpdateCacheFolderStatisticsAsync(thumbnailPath, processedImage.Size, processedImage.Message.CollectionId);
+            await UpdateCacheFolderStatisticsAsync(thumbnailPath, processedImage.Size, processedImage.Message.CollectionId, serviceProvider);
             
             thumbnailPaths.Add(new ThumbnailPathData
             {
@@ -399,35 +399,27 @@ public class BatchThumbnailGenerationConsumer : BaseMessageConsumer
     /// <summary>
     /// Update cache folder statistics after successful thumbnail generation
     /// </summary>
-    private async Task UpdateCacheFolderStatisticsAsync(string thumbnailPath, long fileSize, string collectionId)
+    private async Task UpdateCacheFolderStatisticsAsync(string thumbnailPath, long fileSize, string collectionId, IServiceProvider serviceProvider)
     {
         try
         {
-            // Extract cache folder path from thumbnail path
-            var cacheFolderPath = Path.GetDirectoryName(thumbnailPath);
-            if (string.IsNullOrEmpty(cacheFolderPath))
-            {
-                _logger.LogWarning("⚠️ Could not extract cache folder path from: {ThumbnailPath}", thumbnailPath);
-                return;
-            }
-
+            // Get cache folder ID directly from the cache folder selection instead of guessing from path
+            var cacheService = serviceProvider.GetRequiredService<ICacheService>();
+            var cacheFolders = await cacheService.GetCacheFoldersAsync();
+            
+            // Select the same cache folder that was used for this collection
+            var collectionObjectId = ObjectId.Parse(collectionId);
+            var selectedCacheFolder = SelectCacheFolderForEqualDistribution(cacheFolders, collectionObjectId);
+            
             using var scope = _serviceScopeFactory.CreateScope();
             var cacheFolderRepository = scope.ServiceProvider.GetRequiredService<ICacheFolderRepository>();
             
-            // Find cache folder by path
-            var cacheFolder = await cacheFolderRepository.GetByPathAsync(cacheFolderPath);
-            if (cacheFolder == null)
-            {
-                _logger.LogWarning("⚠️ Cache folder not found for path: {Path}", cacheFolderPath);
-                return;
-            }
+            // ATOMIC INCREMENT: Thread-safe update in SINGLE transaction using the known cache folder ID
+            await cacheFolderRepository.IncrementCacheStatisticsAsync(selectedCacheFolder.Id, fileSize, 1);
+            await cacheFolderRepository.AddCachedCollectionAsync(selectedCacheFolder.Id, collectionId);
             
-            // ATOMIC INCREMENT: Thread-safe update in SINGLE transaction
-            await cacheFolderRepository.IncrementCacheStatisticsAsync(cacheFolder.Id, fileSize, 1);
-            await cacheFolderRepository.AddCachedCollectionAsync(cacheFolder.Id, collectionId);
-            
-            _logger.LogDebug("📊 Atomically incremented cache folder {Name} size by {Size} bytes, file count by 1 (single transaction)", 
-                cacheFolder.Name, fileSize);
+            _logger.LogDebug("📊 Atomically incremented cache folder {Name} (ID: {Id}) size by {Size} bytes, file count by 1 (single transaction)", 
+                selectedCacheFolder.Name, selectedCacheFolder.Id, fileSize);
         }
         catch (Exception ex)
         {
