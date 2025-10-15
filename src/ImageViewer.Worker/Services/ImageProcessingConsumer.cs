@@ -59,7 +59,7 @@ public class ImageProcessingConsumer : BaseMessageConsumer
             }
 
             _logger.LogDebug("🖼️ Processing image {ImageId} at path {Path}", 
-                imageMessage.ImageId, imageMessage.ImagePath);
+                imageMessage.ImageId, imageMessage.ArchiveEntry?.GetFullPath() ?? "Unknown");
 
             // Try to create scope, handle disposal gracefully
             IServiceScope? scope = null;
@@ -90,10 +90,10 @@ public class ImageProcessingConsumer : BaseMessageConsumer
                         return;
                     }
                 }
-                else if (!File.Exists(imageMessage.ImagePath))
+                else if (imageMessage.ArchiveEntry == null)
                 {
-                    // Regular file - check if it exists
-                    _logger.LogWarning("❌ Image file {Path} does not exist, skipping processing", imageMessage.ImagePath);
+                    // No ArchiveEntry provided - this is an error
+                    _logger.LogWarning("❌ No ArchiveEntry provided for image {ImageId}, skipping processing", imageMessage.ImageId);
                     return;
                 }
 
@@ -101,7 +101,7 @@ public class ImageProcessingConsumer : BaseMessageConsumer
                 var embeddedImage = await CreateOrUpdateEmbeddedImage(imageMessage, imageService, scope.ServiceProvider, cancellationToken);
             if (embeddedImage == null)
             {
-                _logger.LogWarning("❌ Failed to create/update embedded image for {Path}", imageMessage.ImagePath);
+                _logger.LogWarning("❌ Failed to create/update embedded image for {Path}", imageMessage.ArchiveEntry?.GetFullPath() ?? "Unknown");
                 return;
             }
 
@@ -132,9 +132,8 @@ public class ImageProcessingConsumer : BaseMessageConsumer
                     {
                         ImageId = embeddedImage.Id, // Already a string
                         CollectionId = imageMessage.CollectionId, // Already a string
-                        ImagePath = imageMessage.ImagePath,
                         ArchiveEntry = imageMessage.ArchiveEntry, // Pass through the DTO
-                        ImageFilename = Path.GetFileName(imageMessage.ImagePath),
+                        ImageFilename = imageMessage.ArchiveEntry != null ? Path.GetFileName(imageMessage.ArchiveEntry.EntryName) : "Unknown",
                         ThumbnailWidth = thumbnailWidth, // Loaded from system settings
                         ThumbnailHeight = thumbnailHeight, // Loaded from system settings
                         ScanJobId = imageMessage.ScanJobId // Pass scan job ID for tracking
@@ -225,7 +224,6 @@ public class ImageProcessingConsumer : BaseMessageConsumer
                 {
                     ImageId = embeddedImage.Id, // Already a string
                     CollectionId = imageMessage.CollectionId, // Already a string
-                    ImagePath = imageMessage.ImagePath,
                     ArchiveEntry = imageMessage.ArchiveEntry, // Pass through the DTO
                     CachePath = cachePath, // PRE-DETERMINED cache path for distribution
                     CacheWidth = cacheWidth,
@@ -277,7 +275,7 @@ public class ImageProcessingConsumer : BaseMessageConsumer
     {
         try
         {
-            _logger.LogDebug("➕ Creating/updating embedded image for path {Path}", imageMessage.ImagePath);
+            _logger.LogDebug("➕ Creating/updating embedded image for path {Path}", imageMessage.ArchiveEntry?.GetFullPath() ?? "Unknown");
             
             // Extract actual image metadata if not provided
             var width = imageMessage.Width;
@@ -302,17 +300,17 @@ public class ImageProcessingConsumer : BaseMessageConsumer
                     
                     try
                     {
-                        var dimensions = await imageProcessingService.GetImageDimensionsAsync(imageMessage.ImagePath, cancellationToken);
+                        var dimensions = await imageProcessingService.GetImageDimensionsAsync(imageMessage.ArchiveEntry?.GetFullPath() ?? "", cancellationToken);
                     if (dimensions != null)
                     {
                         width = dimensions.Width;
                         height = dimensions.Height;
                         
                         // Get file info for size if not provided
-                        if (fileSize == 0 && File.Exists(imageMessage.ImagePath))
+                        if (fileSize == 0 && imageMessage.ArchiveEntry != null && File.Exists(imageMessage.ArchiveEntry.ArchivePath))
                         {
-                            var fileInfo = new FileInfo(imageMessage.ImagePath);
-                            fileSize = fileInfo.Length;
+                            // For archive entries, we can't get file size without extraction, so use provided value
+                            // For regular files, this would be handled differently
                         }
                         
                         _logger.LogDebug("📊 Extracted metadata: {Width}x{Height}, {FileSize} bytes", 
@@ -321,7 +319,7 @@ public class ImageProcessingConsumer : BaseMessageConsumer
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning(ex, "⚠️ Failed to extract metadata for {Path}, using provided values", imageMessage.ImagePath);
+                        _logger.LogWarning(ex, "⚠️ Failed to extract metadata for {Path}, using provided values", imageMessage.ArchiveEntry?.GetFullPath() ?? "Unknown");
                     }
                 }
             }
@@ -342,9 +340,9 @@ public class ImageProcessingConsumer : BaseMessageConsumer
             }
             else
             {
-                // Regular file
-                filename = Path.GetFileName(imageMessage.ImagePath);
-                relativePath = GetRelativePath(imageMessage.ImagePath, collectionId);
+                // This should not happen - ArchiveEntry should always be provided
+                _logger.LogError("❌ No ArchiveEntry provided for image processing");
+                return null;
             }
             
             var embeddedImage = await imageService.CreateEmbeddedImageAsync(
@@ -357,12 +355,12 @@ public class ImageProcessingConsumer : BaseMessageConsumer
                 imageMessage.ImageFormat
             );
             
-            _logger.LogDebug("✅ Created embedded image {ImageId} for {Path}", embeddedImage.Id, imageMessage.ImagePath);
+            _logger.LogDebug("✅ Created embedded image {ImageId} for {Path}", embeddedImage.Id, imageMessage.ArchiveEntry?.GetFullPath() ?? "Unknown");
             return embeddedImage;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "❌ Error creating/updating embedded image for path {Path}", imageMessage.ImagePath);
+            _logger.LogError(ex, "❌ Error creating/updating embedded image for path {Path}", imageMessage.ArchiveEntry?.GetFullPath() ?? "Unknown");
             return null;
         }
     }

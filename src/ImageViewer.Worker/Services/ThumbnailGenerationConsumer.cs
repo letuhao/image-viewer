@@ -98,9 +98,9 @@ public class ThumbnailGenerationConsumer : BaseMessageConsumer
                     return;
                 }
             }
-            else if (!File.Exists(thumbnailMessage.ImagePath))
+            else if (thumbnailMessage.ArchiveEntry == null)
             {
-                _logger.LogWarning("❌ Image file {Path} does not exist, skipping thumbnail generation", thumbnailMessage.ImagePath);
+                _logger.LogWarning("❌ No ArchiveEntry provided for image {ImageId}, skipping thumbnail generation", thumbnailMessage.ImageId);
                 return;
             }
 
@@ -132,26 +132,25 @@ public class ThumbnailGenerationConsumer : BaseMessageConsumer
             }
             else
             {
-                // Regular file - check file size on disk
-                var imageFile = new FileInfo(thumbnailMessage.ImagePath);
-                fileSize = imageFile.Exists ? imageFile.Length : 0;
-                maxSize = _rabbitMQOptions.MaxImageSizeBytes; // 500MB for regular files
+                // This should not happen - ArchiveEntry should always be provided
+                _logger.LogError("❌ No ArchiveEntry provided for thumbnail generation");
+                return;
+            }
+            
+            if (fileSize > maxSize)
+            {
+                _logger.LogWarning("⚠️ Image file too large ({SizeMB}MB), skipping thumbnail generation for {ImageId}", 
+                    fileSize / 1024.0 / 1024.0, thumbnailMessage.ImageId);
                 
-                if (fileSize > maxSize)
+                if (!string.IsNullOrEmpty(thumbnailMessage.JobId))
                 {
-                    _logger.LogWarning("⚠️ Image file too large ({SizeMB}MB), skipping thumbnail generation for {ImageId}", 
-                        fileSize / 1024.0 / 1024.0, thumbnailMessage.ImageId);
-                    
-                    if (!string.IsNullOrEmpty(thumbnailMessage.JobId))
-                    {
-                        var jobStateRepository = scope.ServiceProvider.GetRequiredService<IFileProcessingJobStateRepository>();
-                        _logger.LogError("Image file too large: {SizeMB}MB (max {MaxMB}MB) for {ImageId}", 
-                            fileSize / 1024.0 / 1024.0, maxSize / 1024.0 / 1024.0, thumbnailMessage.ImageId);
-                        await jobStateRepository.AtomicIncrementFailedAsync(thumbnailMessage.JobId, thumbnailMessage.ImageId);
-                    }
-                    
-                    return;
+                    var jobStateRepository = scope.ServiceProvider.GetRequiredService<IFileProcessingJobStateRepository>();
+                    _logger.LogError("Image file too large: {SizeMB}MB (max {MaxMB}MB) for {ImageId}", 
+                        fileSize / 1024.0 / 1024.0, maxSize / 1024.0 / 1024.0, thumbnailMessage.ImageId);
+                    await jobStateRepository.AtomicIncrementFailedAsync(thumbnailMessage.JobId, thumbnailMessage.ImageId);
                 }
+                
+                return;
             }
 
             // Get format from settings (needed for thumbnail path calculation)
@@ -515,14 +514,9 @@ public class ThumbnailGenerationConsumer : BaseMessageConsumer
             }
             else
             {
-                // Regular file
-                thumbnailData = await imageProcessingService.GenerateThumbnailAsync(
-                    message.ImagePath, 
-                    width, 
-                    height,
-                    format,
-                    quality,
-                    cancellationToken);
+                // This should not happen - ArchiveEntry should always be provided
+                _logger.LogError("❌ No ArchiveEntry provided for thumbnail generation");
+                return null;
             }
 
             if (thumbnailData != null && thumbnailData.Length > 0)
@@ -544,7 +538,7 @@ public class ThumbnailGenerationConsumer : BaseMessageConsumer
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "❌ Error generating thumbnail for {ImagePath}", message.ImagePath);
+            _logger.LogError(ex, "❌ Error generating thumbnail for {ImagePath}", message.ArchiveEntry?.GetFullPath() ?? "Unknown");
             return null;
         }
     }
@@ -572,8 +566,9 @@ public class ThumbnailGenerationConsumer : BaseMessageConsumer
         }
         else
         {
-            // For regular files, use filename only (not full path)
-            fileName = Path.GetFileNameWithoutExtension(message.ImagePath);
+            // This should not happen - ArchiveEntry should always be provided
+            _logger.LogError("❌ No ArchiveEntry provided for thumbnail path generation");
+            fileName = "unknown";
         }
         
         // Use cache service to get the appropriate cache folder for thumbnails

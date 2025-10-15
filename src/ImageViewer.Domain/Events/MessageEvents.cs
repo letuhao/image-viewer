@@ -25,8 +25,7 @@ public class ThumbnailGenerationMessage : MessageEvent
 {
     public string ImageId { get; set; } = string.Empty; // Changed from Guid to string for JSON serialization
     public string CollectionId { get; set; } = string.Empty; // Changed from Guid to string for JSON serialization
-    public string ImagePath { get; set; } = string.Empty;
-    public ArchiveEntryInfo? ArchiveEntry { get; set; } // New DTO for archive entries
+    public ArchiveEntryInfo? ArchiveEntry { get; set; } // DTO for archive entries (required)
     public string ImageFilename { get; set; } = string.Empty;
     public int ThumbnailWidth { get; set; }
     public int ThumbnailHeight { get; set; }

@@ -172,8 +172,7 @@ public class CollectionScanConsumer : BaseMessageConsumer
                     {
                         ImageId = ObjectId.GenerateNewId().ToString(), // Will be set when image is created, convert to string
                         CollectionId = collection.Id.ToString(), // Convert ObjectId to string
-                        ImagePath = mediaFile.FullPath,
-                        ArchiveEntry = archiveEntry, // New DTO for archive entries
+                        ArchiveEntry = archiveEntry, // DTO for archive entries (required)
                         ImageFormat = mediaFile.Extension,
                         Width = width,
                         Height = height,
