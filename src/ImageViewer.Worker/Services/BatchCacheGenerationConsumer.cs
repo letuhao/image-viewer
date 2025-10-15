@@ -291,7 +291,7 @@ public class BatchCacheGenerationConsumer : BaseMessageConsumer
         _logger.LogInformation("💾 Writing {Count} cache images to disk for collection {CollectionId} with format: {Format}", 
             processedImages.Count, collectionId, cacheFormat);
         
-        var cachePaths = await WriteCacheImagesToDiskAsync(processedImages, collectionObjectId, cacheFormat);
+        var cachePaths = await WriteCacheImagesToDiskAsync(processedImages, collectionObjectId, cacheFormat, serviceProvider);
         
         // Step 2.5: Update cache folder sizes (commented out - not available in ICacheService)
         // await UpdateCacheFolderSizesAsync(serviceProvider, cachePaths);
@@ -377,7 +377,8 @@ public class BatchCacheGenerationConsumer : BaseMessageConsumer
     private async Task<List<CachePathData>> WriteCacheImagesToDiskAsync(
         List<ProcessedCacheData> processedImages,
         ObjectId collectionId,
-        string cacheFormat)
+        string cacheFormat,
+        IServiceProvider serviceProvider)
     {
         var cachePaths = new List<CachePathData>();
         
@@ -389,7 +390,7 @@ public class BatchCacheGenerationConsumer : BaseMessageConsumer
             {
                 // Override the message format with the correct format from settings
                 processedImage.Message.Format = cacheFormat;
-                processedImage.Message.CachePath = await DetermineCachePath(processedImage.Message);
+                processedImage.Message.CachePath = await DetermineCachePath(processedImage.Message, serviceProvider);
             }
         }
         
@@ -779,12 +780,11 @@ public class BatchCacheGenerationConsumer : BaseMessageConsumer
     /// <summary>
     /// Determine cache path for a cache generation message
     /// </summary>
-    private async Task<string> DetermineCachePath(CacheGenerationMessage cacheMessage)
+    private async Task<string> DetermineCachePath(CacheGenerationMessage cacheMessage, IServiceProvider serviceProvider)
     {
         try
         {
-            using var scope = _serviceScopeFactory.CreateScope();
-            var cacheService = scope.ServiceProvider.GetRequiredService<ICacheService>();
+            var cacheService = serviceProvider.GetRequiredService<ICacheService>();
             
             // Determine file extension based on format
             var extension = cacheMessage.Format.ToLowerInvariant() switch

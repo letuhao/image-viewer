@@ -22,7 +22,7 @@ public class CollectionService : ICollectionService
     private readonly ICollectionRepository _collectionRepository;
     private readonly ICollectionArchiveRepository _collectionArchiveRepository;
     private readonly IMessageQueueService _messageQueueService;
-    private readonly IServiceProvider _serviceProvider;
+    private readonly IServiceScopeFactory _serviceScopeFactory;
     private readonly ILogger<CollectionService> _logger;
     private readonly IThumbnailCacheService? _thumbnailCacheService;
     private readonly ICacheService? _cacheService;
@@ -32,7 +32,7 @@ public class CollectionService : ICollectionService
         ICollectionRepository collectionRepository,
         ICollectionArchiveRepository collectionArchiveRepository,
         IMessageQueueService messageQueueService, 
-        IServiceProvider serviceProvider, 
+        IServiceScopeFactory serviceScopeFactory, 
         ILogger<CollectionService> logger,
         IThumbnailCacheService? thumbnailCacheService = null,
         ICacheService? cacheService = null,
@@ -41,7 +41,7 @@ public class CollectionService : ICollectionService
         _collectionRepository = collectionRepository ?? throw new ArgumentNullException(nameof(collectionRepository));
         _collectionArchiveRepository = collectionArchiveRepository ?? throw new ArgumentNullException(nameof(collectionArchiveRepository));
         _messageQueueService = messageQueueService ?? throw new ArgumentNullException(nameof(messageQueueService));
-        _serviceProvider = serviceProvider ?? throw new ArgumentNullException(nameof(serviceProvider));
+        _serviceScopeFactory = serviceScopeFactory ?? throw new ArgumentNullException(nameof(serviceScopeFactory));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _thumbnailCacheService = thumbnailCacheService; // Optional for unit tests
         _cacheService = cacheService; // Optional for unit tests
@@ -97,7 +97,8 @@ public class CollectionService : ICollectionService
             if (createdCollection.Settings.AutoScan)
             {
                 // Create background job for collection scan tracking - MANDATORY
-                var backgroundJobService = _serviceProvider.GetRequiredService<IBackgroundJobService>();
+                using var scope = _serviceScopeFactory.CreateScope();
+                var backgroundJobService = scope.ServiceProvider.GetRequiredService<IBackgroundJobService>();
                 var scanJob = await backgroundJobService.CreateJobAsync(new CreateBackgroundJobDto
                 {
                     Type = "collection-scan",
@@ -422,7 +423,8 @@ public class CollectionService : ICollectionService
         if (newSettings.AutoScan && triggerScan)
         {
             // Create background job for collection scan tracking - MANDATORY
-            var backgroundJobService = _serviceProvider.GetRequiredService<IBackgroundJobService>();
+            using var scope = _serviceScopeFactory.CreateScope();
+            var backgroundJobService = scope.ServiceProvider.GetRequiredService<IBackgroundJobService>();
             var scanJob = await backgroundJobService.CreateJobAsync(new CreateBackgroundJobDto
             {
                 Type = "collection-scan",
