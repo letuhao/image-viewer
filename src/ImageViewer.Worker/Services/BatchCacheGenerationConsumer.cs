@@ -417,6 +417,9 @@ public class BatchCacheGenerationConsumer : BaseMessageConsumer
             
             await File.WriteAllBytesAsync(cachePath, processedImage.CacheData);
             
+            // Update cache folder statistics after successful file write
+            await UpdateCacheFolderStatisticsAsync(cachePath, processedImage.Size, processedImage.Message.CollectionId);
+            
             cachePaths.Add(new CachePathData
             {
                 ImageId = processedImage.Message.ImageId,
@@ -426,6 +429,46 @@ public class BatchCacheGenerationConsumer : BaseMessageConsumer
         }
         
         return cachePaths;
+    }
+
+    /// <summary>
+    /// Update cache folder statistics after successful cache generation
+    /// </summary>
+    private async Task UpdateCacheFolderStatisticsAsync(string cachePath, long fileSize, string collectionId)
+    {
+        try
+        {
+            // Extract cache folder path from cache path
+            var cacheFolderPath = Path.GetDirectoryName(cachePath);
+            if (string.IsNullOrEmpty(cacheFolderPath))
+            {
+                _logger.LogWarning("⚠️ Could not extract cache folder path from: {CachePath}", cachePath);
+                return;
+            }
+
+            using var scope = _serviceScopeFactory.CreateScope();
+            var cacheFolderRepository = scope.ServiceProvider.GetRequiredService<ICacheFolderRepository>();
+            
+            // Find cache folder by path
+            var cacheFolder = await cacheFolderRepository.GetByPathAsync(cacheFolderPath);
+            if (cacheFolder == null)
+            {
+                _logger.LogWarning("⚠️ Cache folder not found for path: {Path}", cacheFolderPath);
+                return;
+            }
+            
+            // ATOMIC INCREMENT: Thread-safe update in SINGLE transaction
+            await cacheFolderRepository.IncrementCacheStatisticsAsync(cacheFolder.Id, fileSize, 1);
+            await cacheFolderRepository.AddCachedCollectionAsync(cacheFolder.Id, collectionId);
+            
+            _logger.LogDebug("📊 Atomically incremented cache folder {Name} size by {Size} bytes, file count by 1 (single transaction)", 
+                cacheFolder.Name, fileSize);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "⚠️ Failed to update cache folder statistics for cache image: {Path}", cachePath);
+            // Don't throw - cache is already saved, this is just statistics
+        }
     }
 
     private async Task UpdateDatabaseAtomicallyAsync(
