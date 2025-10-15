@@ -644,12 +644,20 @@ public class BulkService : IBulkService
                 // Correct format: "L:\path\file.zip#entry.jpg" (works)
                 var imagePath = FixArchiveEntryPath(image.GetFullPath(collection.Path));
                 
+                // Create ArchiveEntry from existing data if not present (for legacy data)
+                var archiveEntry = image.ArchiveEntry;
+                if (archiveEntry == null && !string.IsNullOrEmpty(image.LegacyRelativePath))
+                {
+                    // Try to create ArchiveEntry from legacy data
+                    archiveEntry = ArchiveEntryInfo.FromPath(image.LegacyRelativePath);
+                }
+                
                 var thumbnailMessage = new ThumbnailGenerationMessage
                 {
                     ImageId = image.Id,
                     CollectionId = collection.Id.ToString(),
                     // ImagePath removed - using ArchiveEntry DTO only
-                    ArchiveEntry = image.ArchiveEntry, // Extract DTO from ImageEmbedded
+                    ArchiveEntry = archiveEntry, // Extract DTO from ImageEmbedded or create from legacy data
                     ImageFilename = image.Filename,
                     ThumbnailWidth = request.ThumbnailWidth ?? 300,
                     ThumbnailHeight = request.ThumbnailHeight ?? 300,
@@ -668,12 +676,20 @@ public class BulkService : IBulkService
                 // Fix path format: convert backslash format to # format for archive entries
                 var imagePath = FixArchiveEntryPath(image.GetFullPath(collection.Path));
                 
+                // Create ArchiveEntry from existing data if not present (for legacy data)
+                var archiveEntry = image.ArchiveEntry;
+                if (archiveEntry == null && !string.IsNullOrEmpty(image.LegacyRelativePath))
+                {
+                    // Try to create ArchiveEntry from legacy data
+                    archiveEntry = ArchiveEntryInfo.FromPath(image.LegacyRelativePath);
+                }
+                
                 var cacheMessage = new CacheGenerationMessage
                 {
                     ImageId = image.Id,
                     CollectionId = collection.Id.ToString(),
                     // ImagePath removed - using ArchiveEntry DTO only
-                    ArchiveEntry = image.ArchiveEntry, // Extract DTO from ImageEmbedded
+                    ArchiveEntry = archiveEntry, // Extract DTO from ImageEmbedded or create from legacy data
                     CacheWidth = request.CacheWidth ?? 1920,
                     CacheHeight = request.CacheHeight ?? 1080,
                     Quality = cacheQuality, // Use loaded quality setting

@@ -298,12 +298,20 @@ public class BulkOperationConsumer : BaseMessageConsumer
             {
                 try
                 {
+                    // Create ArchiveEntry from existing data if not present (for legacy data)
+                    var archiveEntry = image.ArchiveEntry;
+                    if (archiveEntry == null && !string.IsNullOrEmpty(image.LegacyRelativePath))
+                    {
+                        // Try to create ArchiveEntry from legacy data
+                        archiveEntry = ArchiveEntryInfo.FromPath(image.LegacyRelativePath);
+                    }
+                    
                     var thumbnailMessage = new ThumbnailGenerationMessage
                     {
                         ImageId = image.Id, // Already a string
                         CollectionId = collection.Id.ToString(), // Use collection.Id from outer loop
                         // ImagePath removed - using ArchiveEntry DTO only
-                        ArchiveEntry = image.ArchiveEntry, // Extract DTO from ImageEmbedded
+                        ArchiveEntry = archiveEntry, // Extract DTO from ImageEmbedded or create from legacy data
                         ImageFilename = image.Filename,
                         ThumbnailWidth = thumbnailWidth, // Loaded from system settings
                         ThumbnailHeight = thumbnailHeight, // Loaded from system settings
@@ -534,13 +542,21 @@ public class BulkOperationConsumer : BaseMessageConsumer
                 {
                     try
                     {
+                        // Create ArchiveEntry from existing data if not present (for legacy data)
+                        var archiveEntry = image.ArchiveEntry;
+                        if (archiveEntry == null && !string.IsNullOrEmpty(image.LegacyRelativePath))
+                        {
+                            // Try to create ArchiveEntry from legacy data
+                            archiveEntry = ArchiveEntryInfo.FromPath(image.LegacyRelativePath);
+                        }
+                        
                         var thumbnailMessage = new ThumbnailGenerationMessage
                         {
                             JobId = jobId, // Link to FileProcessingJobState
                             ImageId = image.Id,
                             CollectionId = collectionId.ToString(),
                             // ImagePath removed - using ArchiveEntry DTO only
-                            ArchiveEntry = image.ArchiveEntry, // Extract DTO from ImageEmbedded
+                            ArchiveEntry = archiveEntry, // Extract DTO from ImageEmbedded or create from legacy data
                             ImageFilename = image.Filename,
                             ThumbnailWidth = thumbnailWidth,
                             ThumbnailHeight = thumbnailHeight,
@@ -678,13 +694,21 @@ public class BulkOperationConsumer : BaseMessageConsumer
                 {
                     try
                     {
+                        // Create ArchiveEntry from existing data if not present (for legacy data)
+                        var archiveEntry = image.ArchiveEntry;
+                        if (archiveEntry == null && !string.IsNullOrEmpty(image.LegacyRelativePath))
+                        {
+                            // Try to create ArchiveEntry from legacy data
+                            archiveEntry = ArchiveEntryInfo.FromPath(image.LegacyRelativePath);
+                        }
+                        
                         var cacheMessage = new CacheGenerationMessage
                         {
                             JobId = jobId, // Link to FileProcessingJobState
                             ImageId = image.Id,
                             CollectionId = collectionId.ToString(),
                             // ImagePath removed - using ArchiveEntry DTO only
-                            ArchiveEntry = image.ArchiveEntry, // Extract DTO from ImageEmbedded
+                            ArchiveEntry = archiveEntry, // Extract DTO from ImageEmbedded or create from legacy data
                             CachePath = "", // Will be determined by cache service
                             CacheWidth = cacheWidth,
                             CacheHeight = cacheHeight,

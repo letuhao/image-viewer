@@ -241,12 +241,21 @@ public class FileProcessingJobRecoveryService : IFileProcessingJobRecoveryServic
                     settings.Height,
                     settings.Format);
                 
+                // Create ArchiveEntry from existing data if not present (for legacy data)
+                var archiveEntry = image.ArchiveEntry;
+                if (archiveEntry == null && !string.IsNullOrEmpty(image.LegacyRelativePath))
+                {
+                    // Try to create ArchiveEntry from legacy data
+                    archiveEntry = ArchiveEntryInfo.FromPath(image.LegacyRelativePath);
+                }
+                
                 var cacheMessage = new CacheGenerationMessage
                 {
                     JobId = jobState.JobId,
                     ImageId = imageId,
                     CollectionId = jobState.CollectionId,
                     // ImagePath removed - using ArchiveEntry DTO only
+                    ArchiveEntry = archiveEntry, // Extract DTO from ImageEmbedded or create from legacy data
                     CachePath = cachePath,
                     CacheWidth = settings.Width,
                     CacheHeight = settings.Height,
@@ -288,12 +297,21 @@ public class FileProcessingJobRecoveryService : IFileProcessingJobRecoveryServic
                     continue;
                 }
                 
+                // Create ArchiveEntry from existing data if not present (for legacy data)
+                var archiveEntry = image.ArchiveEntry;
+                if (archiveEntry == null && !string.IsNullOrEmpty(image.LegacyRelativePath))
+                {
+                    // Try to create ArchiveEntry from legacy data
+                    archiveEntry = ArchiveEntryInfo.FromPath(image.LegacyRelativePath);
+                }
+                
                 var thumbnailMessage = new ThumbnailGenerationMessage
                 {
                     JobId = jobState.JobId,
                     ImageId = imageId,
                     CollectionId = jobState.CollectionId,
                     // ImagePath removed - using ArchiveEntry DTO only
+                    ArchiveEntry = archiveEntry, // Extract DTO from ImageEmbedded or create from legacy data
                     ImageFilename = image.Filename,
                     ThumbnailWidth = settings.Width,
                     ThumbnailHeight = settings.Height
