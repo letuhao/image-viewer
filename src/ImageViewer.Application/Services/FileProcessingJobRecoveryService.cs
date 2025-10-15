@@ -250,16 +250,32 @@ public class FileProcessingJobRecoveryService : IFileProcessingJobRecoveryServic
                     // Try to create ArchiveEntry from legacy data
                     archiveEntry = ArchiveEntryInfo.FromPath(image.LegacyRelativePath);
                     
-                    // If FromPath returns null, it might be a regular file - create a regular file ArchiveEntry
+                    // If FromPath returns null, it might be a regular file or archive entry
                     if (archiveEntry == null)
                     {
-                        archiveEntry = new ArchiveEntryInfo
+                        // Check if this is an archive collection (type 1 = Zip, type 2 = SevenZip, etc.)
+                        if (collection.Type != CollectionType.Folder)
                         {
-                            ArchivePath = image.LegacyRelativePath, // For regular files, ArchivePath is the full path
-                            EntryName = image.Filename,
-                            EntryPath = image.Filename,
-                            FileType = ImageFileType.RegularFile
-                        };
+                            // This is an archive collection - create ArchiveEntry using collection path
+                            archiveEntry = new ArchiveEntryInfo
+                            {
+                                ArchivePath = collection.Path, // Use collection's archive path
+                                EntryName = image.LegacyRelativePath, // Entry name from legacy data
+                                EntryPath = image.LegacyRelativePath,
+                                FileType = ImageFileType.ArchiveEntry
+                            };
+                        }
+                        else
+                        {
+                            // This is a folder collection - it's a regular file
+                            archiveEntry = new ArchiveEntryInfo
+                            {
+                                ArchivePath = image.LegacyRelativePath, // For regular files, ArchivePath is the full path
+                                EntryName = image.Filename,
+                                EntryPath = image.Filename,
+                                FileType = ImageFileType.RegularFile
+                            };
+                        }
                     }
                 }
                 
@@ -318,16 +334,32 @@ public class FileProcessingJobRecoveryService : IFileProcessingJobRecoveryServic
                     // Try to create ArchiveEntry from legacy data
                     archiveEntry = ArchiveEntryInfo.FromPath(image.LegacyRelativePath);
                     
-                    // If FromPath returns null, it might be a regular file - create a regular file ArchiveEntry
+                    // If FromPath returns null, it might be a regular file or archive entry
                     if (archiveEntry == null)
                     {
-                        archiveEntry = new ArchiveEntryInfo
+                        // Check if this is an archive collection (type 1 = Zip, type 2 = SevenZip, etc.)
+                        if (collection.Type != CollectionType.Folder)
                         {
-                            ArchivePath = image.LegacyRelativePath, // For regular files, ArchivePath is the full path
-                            EntryName = image.Filename,
-                            EntryPath = image.Filename,
-                            FileType = ImageFileType.RegularFile
-                        };
+                            // This is an archive collection - create ArchiveEntry using collection path
+                            archiveEntry = new ArchiveEntryInfo
+                            {
+                                ArchivePath = collection.Path, // Use collection's archive path
+                                EntryName = image.LegacyRelativePath, // Entry name from legacy data
+                                EntryPath = image.LegacyRelativePath,
+                                FileType = ImageFileType.ArchiveEntry
+                            };
+                        }
+                        else
+                        {
+                            // This is a folder collection - it's a regular file
+                            archiveEntry = new ArchiveEntryInfo
+                            {
+                                ArchivePath = image.LegacyRelativePath, // For regular files, ArchivePath is the full path
+                                EntryName = image.Filename,
+                                EntryPath = image.Filename,
+                                FileType = ImageFileType.RegularFile
+                            };
+                        }
                     }
                 }
                 
