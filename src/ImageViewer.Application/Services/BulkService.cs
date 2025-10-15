@@ -567,6 +567,25 @@ public class BulkService : IBulkService
         BulkAddCollectionsRequest request, 
         CancellationToken cancellationToken)
     {
+        // Load cache settings from ImageProcessingSettingsService
+        string cacheFormat = "jpeg"; // Default fallback
+        int cacheQuality = 85; // Default fallback
+        
+        var imageProcessingSettingsService = _serviceProvider.GetService<IImageProcessingSettingsService>();
+        if (imageProcessingSettingsService != null)
+        {
+            try
+            {
+                cacheFormat = await imageProcessingSettingsService.GetCacheFormatAsync();
+                cacheQuality = await imageProcessingSettingsService.GetCacheQualityAsync();
+                _logger.LogDebug("🔧 BulkService: Loaded cache settings - Format: {Format}, Quality: {Quality}", 
+                    cacheFormat, cacheQuality);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to load cache settings, using defaults");
+            }
+        }
         try
         {
             _logger.LogInformation("Queuing missing thumbnail/cache jobs for collection {CollectionId} ({Name})", 
@@ -655,8 +674,8 @@ public class BulkService : IBulkService
                     ImagePath = imagePath,
                     CacheWidth = request.CacheWidth ?? 1920,
                     CacheHeight = request.CacheHeight ?? 1080,
-                    Quality = 85,
-                    Format = "jpeg",
+                    Quality = cacheQuality, // Use loaded quality setting
+                    Format = cacheFormat, // Use loaded format setting
                     ForceRegenerate = false,
                     JobId = resumeJob.JobId.ToString(),
                     ScanJobId = resumeJob.JobId.ToString() // CRITICAL: Link to background job for progress tracking

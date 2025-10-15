@@ -326,9 +326,29 @@ public class BulkOperationConsumer : BaseMessageConsumer
     {
         _logger.LogInformation("💾 Processing generate all cache operation");
         
-                using var scope = _serviceScopeFactory.CreateScope();
+        using var scope = _serviceScopeFactory.CreateScope();
         var imageService = scope.ServiceProvider.GetRequiredService<IImageService>();
         var collectionService = scope.ServiceProvider.GetRequiredService<ICollectionService>();
+        var imageProcessingSettingsService = scope.ServiceProvider.GetService<IImageProcessingSettingsService>();
+        
+        // Load cache settings from ImageProcessingSettingsService
+        string cacheFormat = "jpeg"; // Default fallback
+        int cacheQuality = 85; // Default fallback
+        
+        if (imageProcessingSettingsService != null)
+        {
+            try
+            {
+                cacheFormat = await imageProcessingSettingsService.GetCacheFormatAsync();
+                cacheQuality = await imageProcessingSettingsService.GetCacheQualityAsync();
+                _logger.LogInformation("🔧 BulkOperationConsumer: Loaded cache settings - Format: {Format}, Quality: {Quality}", 
+                    cacheFormat, cacheQuality);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to load cache settings, using defaults");
+            }
+        }
         
         // Get all images using embedded design - iterate through collections
         var collections = await collectionService.GetCollectionsAsync(page: 1, pageSize: 1000);
@@ -352,7 +372,8 @@ public class BulkOperationConsumer : BaseMessageConsumer
                         CachePath = "", // Will be determined by cache service
                         CacheWidth = 1920, // Default cache size
                         CacheHeight = 1080,
-                        Quality = 85,
+                        Quality = cacheQuality, // Use loaded quality setting
+                        Format = cacheFormat, // Use loaded format setting
                         ForceRegenerate = true, // Force regeneration for bulk operations
                     };
 
