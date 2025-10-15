@@ -649,6 +649,7 @@ public class BulkService : IBulkService
                     ImageId = image.Id,
                     CollectionId = collection.Id.ToString(),
                     ImagePath = imagePath,
+                    ArchiveEntry = image.ArchiveEntry, // Extract DTO from ImageEmbedded
                     ImageFilename = image.Filename,
                     ThumbnailWidth = request.ThumbnailWidth ?? 300,
                     ThumbnailHeight = request.ThumbnailHeight ?? 300,
@@ -672,6 +673,7 @@ public class BulkService : IBulkService
                     ImageId = image.Id,
                     CollectionId = collection.Id.ToString(),
                     ImagePath = imagePath,
+                    ArchiveEntry = image.ArchiveEntry, // Extract DTO from ImageEmbedded
                     CacheWidth = request.CacheWidth ?? 1920,
                     CacheHeight = request.CacheHeight ?? 1080,
                     Quality = cacheQuality, // Use loaded quality setting

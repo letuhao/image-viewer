@@ -303,6 +303,7 @@ public class BulkOperationConsumer : BaseMessageConsumer
                         ImageId = image.Id, // Already a string
                         CollectionId = collection.Id.ToString(), // Use collection.Id from outer loop
                         ImagePath = image.GetDisplayPath(), // Use the new DTO method for display path
+                        ArchiveEntry = image.ArchiveEntry, // Extract DTO from ImageEmbedded
                         ImageFilename = image.Filename,
                         ThumbnailWidth = thumbnailWidth, // Loaded from system settings
                         ThumbnailHeight = thumbnailHeight, // Loaded from system settings
@@ -370,6 +371,7 @@ public class BulkOperationConsumer : BaseMessageConsumer
                         ImageId = image.Id, // Already a string
                         CollectionId = collection.Id.ToString(), // Use collection.Id from outer loop
                         ImagePath = image.GetDisplayPath(), // Use the new DTO method for display path
+                        ArchiveEntry = image.ArchiveEntry, // Extract DTO from ImageEmbedded
                         CachePath = "", // Will be determined by cache service
                         CacheWidth = 1920, // Default cache size
                         CacheHeight = 1080,
@@ -538,6 +540,7 @@ public class BulkOperationConsumer : BaseMessageConsumer
                             ImageId = image.Id,
                             CollectionId = collectionId.ToString(),
                             ImagePath = collection.GetFullImagePath(image), // Use full path
+                            ArchiveEntry = image.ArchiveEntry, // Extract DTO from ImageEmbedded
                             ImageFilename = image.Filename,
                             ThumbnailWidth = thumbnailWidth,
                             ThumbnailHeight = thumbnailHeight,
@@ -681,6 +684,7 @@ public class BulkOperationConsumer : BaseMessageConsumer
                             ImageId = image.Id,
                             CollectionId = collectionId.ToString(),
                             ImagePath = collection.GetFullImagePath(image), // Use full path
+                            ArchiveEntry = image.ArchiveEntry, // Extract DTO from ImageEmbedded
                             CachePath = "", // Will be determined by cache service
                             CacheWidth = cacheWidth,
                             CacheHeight = cacheHeight,

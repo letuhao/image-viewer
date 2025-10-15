@@ -133,6 +133,7 @@ public class ImageProcessingConsumer : BaseMessageConsumer
                         ImageId = embeddedImage.Id, // Already a string
                         CollectionId = imageMessage.CollectionId, // Already a string
                         ImagePath = imageMessage.ImagePath,
+                        ArchiveEntry = imageMessage.ArchiveEntry, // Pass through the DTO
                         ImageFilename = Path.GetFileName(imageMessage.ImagePath),
                         ThumbnailWidth = thumbnailWidth, // Loaded from system settings
                         ThumbnailHeight = thumbnailHeight, // Loaded from system settings
@@ -225,6 +226,7 @@ public class ImageProcessingConsumer : BaseMessageConsumer
                     ImageId = embeddedImage.Id, // Already a string
                     CollectionId = imageMessage.CollectionId, // Already a string
                     ImagePath = imageMessage.ImagePath,
+                    ArchiveEntry = imageMessage.ArchiveEntry, // Pass through the DTO
                     CachePath = cachePath, // PRE-DETERMINED cache path for distribution
                     CacheWidth = cacheWidth,
                     CacheHeight = cacheHeight,

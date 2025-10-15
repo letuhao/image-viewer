@@ -1,4 +1,5 @@
 using MongoDB.Bson;
+using ImageViewer.Domain.ValueObjects;
 
 namespace ImageViewer.Domain.Events;
 
@@ -10,6 +11,7 @@ public class CacheGenerationMessage : MessageEvent
     public string ImageId { get; set; } = string.Empty; // Changed from ObjectId to string for JSON serialization
     public string CollectionId { get; set; } = string.Empty; // Changed from ObjectId to string for JSON serialization
     public string ImagePath { get; set; } = string.Empty;
+    public ArchiveEntryInfo? ArchiveEntry { get; set; } // New DTO for archive entries
     public string CachePath { get; set; } = string.Empty;
     public int CacheWidth { get; set; } = 1920;
     public int CacheHeight { get; set; } = 1080;
