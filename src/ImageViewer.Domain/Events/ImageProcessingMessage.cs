@@ -1,4 +1,5 @@
 using MongoDB.Bson;
+using ImageViewer.Domain.ValueObjects;
 
 namespace ImageViewer.Domain.Events;
 
@@ -10,6 +11,7 @@ public class ImageProcessingMessage : MessageEvent
     public string ImageId { get; set; } = string.Empty; // Changed from ObjectId to string for JSON serialization
     public string CollectionId { get; set; } = string.Empty; // Changed from ObjectId to string for JSON serialization
     public string ImagePath { get; set; } = string.Empty;
+    public ArchiveEntryInfo? ArchiveEntry { get; set; } // New DTO for archive entries
     public string ImageFormat { get; set; } = string.Empty;
     public int Width { get; set; }
     public int Height { get; set; }

@@ -80,20 +80,19 @@ public class ImageProcessingConsumer : BaseMessageConsumer
                 var messageQueueService = serviceProvider.GetRequiredService<IMessageQueueService>();
 
                 // Check if image file exists (handle both regular files and ZIP entries)
-                // Use new DTO structure to avoid legacy string splitting bugs
-                var archiveEntryInfo = ArchiveEntryInfo.FromPath(imageMessage.ImagePath);
-                if (archiveEntryInfo != null)
+                // Use new DTO structure directly from message
+                if (imageMessage.ArchiveEntry != null)
                 {
                     // This is an archive entry - validate the archive file exists
-                    if (!File.Exists(archiveEntryInfo.ArchivePath))
+                    if (!File.Exists(imageMessage.ArchiveEntry.ArchivePath))
                     {
-                        _logger.LogWarning("❌ Archive file {Path} does not exist, skipping processing", archiveEntryInfo.ArchivePath);
+                        _logger.LogWarning("❌ Archive file {Path} does not exist, skipping processing", imageMessage.ArchiveEntry.ArchivePath);
                         return;
                     }
                 }
                 else if (!File.Exists(imageMessage.ImagePath))
                 {
-                    // This is a regular file - check if it exists
+                    // Regular file - check if it exists
                     _logger.LogWarning("❌ Image file {Path} does not exist, skipping processing", imageMessage.ImagePath);
                     return;
                 }
@@ -285,13 +284,11 @@ public class ImageProcessingConsumer : BaseMessageConsumer
             
             if (width == 0 || height == 0 || fileSize == 0)
             {
-                // Check if this is a ZIP entry
-                bool isZipEntry = imageMessage.ImagePath.Contains("#");
-                
-                if (isZipEntry)
+                // Check if this is a ZIP entry using new DTO structure
+                if (imageMessage.ArchiveEntry != null)
                 {
                     // Extract dimensions from ZIP entry
-                    var (zipWidth, zipHeight, zipSize) = await ExtractZipEntryMetadata(imageMessage.ImagePath, cancellationToken);
+                    var (zipWidth, zipHeight, zipSize) = await ExtractZipEntryMetadata(imageMessage.ArchiveEntry, cancellationToken);
                     width = zipWidth;
                     height = zipHeight;
                     fileSize = zipSize > 0 ? zipSize : imageMessage.FileSize;
@@ -334,13 +331,12 @@ public class ImageProcessingConsumer : BaseMessageConsumer
             string filename;
             string relativePath;
             
-            // Use new DTO structure to avoid legacy string splitting bugs
-            var archiveEntryInfo = ArchiveEntryInfo.FromPath(imageMessage.ImagePath);
-            if (archiveEntryInfo != null)
+            // Use new DTO structure directly from message
+            if (imageMessage.ArchiveEntry != null)
             {
                 // This is an archive entry - extract the entry name
-                filename = Path.GetFileName(archiveEntryInfo.EntryName); // Just the entry filename
-                relativePath = archiveEntryInfo.EntryName; // Use entry path as relative path
+                filename = Path.GetFileName(imageMessage.ArchiveEntry.EntryName); // Just the entry filename
+                relativePath = imageMessage.ArchiveEntry.EntryName; // Use entry path as relative path
             }
             else
             {
@@ -371,31 +367,24 @@ public class ImageProcessingConsumer : BaseMessageConsumer
     
     private string GetRelativePath(string fullPath, ObjectId collectionId)
     {
-        // Use new DTO structure to avoid legacy string splitting bugs
-        var archiveEntryInfo = ArchiveEntryInfo.FromPath(fullPath);
-        if (archiveEntryInfo != null)
-        {
-            // This is an archive entry - return the entry name
-            return archiveEntryInfo.EntryName;
-        }
-        
+        // This method is only called for regular files now (when ArchiveEntry is null)
         // For regular files, return just the filename for now
         // In a real implementation, you'd want to store the full relative path
         return Path.GetFileName(fullPath);
     }
 
     /// <summary>
-    /// Extract metadata from a ZIP entry (path format: zipfile.zip#entry.png)
+    /// Extract metadata from a ZIP entry using ArchiveEntryInfo DTO
     /// </summary>
-    private async Task<(int width, int height, long fileSize)> ExtractZipEntryMetadata(string zipEntryPath, CancellationToken cancellationToken = default)
+    private async Task<(int width, int height, long fileSize)> ExtractZipEntryMetadata(ArchiveEntryInfo archiveEntry, CancellationToken cancellationToken = default)
     {
         try
         {
             // Use shared ZIP helper to extract bytes
-            var imageBytes = await ArchiveFileHelper.ExtractZipEntryBytes(zipEntryPath, _logger, cancellationToken);
+            var imageBytes = await ArchiveFileHelper.ExtractZipEntryBytes(archiveEntry.GetFullPath(), _logger, cancellationToken);
             if (imageBytes == null || imageBytes.Length == 0)
             {
-                _logger.LogWarning("Failed to extract bytes from ZIP entry: {Path}", zipEntryPath);
+                _logger.LogWarning("Failed to extract bytes from ZIP entry: {Path}", archiveEntry.GetFullPath());
                 return (0, 0, 0);
             }
 
@@ -405,21 +394,20 @@ public class ImageProcessingConsumer : BaseMessageConsumer
             
             if (codec == null)
             {
-                _logger.LogWarning("Failed to decode image from ZIP entry: {Path}", zipEntryPath);
+                _logger.LogWarning("Failed to decode image from ZIP entry: {Path}", archiveEntry.GetFullPath());
                 return (0, 0, imageBytes.Length);
             }
 
             var info = codec.Info;
-            // Use new DTO structure to avoid legacy string splitting bugs
-            var archiveEntryInfo = ArchiveEntryInfo.FromPath(zipEntryPath);
-            var entryName = archiveEntryInfo?.EntryName ?? "unknown";
+            // Use DTO directly - no need for string parsing
+            var entryName = archiveEntry.EntryName;
             _logger.LogDebug("ZIP entry {Entry}: {Width}x{Height}, {Size} bytes", entryName, info.Width, info.Height, imageBytes.Length);
             
             return (info.Width, info.Height, imageBytes.Length);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error extracting metadata from ZIP entry: {Path}", zipEntryPath);
+            _logger.LogError(ex, "Error extracting metadata from ZIP entry: {Path}", archiveEntry.GetFullPath());
             return (0, 0, 0);
         }
     }

@@ -9,6 +9,7 @@ using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using ImageViewer.Domain.Events;
 using ImageViewer.Domain.Interfaces;
+using ImageViewer.Domain.ValueObjects;
 using ImageViewer.Application.Services;
 using ImageViewer.Domain.Enums;
 using ImageViewer.Infrastructure.Data;
@@ -152,11 +153,15 @@ public class CollectionScanConsumer : BaseMessageConsumer
                     // Extract basic metadata for the image processing message
                     var (width, height) = await ExtractImageDimensions(mediaFile.FullPath);
                     
+                    // Check if this is an archive entry and create ArchiveEntryInfo if needed
+                    var archiveEntry = ArchiveEntryInfo.FromPath(mediaFile.FullPath);
+                    
                     var imageProcessingMessage = new ImageProcessingMessage
                     {
                         ImageId = ObjectId.GenerateNewId().ToString(), // Will be set when image is created, convert to string
                         CollectionId = collection.Id.ToString(), // Convert ObjectId to string
                         ImagePath = mediaFile.FullPath,
+                        ArchiveEntry = archiveEntry, // New DTO for archive entries
                         ImageFormat = mediaFile.Extension,
                         Width = width,
                         Height = height,
