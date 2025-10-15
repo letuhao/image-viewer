@@ -8,6 +8,7 @@ using ImageViewer.Domain.Events;
 using ImageViewer.Domain.Interfaces;
 using ImageViewer.Infrastructure.Data;
 using ImageViewer.Application.Services;
+using ImageViewer.Application.Helpers;
 using MongoDB.Bson;
 
 namespace ImageViewer.Worker.Services;

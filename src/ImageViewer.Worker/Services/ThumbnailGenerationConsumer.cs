@@ -555,11 +555,12 @@ public class ThumbnailGenerationConsumer : BaseMessageConsumer
         // Extract filename only (handle archive entries like "archive.zip#entry.png")
         string fileName;
         
-        if (ArchiveFileHelper.IsArchiveEntryPath(imagePath))
+        // Use new DTO structure to avoid legacy string splitting bugs
+        var archiveEntryInfo = ArchiveEntryInfo.FromPath(imagePath);
+        if (archiveEntryInfo != null)
         {
-            // For archive entries, extract ONLY the entry name (after #)
-            var (_, entryName) = ArchiveFileHelper.SplitArchiveEntryPath(imagePath);
-            fileName = Path.GetFileNameWithoutExtension(entryName);
+            // This is an archive entry - extract the entry name
+            fileName = Path.GetFileNameWithoutExtension(archiveEntryInfo.EntryName);
         }
         else
         {

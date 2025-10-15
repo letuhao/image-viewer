@@ -7,6 +7,7 @@ using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using ImageViewer.Domain.Events;
 using ImageViewer.Domain.Interfaces;
+using ImageViewer.Domain.ValueObjects;
 using ImageViewer.Application.Services;
 using ImageViewer.Infrastructure.Data;
 using MongoDB.Bson;
@@ -79,19 +80,20 @@ public class ImageProcessingConsumer : BaseMessageConsumer
                 var messageQueueService = serviceProvider.GetRequiredService<IMessageQueueService>();
 
                 // Check if image file exists (handle both regular files and ZIP entries)
-                bool isZipEntry = ArchiveFileHelper.IsArchiveEntryPath(imageMessage.ImagePath);
-                if (isZipEntry)
+                // Use new DTO structure to avoid legacy string splitting bugs
+                var archiveEntryInfo = ArchiveEntryInfo.FromPath(imageMessage.ImagePath);
+                if (archiveEntryInfo != null)
                 {
-                    // Validate ZIP file exists
-                    var (zipPath, _) = ArchiveFileHelper.SplitZipEntryPath(imageMessage.ImagePath);
-                    if (!File.Exists(zipPath))
+                    // This is an archive entry - validate the archive file exists
+                    if (!File.Exists(archiveEntryInfo.ArchivePath))
                     {
-                        _logger.LogWarning("❌ ZIP file {Path} does not exist, skipping processing", zipPath);
+                        _logger.LogWarning("❌ Archive file {Path} does not exist, skipping processing", archiveEntryInfo.ArchivePath);
                         return;
                     }
                 }
                 else if (!File.Exists(imageMessage.ImagePath))
                 {
+                    // This is a regular file - check if it exists
                     _logger.LogWarning("❌ Image file {Path} does not exist, skipping processing", imageMessage.ImagePath);
                     return;
                 }
@@ -332,12 +334,13 @@ public class ImageProcessingConsumer : BaseMessageConsumer
             string filename;
             string relativePath;
             
-            if (ArchiveFileHelper.IsArchiveEntryPath(imageMessage.ImagePath))
+            // Use new DTO structure to avoid legacy string splitting bugs
+            var archiveEntryInfo = ArchiveEntryInfo.FromPath(imageMessage.ImagePath);
+            if (archiveEntryInfo != null)
             {
-                // For archive entries like "archive.zip#entry.png", extract only the entry name
-                var (_, entryName) = ArchiveFileHelper.SplitArchiveEntryPath(imageMessage.ImagePath);
-                filename = Path.GetFileName(entryName); // Just the entry filename
-                relativePath = entryName; // Use entry path as relative path
+                // This is an archive entry - extract the entry name
+                filename = Path.GetFileName(archiveEntryInfo.EntryName); // Just the entry filename
+                relativePath = archiveEntryInfo.EntryName; // Use entry path as relative path
             }
             else
             {
@@ -368,11 +371,12 @@ public class ImageProcessingConsumer : BaseMessageConsumer
     
     private string GetRelativePath(string fullPath, ObjectId collectionId)
     {
-        // For ZIP files, extract the relative path from the ZIP entry
-        if (fullPath.Contains("#"))
+        // Use new DTO structure to avoid legacy string splitting bugs
+        var archiveEntryInfo = ArchiveEntryInfo.FromPath(fullPath);
+        if (archiveEntryInfo != null)
         {
-            var parts = fullPath.Split('#');
-            return parts.Length > 1 ? parts[1] : Path.GetFileName(fullPath);
+            // This is an archive entry - return the entry name
+            return archiveEntryInfo.EntryName;
         }
         
         // For regular files, return just the filename for now
@@ -406,7 +410,9 @@ public class ImageProcessingConsumer : BaseMessageConsumer
             }
 
             var info = codec.Info;
-            var entryName = ArchiveFileHelper.SplitZipEntryPath(zipEntryPath).entryName;
+            // Use new DTO structure to avoid legacy string splitting bugs
+            var archiveEntryInfo = ArchiveEntryInfo.FromPath(zipEntryPath);
+            var entryName = archiveEntryInfo?.EntryName ?? "unknown";
             _logger.LogDebug("ZIP entry {Entry}: {Width}x{Height}, {Size} bytes", entryName, info.Width, info.Height, imageBytes.Length);
             
             return (info.Width, info.Height, imageBytes.Length);
