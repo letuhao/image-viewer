@@ -310,7 +310,7 @@ public class ImagesController : ControllerBase
             {
                 ImageId = imageId,
                 CollectionId = collectionId.ToString(),
-                ImagePath = imagePath,
+                // ImagePath removed - using ArchiveEntry DTO only
                 CachePath = cachePath,
                 CacheWidth = cacheWidth,
                 CacheHeight = cacheHeight,

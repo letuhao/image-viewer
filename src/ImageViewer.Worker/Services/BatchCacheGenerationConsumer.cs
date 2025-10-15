@@ -350,8 +350,9 @@ public class BatchCacheGenerationConsumer : BaseMessageConsumer
             }
             else
             {
-                cacheData = await imageProcessingService.GenerateCacheAsync(
-                    message.ImagePath, message.CacheWidth, message.CacheHeight, cacheFormat, adjustedQuality);
+                // This should not happen - ArchiveEntry should always be provided
+                _logger.LogError("❌ No ArchiveEntry provided for cache generation");
+                return null;
             }
             
             if (cacheData == null || cacheData.Length == 0)
@@ -611,14 +612,15 @@ public class BatchCacheGenerationConsumer : BaseMessageConsumer
             }
             else
             {
-                var imageFile = new FileInfo(message.ImagePath);
-                fileSize = imageFile.Exists ? imageFile.Length : 0;
-                maxSize = _rabbitMQOptions.MaxImageSizeBytes; // 500MB for regular files
-                
-                if (fileSize > maxSize)
-                {
-                    _logger.LogWarning("⚠️ Image file too large ({SizeMB}MB), skipping cache generation for {ImageId}", 
-                        fileSize / 1024.0 / 1024.0, message.ImageId);
+                // This should not happen - ArchiveEntry should always be provided
+                _logger.LogError("❌ No ArchiveEntry provided for cache generation");
+                return false;
+            }
+            
+            if (fileSize > maxSize)
+            {
+                _logger.LogWarning("⚠️ Image file too large ({SizeMB}MB), skipping cache generation for {ImageId}", 
+                    fileSize / 1024.0 / 1024.0, message.ImageId);
                     
                     await jobStateRepository.AtomicIncrementFailedAsync(message.JobId, message.ImageId);
                     return false;
@@ -649,14 +651,15 @@ public class BatchCacheGenerationConsumer : BaseMessageConsumer
             long fileSize = 0;
             
             // Get file size for quality analysis
-            if (ArchiveFileHelper.IsArchiveEntryPath(cacheMessage.ImagePath))
+            if (cacheMessage.ArchiveEntry != null)
             {
-                fileSize = ArchiveFileHelper.GetArchiveEntrySize(cacheMessage.ImagePath, _logger);
+                fileSize = ArchiveFileHelper.GetArchiveEntrySize(cacheMessage.ArchiveEntry.GetFullPath(), _logger);
             }
             else
             {
-                var imageFile = new FileInfo(cacheMessage.ImagePath);
-                fileSize = imageFile.Exists ? imageFile.Length : 0;
+                // This should not happen - ArchiveEntry should always be provided
+                _logger.LogError("❌ No ArchiveEntry provided for cache quality analysis");
+                return requestedQuality;
             }
             
             if (fileSize == 0)
@@ -666,9 +669,9 @@ public class BatchCacheGenerationConsumer : BaseMessageConsumer
             
             // Extract image dimensions for quality analysis
             ImageDimensions? dimensions = null;
-            if (ArchiveFileHelper.IsArchiveEntryPath(cacheMessage.ImagePath))
+            if (cacheMessage.ArchiveEntry != null)
             {
-                var imageBytes = await ArchiveFileHelper.ExtractZipEntryBytes(cacheMessage.ImagePath, null);
+                var imageBytes = await ArchiveFileHelper.ExtractArchiveEntryBytes(cacheMessage.ArchiveEntry.GetFullPath(), null);
                 if (imageBytes != null && imageBytes.Length > 0)
                 {
                     dimensions = await imageProcessingService.GetImageDimensionsFromBytesAsync(imageBytes);
@@ -676,7 +679,9 @@ public class BatchCacheGenerationConsumer : BaseMessageConsumer
             }
             else
             {
-                dimensions = await imageProcessingService.GetImageDimensionsAsync(cacheMessage.ImagePath);
+                // This should not happen - ArchiveEntry should always be provided
+                _logger.LogError("❌ No ArchiveEntry provided for cache dimensions analysis");
+                return requestedQuality;
             }
             
             if (dimensions != null)
@@ -719,7 +724,7 @@ public class BatchCacheGenerationConsumer : BaseMessageConsumer
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Failed to analyze image quality for {ImagePath}, using requested quality {Quality}", 
-                cacheMessage.ImagePath, requestedQuality);
+                cacheMessage.ArchiveEntry?.GetFullPath() ?? "Unknown", requestedQuality);
             return requestedQuality; // Fallback to requested quality
         }
     }
@@ -793,7 +798,7 @@ public class BatchCacheGenerationConsumer : BaseMessageConsumer
                 "jpg" => ".jpg",
                 "png" => ".png",
                 "webp" => ".webp",
-                "original" => Path.GetExtension(cacheMessage.ImagePath), // Preserve original extension
+                "original" => Path.GetExtension(cacheMessage.ArchiveEntry?.EntryName ?? ""), // Preserve original extension
                 _ => ".jpg" // Default fallback
             };
             
@@ -828,7 +833,7 @@ public class BatchCacheGenerationConsumer : BaseMessageConsumer
                 "jpg" => ".jpg",
                 "png" => ".png",
                 "webp" => ".webp",
-                "original" => Path.GetExtension(cacheMessage.ImagePath),
+                "original" => Path.GetExtension(cacheMessage.ArchiveEntry?.EntryName ?? ""),
                 _ => ".jpg"
             };
             return Path.Combine("cache", $"{cacheMessage.ImageId}_cache_{cacheMessage.CacheWidth}x{cacheMessage.CacheHeight}{extension}");

@@ -246,7 +246,7 @@ public class FileProcessingJobRecoveryService : IFileProcessingJobRecoveryServic
                     JobId = jobState.JobId,
                     ImageId = imageId,
                     CollectionId = jobState.CollectionId,
-                    ImagePath = image.GetFullPath(collection.Path),
+                    // ImagePath removed - using ArchiveEntry DTO only
                     CachePath = cachePath,
                     CacheWidth = settings.Width,
                     CacheHeight = settings.Height,
@@ -293,7 +293,7 @@ public class FileProcessingJobRecoveryService : IFileProcessingJobRecoveryServic
                     JobId = jobState.JobId,
                     ImageId = imageId,
                     CollectionId = jobState.CollectionId,
-                    ImagePath = image.GetFullPath(collection.Path),
+                    // ImagePath removed - using ArchiveEntry DTO only
                     ImageFilename = image.Filename,
                     ThumbnailWidth = settings.Width,
                     ThumbnailHeight = settings.Height

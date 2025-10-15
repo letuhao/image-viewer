@@ -302,7 +302,7 @@ public class BulkOperationConsumer : BaseMessageConsumer
                     {
                         ImageId = image.Id, // Already a string
                         CollectionId = collection.Id.ToString(), // Use collection.Id from outer loop
-                        ImagePath = image.GetDisplayPath(), // Use the new DTO method for display path
+                        // ImagePath removed - using ArchiveEntry DTO only
                         ArchiveEntry = image.ArchiveEntry, // Extract DTO from ImageEmbedded
                         ImageFilename = image.Filename,
                         ThumbnailWidth = thumbnailWidth, // Loaded from system settings
@@ -370,7 +370,7 @@ public class BulkOperationConsumer : BaseMessageConsumer
                     {
                         ImageId = image.Id, // Already a string
                         CollectionId = collection.Id.ToString(), // Use collection.Id from outer loop
-                        ImagePath = image.GetDisplayPath(), // Use the new DTO method for display path
+                        // ImagePath removed - using ArchiveEntry DTO only
                         ArchiveEntry = image.ArchiveEntry, // Extract DTO from ImageEmbedded
                         CachePath = "", // Will be determined by cache service
                         CacheWidth = 1920, // Default cache size

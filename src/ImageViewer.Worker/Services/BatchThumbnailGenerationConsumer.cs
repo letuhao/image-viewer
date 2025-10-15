@@ -326,8 +326,9 @@ public class BatchThumbnailGenerationConsumer : BaseMessageConsumer
             }
             else
             {
-                thumbnailData = await imageProcessingService.GenerateThumbnailAsync(
-                    message.ImagePath, message.ThumbnailWidth, message.ThumbnailHeight, format, quality);
+                // This should not happen - ArchiveEntry should always be provided
+                _logger.LogError("❌ No ArchiveEntry provided for thumbnail generation");
+                return null;
             }
             
             if (thumbnailData == null || thumbnailData.Length == 0)
@@ -580,7 +581,9 @@ public class BatchThumbnailGenerationConsumer : BaseMessageConsumer
         }
         else
         {
-            fileName = Path.GetFileNameWithoutExtension(message.ImagePath);
+            // This should not happen - ArchiveEntry should always be provided
+            _logger.LogError("❌ No ArchiveEntry provided for thumbnail path generation");
+            fileName = "unknown";
         }
         
         var thumbnailFileName = $"{fileName}_{width}x{height}{extension}";
@@ -633,7 +636,9 @@ public class BatchThumbnailGenerationConsumer : BaseMessageConsumer
             }
             else
             {
-                fileName = Path.GetFileNameWithoutExtension(message.ImagePath);
+                // This should not happen - ArchiveEntry should always be provided
+                _logger.LogError("❌ No ArchiveEntry provided for thumbnail path generation");
+                fileName = "unknown";
             }
             
             var thumbnailFileName = $"{fileName}_{width}x{height}{extension}";
@@ -691,14 +696,15 @@ public class BatchThumbnailGenerationConsumer : BaseMessageConsumer
             }
             else
             {
-                var imageFile = new FileInfo(message.ImagePath);
-                fileSize = imageFile.Exists ? imageFile.Length : 0;
-                maxSize = _rabbitMQOptions.MaxImageSizeBytes; // 500MB for regular files
-                
-                if (fileSize > maxSize)
-                {
-                    _logger.LogWarning("⚠️ Image file too large ({SizeMB}MB), skipping thumbnail generation for {ImageId}", 
-                        fileSize / 1024.0 / 1024.0, message.ImageId);
+                // This should not happen - ArchiveEntry should always be provided
+                _logger.LogError("❌ No ArchiveEntry provided for thumbnail generation");
+                return false;
+            }
+            
+            if (fileSize > maxSize)
+            {
+                _logger.LogWarning("⚠️ Image file too large ({SizeMB}MB), skipping thumbnail generation for {ImageId}", 
+                    fileSize / 1024.0 / 1024.0, message.ImageId);
                     
                     await jobStateRepository.AtomicIncrementFailedAsync(message.JobId, message.ImageId);
                     return false;

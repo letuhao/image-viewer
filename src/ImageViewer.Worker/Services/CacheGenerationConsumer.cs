@@ -301,7 +301,7 @@ public class CacheGenerationConsumer : BaseMessageConsumer
                 {
                     // Regular file
                     cacheImageData = await imageProcessingService.ResizeImageAsync(
-                cacheMessage.ImagePath,
+cacheMessage.ArchiveEntry?.GetFullPath() ?? "Unknown",
                 cacheMessage.CacheWidth,
                 cacheMessage.CacheHeight,
                         format, // Use format from settings!
@@ -705,7 +705,7 @@ public class CacheGenerationConsumer : BaseMessageConsumer
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Failed to analyze image quality for {ImagePath}, using requested quality {Quality}", 
-                cacheMessage.ImagePath, cacheMessage.Quality);
+cacheMessage.ArchiveEntry?.GetFullPath() ?? "Unknown", cacheMessage.Quality);
             return cacheMessage.Quality; // Fallback to requested quality
         }
     }
