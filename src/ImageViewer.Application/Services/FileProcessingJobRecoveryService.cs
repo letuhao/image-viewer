@@ -248,6 +248,18 @@ public class FileProcessingJobRecoveryService : IFileProcessingJobRecoveryServic
                 {
                     // Try to create ArchiveEntry from legacy data
                     archiveEntry = ArchiveEntryInfo.FromPath(image.LegacyRelativePath);
+                    
+                    // If FromPath returns null, it might be a regular file - create a regular file ArchiveEntry
+                    if (archiveEntry == null)
+                    {
+                        archiveEntry = new ArchiveEntryInfo
+                        {
+                            ArchivePath = image.LegacyRelativePath, // For regular files, ArchivePath is the full path
+                            EntryName = image.Filename,
+                            EntryPath = image.Filename,
+                            FileType = ImageFileType.RegularFile
+                        };
+                    }
                 }
                 
                 var cacheMessage = new CacheGenerationMessage
@@ -304,6 +316,18 @@ public class FileProcessingJobRecoveryService : IFileProcessingJobRecoveryServic
                 {
                     // Try to create ArchiveEntry from legacy data
                     archiveEntry = ArchiveEntryInfo.FromPath(image.LegacyRelativePath);
+                    
+                    // If FromPath returns null, it might be a regular file - create a regular file ArchiveEntry
+                    if (archiveEntry == null)
+                    {
+                        archiveEntry = new ArchiveEntryInfo
+                        {
+                            ArchivePath = image.LegacyRelativePath, // For regular files, ArchivePath is the full path
+                            EntryName = image.Filename,
+                            EntryPath = image.Filename,
+                            FileType = ImageFileType.RegularFile
+                        };
+                    }
                 }
                 
                 var thumbnailMessage = new ThumbnailGenerationMessage

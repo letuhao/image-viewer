@@ -84,14 +84,14 @@ public class ImageEmbedded
         IsDeleted = false;
     }
 
-    public ImageEmbedded(string filename, string relativePath, ArchiveEntryInfo archiveEntry, 
+    public ImageEmbedded(string filename, string relativePath, ArchiveEntryInfo? archiveEntry, 
         long fileSize, int width, int height, string format)
     {
         Filename = filename ?? throw new ArgumentNullException(nameof(filename));
         RelativePath = relativePath ?? throw new ArgumentNullException(nameof(relativePath));
         LegacyRelativePath = relativePath; // Keep for backward compatibility
-        ArchiveEntry = archiveEntry ?? throw new ArgumentNullException(nameof(archiveEntry));
-        FileType = archiveEntry.FileType; // Use the file type from ArchiveEntryInfo
+        ArchiveEntry = archiveEntry; // Allow null for legacy data
+        FileType = archiveEntry?.FileType ?? ImageFileType.RegularFile; // Default to RegularFile if null
         FileSize = fileSize;
         Width = width;
         Height = height;
