@@ -7,6 +7,7 @@ using RabbitMQ.Client.Events;
 using ImageViewer.Domain.Events;
 using ImageViewer.Domain.Interfaces;
 using ImageViewer.Domain.ValueObjects;
+using ImageViewer.Domain.Enums;
 using ImageViewer.Infrastructure.Data;
 using ImageViewer.Application.Services;
 using ImageViewer.Application.Helpers;
