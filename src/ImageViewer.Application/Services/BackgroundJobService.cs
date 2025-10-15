@@ -74,7 +74,7 @@ public class BackgroundJobService : IBackgroundJobService
         _logger.LogInformation("Creating job: {Type}", dto.Type);
 
         // Check if this is a multi-stage job
-        bool isMultiStage = dto.Type == "collection-scan";
+        bool isMultiStage = dto.Type == "collection-scan" || dto.Type == "resume-collection";
         
         var job = new BackgroundJob(
             dto.Type,
@@ -83,13 +83,25 @@ public class BackgroundJobService : IBackgroundJobService
             isMultiStage
         );
 
-        // For collection-scan jobs, initialize stages and set CollectionId
+        // For multi-stage jobs, initialize appropriate stages
         if (isMultiStage)
         {
-            job.AddStage("scan");
-            job.AddStage("thumbnail");
-            job.AddStage("cache");
-            
+            if (dto.Type == "collection-scan")
+            {
+                job.AddStage("scan");
+                job.AddStage("thumbnail");
+                job.AddStage("cache");
+            }
+            else if (dto.Type == "resume-collection")
+            {
+                job.AddStage("thumbnail");
+                job.AddStage("cache");
+            }
+        }
+        
+        // For collection-specific jobs (collection-scan, resume-collection), set CollectionId
+        if (dto.Type == "collection-scan" || dto.Type == "resume-collection")
+        {
             if (dto.CollectionId.HasValue)
             {
                 job.SetCollectionId(dto.CollectionId.Value);
