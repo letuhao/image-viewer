@@ -88,8 +88,17 @@ public class ThumbnailGenerationConsumer : BaseMessageConsumer
                 }
             }
 
-            // Check if image file exists
-            if (!File.Exists(thumbnailMessage.ImagePath) && !ArchiveFileHelper.IsArchiveEntryPath(thumbnailMessage.ImagePath))
+            // Check if image file exists using DTO
+            if (thumbnailMessage.ArchiveEntry != null)
+            {
+                // Archive entry - check if archive file exists
+                if (!File.Exists(thumbnailMessage.ArchiveEntry.ArchivePath))
+                {
+                    _logger.LogWarning("❌ Archive file {Path} does not exist, skipping thumbnail generation", thumbnailMessage.ArchiveEntry.ArchivePath);
+                    return;
+                }
+            }
+            else if (!File.Exists(thumbnailMessage.ImagePath))
             {
                 _logger.LogWarning("❌ Image file {Path} does not exist, skipping thumbnail generation", thumbnailMessage.ImagePath);
                 return;
@@ -99,10 +108,10 @@ public class ThumbnailGenerationConsumer : BaseMessageConsumer
             long fileSize = 0;
             long maxSize = 0;
             
-            if (ArchiveFileHelper.IsArchiveEntryPath(thumbnailMessage.ImagePath))
+            if (thumbnailMessage.ArchiveEntry != null)
             {
-                // ZIP entry - get uncompressed size without extraction
-                fileSize = ArchiveFileHelper.GetArchiveEntrySize(thumbnailMessage.ImagePath, _logger);
+                // Archive entry - get uncompressed size without extraction
+                fileSize = ArchiveFileHelper.GetArchiveEntrySize(thumbnailMessage.ArchiveEntry.GetFullPath(), _logger);
                 maxSize = _rabbitMQOptions.MaxZipEntrySizeBytes; // 20GB for ZIP entries
                 
                 if (fileSize > maxSize)
@@ -269,7 +278,7 @@ public class ThumbnailGenerationConsumer : BaseMessageConsumer
             {
                 
                 var thumbnailPath = await GenerateThumbnail(
-                thumbnailMessage.ImagePath,
+                thumbnailMessage,
                 thumbnailMessage.ThumbnailWidth,
                 thumbnailMessage.ThumbnailHeight,
                     imageProcessingService,
@@ -458,7 +467,7 @@ public class ThumbnailGenerationConsumer : BaseMessageConsumer
         }
     }
 
-    private async Task<string?> GenerateThumbnail(string imagePath, int width, int height, IImageProcessingService imageProcessingService, ObjectId collectionId, CancellationToken cancellationToken = default)
+    private async Task<string?> GenerateThumbnail(ThumbnailGenerationMessage message, int width, int height, IImageProcessingService imageProcessingService, ObjectId collectionId, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -468,7 +477,7 @@ public class ThumbnailGenerationConsumer : BaseMessageConsumer
             var format = await settingsService.GetThumbnailFormatAsync();
             
             // Determine thumbnail path (with correct format extension)
-            var thumbnailPath = await GetThumbnailPath(imagePath, width, height, collectionId, format);
+            var thumbnailPath = await GetThumbnailPath(message, width, height, collectionId, format);
             
             // Ensure thumbnail directory exists
             var thumbnailDir = Path.GetDirectoryName(thumbnailPath);
@@ -485,14 +494,14 @@ public class ThumbnailGenerationConsumer : BaseMessageConsumer
             
             _logger.LogDebug("🎨 Using thumbnail format: {Format}, quality: {Quality}", format, quality);
             
-            // Handle ZIP entries
-            if (ArchiveFileHelper.IsZipEntryPath(imagePath))
+            // Handle archive entries using DTO
+            if (message.ArchiveEntry != null)
             {
-                // Extract image bytes from ZIP
-                var imageBytes = await ArchiveFileHelper.ExtractZipEntryBytes(imagePath, null, cancellationToken);
+                // Extract image bytes from archive
+                var imageBytes = await ArchiveFileHelper.ExtractArchiveEntryBytes(message.ArchiveEntry.GetFullPath(), null, cancellationToken);
                 if (imageBytes == null || imageBytes.Length == 0)
                 {
-                    _logger.LogWarning("❌ Failed to extract ZIP entry: {Path}", imagePath);
+                    _logger.LogWarning("❌ Failed to extract archive entry: {Path}", message.ArchiveEntry.GetFullPath());
                     return null;
                 }
                 
@@ -508,7 +517,7 @@ public class ThumbnailGenerationConsumer : BaseMessageConsumer
             {
                 // Regular file
                 thumbnailData = await imageProcessingService.GenerateThumbnailAsync(
-                    imagePath, 
+                    message.ImagePath, 
                     width, 
                     height,
                     format,
@@ -540,7 +549,7 @@ public class ThumbnailGenerationConsumer : BaseMessageConsumer
         }
     }
 
-    private async Task<string> GetThumbnailPath(string imagePath, int width, int height, ObjectId collectionId, string format)
+    private async Task<string> GetThumbnailPath(ThumbnailGenerationMessage message, int width, int height, ObjectId collectionId, string format)
     {
         // Determine file extension based on format
         var extension = format.ToLowerInvariant() switch
@@ -552,20 +561,19 @@ public class ThumbnailGenerationConsumer : BaseMessageConsumer
             _ => ".jpg" // Default fallback
         };
         
-        // Extract filename only (handle archive entries like "archive.zip#entry.png")
+        // Extract filename only using DTO
         string fileName;
         
-        // Use new DTO structure to avoid legacy string splitting bugs
-        var archiveEntryInfo = ArchiveEntryInfo.FromPath(imagePath);
-        if (archiveEntryInfo != null)
+        // Use DTO structure to avoid legacy string splitting bugs
+        if (message.ArchiveEntry != null)
         {
-            // This is an archive entry - extract the entry name
-            fileName = Path.GetFileNameWithoutExtension(archiveEntryInfo.EntryName);
+            // This is an archive entry - extract the entry name from DTO
+            fileName = Path.GetFileNameWithoutExtension(message.ArchiveEntry.EntryName);
         }
         else
         {
             // For regular files, use filename only (not full path)
-            fileName = Path.GetFileNameWithoutExtension(imagePath);
+            fileName = Path.GetFileNameWithoutExtension(message.ImagePath);
         }
         
         // Use cache service to get the appropriate cache folder for thumbnails

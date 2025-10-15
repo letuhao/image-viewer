@@ -335,13 +335,13 @@ public class BatchCacheGenerationConsumer : BaseMessageConsumer
             _logger.LogDebug("🎨 ProcessCacheImageInMemoryAsync: Using format {Format}, quality {Quality} (adjusted from {OriginalQuality})", 
                 cacheFormat, adjustedQuality, cacheQuality);
             
-            // Handle ZIP entries
-            if (ArchiveFileHelper.IsArchiveEntryPath(message.ImagePath))
+            // Handle archive entries using DTO
+            if (message.ArchiveEntry != null)
             {
-                var imageBytes = await ArchiveFileHelper.ExtractZipEntryBytes(message.ImagePath, null);
+                var imageBytes = await ArchiveFileHelper.ExtractArchiveEntryBytes(message.ArchiveEntry.GetFullPath(), null);
                 if (imageBytes == null || imageBytes.Length == 0)
                 {
-                    _logger.LogWarning("❌ Failed to extract ZIP entry: {Path}", message.ImagePath);
+                    _logger.LogWarning("❌ Failed to extract archive entry: {Path}", message.ArchiveEntry.GetFullPath());
                     return null;
                 }
                 
@@ -595,14 +595,14 @@ public class BatchCacheGenerationConsumer : BaseMessageConsumer
             long fileSize = 0;
             long maxSize = 0;
             
-            if (ArchiveFileHelper.IsArchiveEntryPath(message.ImagePath))
+            if (message.ArchiveEntry != null)
             {
-                fileSize = ArchiveFileHelper.GetArchiveEntrySize(message.ImagePath, _logger);
-                maxSize = _rabbitMQOptions.MaxZipEntrySizeBytes; // 20GB for ZIP entries
+                fileSize = ArchiveFileHelper.GetArchiveEntrySize(message.ArchiveEntry.GetFullPath(), _logger);
+                maxSize = _rabbitMQOptions.MaxZipEntrySizeBytes; // 20GB for archive entries
                 
                 if (fileSize > maxSize)
                 {
-                    _logger.LogWarning("⚠️ ZIP entry too large ({SizeGB}GB), skipping cache generation for {ImageId}", 
+                    _logger.LogWarning("⚠️ Archive entry too large ({SizeGB}GB), skipping cache generation for {ImageId}", 
                         fileSize / 1024.0 / 1024.0 / 1024.0, message.ImageId);
                     
                     await jobStateRepository.AtomicIncrementFailedAsync(message.JobId, message.ImageId);

@@ -311,13 +311,13 @@ public class BatchThumbnailGenerationConsumer : BaseMessageConsumer
         {
             byte[] thumbnailData;
             
-            // Handle ZIP entries
-            if (ArchiveFileHelper.IsZipEntryPath(message.ImagePath))
+            // Handle ZIP entries using DTO
+            if (message.ArchiveEntry != null)
             {
-                var imageBytes = await ArchiveFileHelper.ExtractZipEntryBytes(message.ImagePath, null);
+                var imageBytes = await ArchiveFileHelper.ExtractArchiveEntryBytes(message.ArchiveEntry.GetFullPath(), null);
                 if (imageBytes == null || imageBytes.Length == 0)
                 {
-                    _logger.LogWarning("❌ Failed to extract ZIP entry: {Path}", message.ImagePath);
+                    _logger.LogWarning("❌ Failed to extract archive entry: {Path}", message.ArchiveEntry.GetFullPath());
                     return null;
                 }
                 
@@ -372,7 +372,7 @@ public class BatchThumbnailGenerationConsumer : BaseMessageConsumer
         foreach (var processedImage in processedImages)
         {
             var thumbnailPath = GetThumbnailPath(
-                processedImage.Message.ImagePath,
+                processedImage.Message,
                 processedImage.Message.ThumbnailWidth,
                 processedImage.Message.ThumbnailHeight,
                 collectionId,
@@ -468,7 +468,7 @@ public class BatchThumbnailGenerationConsumer : BaseMessageConsumer
             if (existingThumbnail == null)
             {
                 var thumbnailPath = await GetThumbnailPathForResumeCheck(
-                    message.ImagePath,
+                    message,
                     message.ThumbnailWidth,
                     message.ThumbnailHeight,
                     collectionId);
@@ -555,7 +555,7 @@ public class BatchThumbnailGenerationConsumer : BaseMessageConsumer
     }
 
     private string GetThumbnailPath(
-        string imagePath,
+        ThumbnailGenerationMessage message,
         int width,
         int height,
         ObjectId collectionId,
@@ -572,16 +572,15 @@ public class BatchThumbnailGenerationConsumer : BaseMessageConsumer
         };
         
         string fileName;
-        // Use new DTO structure to avoid legacy string splitting bugs
-        var archiveEntryInfo = ArchiveEntryInfo.FromPath(imagePath);
-        if (archiveEntryInfo != null)
+        // Use DTO structure to avoid legacy string splitting bugs
+        if (message.ArchiveEntry != null)
         {
-            // This is an archive entry - extract the entry name
-            fileName = Path.GetFileNameWithoutExtension(archiveEntryInfo.EntryName);
+            // This is an archive entry - extract the entry name from DTO
+            fileName = Path.GetFileNameWithoutExtension(message.ArchiveEntry.EntryName);
         }
         else
         {
-            fileName = Path.GetFileNameWithoutExtension(imagePath);
+            fileName = Path.GetFileNameWithoutExtension(message.ImagePath);
         }
         
         var thumbnailFileName = $"{fileName}_{width}x{height}{extension}";
@@ -589,7 +588,7 @@ public class BatchThumbnailGenerationConsumer : BaseMessageConsumer
     }
 
     private async Task<string> GetThumbnailPathForResumeCheck(
-        string imagePath,
+        ThumbnailGenerationMessage message,
         int width,
         int height,
         ObjectId collectionId)
@@ -626,16 +625,15 @@ public class BatchThumbnailGenerationConsumer : BaseMessageConsumer
             };
             
             string fileName;
-            // Use new DTO structure to avoid legacy string splitting bugs
-            var archiveEntryInfo = ArchiveEntryInfo.FromPath(imagePath);
-            if (archiveEntryInfo != null)
+            // Use DTO structure to avoid legacy string splitting bugs
+            if (message.ArchiveEntry != null)
             {
-                // This is an archive entry - extract the entry name
-                fileName = Path.GetFileNameWithoutExtension(archiveEntryInfo.EntryName);
+                // This is an archive entry - extract the entry name from DTO
+                fileName = Path.GetFileNameWithoutExtension(message.ArchiveEntry.EntryName);
             }
             else
             {
-                fileName = Path.GetFileNameWithoutExtension(imagePath);
+                fileName = Path.GetFileNameWithoutExtension(message.ImagePath);
             }
             
             var thumbnailFileName = $"{fileName}_{width}x{height}{extension}";
@@ -677,14 +675,14 @@ public class BatchThumbnailGenerationConsumer : BaseMessageConsumer
             long fileSize = 0;
             long maxSize = 0;
             
-            if (ArchiveFileHelper.IsArchiveEntryPath(message.ImagePath))
+            if (message.ArchiveEntry != null)
             {
-                fileSize = ArchiveFileHelper.GetArchiveEntrySize(message.ImagePath, _logger);
-                maxSize = _rabbitMQOptions.MaxZipEntrySizeBytes; // 20GB for ZIP entries
+                fileSize = ArchiveFileHelper.GetArchiveEntrySize(message.ArchiveEntry.GetFullPath(), _logger);
+                maxSize = _rabbitMQOptions.MaxZipEntrySizeBytes; // 20GB for archive entries
                 
                 if (fileSize > maxSize)
                 {
-                    _logger.LogWarning("⚠️ ZIP entry too large ({SizeGB}GB), skipping thumbnail generation for {ImageId}", 
+                    _logger.LogWarning("⚠️ Archive entry too large ({SizeGB}GB), skipping thumbnail generation for {ImageId}", 
                         fileSize / 1024.0 / 1024.0 / 1024.0, message.ImageId);
                     
                     await jobStateRepository.AtomicIncrementFailedAsync(message.JobId, message.ImageId);
