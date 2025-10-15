@@ -212,7 +212,7 @@ public class ThumbnailGenerationConsumer : BaseMessageConsumer
                 if (existingThumbnail == null)
                 {
                     var thumbnailPath = await GetThumbnailPath(
-                        thumbnailMessage.ImagePath,
+                        thumbnailMessage,
                         thumbnailMessage.ThumbnailWidth,
                         thumbnailMessage.ThumbnailHeight,
                         collectionId,
@@ -544,7 +544,7 @@ public class ThumbnailGenerationConsumer : BaseMessageConsumer
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "❌ Error generating thumbnail for {ImagePath}", imagePath);
+            _logger.LogError(ex, "❌ Error generating thumbnail for {ImagePath}", message.ImagePath);
             return null;
         }
     }
