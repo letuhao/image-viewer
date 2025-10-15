@@ -149,7 +149,7 @@ public class CacheGenerationConsumer : BaseMessageConsumer
             {
                 // This should not happen - ArchiveEntry should always be provided
                 _logger.LogError("❌ No ArchiveEntry provided for cache generation");
-                return Task.FromResult(false);
+                return;
             }
 
             // Check if cache already exists on disk and force regeneration is disabled

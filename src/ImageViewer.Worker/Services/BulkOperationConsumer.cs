@@ -539,7 +539,7 @@ public class BulkOperationConsumer : BaseMessageConsumer
                             JobId = jobId, // Link to FileProcessingJobState
                             ImageId = image.Id,
                             CollectionId = collectionId.ToString(),
-                            ImagePath = collection.GetFullImagePath(image), // Use full path
+                            // ImagePath removed - using ArchiveEntry DTO only
                             ArchiveEntry = image.ArchiveEntry, // Extract DTO from ImageEmbedded
                             ImageFilename = image.Filename,
                             ThumbnailWidth = thumbnailWidth,
@@ -683,7 +683,7 @@ public class BulkOperationConsumer : BaseMessageConsumer
                             JobId = jobId, // Link to FileProcessingJobState
                             ImageId = image.Id,
                             CollectionId = collectionId.ToString(),
-                            ImagePath = collection.GetFullImagePath(image), // Use full path
+                            // ImagePath removed - using ArchiveEntry DTO only
                             ArchiveEntry = image.ArchiveEntry, // Extract DTO from ImageEmbedded
                             CachePath = "", // Will be determined by cache service
                             CacheWidth = cacheWidth,
