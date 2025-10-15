@@ -128,8 +128,7 @@ public class DataRepairService : IDataRepairService
     {
         try
         {
-            var directory = new DirectoryInfo(collectionPath);
-            if (!directory.Exists)
+            if (!Directory.Exists(collectionPath))
                 return null;
 
             // Extract the base name from the truncated path
@@ -137,14 +136,15 @@ public class DataRepairService : IDataRepairService
             var baseName = ExtractBaseName(truncatedPath);
             
             // Look for ZIP files that contain this base name
-            var zipFiles = directory.GetFiles("*.zip", SearchOption.TopDirectoryOnly);
+            var zipFiles = Directory.GetFiles(collectionPath, "*.zip", SearchOption.TopDirectoryOnly);
             
             foreach (var zipFile in zipFiles)
             {
-                if (zipFile.Name.Contains(baseName, StringComparison.OrdinalIgnoreCase))
+                var fileName = Path.GetFileName(zipFile);
+                if (fileName.Contains(baseName, StringComparison.OrdinalIgnoreCase))
                 {
-                    _logger.LogDebug("🎯 Found potential ZIP file: {FileName}", zipFile.Name);
-                    return zipFile.FullName;
+                    _logger.LogDebug("🎯 Found potential ZIP file: {FileName}", fileName);
+                    return zipFile;
                 }
             }
 
@@ -192,15 +192,11 @@ public class DataRepairService : IDataRepairService
             var fixedImage = new Domain.ValueObjects.ImageEmbedded(
                 originalImage.Filename,
                 relativeZipPath, // This will be the ZIP file path
+                originalImage.FileSize,
                 originalImage.Width,
                 originalImage.Height,
-                originalImage.FileSize,
-                originalImage.CreatedAt
+                originalImage.Format
             );
-
-            // Mark this as needing further processing
-            fixedImage.NeedsRepair = true;
-            fixedImage.OriginalTruncatedPath = originalImage.LegacyRelativePath;
             
             return fixedImage;
         }
