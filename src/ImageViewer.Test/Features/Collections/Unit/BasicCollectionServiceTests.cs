@@ -9,6 +9,7 @@ using ImageViewer.Domain.Interfaces;
 using ImageViewer.Domain.Exceptions;
 using ImageViewer.Domain.Enums;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.DependencyInjection;
 using System;
 
 namespace ImageViewer.Test.Features.Collections.Unit;
@@ -20,7 +21,7 @@ public class BasicCollectionServiceTests
 {
     private readonly Mock<ICollectionRepository> _mockCollectionRepository;
     private readonly Mock<IMessageQueueService> _mockMessageQueueService;
-    private readonly Mock<IServiceProvider> _mockServiceProvider;
+    private readonly Mock<IServiceScopeFactory> _mockServiceScopeFactory;
     private readonly Mock<ILogger<CollectionService>> _mockLogger;
     private readonly CollectionService _collectionService;
 
@@ -28,23 +29,27 @@ public class BasicCollectionServiceTests
         {
             _mockCollectionRepository = new Mock<ICollectionRepository>();
             _mockMessageQueueService = new Mock<IMessageQueueService>();
-            _mockServiceProvider = new Mock<IServiceProvider>();
+            _mockServiceScopeFactory = new Mock<IServiceScopeFactory>();
             _mockLogger = new Mock<ILogger<CollectionService>>();
 
-            // Setup IServiceProvider to return IBackgroundJobService
+            // Setup IServiceScopeFactory to return IBackgroundJobService
             var mockBackgroundJobService = new Mock<IBackgroundJobService>();
             mockBackgroundJobService.Setup(s => s.CreateJobAsync(It.IsAny<CreateBackgroundJobDto>()))
                 .ReturnsAsync(new BackgroundJobDto { JobId = ObjectId.GenerateNewId() });
             
-            _mockServiceProvider.Setup(sp => sp.GetService(typeof(IBackgroundJobService)))
+            var mockScope = new Mock<IServiceScope>();
+            var mockServiceProvider = new Mock<IServiceProvider>();
+            mockServiceProvider.Setup(sp => sp.GetService(typeof(IBackgroundJobService)))
                 .Returns(mockBackgroundJobService.Object);
+            mockScope.Setup(s => s.ServiceProvider).Returns(mockServiceProvider.Object);
+            _mockServiceScopeFactory.Setup(sf => sf.CreateScope()).Returns(mockScope.Object);
 
             var mockCollectionArchiveRepository = new Mock<ICollectionArchiveRepository>();
             _collectionService = new CollectionService(
                 _mockCollectionRepository.Object,
                 mockCollectionArchiveRepository.Object,
                 _mockMessageQueueService.Object,
-                _mockServiceProvider.Object,
+                _mockServiceScopeFactory.Object,
                 _mockLogger.Object);
         }
 

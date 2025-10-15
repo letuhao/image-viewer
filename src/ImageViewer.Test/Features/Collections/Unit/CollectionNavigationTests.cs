@@ -19,7 +19,7 @@ public class CollectionNavigationTests
 {
     private readonly Mock<ICollectionRepository> _mockCollectionRepository;
     private readonly Mock<IMessageQueueService> _mockMessageQueueService;
-    private readonly Mock<IServiceProvider> _mockServiceProvider;
+    private readonly Mock<IServiceScopeFactory> _mockServiceScopeFactory;
     private readonly Mock<ILogger<CollectionService>> _mockLogger;
     private readonly CollectionService _collectionService;
 
@@ -27,7 +27,7 @@ public class CollectionNavigationTests
     {
         _mockCollectionRepository = new Mock<ICollectionRepository>();
         _mockMessageQueueService = new Mock<IMessageQueueService>();
-        _mockServiceProvider = new Mock<IServiceProvider>();
+        _mockServiceScopeFactory = new Mock<IServiceScopeFactory>();
         _mockLogger = new Mock<ILogger<CollectionService>>();
 
         var mockCollectionArchiveRepository = new Mock<ICollectionArchiveRepository>();
@@ -35,7 +35,7 @@ public class CollectionNavigationTests
             _mockCollectionRepository.Object,
             mockCollectionArchiveRepository.Object,
             _mockMessageQueueService.Object,
-            _mockServiceProvider.Object,
+            _mockServiceScopeFactory.Object,
             _mockLogger.Object
         );
     }
