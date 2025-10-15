@@ -27,7 +27,7 @@ public class RabbitMQOptions
     
     // Retry and timeout configurations
     public int MaxRetryCount { get; set; } = 3;
-    public TimeSpan MessageTimeout { get; set; } = TimeSpan.FromMinutes(30);
+    public TimeSpan MessageTimeout { get; set; } = TimeSpan.FromHours(24); // Default to 24 hours, configurable via appsettings
     public TimeSpan ConnectionTimeout { get; set; } = TimeSpan.FromSeconds(30);
     
     // Consumer configurations
