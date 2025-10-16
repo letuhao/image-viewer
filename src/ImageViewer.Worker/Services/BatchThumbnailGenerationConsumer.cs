@@ -9,6 +9,7 @@ using ImageViewer.Domain.Events;
 using ImageViewer.Domain.Entities;
 using ImageViewer.Domain.Interfaces;
 using ImageViewer.Domain.ValueObjects;
+using ImageViewer.Application.DTOs.Cache;
 using ImageViewer.Application.Services;
 using ImageViewer.Infrastructure.Data;
 using MongoDB.Bson;
