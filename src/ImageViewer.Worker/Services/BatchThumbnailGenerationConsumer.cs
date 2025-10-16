@@ -280,7 +280,7 @@ public class BatchThumbnailGenerationConsumer : BaseMessageConsumer
         _logger.LogInformation("💾 Writing {Count} thumbnails to disk for collection {CollectionId}", 
             processedImages.Count, collectionId);
         
-        var thumbnailPaths = await WriteThumbnailsToDiskAsync(processedImages, collectionObjectId, cacheService, format);
+        var thumbnailPaths = await WriteThumbnailsToDiskAsync(processedImages, collectionObjectId, cacheService, format, serviceProvider);
         
         // Step 3: Update database atomically for this collection
         _logger.LogInformation("📝 Updating database for collection {CollectionId} with {Count} thumbnails", 
@@ -355,7 +355,8 @@ public class BatchThumbnailGenerationConsumer : BaseMessageConsumer
         List<ProcessedThumbnailData> processedImages,
         ObjectId collectionId,
         ICacheService cacheService,
-        string format)
+        string format,
+        IServiceProvider serviceProvider)
     {
         var thumbnailPaths = new List<ThumbnailPathData>();
         
@@ -830,6 +831,26 @@ public class BatchThumbnailGenerationConsumer : BaseMessageConsumer
         {
             _logger.LogWarning(ex, "⚠️ Error marking failed thumbnail messages as done");
         }
+    }
+
+    /// <summary>
+    /// Select cache folder for equal distribution based on collection ID hash
+    /// </summary>
+    private CacheFolderDto SelectCacheFolderForEqualDistribution(IEnumerable<CacheFolderDto> cacheFolders, ObjectId collectionId)
+    {
+        // CRITICAL: Sort by Id to ensure consistent ordering across all calls
+        var sortedFolders = cacheFolders.OrderBy(f => f.Id).ToList();
+        
+        if (!sortedFolders.Any())
+        {
+            throw new InvalidOperationException("No cache folders available for distribution");
+        }
+        
+        // Use collection ID hash for consistent distribution
+        var hash = collectionId.GetHashCode();
+        var index = Math.Abs(hash) % sortedFolders.Count;
+        
+        return sortedFolders[index];
     }
 }
 
