@@ -150,6 +150,9 @@ builder.Services.AddScoped<ImageViewer.Application.Services.IThumbnailCacheServi
 // Register Redis Collection Index Service (for fast navigation and sorting)
 builder.Services.AddScoped<ImageViewer.Domain.Interfaces.ICollectionIndexService, ImageViewer.Infrastructure.Services.RedisCollectionIndexService>();
 
+// Register Dashboard Statistics Service (Redis-cached for ultra-fast loading)
+builder.Services.AddScoped<ImageViewer.Domain.Interfaces.IDashboardStatisticsService, ImageViewer.Application.Services.DashboardStatisticsService>();
+
 // Add Hangfire Scheduler with Dashboard
 builder.Services.AddHangfireDashboard(builder.Configuration);
 

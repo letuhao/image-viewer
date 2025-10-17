@@ -51,7 +51,7 @@ export const useCollection = (id: string) => {
   });
 };
 
-// Fetch collection stats
+// Fetch collection stats (legacy - slow)
 export const useCollectionStats = () => {
   return useQuery({
     queryKey: collectionKeys.stats(),
@@ -60,6 +60,31 @@ export const useCollectionStats = () => {
       return response.data;
     },
     refetchInterval: 30000, // Refresh every 30 seconds
+  });
+};
+
+// Fetch dashboard stats (Redis-cached - ultra-fast)
+export const useDashboardStats = () => {
+  return useQuery({
+    queryKey: ['dashboard', 'statistics'],
+    queryFn: async () => {
+      const response = await api.get('/dashboard/statistics');
+      return response.data;
+    },
+    refetchInterval: 60000, // Refresh every 60 seconds (Redis cache handles freshness)
+    staleTime: 30000, // Consider data stale after 30 seconds
+  });
+};
+
+// Fetch recent dashboard activity
+export const useDashboardActivity = (limit = 10) => {
+  return useQuery({
+    queryKey: ['dashboard', 'activity', limit],
+    queryFn: async () => {
+      const response = await api.get(`/dashboard/activity?limit=${limit}`);
+      return response.data;
+    },
+    refetchInterval: 10000, // Refresh every 10 seconds for real-time activity
   });
 };
 

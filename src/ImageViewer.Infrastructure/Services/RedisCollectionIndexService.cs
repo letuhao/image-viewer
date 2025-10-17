@@ -1,6 +1,7 @@
 using System.Text.Json;
 using ImageViewer.Domain.Entities;
 using ImageViewer.Domain.Interfaces;
+using ImageViewer.Domain.ValueObjects;
 using Microsoft.Extensions.Logging;
 using MongoDB.Bson;
 using StackExchange.Redis;
@@ -24,6 +25,8 @@ public class RedisCollectionIndexService : ICollectionIndexService
     private const string STATS_KEY = "collection_index:stats";
     private const string LAST_REBUILD_KEY = "collection_index:last_rebuild";
     private const string THUMBNAIL_PREFIX = "collection_index:thumb:";
+    private const string DASHBOARD_STATS_KEY = "dashboard:statistics";
+    private const string DASHBOARD_METADATA_KEY = "dashboard:metadata";
 
     public RedisCollectionIndexService(
         IConnectionMultiplexer redis,
@@ -995,6 +998,137 @@ public class RedisCollectionIndexService : ICollectionIndexService
         {
             _logger.LogError(ex, "Failed to batch cache thumbnails");
             // Fail gracefully
+        }
+    }
+
+    #endregion
+
+    #region Dashboard Statistics
+
+    /// <summary>
+    /// Get dashboard statistics from Redis cache (ultra-fast)
+    /// </summary>
+    public async Task<DashboardStatistics?> GetDashboardStatisticsAsync()
+    {
+        try
+        {
+            var statsJson = await _db.StringGetAsync(DASHBOARD_STATS_KEY);
+            if (!statsJson.HasValue)
+            {
+                _logger.LogDebug("No dashboard statistics found in Redis cache");
+                return null;
+            }
+
+            var stats = JsonSerializer.Deserialize<DashboardStatistics>(statsJson);
+            _logger.LogDebug("✅ Retrieved dashboard statistics from Redis cache");
+            return stats;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to get dashboard statistics from Redis");
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Store dashboard statistics in Redis cache
+    /// </summary>
+    public async Task StoreDashboardStatisticsAsync(DashboardStatistics stats)
+    {
+        try
+        {
+            stats.LastUpdated = DateTime.UtcNow;
+            var statsJson = JsonSerializer.Serialize(stats);
+            
+            // Store with 5-minute expiration for auto-refresh
+            await _db.StringSetAsync(DASHBOARD_STATS_KEY, statsJson, TimeSpan.FromMinutes(5));
+            
+            _logger.LogDebug("✅ Stored dashboard statistics in Redis cache");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to store dashboard statistics in Redis");
+        }
+    }
+
+    /// <summary>
+    /// Update dashboard statistics incrementally (for real-time updates)
+    /// </summary>
+    public async Task UpdateDashboardStatisticsAsync(string updateType, object updateData)
+    {
+        try
+        {
+            var metadata = new
+            {
+                Type = updateType,
+                Data = updateData,
+                Timestamp = DateTime.UtcNow
+            };
+
+            var metadataJson = JsonSerializer.Serialize(metadata);
+            
+            // Store update metadata
+            await _db.ListLeftPushAsync(DASHBOARD_METADATA_KEY, metadataJson);
+            
+            // Keep only last 100 updates
+            await _db.ListTrimAsync(DASHBOARD_METADATA_KEY, 0, 99);
+            
+            // Invalidate dashboard stats to force refresh
+            await _db.KeyDeleteAsync(DASHBOARD_STATS_KEY);
+            
+            _logger.LogDebug("✅ Updated dashboard metadata: {UpdateType}", updateType);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to update dashboard metadata");
+        }
+    }
+
+    /// <summary>
+    /// Get recent dashboard activity from Redis
+    /// </summary>
+    public async Task<List<object>> GetRecentDashboardActivityAsync(int limit = 10)
+    {
+        try
+        {
+            var activities = await _db.ListRangeAsync(DASHBOARD_METADATA_KEY, 0, limit - 1);
+            var result = new List<object>();
+
+            foreach (var activity in activities)
+            {
+                if (activity.HasValue)
+                {
+                    var activityObj = JsonSerializer.Deserialize<object>(activity);
+                    result.Add(activityObj);
+                }
+            }
+
+            return result;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to get recent dashboard activity");
+            return new List<object>();
+        }
+    }
+
+    /// <summary>
+    /// Check if dashboard statistics are fresh (less than 1 minute old)
+    /// </summary>
+    public async Task<bool> IsDashboardStatisticsFreshAsync()
+    {
+        try
+        {
+            var stats = await GetDashboardStatisticsAsync();
+            if (stats == null) return false;
+
+            var age = DateTime.UtcNow - stats.LastUpdated;
+            return age.TotalMinutes < 1;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to check dashboard statistics freshness");
+            return false;
         }
     }
 
