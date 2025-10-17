@@ -247,6 +247,8 @@ public class MongoCollectionRepository : MongoRepository<Collection>, ICollectio
         var filter = Builders<Collection>.Filter.Eq(x => x.Id, collectionId);
         var update = Builders<Collection>.Update
             .Push(x => x.Images, image)
+            .Inc(x => x.Statistics.TotalItems, 1)
+            .Inc(x => x.Statistics.TotalSize, image.FileSize)
             .Set(x => x.UpdatedAt, DateTime.UtcNow);
         
         var result = await _collection.UpdateOneAsync(filter, update);
