@@ -13,6 +13,14 @@ const Dashboard: React.FC = () => {
   const { data: stats, isLoading: statsLoading } = useDashboardStats();
   const { data: activity, isLoading: activityLoading } = useDashboardActivity(5);
 
+  const formatBytes = (bytes: number): string => {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+  };
+
   if (statsLoading) {
     return <LoadingSpinner text="Loading dashboard..." />;
   }
@@ -51,14 +59,6 @@ const Dashboard: React.FC = () => {
       bgColor: 'bg-yellow-500/10',
     },
   ];
-
-  const formatBytes = (bytes: number): string => {
-    if (bytes === 0) return '0 B';
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
-  };
 
   return (
     <div className="container mx-auto px-4 py-6 space-y-6">
@@ -103,7 +103,7 @@ const Dashboard: React.FC = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              {stats?.cacheFolderStats?.slice(0, 3).map((folder) => (
+              {stats?.cacheFolderStats?.slice(0, 3).map((folder: any) => (
                 <div key={folder.id} className="flex justify-between items-center">
                   <div>
                     <p className="text-sm text-white">{folder.name}</p>
@@ -161,7 +161,7 @@ const Dashboard: React.FC = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              {stats?.topCollections?.slice(0, 3).map((collection) => (
+              {stats?.topCollections?.slice(0, 3).map((collection: any) => (
                 <div key={collection.id} className="flex justify-between items-center">
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-white truncate">{collection.name}</p>

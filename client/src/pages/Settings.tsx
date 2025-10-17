@@ -691,6 +691,131 @@ const Settings: React.FC = () => {
                     <MacOSXCleanup />
                   </SettingsSection>
 
+                  <SettingsSection
+                    title="Metadata Recalculation"
+                    description="Recalculate cache folder and library metadata based on actual data"
+                  >
+                    <div className="space-y-4">
+                      <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-700">
+                        <h4 className="text-lg font-semibold text-white mb-2">Cache Folder Metadata</h4>
+                        <p className="text-sm text-slate-400 mb-4">
+                          Recalculate cache folder statistics based on actual files and collection data. 
+                          This will update file counts, sizes, and collection bindings.
+                        </p>
+                        <Button
+                          variant="secondary"
+                          onClick={async () => {
+                            try {
+                              const response = await fetch('/api/v1/admin/recalculate-cache-folder-metadata', {
+                                method: 'POST',
+                                headers: {
+                                  'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+                                  'Content-Type': 'application/json',
+                                },
+                              });
+                              
+                              if (response.ok) {
+                                const result = await response.json();
+                                toast.success(`Cache folder metadata recalculated! Processed ${result.processedItems}/${result.totalItems} items in ${result.duration?.totalMilliseconds?.toFixed(0)}ms`);
+                                if (result.errors?.length > 0) {
+                                  console.warn('Recalculation completed with errors:', result.errors);
+                                }
+                              } else {
+                                throw new Error('Failed to recalculate cache folder metadata');
+                              }
+                            } catch (error) {
+                              console.error('Error recalculating cache folder metadata:', error);
+                              toast.error('Failed to recalculate cache folder metadata');
+                            }
+                          }}
+                          className="w-full"
+                        >
+                          Recalculate Cache Folder Metadata
+                        </Button>
+                      </div>
+
+                      <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-700">
+                        <h4 className="text-lg font-semibold text-white mb-2">Library Metadata</h4>
+                        <p className="text-sm text-slate-400 mb-4">
+                          Recalculate library statistics based on collection data. 
+                          This will update total collections, media items, sizes, and activity metrics.
+                        </p>
+                        <Button
+                          variant="secondary"
+                          onClick={async () => {
+                            try {
+                              const response = await fetch('/api/v1/admin/recalculate-library-metadata', {
+                                method: 'POST',
+                                headers: {
+                                  'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+                                  'Content-Type': 'application/json',
+                                },
+                              });
+                              
+                              if (response.ok) {
+                                const result = await response.json();
+                                toast.success(`Library metadata recalculated! Processed ${result.processedItems}/${result.totalItems} items in ${result.duration?.totalMilliseconds?.toFixed(0)}ms`);
+                                if (result.errors?.length > 0) {
+                                  console.warn('Recalculation completed with errors:', result.errors);
+                                }
+                              } else {
+                                throw new Error('Failed to recalculate library metadata');
+                              }
+                            } catch (error) {
+                              console.error('Error recalculating library metadata:', error);
+                              toast.error('Failed to recalculate library metadata');
+                            }
+                          }}
+                          className="w-full"
+                        >
+                          Recalculate Library Metadata
+                        </Button>
+                      </div>
+
+                      <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-700">
+                        <h4 className="text-lg font-semibold text-white mb-2">Complete Metadata Recalculation</h4>
+                        <p className="text-sm text-slate-400 mb-4">
+                          Recalculate both cache folder and library metadata. 
+                          This is a comprehensive operation that may take several minutes.
+                        </p>
+                        <Button
+                          variant="primary"
+                          onClick={async () => {
+                            if (!window.confirm('This will recalculate all metadata and may take several minutes. Continue?')) {
+                              return;
+                            }
+                            
+                            try {
+                              const response = await fetch('/api/v1/admin/recalculate-all-metadata', {
+                                method: 'POST',
+                                headers: {
+                                  'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+                                  'Content-Type': 'application/json',
+                                },
+                              });
+                              
+                              if (response.ok) {
+                                const result = await response.json();
+                                toast.success(`Complete metadata recalculation finished! Processed ${result.processedItems}/${result.totalItems} items in ${result.duration?.totalMilliseconds?.toFixed(0)}ms`);
+                                if (result.errors?.length > 0) {
+                                  console.warn('Recalculation completed with errors:', result.errors);
+                                }
+                              } else {
+                                throw new Error('Failed to recalculate all metadata');
+                              }
+                            } catch (error) {
+                              console.error('Error recalculating all metadata:', error);
+                              toast.error('Failed to recalculate all metadata');
+                            }
+                          }}
+                          className="w-full"
+                        >
+                          Recalculate All Metadata
+                        </Button>
+                      </div>
+                    </div>
+                  </SettingsSection>
+
                   {/* Save Button */}
                   <div className="flex justify-end space-x-3">
                     <Button 

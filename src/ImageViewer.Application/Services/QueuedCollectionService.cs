@@ -500,6 +500,16 @@ public class QueuedCollectionService : ICollectionService
     {
         return await _collectionService.CleanupNonExistentCollectionsAsync();
     }
+
+    public async Task RecalculateCollectionStatisticsAsync(ObjectId collectionId)
+    {
+        await _collectionService.RecalculateCollectionStatisticsAsync(collectionId);
+    }
+
+    public async Task RecalculateAllCollectionStatisticsAsync()
+    {
+        await _collectionService.RecalculateAllCollectionStatisticsAsync();
+    }
     
     #endregion
 }

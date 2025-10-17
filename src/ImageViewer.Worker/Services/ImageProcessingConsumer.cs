@@ -356,7 +356,8 @@ public class ImageProcessingConsumer : BaseMessageConsumer
                 fileSize,
                 width,
                 height,
-                imageMessage.ImageFormat
+                imageMessage.ImageFormat,
+                archiveEntryInfo
             );
             
             _logger.LogDebug("✅ Created embedded image {ImageId} for {Path}", embeddedImage.Id, imageMessage.ImagePath);

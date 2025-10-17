@@ -152,6 +152,7 @@ builder.Services.AddScoped<ImageViewer.Domain.Interfaces.ICollectionIndexService
 
 // Register Dashboard Statistics Service (Redis-cached for ultra-fast loading)
 builder.Services.AddScoped<ImageViewer.Domain.Interfaces.IDashboardStatisticsService, ImageViewer.Application.Services.DashboardStatisticsService>();
+builder.Services.AddScoped<ImageViewer.Domain.Interfaces.IMetadataRecalculationService, ImageViewer.Application.Services.MetadataRecalculationService>();
 
 // Add Hangfire Scheduler with Dashboard
 builder.Services.AddHangfireDashboard(builder.Configuration);

@@ -1,4 +1,5 @@
 using ImageViewer.Domain.Entities;
+using ImageViewer.Domain.ValueObjects;
 using MongoDB.Bson;
 
 namespace ImageViewer.Domain.Interfaces;
@@ -129,6 +130,35 @@ public interface ICollectionIndexService
     /// Used during index rebuild for performance.
     /// </summary>
     Task BatchCacheThumbnailsAsync(Dictionary<ObjectId, byte[]> thumbnails, TimeSpan? expiration = null, CancellationToken cancellationToken = default);
+
+    #region Dashboard Statistics
+
+    /// <summary>
+    /// Get dashboard statistics from Redis cache (ultra-fast)
+    /// </summary>
+    Task<DashboardStatistics?> GetDashboardStatisticsAsync();
+
+    /// <summary>
+    /// Store dashboard statistics in Redis cache
+    /// </summary>
+    Task StoreDashboardStatisticsAsync(DashboardStatistics statistics);
+
+    /// <summary>
+    /// Update dashboard statistics incrementally
+    /// </summary>
+    Task UpdateDashboardStatisticsAsync(string updateType, object updateData);
+
+    /// <summary>
+    /// Get recent dashboard activity
+    /// </summary>
+    Task<List<object>> GetRecentDashboardActivityAsync(int limit = 10);
+
+    /// <summary>
+    /// Check if dashboard statistics are fresh (not expired)
+    /// </summary>
+    Task<bool> IsDashboardStatisticsFreshAsync();
+
+    #endregion
 }
 
 /// <summary>

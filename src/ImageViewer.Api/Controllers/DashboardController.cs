@@ -1,4 +1,5 @@
 using ImageViewer.Domain.Interfaces;
+using ImageViewer.Domain.ValueObjects;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 

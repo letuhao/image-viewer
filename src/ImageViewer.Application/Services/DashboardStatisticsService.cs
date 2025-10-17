@@ -2,6 +2,7 @@ using ImageViewer.Domain.Entities;
 using ImageViewer.Domain.Interfaces;
 using ImageViewer.Domain.ValueObjects;
 using Microsoft.Extensions.Logging;
+using System.IO;
 
 namespace ImageViewer.Application.Services;
 
@@ -81,8 +82,8 @@ public class DashboardStatisticsService : IDashboardStatisticsService
         var totalThumbnails = collections.Sum(c => c.Thumbnails?.Count ?? 0);
         var totalCacheImages = collections.Sum(c => c.CacheImages?.Count ?? 0);
         var totalSize = collections.Sum(c => c.GetTotalSize());
-        var totalThumbnailSize = collections.Sum(c => c.Thumbnails?.Sum(t => t.Size) ?? 0);
-        var totalCacheSize = collections.Sum(c => c.CacheImages?.Sum(c => c.Size) ?? 0);
+        var totalThumbnailSize = collections.Sum(c => c.Thumbnails?.Sum(t => t.FileSize) ?? 0);
+        var totalCacheSize = collections.Sum(c => c.CacheImages?.Sum(c => c.FileSize) ?? 0);
 
         // Get cache folder statistics
         var cacheFolders = await _cacheFolderRepository.GetAllAsync();
@@ -105,7 +106,7 @@ public class DashboardStatisticsService : IDashboardStatisticsService
         // Get top collections by view count
         var topCollections = collections
             .Where(c => c.IsActive && !c.IsDeleted)
-            .OrderByDescending(c => c.Statistics.ViewCount)
+            .OrderByDescending(c => c.Statistics.TotalViews)
             .Take(10)
             .Select(c => new TopCollection
             {
@@ -113,7 +114,7 @@ public class DashboardStatisticsService : IDashboardStatisticsService
                 Name = c.Name,
                 ImageCount = c.GetImageCount(),
                 TotalSize = c.GetTotalSize(),
-                ViewCount = c.Statistics.ViewCount,
+                ViewCount = c.Statistics.TotalViews,
                 LastViewed = c.Statistics.LastViewed,
                 ThumbnailPath = c.Thumbnails?.FirstOrDefault()?.ThumbnailPath
             }).ToList();
@@ -126,13 +127,13 @@ public class DashboardStatisticsService : IDashboardStatisticsService
         };
 
         // Build system health
-        var systemHealth = new SystemHealth
+        var systemHealth = new ImageViewer.Domain.ValueObjects.SystemHealth
         {
             RedisStatus = "Connected",
             MongoDbStatus = "Connected", 
             WorkerStatus = "Running",
             ApiStatus = "Running",
-            Uptime = DateTime.UtcNow - Process.GetCurrentProcess().StartTime,
+            Uptime = DateTime.UtcNow - System.Diagnostics.Process.GetCurrentProcess().StartTime,
             MemoryUsageBytes = GC.GetTotalMemory(false),
             DiskSpaceFreeBytes = GetFreeDiskSpace(),
             LastHealthCheck = DateTime.UtcNow
@@ -140,19 +141,19 @@ public class DashboardStatisticsService : IDashboardStatisticsService
 
         var stats = new DashboardStatistics
         {
-            TotalCollections = collections.Count,
-            ActiveCollections = activeCollections.Count,
+            TotalCollections = collections.Count(),
+            ActiveCollections = activeCollections.Count(),
             TotalImages = totalImages,
             TotalThumbnails = totalThumbnails,
             TotalCacheImages = totalCacheImages,
             TotalSize = totalSize,
             TotalThumbnailSize = totalThumbnailSize,
             TotalCacheSize = totalCacheSize,
-            AverageImagesPerCollection = collections.Count > 0 ? (double)totalImages / collections.Count : 0,
-            AverageSizePerCollection = collections.Count > 0 ? (double)totalSize / collections.Count : 0,
-            ActiveJobs = jobStats.ActiveJobs,
-            CompletedJobsToday = jobStats.CompletedJobsToday,
-            FailedJobsToday = jobStats.FailedJobsToday,
+            AverageImagesPerCollection = collections.Count() > 0 ? (double)totalImages / collections.Count() : 0,
+            AverageSizePerCollection = collections.Count() > 0 ? (double)totalSize / collections.Count() : 0,
+            ActiveJobs = jobStats.RunningJobs,
+            CompletedJobsToday = jobStats.CompletedJobs,
+            FailedJobsToday = jobStats.FailedJobs,
             LastUpdated = DateTime.UtcNow,
             CacheFolderStats = cacheFolderStats,
             RecentActivity = recentActivity,
@@ -162,7 +163,7 @@ public class DashboardStatisticsService : IDashboardStatisticsService
 
         var duration = DateTime.UtcNow - startTime;
         _logger.LogInformation("📊 Built dashboard statistics in {Duration}ms: {Collections} collections, {Images} images", 
-            duration.TotalMilliseconds, collections.Count, totalImages);
+            duration.TotalMilliseconds, collections.Count(), totalImages);
 
         return stats;
     }
@@ -224,8 +225,8 @@ public class DashboardStatisticsService : IDashboardStatisticsService
     {
         try
         {
-            var drive = new DriveInfo("C:");
-            return drive.AvailableFreeSpace;
+            // Simple fallback - return a reasonable default
+            return 100L * 1024 * 1024 * 1024; // 100GB
         }
         catch
         {

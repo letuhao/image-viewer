@@ -590,7 +590,7 @@ public class ImageService : IImageService
 
     #region CRUD Operations on Embedded Images
 
-    public async Task<ImageEmbedded> CreateEmbeddedImageAsync(ObjectId collectionId, string filename, string relativePath, long fileSize, int width, int height, string format, CancellationToken cancellationToken = default)
+    public async Task<ImageEmbedded> CreateEmbeddedImageAsync(ObjectId collectionId, string filename, string relativePath, long fileSize, int width, int height, string format, ArchiveEntryInfo? archiveEntry = null, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -613,7 +613,7 @@ public class ImageService : IImageService
                 return existingImage;
             }
 
-            var embeddedImage = new ImageEmbedded(filename, relativePath, fileSize, width, height, format);
+            var embeddedImage = new ImageEmbedded(filename, relativePath, archiveEntry, fileSize, width, height, format);
             
             // Atomically add image to collection (thread-safe, prevents race conditions!)
             var added = await _collectionRepository.AtomicAddImageAsync(collectionId, embeddedImage);

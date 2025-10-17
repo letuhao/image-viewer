@@ -81,7 +81,8 @@ public class ImageServiceTests
             1024000,
             1920,
             1080,
-            ".jpg");
+            ".jpg",
+            null);
 
         // Assert
         result.Should().NotBeNull();
