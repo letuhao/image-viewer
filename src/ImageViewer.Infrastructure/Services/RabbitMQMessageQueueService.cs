@@ -38,12 +38,21 @@ public class RabbitMQMessageQueueService : IMessageQueueService, IDisposable
             RequestedHeartbeat = TimeSpan.FromSeconds(60)
         };
 
-        _connection = factory.CreateConnectionAsync().GetAwaiter().GetResult();
-        _channel = _connection.CreateChannelAsync().GetAwaiter().GetResult();
+        try
+        {
+            // Use ConfigureAwait(false) to avoid deadlocks and run on thread pool
+            _connection = factory.CreateConnectionAsync().ConfigureAwait(false).GetAwaiter().GetResult();
+            _channel = _connection.CreateChannelAsync().ConfigureAwait(false).GetAwaiter().GetResult();
 
-        // Note: Queue and exchange setup is now handled by RabbitMQSetupService
-        // This prevents configuration conflicts (e.g., x-max-length parameter mismatches)
-        _logger.LogDebug("RabbitMQ connection and channel established");
+            // Note: Queue and exchange setup is now handled by RabbitMQSetupService
+            // This prevents configuration conflicts (e.g., x-max-length parameter mismatches)
+            _logger.LogDebug("RabbitMQ connection and channel established");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to establish RabbitMQ connection to {HostName}:{Port}", _options.HostName, _options.Port);
+            throw;
+        }
     }
 
     public async Task PublishAsync<T>(T message, string? routingKey = null, CancellationToken cancellationToken = default) where T : MessageEvent
@@ -204,10 +213,32 @@ public class RabbitMQMessageQueueService : IMessageQueueService, IDisposable
     {
         if (!_disposed)
         {
-            _channel?.CloseAsync().GetAwaiter().GetResult();
-            _channel?.Dispose();
-            _connection?.CloseAsync().GetAwaiter().GetResult();
-            _connection?.Dispose();
+            try
+            {
+                _channel?.CloseAsync().ConfigureAwait(false).GetAwaiter().GetResult();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Error closing RabbitMQ channel");
+            }
+            finally
+            {
+                _channel?.Dispose();
+            }
+
+            try
+            {
+                _connection?.CloseAsync().ConfigureAwait(false).GetAwaiter().GetResult();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Error closing RabbitMQ connection");
+            }
+            finally
+            {
+                _connection?.Dispose();
+            }
+            
             _disposed = true;
         }
     }

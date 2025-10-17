@@ -52,7 +52,7 @@ builder.Services.AddMongoDb(builder.Configuration);
 
 // Add RabbitMQ
 builder.Services.Configure<ImageViewer.Infrastructure.Data.RabbitMQOptions>(builder.Configuration.GetSection("RabbitMQ"));
-builder.Services.AddScoped<ImageViewer.Domain.Interfaces.IMessageQueueService, ImageViewer.Infrastructure.Services.RabbitMQMessageQueueService>();
+builder.Services.AddSingleton<ImageViewer.Domain.Interfaces.IMessageQueueService, ImageViewer.Infrastructure.Services.RabbitMQMessageQueueService>();
 
 // Add CORS
 builder.Services.AddCors(options =>
@@ -95,7 +95,7 @@ builder.Services.AddSingleton<IConnection>(provider =>
 });
 
 // Register message queue service
-builder.Services.AddScoped<IMessageQueueService, RabbitMQMessageQueueService>();
+builder.Services.AddSingleton<IMessageQueueService, RabbitMQMessageQueueService>();
 
 // Configure Redis
 builder.Services.Configure<ImageViewer.Application.Options.RedisOptions>(builder.Configuration.GetSection("Redis"));
