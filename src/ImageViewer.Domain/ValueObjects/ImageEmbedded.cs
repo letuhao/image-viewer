@@ -102,6 +102,44 @@ public class ImageEmbedded
         IsDeleted = false;
     }
 
+    /// <summary>
+    /// Migration constructor for legacy data - handles null ArchiveEntryInfo
+    /// </summary>
+    public ImageEmbedded(string filename, string relativePath, ArchiveEntryInfo? archiveEntry, 
+        long fileSize, int width, int height, string format)
+    {
+        Filename = filename ?? throw new ArgumentNullException(nameof(filename));
+        RelativePath = relativePath ?? throw new ArgumentNullException(nameof(relativePath));
+        LegacyRelativePath = relativePath; // Keep for backward compatibility
+        
+        // Handle legacy data where ArchiveEntry might be null
+        if (archiveEntry != null)
+        {
+            ArchiveEntry = archiveEntry;
+            FileType = archiveEntry.FileType;
+        }
+        else
+        {
+            // Create a default ArchiveEntryInfo for legacy data
+            // This handles old data that doesn't have ArchiveEntryInfo
+            ArchiveEntry = new ArchiveEntryInfo(
+                archivePath: "", // Will be empty for legacy data
+                entryName: filename,
+                fileType: ImageFileType.Regular // Default to regular file
+            );
+            FileType = ImageFileType.Regular;
+        }
+        
+        FileSize = fileSize;
+        Width = width;
+        Height = height;
+        Format = format ?? throw new ArgumentNullException(nameof(format));
+        ViewCount = 0;
+        CreatedAt = DateTime.UtcNow;
+        UpdatedAt = DateTime.UtcNow;
+        IsDeleted = false;
+    }
+
     public ImageEmbedded(string filename, string relativePath, ImageFileType fileType,
         long fileSize, int width, int height, string format)
     {
