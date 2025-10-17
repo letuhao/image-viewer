@@ -379,6 +379,14 @@ public class BatchThumbnailGenerationConsumer : BaseMessageConsumer
                 format,
                 collectionDir);
             
+            // Ensure the directory exists before writing the file
+            var directory = Path.GetDirectoryName(thumbnailPath);
+            if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
+            {
+                Directory.CreateDirectory(directory);
+                _logger.LogDebug("📁 Created thumbnail directory: {Directory}", directory);
+            }
+            
             await File.WriteAllBytesAsync(thumbnailPath, processedImage.ThumbnailData);
             
             thumbnailPaths.Add(new ThumbnailPathData

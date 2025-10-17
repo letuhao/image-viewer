@@ -411,6 +411,14 @@ public class BatchCacheGenerationConsumer : BaseMessageConsumer
         {
             var cachePath = processedImage.Message.CachePath;
             
+            // Ensure the directory exists before writing the file
+            var directory = Path.GetDirectoryName(cachePath);
+            if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
+            {
+                Directory.CreateDirectory(directory);
+                _logger.LogDebug("📁 Created cache directory: {Directory}", directory);
+            }
+            
             _logger.LogDebug("💾 Writing cache file: {CachePath} (Size: {Size} bytes)", 
                 cachePath, processedImage.CacheData.Length);
             
