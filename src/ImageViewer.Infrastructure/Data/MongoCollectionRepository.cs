@@ -323,5 +323,32 @@ public class MongoCollectionRepository : MongoRepository<Collection>, ICollectio
         await _collection.UpdateOneAsync(filter, update);
     }
 
+    public async Task RecalculateCollectionStatisticsAsync(ObjectId collectionId)
+    {
+        var collection = await GetByIdAsync(collectionId);
+        if (collection == null) return;
+
+        var activeImages = collection.GetActiveImages();
+        var totalItems = activeImages.Count;
+        var totalSize = activeImages.Sum(i => i.FileSize);
+
+        var filter = Builders<Collection>.Filter.Eq(x => x.Id, collectionId);
+        var update = Builders<Collection>.Update
+            .Set(x => x.Statistics.TotalItems, totalItems)
+            .Set(x => x.Statistics.TotalSize, totalSize)
+            .Set(x => x.UpdatedAt, DateTime.UtcNow);
+
+        await _collection.UpdateOneAsync(filter, update);
+    }
+
+    public async Task RecalculateAllCollectionStatisticsAsync()
+    {
+        var collections = await GetAllAsync();
+        foreach (var collection in collections)
+        {
+            await RecalculateCollectionStatisticsAsync(collection.Id);
+        }
+    }
+
     #endregion
 }

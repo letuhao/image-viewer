@@ -1319,6 +1319,32 @@ public class CollectionService : ICollectionService
             // Don't throw - cleanup should continue even if resource cleanup fails
         }
     }
+
+    public async Task RecalculateCollectionStatisticsAsync(ObjectId collectionId)
+    {
+        try
+        {
+            await _collectionRepository.RecalculateCollectionStatisticsAsync(collectionId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to recalculate statistics for collection with ID {CollectionId}", collectionId);
+            throw new BusinessRuleException($"Failed to recalculate statistics for collection with ID '{collectionId}'", ex);
+        }
+    }
+
+    public async Task RecalculateAllCollectionStatisticsAsync()
+    {
+        try
+        {
+            await _collectionRepository.RecalculateAllCollectionStatisticsAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to recalculate statistics for all collections");
+            throw new BusinessRuleException("Failed to recalculate statistics for all collections", ex);
+        }
+    }
     
     #endregion
 }

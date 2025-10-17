@@ -955,6 +955,49 @@ public class CollectionsController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Recalculate statistics for a specific collection
+    /// </summary>
+    [HttpPost("{id}/recalculate-statistics")]
+    public async Task<IActionResult> RecalculateCollectionStatistics(string id)
+    {
+        try
+        {
+            if (!ObjectId.TryParse(id, out var collectionId))
+                return BadRequest(new { message = "Invalid collection ID format" });
+
+            await _collectionService.RecalculateCollectionStatisticsAsync(collectionId);
+            return Ok(new { message = "Collection statistics recalculated successfully" });
+        }
+        catch (EntityNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to recalculate statistics for collection with ID {CollectionId}", id);
+            return StatusCode(500, new { message = "Internal server error" });
+        }
+    }
+
+    /// <summary>
+    /// Recalculate statistics for all collections
+    /// </summary>
+    [HttpPost("recalculate-all-statistics")]
+    public async Task<IActionResult> RecalculateAllCollectionStatistics()
+    {
+        try
+        {
+            await _collectionService.RecalculateAllCollectionStatisticsAsync();
+            return Ok(new { message = "All collection statistics recalculated successfully" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to recalculate statistics for all collections");
+            return StatusCode(500, new { message = "Internal server error" });
+        }
+    }
+
     #endregion
 }
 

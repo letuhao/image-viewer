@@ -80,6 +80,16 @@ public interface ICollectionRepository : IRepository<Collection>
     /// </summary>
     Task ClearImageArraysAsync(ObjectId collectionId);
     
+    /// <summary>
+    /// Recalculates statistics for a specific collection based on its actual images
+    /// </summary>
+    Task RecalculateCollectionStatisticsAsync(ObjectId collectionId);
+    
+    /// <summary>
+    /// Recalculates statistics for all collections
+    /// </summary>
+    Task RecalculateAllCollectionStatisticsAsync();
+    
     #endregion
 }
 
