@@ -408,10 +408,10 @@ public class MongoCollectionRepository : MongoRepository<Collection>, ICollectio
 
         return new SystemStatisticsDto
         {
-            TotalCollections = result.GetValue("totalCollections", 0).AsInt32,
-            TotalImages = result.GetValue("totalImages", 0).AsInt64,
-            TotalSize = result.GetValue("totalSize", 0).AsInt64,
-            TotalCacheSize = result.GetValue("totalCacheSize", 0).AsInt64,
+            TotalCollections = result.GetValue("totalCollections", 0).ToInt32(),
+            TotalImages = result.GetValue("totalImages", 0).ToInt64(),
+            TotalSize = result.GetValue("totalSize", 0).ToInt64(),
+            TotalCacheSize = result.GetValue("totalCacheSize", 0).ToInt64(),
             TotalViewSessions = 0, // Will be calculated separately for view sessions
             TotalViewTime = 0,     // Will be calculated separately for view sessions
             AverageImagesPerCollection = 0, // Will be calculated in the service
