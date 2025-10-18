@@ -2,6 +2,7 @@ using MongoDB.Bson;
 using ImageViewer.Domain.Entities;
 using ImageViewer.Domain.ValueObjects;
 using ImageViewer.Domain.Enums;
+using ImageViewer.Domain.DTOs;
 
 namespace ImageViewer.Domain.Interfaces;
 

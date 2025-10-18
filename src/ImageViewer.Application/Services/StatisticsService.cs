@@ -1,5 +1,6 @@
 using MongoDB.Bson;
 using ImageViewer.Domain.Interfaces;
+using ImageViewer.Domain.DTOs;
 using ImageViewer.Application.DTOs.Statistics;
 using ImageViewer.Application.DTOs.Cache;
 using Microsoft.Extensions.Logging;
@@ -93,7 +94,7 @@ public class StatisticsService : IStatisticsService
         }
     }
 
-    public async Task<SystemStatisticsDto> GetSystemStatisticsAsync()
+    public async Task<Application.DTOs.Statistics.SystemStatisticsDto> GetSystemStatisticsAsync()
     {
         _logger.LogInformation("Getting system statistics using MongoDB aggregation");
 
@@ -110,10 +111,11 @@ public class StatisticsService : IStatisticsService
                 (double)collectionsStats.TotalImages / collectionsStats.TotalCollections : 0;
             var averageViewTimePerSession = totalViewSessions > 0 ? totalViewTime / totalViewSessions : 0;
 
-            return new SystemStatisticsDto
+            // Map Domain DTO to Application DTO
+            return new Application.DTOs.Statistics.SystemStatisticsDto
             {
                 TotalCollections = collectionsStats.TotalCollections,
-                TotalImages = collectionsStats.TotalImages,
+                TotalImages = (int)collectionsStats.TotalImages, // Convert long to int for Application DTO
                 TotalSize = collectionsStats.TotalSize,
                 TotalCacheSize = collectionsStats.TotalCacheSize,
                 TotalViewSessions = totalViewSessions,

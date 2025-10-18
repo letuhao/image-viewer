@@ -4,7 +4,7 @@ using ImageViewer.Domain.Entities;
 using ImageViewer.Domain.Interfaces;
 using ImageViewer.Domain.Enums;
 using ImageViewer.Domain.Exceptions;
-using ImageViewer.Application.DTOs.Statistics;
+using ImageViewer.Domain.DTOs;
 
 namespace ImageViewer.Infrastructure.Data;
 
