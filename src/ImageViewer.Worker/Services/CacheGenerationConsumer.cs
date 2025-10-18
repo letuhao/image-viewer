@@ -479,6 +479,15 @@ public class CacheGenerationConsumer : BaseMessageConsumer
                 "jpg" => ".jpg",
                 "png" => ".png",
                 "webp" => ".webp",
+                "gif" => ".gif",
+                "apng" => ".apng",
+                "mp4" => ".mp4",
+                "avi" => ".avi",
+                "mov" => ".mov",
+                "wmv" => ".wmv",
+                "flv" => ".flv",
+                "mkv" => ".mkv",
+                "webm" => ".webm",
                 "original" => Path.GetExtension(cacheMessage.ArchiveEntry.EntryName), // Preserve original extension
                 _ => ".jpg" // Default fallback
             };

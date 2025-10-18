@@ -429,8 +429,24 @@ public class BatchCacheGenerationConsumer : BaseMessageConsumer
         {
             if (string.IsNullOrEmpty(processedImage.Message.CachePath))
             {
-                // Override the message format with the correct format from settings
-                processedImage.Message.Format = cacheFormat;
+                // Check if this is an animated format that should preserve its original format
+                var filename = processedImage.Message.ArchiveEntry.EntryName;
+                bool isAnimated = AnimatedFormatHelper.IsAnimatedFormat(filename);
+                
+                if (isAnimated)
+                {
+                    // For animated files, preserve the original format instead of using cache format
+                    var originalExtension = Path.GetExtension(filename).TrimStart('.');
+                    processedImage.Message.Format = originalExtension.ToUpperInvariant();
+                    _logger.LogDebug("🎬 Preserving original format '{Format}' for animated file {Filename}", 
+                        processedImage.Message.Format, filename);
+                }
+                else
+                {
+                    // For static images, use the cache format from settings
+                    processedImage.Message.Format = cacheFormat;
+                }
+                
                 processedImage.Message.CachePath = await DetermineCachePath(processedImage.Message, serviceProvider);
             }
         }
@@ -842,6 +858,15 @@ public class BatchCacheGenerationConsumer : BaseMessageConsumer
                 "jpg" => ".jpg",
                 "png" => ".png",
                 "webp" => ".webp",
+                "gif" => ".gif",
+                "apng" => ".apng",
+                "mp4" => ".mp4",
+                "avi" => ".avi",
+                "mov" => ".mov",
+                "wmv" => ".wmv",
+                "flv" => ".flv",
+                "mkv" => ".mkv",
+                "webm" => ".webm",
                 "original" => Path.GetExtension(cacheMessage.ArchiveEntry.EntryName), // Preserve original extension
                 _ => ".jpg" // Default fallback
             };
@@ -877,6 +902,15 @@ public class BatchCacheGenerationConsumer : BaseMessageConsumer
                 "jpg" => ".jpg",
                 "png" => ".png",
                 "webp" => ".webp",
+                "gif" => ".gif",
+                "apng" => ".apng",
+                "mp4" => ".mp4",
+                "avi" => ".avi",
+                "mov" => ".mov",
+                "wmv" => ".wmv",
+                "flv" => ".flv",
+                "mkv" => ".mkv",
+                "webm" => ".webm",
                 "original" => Path.GetExtension(cacheMessage.ArchiveEntry.EntryName),
                 _ => ".jpg"
             };
