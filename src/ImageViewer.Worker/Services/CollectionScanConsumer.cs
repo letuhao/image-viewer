@@ -145,12 +145,11 @@ public class CollectionScanConsumer : BaseMessageConsumer
                 try
                 {
                     // Extract basic metadata for the image processing message
-                    var archiveEntry = new ArchiveEntryInfo()
-                    {
-                        ArchivePath = collection.Path,
-                        EntryName = mediaFile.FileName,
-                        IsDirectory = collection.Type == CollectionType.Folder
-                    };
+                    var archiveEntry = ArchiveEntryInfo.FromCollection(
+                        collection.Path, 
+                        collection.Type, 
+                        mediaFile.FileName, 
+                        mediaFile.FileSize);
 
                     var (width, height) = await ExtractImageDimensions(archiveEntry);
                     

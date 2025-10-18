@@ -301,12 +301,11 @@ public class BulkOperationConsumer : BaseMessageConsumer
                         CollectionId = collection.Id.ToString(), // Use collection.Id from outer loop
                         //ImagePath = image.GetDisplayPath(), // Use the new DTO method for display path
                         //ImageFilename = image.Filename,
-                        ArchiveEntry = new ArchiveEntryInfo
-                        {
-                            ArchivePath = collection.Path,
-                            EntryName = image.Filename,
-                            IsDirectory = Directory.Exists(collection.Path),
-                        },
+                        ArchiveEntry = ArchiveEntryInfo.FromCollection(
+                            collection.Path, 
+                            collection.Type, 
+                            image.Filename, 
+                            image.FileSize),
                         ThumbnailWidth = thumbnailWidth, // Loaded from system settings
                         ThumbnailHeight = thumbnailHeight, // Loaded from system settings
                     };
@@ -373,12 +372,11 @@ public class BulkOperationConsumer : BaseMessageConsumer
                         ImageId = image.Id, // Already a string
                         CollectionId = collection.Id.ToString(), // Use collection.Id from outer loop
                         //ImagePath = image.GetDisplayPath(), // Use the new DTO method for display path
-                        ArchiveEntry = new ArchiveEntryInfo()
-                        {
-                            ArchivePath = collection.Path,
-                            EntryName = image.Filename,
-                            IsDirectory = Path.Exists(collection.Path),
-                        },
+                        ArchiveEntry = ArchiveEntryInfo.FromCollection(
+                            collection.Path, 
+                            collection.Type, 
+                            image.Filename, 
+                            image.FileSize),
                         //CachePath = "", // Will be determined by cache service
                         CacheWidth = 1920, // Default cache size
                         CacheHeight = 1080,
@@ -548,12 +546,11 @@ public class BulkOperationConsumer : BaseMessageConsumer
                             CollectionId = collectionId.ToString(),
                             //ImagePath = collection.GetFullImagePath(image), // Use full path
                             //ImageFilename = image.Filename,
-                            ArchiveEntry = new ArchiveEntryInfo()
-                            {
-                                ArchivePath = collection.Path,
-                                EntryName = image.Filename,
-                                IsDirectory = Directory.Exists(collection.Path),
-                            },
+                            ArchiveEntry = ArchiveEntryInfo.FromCollection(
+                                collection.Path, 
+                                collection.Type, 
+                                image.Filename, 
+                                image.FileSize),
                             ThumbnailWidth = thumbnailWidth,
                             ThumbnailHeight = thumbnailHeight,
                             ScanJobId = bulkMessage.JobId // Link to parent scan job
@@ -697,12 +694,11 @@ public class BulkOperationConsumer : BaseMessageConsumer
                             CollectionId = collectionId.ToString(),
                             //ImagePath = collection.GetFullImagePath(image), // Use full path
                             //CachePath = "", // Will be determined by cache service
-                            ArchiveEntry = new ArchiveEntryInfo()
-                            {
-                                ArchivePath = collection.Path,
-                                EntryName = image.Filename,
-                                IsDirectory = Directory.Exists(collection.Path)
-                            },
+                            ArchiveEntry = ArchiveEntryInfo.FromCollection(
+                                collection.Path, 
+                                collection.Type, 
+                                image.Filename, 
+                                image.FileSize),
                             CacheWidth = cacheWidth,
                             CacheHeight = cacheHeight,
                             Quality = cacheQuality,
