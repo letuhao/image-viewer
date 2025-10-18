@@ -19,6 +19,11 @@ public interface ICollectionRepository : IRepository<Collection>
     Task<long> GetCollectionCountAsync();
     Task<long> GetActiveCollectionCountAsync();
     
+    /// <summary>
+    /// Get system-wide statistics using MongoDB aggregation for optimal performance
+    /// </summary>
+    Task<SystemStatisticsDto> GetSystemStatisticsAsync();
+    
     #endregion
     
     #region Search Methods

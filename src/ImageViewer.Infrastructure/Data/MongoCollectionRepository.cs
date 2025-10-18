@@ -4,6 +4,7 @@ using ImageViewer.Domain.Entities;
 using ImageViewer.Domain.Interfaces;
 using ImageViewer.Domain.Enums;
 using ImageViewer.Domain.Exceptions;
+using ImageViewer.Application.DTOs.Statistics;
 
 namespace ImageViewer.Infrastructure.Data;
 
@@ -348,6 +349,74 @@ public class MongoCollectionRepository : MongoRepository<Collection>, ICollectio
         {
             await RecalculateCollectionStatisticsAsync(collection.Id);
         }
+    }
+
+    public async Task<SystemStatisticsDto> GetSystemStatisticsAsync()
+    {
+        // Use MongoDB aggregation pipeline to calculate statistics efficiently at database level
+        // This avoids loading all collections and their embedded arrays into memory
+        var pipeline = new[]
+        {
+            // Match only active, non-deleted collections
+            new BsonDocument("$match", new BsonDocument
+            {
+                { "isActive", true },
+                { "isDeleted", false }
+            }),
+            
+            // Project only the statistics fields we need
+            new BsonDocument("$project", new BsonDocument
+            {
+                { "statistics.totalItems", 1 },
+                { "statistics.totalSize", 1 },
+                { "statistics.totalThumbnails", 1 },
+                { "statistics.totalThumbnailSize", 1 },
+                { "statistics.totalCacheFiles", 1 },
+                { "statistics.totalCacheSize", 1 }
+            }),
+            
+            // Group and calculate totals
+            new BsonDocument("$group", new BsonDocument
+            {
+                { "_id", BsonNull.Value },
+                { "totalCollections", new BsonDocument("$sum", 1) },
+                { "totalImages", new BsonDocument("$sum", "$statistics.totalItems") },
+                { "totalSize", new BsonDocument("$sum", "$statistics.totalSize") },
+                { "totalThumbnails", new BsonDocument("$sum", "$statistics.totalThumbnails") },
+                { "totalThumbnailSize", new BsonDocument("$sum", "$statistics.totalThumbnailSize") },
+                { "totalCacheFiles", new BsonDocument("$sum", "$statistics.totalCacheFiles") },
+                { "totalCacheSize", new BsonDocument("$sum", "$statistics.totalCacheSize") }
+            })
+        };
+
+        var result = await _collection.Aggregate<BsonDocument>(pipeline).FirstOrDefaultAsync();
+        
+        if (result == null)
+        {
+            return new SystemStatisticsDto
+            {
+                TotalCollections = 0,
+                TotalImages = 0,
+                TotalSize = 0,
+                TotalCacheSize = 0,
+                TotalViewSessions = 0,
+                TotalViewTime = 0,
+                AverageImagesPerCollection = 0,
+                AverageViewTimePerSession = 0
+            };
+        }
+
+        return new SystemStatisticsDto
+        {
+            TotalCollections = result.GetValue("totalCollections", 0).AsInt32,
+            TotalImages = result.GetValue("totalImages", 0).AsInt64,
+            TotalSize = result.GetValue("totalSize", 0).AsInt64,
+            TotalCacheSize = result.GetValue("totalCacheSize", 0).AsInt64,
+            TotalViewSessions = 0, // Will be calculated separately for view sessions
+            TotalViewTime = 0,     // Will be calculated separately for view sessions
+            AverageImagesPerCollection = 0, // Will be calculated in the service
+            AverageViewTimePerSession = 0    // Will be calculated in the service
+        };
     }
 
     #endregion

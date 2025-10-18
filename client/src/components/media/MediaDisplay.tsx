@@ -1,5 +1,5 @@
 import React from 'react';
-import { isVideoFile, isAnimatedImage, getMimeType } from '../utils/mediaUtils';
+import { isVideoFile, isAnimatedImage, getMimeType } from '../../utils/mediaUtils';
 
 interface MediaDisplayProps {
   src: string;

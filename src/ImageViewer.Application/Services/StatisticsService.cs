@@ -95,32 +95,27 @@ public class StatisticsService : IStatisticsService
 
     public async Task<SystemStatisticsDto> GetSystemStatisticsAsync()
     {
-        _logger.LogInformation("Getting system statistics");
+        _logger.LogInformation("Getting system statistics using MongoDB aggregation");
 
         try
         {
-            var collections = await _collectionRepository.GetAllAsync();
-            var collectionsList = collections.ToList();
+            // Use MongoDB aggregation to calculate statistics efficiently at database level
+            var collectionsStats = await _collectionRepository.GetSystemStatisticsAsync();
             var viewSessions = await _viewSessionRepository.GetAllAsync();
             var viewSessionsList = viewSessions.ToList();
 
-            var totalCollections = collectionsList.Count;
-            var totalImages = collectionsList.Sum(c => c.GetActiveImages().Count);
-            var totalSize = collectionsList.Sum(c => c.GetActiveImages().Sum(i => i.FileSize));
-            var totalCacheSize = collectionsList.Sum(c => 
-                c.GetActiveImages().Where(i => i.CacheInfo != null).Sum(i => i.CacheInfo!.CacheSize));
-            
             var totalViewSessions = viewSessionsList.Count;
             var totalViewTime = viewSessionsList.Sum(vs => vs.TotalViewTime.TotalSeconds);
-            var averageImagesPerCollection = totalCollections > 0 ? (double)totalImages / totalCollections : 0;
+            var averageImagesPerCollection = collectionsStats.TotalCollections > 0 ? 
+                (double)collectionsStats.TotalImages / collectionsStats.TotalCollections : 0;
             var averageViewTimePerSession = totalViewSessions > 0 ? totalViewTime / totalViewSessions : 0;
 
             return new SystemStatisticsDto
             {
-                TotalCollections = totalCollections,
-                TotalImages = totalImages,
-                TotalSize = totalSize,
-                TotalCacheSize = totalCacheSize,
+                TotalCollections = collectionsStats.TotalCollections,
+                TotalImages = collectionsStats.TotalImages,
+                TotalSize = collectionsStats.TotalSize,
+                TotalCacheSize = collectionsStats.TotalCacheSize,
                 TotalViewSessions = totalViewSessions,
                 TotalViewTime = totalViewTime,
                 AverageImagesPerCollection = averageImagesPerCollection,
