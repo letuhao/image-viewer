@@ -5,6 +5,7 @@ using ImageViewer.Domain.Events;
 using ImageViewer.Domain.Entities;
 using ImageViewer.Domain.Interfaces;
 using ImageViewer.Domain.ValueObjects;
+using ImageViewer.Domain.Helpers;
 using ImageViewer.Application.Services;
 using ImageViewer.Infrastructure.Data;
 using MongoDB.Bson;
@@ -477,6 +478,15 @@ public class ThumbnailGenerationConsumer : BaseMessageConsumer
 
             // Generate thumbnail using image processing service
             byte[] thumbnailData;
+            
+            // Check if this is an animated format
+            var filename = archiveEntry.EntryName;
+            bool isAnimated = AnimatedFormatHelper.IsAnimatedFormat(filename);
+            
+            if (isAnimated)
+            {
+                _logger.LogInformation("🎬 Detected animated format for thumbnail {Filename}, generating static thumbnail from first frame", filename);
+            }
             
             // Get quality setting (format already retrieved earlier)
             var quality = await settingsService.GetThumbnailQualityAsync();

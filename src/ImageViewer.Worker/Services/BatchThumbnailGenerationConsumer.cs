@@ -5,6 +5,7 @@ using RabbitMQ.Client;
 using ImageViewer.Domain.Events;
 using ImageViewer.Domain.Interfaces;
 using ImageViewer.Domain.ValueObjects;
+using ImageViewer.Domain.Helpers;
 using ImageViewer.Application.Services;
 using ImageViewer.Infrastructure.Data;
 using MongoDB.Bson;
@@ -306,6 +307,15 @@ public class BatchThumbnailGenerationConsumer : BaseMessageConsumer
         try
         {
             byte[] thumbnailData;
+            
+            // Check if this is an animated format
+            var filename = message.ArchiveEntry.EntryName;
+            bool isAnimated = AnimatedFormatHelper.IsAnimatedFormat(filename);
+            
+            if (isAnimated)
+            {
+                _logger.LogInformation("🎬 Detected animated format for thumbnail {Filename}, generating static thumbnail from first frame", filename);
+            }
             
             // Handle ZIP entries
             if (!message.ArchiveEntry.IsDirectory)

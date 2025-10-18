@@ -7,6 +7,7 @@ import { useCrossCollectionNavigation } from '../hooks/useCrossCollectionNavigat
 import { useUserSettings } from '../hooks/useSettings';
 import { useHotkeys, CommonHotkeys } from '../hooks/useHotkeys';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
+import MediaDisplay from '../components/media/MediaDisplay';
 import { useUI } from '../contexts/UIContext';
 import CollectionNavigationSidebar from '../components/collections/CollectionNavigationSidebar';
 import ImagePreviewSidebar from '../components/viewer/ImagePreviewSidebar';
@@ -1062,7 +1063,7 @@ const ImageViewer: React.FC = () => {
                 {currentIndex === index && (
                   <div className="absolute -inset-2 border-2 border-primary-500 rounded-lg pointer-events-none"></div>
                 )}
-                <img
+                <MediaDisplay
                   src={`/api/v1/images/${collectionId}/${image.id}/file`}
                   alt={image.filename}
                   className={getImageClass()}
@@ -1072,6 +1073,10 @@ const ImageViewer: React.FC = () => {
                     transition: 'transform 0.2s ease-out',
                   }}
                   loading="lazy"
+                  controls={true}
+                  autoPlay={false}
+                  muted={true}
+                  loop={false}
                 />
                 <div className="mt-2 text-white text-sm text-center">
                   {index + 1} / {images.length} - {image.filename}
@@ -1126,7 +1131,7 @@ const ImageViewer: React.FC = () => {
                   </div>
                 </div>
               )}
-              <img
+              <MediaDisplay
                 src={`/api/v1/images/${collectionId}/${image.id}/file`}
                 alt={image.filename}
                 className={getImageClass()}
@@ -1140,6 +1145,10 @@ const ImageViewer: React.FC = () => {
                     setImageError(true);
                   }
                 }}
+                controls={true}
+                autoPlay={false}
+                muted={true}
+                loop={false}
               />
               {/* Image index indicator for multi-view */}
               {viewMode !== 'single' && (

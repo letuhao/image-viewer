@@ -226,7 +226,12 @@ public class ImagesController : ControllerBase
                 return NotFound("Thumbnail not found");
             }
 
-            return File(thumbnailBytes, "image/jpeg", $"thumb_{image.Filename}");
+            // Use the correct content type based on the thumbnail format
+            // Note: Thumbnails are always generated as static images (JPEG/WebP) regardless of original format
+            var settingsService = HttpContext.RequestServices.GetRequiredService<IImageProcessingSettingsService>();
+            var thumbnailFormat = await settingsService.GetThumbnailFormatAsync();
+            var contentType = GetContentType(thumbnailFormat);
+            return File(thumbnailBytes, contentType, $"thumb_{image.Filename}");
         }
         catch (Exception ex)
         {
@@ -262,7 +267,15 @@ public class ImagesController : ControllerBase
             "gif" => "image/gif",
             "bmp" => "image/bmp",
             "webp" => "image/webp",
+            "apng" => "image/apng",
             "tiff" or "tif" => "image/tiff",
+            "mp4" => "video/mp4",
+            "avi" => "video/x-msvideo",
+            "mov" => "video/quicktime",
+            "wmv" => "video/x-ms-wmv",
+            "flv" => "video/x-flv",
+            "mkv" => "video/x-matroska",
+            "webm" => "video/webm",
             _ => "application/octet-stream"
         };
     }
