@@ -830,8 +830,8 @@ const Settings: React.FC = () => {
                         <Button
                           onClick={async () => {
                             try {
-                              toast.info('Scanning for incorrectly cached animated files...');
-                              const response = await fetch(`${config.apiBaseUrl}/animatedcache/scan`, {
+                              toast.loading('Scanning for incorrectly cached animated files...');
+                              const response = await fetch('/api/v1/animatedcache/scan', {
                                 method: 'GET',
                                 headers: {
                                   'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
@@ -841,10 +841,17 @@ const Settings: React.FC = () => {
                               if (response.ok) {
                                 const result = await response.json();
                                 if (result.incorrectlyCachedFiles > 0) {
-                                  toast.warning(
+                                  toast(
                                     `Found ${result.incorrectlyCachedFiles} incorrectly cached animated files out of ${result.animatedFilesFound} total animated files. ` +
                                     `Scanned ${result.totalImages} images in ${result.totalCollections} collections.`,
-                                    { duration: 8000 }
+                                    { 
+                                      duration: 8000,
+                                      icon: '⚠️',
+                                      style: {
+                                        background: '#f59e0b',
+                                        color: '#fff',
+                                      }
+                                    }
                                   );
                                 } else {
                                   toast.success(
@@ -875,8 +882,8 @@ const Settings: React.FC = () => {
                         <Button
                           onClick={async () => {
                             try {
-                              toast.info('Repairing incorrectly cached animated files...');
-                              const response = await fetch(`${config.apiBaseUrl}/animatedcache/repair?forceRegenerate=true`, {
+                              toast.loading('Repairing incorrectly cached animated files...');
+                              const response = await fetch('/api/v1/animatedcache/repair?forceRegenerate=true', {
                                 method: 'POST',
                                 headers: {
                                   'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
@@ -892,7 +899,7 @@ const Settings: React.FC = () => {
                                     { duration: 8000 }
                                   );
                                 } else {
-                                  toast.info('No incorrect animated caches found to repair.');
+                                  toast('No incorrect animated caches found to repair.');
                                 }
                               } else {
                                 throw new Error('Failed to repair animated caches');
@@ -924,8 +931,8 @@ const Settings: React.FC = () => {
                             }
                             
                             try {
-                              toast.info('Regenerating all animated file caches...');
-                              const response = await fetch(`${config.apiBaseUrl}/animatedcache/regenerate-all`, {
+                              toast.loading('Regenerating all animated file caches...');
+                              const response = await fetch('/api/v1/animatedcache/regenerate-all', {
                                 method: 'POST',
                                 headers: {
                                   'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
