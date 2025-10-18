@@ -1,20 +1,15 @@
 using System.Text.Json;
-using System.IO.Compression;
 using SharpCompress.Archives;
-using SharpCompress.Common;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using RabbitMQ.Client;
-using RabbitMQ.Client.Events;
 using ImageViewer.Domain.Events;
 using ImageViewer.Domain.Interfaces;
 using ImageViewer.Application.Services;
 using ImageViewer.Domain.Enums;
 using ImageViewer.Infrastructure.Data;
 using ImageViewer.Application.Helpers;
-using ImageViewer.Worker.Services;
 using MongoDB.Bson;
+using ImageViewer.Domain.ValueObjects;
 
 namespace ImageViewer.Worker.Services;
 
@@ -150,13 +145,21 @@ public class CollectionScanConsumer : BaseMessageConsumer
                 try
                 {
                     // Extract basic metadata for the image processing message
-                    var (width, height) = await ExtractImageDimensions(mediaFile.FullPath);
+                    var archiveEntry = new ArchiveEntryInfo()
+                    {
+                        ArchivePath = collection.Path,
+                        EntryName = mediaFile.FileName,
+                        IsDirectory = collection.Type == CollectionType.Folder
+                    };
+
+                    var (width, height) = await ExtractImageDimensions(archiveEntry);
                     
                     var imageProcessingMessage = new ImageProcessingMessage
                     {
                         ImageId = ObjectId.GenerateNewId().ToString(), // Will be set when image is created, convert to string
                         CollectionId = collection.Id.ToString(), // Convert ObjectId to string
-                        ImagePath = mediaFile.FullPath,
+                        //ImagePath = mediaFile.FullPath,
+                        ArchiveEntry = archiveEntry,
                         ImageFormat = mediaFile.Extension,
                         Width = width,
                         Height = height,
@@ -360,7 +363,7 @@ public class CollectionScanConsumer : BaseMessageConsumer
         return supportedExtensions.Contains(extension);
     }
 
-    private async Task<(int width, int height)> ExtractImageDimensions(string imagePath)
+    private async Task<(int width, int height)> ExtractImageDimensions(ArchiveEntryInfo archiveEntry)
     {
         try
         {
@@ -368,21 +371,21 @@ public class CollectionScanConsumer : BaseMessageConsumer
             var imageProcessingService = scope.ServiceProvider.GetRequiredService<IImageProcessingService>();
             
             // For ZIP files, we can't easily extract dimensions without extracting the file
-            if (ArchiveFileHelper.IsArchiveEntryPath(imagePath))
+            if (!archiveEntry.IsDirectory)
             {
-                _logger.LogDebug("📦 Archive entry detected, skipping dimension extraction for {Path}", imagePath);
+                _logger.LogDebug("📦 Archive entry detected, skipping dimension extraction for {Path}#{Entry}", archiveEntry.ArchivePath, archiveEntry.EntryName);
                 return (0, 0); // Will be extracted during image processing
             }
             
             // For regular files, try to extract dimensions
-            if (File.Exists(imagePath))
+            if (File.Exists(archiveEntry.GetPhysicalFileFullPath()))
             {
-                var metadata = await imageProcessingService.ExtractMetadataAsync(imagePath);
+                var metadata = await imageProcessingService.ExtractMetadataAsync(archiveEntry);
                 if (metadata != null)
                 {
                     // Note: The current ImageMetadata doesn't expose width/height
                     // This would need to be enhanced in the IImageProcessingService
-                    _logger.LogDebug("📊 Extracted metadata for {Path}", imagePath);
+                    _logger.LogDebug("📊 Extracted metadata for {Path}#{Entry}", archiveEntry.ArchivePath, archiveEntry.EntryName);
                     return (0, 0); // Will be extracted during image processing
                 }
             }
@@ -391,7 +394,7 @@ public class CollectionScanConsumer : BaseMessageConsumer
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "⚠️ Failed to extract dimensions for {Path}, will be determined during processing", imagePath);
+            _logger.LogWarning(ex, "⚠️ Failed to extract dimensions for {Path}#{Entry}, will be determined during processing", archiveEntry.ArchivePath, archiveEntry.EntryName);
             return (0, 0);
         }
     }

@@ -1,10 +1,7 @@
-using FluentAssertions;
 using ImageViewer.Application.Services;
 using ImageViewer.Application.DTOs.BackgroundJobs;
 using ImageViewer.Test.Shared.Fixtures;
-using Microsoft.Extensions.DependencyInjection;
 using MongoDB.Bson;
-using ImageViewer.Domain.Enums;
 
 namespace ImageViewer.Test.Features.SystemManagement.Integration;
 

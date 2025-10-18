@@ -1,5 +1,3 @@
-using System.Collections.Generic;
-using System.Threading.Tasks;
 using ImageViewer.Application.DTOs.Files;
 
 namespace ImageViewer.Application.Services;

@@ -188,75 +188,75 @@ public class ImageEmbedded
         UpdatedAt = DateTime.UtcNow;
     }
 
-    /// <summary>
-    /// Get full path for the image (resolves relative paths and handles ZIP entries)
-    /// 获取图片的完整路径 - Lấy đường dẫn đầy đủ
-    /// </summary>
-    public string GetFullPath(string collectionPath)
-    {
-        if (string.IsNullOrEmpty(collectionPath))
-        {
-            return GetDisplayPath();
-        }
+    ///// <summary>
+    ///// Get full path for the image (resolves relative paths and handles ZIP entries)
+    ///// 获取图片的完整路径 - Lấy đường dẫn đầy đủ
+    ///// </summary>
+    //public string GetFullPath(string collectionPath)
+    //{
+    //    if (string.IsNullOrEmpty(collectionPath))
+    //    {
+    //        return GetDisplayPath();
+    //    }
 
-        // Handle archive entries using the new ArchiveEntry property
-        if (ArchiveEntry != null)
-        {
-            var archivePath = ArchiveEntry.ArchivePath;
+    //    // Handle archive entries using the new ArchiveEntry property
+    //    if (ArchiveEntry != null)
+    //    {
+    //        var archivePath = ArchiveEntry.ArchivePath;
             
-            // If archive path is not rooted, combine with collection path
-            if (!Path.IsPathRooted(archivePath))
-            {
-                archivePath = Path.Combine(collectionPath, archivePath);
-            }
+    //        // If archive path is not rooted, combine with collection path
+    //        if (!Path.IsPathRooted(archivePath))
+    //        {
+    //            archivePath = Path.Combine(collectionPath, archivePath);
+    //        }
 
-            return $"{archivePath}::{ArchiveEntry.EntryName}";
-        }
+    //        return $"{archivePath}::{ArchiveEntry.EntryName}";
+    //    }
 
-        // Handle legacy ZIP entries in LegacyRelativePath (backward compatibility)
-        if (LegacyRelativePath.Contains("::") || LegacyRelativePath.Contains("#"))
-        {
-            var archiveEntry = ArchiveEntryInfo.FromPath(LegacyRelativePath);
-            if (archiveEntry != null)
-            {
-                var archivePath = archiveEntry.ArchivePath;
+    //    // Handle legacy ZIP entries in LegacyRelativePath (backward compatibility)
+    //    if (LegacyRelativePath.Contains("::") || LegacyRelativePath.Contains("#"))
+    //    {
+    //        var archiveEntry = ArchiveEntryInfo.FromPath(LegacyRelativePath);
+    //        if (archiveEntry != null)
+    //        {
+    //            var archivePath = archiveEntry.ArchivePath;
                 
-                // If archive path is not rooted, combine with collection path
-                if (!Path.IsPathRooted(archivePath))
-                {
-                    archivePath = Path.Combine(collectionPath, archivePath);
-                }
+    //            // If archive path is not rooted, combine with collection path
+    //            if (!Path.IsPathRooted(archivePath))
+    //            {
+    //                archivePath = Path.Combine(collectionPath, archivePath);
+    //            }
 
-                return $"{archivePath}::{archiveEntry.EntryName}";
-            }
-        }
+    //            return $"{archivePath}::{archiveEntry.EntryName}";
+    //        }
+    //    }
 
-        // Handle regular files
-        if (!Path.IsPathRooted(RelativePath))
-        {
-            return Path.Combine(collectionPath, RelativePath);
-        }
+    //    // Handle regular files
+    //    if (!Path.IsPathRooted(RelativePath))
+    //    {
+    //        return Path.Combine(collectionPath, RelativePath);
+    //    }
 
-        return RelativePath;
-    }
+    //    return RelativePath;
+    //}
 
-    /// <summary>
-    /// Get display path for the image (for logging and display purposes)
-    /// </summary>
-    public string GetDisplayPath()
-    {
-        if (ArchiveEntry != null)
-        {
-            return ArchiveEntry.GetFullPath();
-        }
+    ///// <summary>
+    ///// Get display path for the image (for logging and display purposes)
+    ///// </summary>
+    //public string GetDisplayPath()
+    //{
+    //    if (ArchiveEntry != null)
+    //    {
+    //        return ArchiveEntry.GetFullPath();
+    //    }
 
-        if (LegacyRelativePath.Contains("::") || LegacyRelativePath.Contains("#"))
-        {
-            return LegacyRelativePath;
-        }
+    //    if (LegacyRelativePath.Contains("::") || LegacyRelativePath.Contains("#"))
+    //    {
+    //        return LegacyRelativePath;
+    //    }
 
-        return RelativePath;
-    }
+    //    return RelativePath;
+    //}
 
     /// <summary>
     /// Check if this image is inside an archive

@@ -6,9 +6,6 @@ using ImageViewer.Domain.Interfaces;
 using ImageViewer.Domain.ValueObjects;
 using ImageViewer.Domain.Events;
 using ImageViewer.Application.DTOs.Common;
-using ImageViewer.Application.Extensions;
-using ImageViewer.Application.Options;
-using Microsoft.Extensions.Options;
 
 namespace ImageViewer.Application.Services;
 
@@ -211,7 +208,7 @@ public class QueuedCollectionService : ICollectionService
         _logger.LogInformation("Queued collection scan for collection {CollectionId}", collection.Id);
     }
 
-    public async Task<ImageViewer.Domain.ValueObjects.CollectionStatistics> GetStatisticsAsync(ObjectId id, CancellationToken cancellationToken = default)
+    public async Task<Domain.ValueObjects.CollectionStatistics> GetStatisticsAsync(ObjectId id, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -453,7 +450,7 @@ public class QueuedCollectionService : ICollectionService
         return await _collectionService.GetCollectionsByLibraryAsync(libraryId, page, pageSize);
     }
 
-    public async Task<ImageViewer.Domain.ValueObjects.CollectionStatistics> GetCollectionStatisticsAsync()
+    public async Task<Domain.ValueObjects.CollectionStatistics> GetCollectionStatisticsAsync()
     {
         return await _collectionService.GetCollectionStatisticsAsync();
     }

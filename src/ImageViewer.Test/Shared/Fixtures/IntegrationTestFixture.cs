@@ -1,14 +1,10 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Moq;
 using ImageViewer.Application.Services;
 using ImageViewer.Domain.Interfaces;
 using ImageViewer.Infrastructure.Services;
 using ImageViewer.Domain.Entities;
 using MongoDB.Bson;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace ImageViewer.Test.Shared.Fixtures;
 
@@ -38,26 +34,26 @@ namespace ImageViewer.Test.Shared.Fixtures;
         services.AddLogging(builder => builder.AddConsole());
 
                // Add mocked repositories with basic setup
-               services.AddSingleton<IUserRepository>(CreateMockUserRepository().Object);
-               services.AddSingleton<ILibraryRepository>(CreateMockLibraryRepository().Object);
-               services.AddSingleton<ICollectionRepository>(CreateMockCollectionRepository().Object);
-               services.AddSingleton<IMediaItemRepository>(CreateMockMediaItemRepository().Object);
+               services.AddSingleton(CreateMockUserRepository().Object);
+               services.AddSingleton(CreateMockLibraryRepository().Object);
+               services.AddSingleton(CreateMockCollectionRepository().Object);
+               services.AddSingleton(CreateMockMediaItemRepository().Object);
                // services.AddSingleton<IImageRepository>(CreateMockImageRepository().Object); // Removed
-               services.AddSingleton<ITagRepository>(CreateMockTagRepository().Object);
-               services.AddSingleton<INotificationTemplateRepository>(CreateMockNotificationTemplateRepository().Object);
-               services.AddSingleton<IPerformanceMetricRepository>(CreateMockPerformanceMetricRepository().Object);
+               services.AddSingleton(CreateMockTagRepository().Object);
+               services.AddSingleton(CreateMockNotificationTemplateRepository().Object);
+               services.AddSingleton(CreateMockPerformanceMetricRepository().Object);
                // services.AddSingleton<ICacheInfoRepository>(CreateMockCacheInfoRepository().Object); // Removed
-               services.AddSingleton<IMediaProcessingJobRepository>(CreateMockMediaProcessingJobRepository().Object);
-               services.AddSingleton<ICacheFolderRepository>(CreateMockCacheFolderRepository().Object);
-               services.AddSingleton<IBackgroundJobRepository>(CreateMockBackgroundJobRepository().Object);
-               services.AddSingleton<IUserSettingRepository>(CreateMockUserSettingRepository().Object);
-               services.AddSingleton<INotificationQueueRepository>(CreateMockNotificationQueueRepository().Object);
-               services.AddSingleton<IUnitOfWork>(CreateMockUnitOfWork().Object);
+               services.AddSingleton(CreateMockMediaProcessingJobRepository().Object);
+               services.AddSingleton(CreateMockCacheFolderRepository().Object);
+               services.AddSingleton(CreateMockBackgroundJobRepository().Object);
+               services.AddSingleton(CreateMockUserSettingRepository().Object);
+               services.AddSingleton(CreateMockNotificationQueueRepository().Object);
+               services.AddSingleton(CreateMockUnitOfWork().Object);
 
         // Add application services
         services.AddScoped<ISystemHealthService, SystemHealthService>();
         services.AddScoped<IBulkOperationService, BulkOperationService>();
-        services.AddScoped<IBackgroundJobService, ImageViewer.Application.Services.BackgroundJobService>();
+        services.AddScoped<IBackgroundJobService, Application.Services.BackgroundJobService>();
         services.AddScoped<IUserPreferencesService, UserPreferencesService>();
         services.AddScoped<IUserProfileService, UserProfileService>();
         services.AddScoped<IUserService, UserService>();
@@ -76,7 +72,7 @@ namespace ImageViewer.Test.Shared.Fixtures;
         services.AddScoped<IUserProfileService, UserProfileService>();
         services.AddScoped<ISecurityService, SecurityService>();
         // Add IMessageQueueService mock for CollectionService
-        services.AddSingleton<IMessageQueueService>(Mock.Of<IMessageQueueService>());
+        services.AddSingleton(Mock.Of<IMessageQueueService>());
         services.AddScoped<ICollectionService, CollectionService>();
         services.AddScoped<IMediaItemService, MediaItemService>();
         services.AddScoped<IImageService, ImageService>();
@@ -84,7 +80,7 @@ namespace ImageViewer.Test.Shared.Fixtures;
         // Also register concrete types for integration tests
         services.AddScoped<SystemHealthService>();
         services.AddScoped<BulkOperationService>();
-        services.AddScoped<ImageViewer.Application.Services.BackgroundJobService>();
+        services.AddScoped<Application.Services.BackgroundJobService>();
         services.AddScoped<BulkService>();
         services.AddScoped<PerformanceService>(); // Stub implementation
         services.AddScoped<CacheService>(); // Refactored to use embedded design
@@ -194,7 +190,7 @@ namespace ImageViewer.Test.Shared.Fixtures;
 
                // Setup GetUserStatisticsAsync
                mock.Setup(x => x.GetUserStatisticsAsync())
-                   .ReturnsAsync(() => new ImageViewer.Domain.ValueObjects.UserStatistics
+                   .ReturnsAsync(() => new Domain.ValueObjects.UserStatistics
                    {
                        TotalUsers = _testUsers.Count,
                        ActiveUsers = _testUsers.Count(u => u.IsActive),

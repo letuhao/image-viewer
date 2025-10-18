@@ -1,10 +1,7 @@
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using System.Text;
-using System.Text.Json;
 using Microsoft.Extensions.Options;
-using Microsoft.Extensions.Logging;
-using ImageViewer.Domain.Events;
 using ImageViewer.Infrastructure.Data;
 
 namespace ImageViewer.Worker.Services;

@@ -1,7 +1,4 @@
-using System.IO.Compression;
 using SharpCompress.Archives;
-using SharpCompress.Common;
-using Microsoft.Extensions.Logging;
 using ImageViewer.Application.Helpers;
 
 namespace ImageViewer.Worker.Services;

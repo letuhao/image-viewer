@@ -1,9 +1,4 @@
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.DependencyInjection;
 using ImageViewer.Application.Services;
-using ImageViewer.Domain.Interfaces;
-using MongoDB.Bson;
 using MongoDB.Driver;
 
 namespace ImageViewer.Worker.Services;

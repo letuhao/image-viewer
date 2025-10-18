@@ -1,12 +1,8 @@
 using System.Text.Json;
 using System.Collections.Concurrent;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using RabbitMQ.Client;
-using RabbitMQ.Client.Events;
 using ImageViewer.Domain.Events;
-using ImageViewer.Domain.Entities;
 using ImageViewer.Domain.Interfaces;
 using ImageViewer.Domain.ValueObjects;
 using ImageViewer.Application.DTOs.Cache;
@@ -336,12 +332,12 @@ public class BatchCacheGenerationConsumer : BaseMessageConsumer
                 cacheFormat, adjustedQuality, cacheQuality);
             
             // Handle ZIP entries
-            if (ArchiveFileHelper.IsArchiveEntryPath(message.ImagePath))
+            if (!message.ArchiveEntry.IsDirectory)
             {
-                var imageBytes = await ArchiveFileHelper.ExtractZipEntryBytes(message.ImagePath, null);
+                var imageBytes = await ArchiveFileHelper.ExtractZipEntryBytes(message.ArchiveEntry, null);
                 if (imageBytes == null || imageBytes.Length == 0)
                 {
-                    _logger.LogWarning("❌ Failed to extract ZIP entry: {Path}", message.ImagePath);
+                    _logger.LogWarning("❌ Failed to extract ZIP entry: {Path}", message.ArchiveEntry);
                     return null;
                 }
                 
@@ -351,7 +347,7 @@ public class BatchCacheGenerationConsumer : BaseMessageConsumer
             else
             {
                 cacheData = await imageProcessingService.GenerateCacheAsync(
-                    message.ImagePath, message.CacheWidth, message.CacheHeight, cacheFormat, adjustedQuality);
+                    message.ArchiveEntry, message.CacheWidth, message.CacheHeight, cacheFormat, adjustedQuality);
             }
             
             if (cacheData == null || cacheData.Length == 0)
@@ -603,9 +599,9 @@ public class BatchCacheGenerationConsumer : BaseMessageConsumer
             long fileSize = 0;
             long maxSize = 0;
             
-            if (ArchiveFileHelper.IsArchiveEntryPath(message.ImagePath))
+            if (!message.ArchiveEntry.IsDirectory)
             {
-                fileSize = ArchiveFileHelper.GetArchiveEntrySize(message.ImagePath, _logger);
+                fileSize = ArchiveFileHelper.GetArchiveEntrySize(message.ArchiveEntry, _logger);
                 maxSize = _rabbitMQOptions.MaxZipEntrySizeBytes; // 20GB for ZIP entries
                 
                 if (fileSize > maxSize)
@@ -619,7 +615,7 @@ public class BatchCacheGenerationConsumer : BaseMessageConsumer
             }
             else
             {
-                var imageFile = new FileInfo(message.ImagePath);
+                var imageFile = new FileInfo(message.ArchiveEntry.GetPhysicalFileFullPath());
                 fileSize = imageFile.Exists ? imageFile.Length : 0;
                 maxSize = _rabbitMQOptions.MaxImageSizeBytes; // 500MB for regular files
                 
@@ -657,13 +653,13 @@ public class BatchCacheGenerationConsumer : BaseMessageConsumer
             long fileSize = 0;
             
             // Get file size for quality analysis
-            if (ArchiveFileHelper.IsArchiveEntryPath(cacheMessage.ImagePath))
+            if (!cacheMessage.ArchiveEntry.IsDirectory)
             {
-                fileSize = ArchiveFileHelper.GetArchiveEntrySize(cacheMessage.ImagePath, _logger);
+                fileSize = ArchiveFileHelper.GetArchiveEntrySize(cacheMessage.ArchiveEntry, _logger);
             }
             else
             {
-                var imageFile = new FileInfo(cacheMessage.ImagePath);
+                var imageFile = new FileInfo(cacheMessage.ArchiveEntry.GetPhysicalFileFullPath());
                 fileSize = imageFile.Exists ? imageFile.Length : 0;
             }
             
@@ -674,9 +670,9 @@ public class BatchCacheGenerationConsumer : BaseMessageConsumer
             
             // Extract image dimensions for quality analysis
             ImageDimensions? dimensions = null;
-            if (ArchiveFileHelper.IsArchiveEntryPath(cacheMessage.ImagePath))
+            if (!cacheMessage.ArchiveEntry.IsDirectory)
             {
-                var imageBytes = await ArchiveFileHelper.ExtractZipEntryBytes(cacheMessage.ImagePath, null);
+                var imageBytes = await ArchiveFileHelper.ExtractZipEntryBytes(cacheMessage.ArchiveEntry, null);
                 if (imageBytes != null && imageBytes.Length > 0)
                 {
                     dimensions = await imageProcessingService.GetImageDimensionsFromBytesAsync(imageBytes);
@@ -684,7 +680,7 @@ public class BatchCacheGenerationConsumer : BaseMessageConsumer
             }
             else
             {
-                dimensions = await imageProcessingService.GetImageDimensionsAsync(cacheMessage.ImagePath);
+                dimensions = await imageProcessingService.GetImageDimensionsAsync(cacheMessage.ArchiveEntry);
             }
             
             if (dimensions != null)
@@ -726,8 +722,8 @@ public class BatchCacheGenerationConsumer : BaseMessageConsumer
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to analyze image quality for {ImagePath}, using requested quality {Quality}", 
-                cacheMessage.ImagePath, requestedQuality);
+            _logger.LogWarning(ex, "Failed to analyze image quality for {Path}#{Entry}, using requested quality {Quality}", 
+                cacheMessage.ArchiveEntry.ArchivePath, cacheMessage.ArchiveEntry.EntryName, requestedQuality);
             return requestedQuality; // Fallback to requested quality
         }
     }
@@ -801,7 +797,7 @@ public class BatchCacheGenerationConsumer : BaseMessageConsumer
                 "jpg" => ".jpg",
                 "png" => ".png",
                 "webp" => ".webp",
-                "original" => Path.GetExtension(cacheMessage.ImagePath), // Preserve original extension
+                "original" => Path.GetExtension(cacheMessage.ArchiveEntry.EntryName), // Preserve original extension
                 _ => ".jpg" // Default fallback
             };
             
@@ -836,7 +832,7 @@ public class BatchCacheGenerationConsumer : BaseMessageConsumer
                 "jpg" => ".jpg",
                 "png" => ".png",
                 "webp" => ".webp",
-                "original" => Path.GetExtension(cacheMessage.ImagePath),
+                "original" => Path.GetExtension(cacheMessage.ArchiveEntry.EntryName),
                 _ => ".jpg"
             };
             return Path.Combine("cache", $"{cacheMessage.ImageId}_cache_{cacheMessage.CacheWidth}x{cacheMessage.CacheHeight}{extension}");

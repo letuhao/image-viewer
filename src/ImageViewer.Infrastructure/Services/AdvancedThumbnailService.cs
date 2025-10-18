@@ -61,9 +61,12 @@ public class AdvancedThumbnailService : IAdvancedThumbnailService
                 return existingThumbnail.ThumbnailPath;
             }
 
+            var isDirectory = Directory.Exists(collection.Path);
+            var sourcePath = $"{collection.Path}#{sourceImage.Filename}";
+
             // Generate new thumbnail
-            var sourcePath = sourceImage.GetFullPath(collection.Path);
-            if (!sourceImage.IsArchiveEntry() && !File.Exists(sourcePath))
+            if (isDirectory
+                && !File.Exists(Path.Combine(collection.Path, sourceImage.Filename)))
             {
                 _logger.LogWarning("Source image not found: {SourcePath}", sourcePath);
                 return null;
@@ -85,7 +88,12 @@ public class AdvancedThumbnailService : IAdvancedThumbnailService
 
             // Generate thumbnail using image processing service
             var thumbnailData = await _imageProcessingService.GenerateThumbnailAsync(
-                sourcePath, 300, 300, "jpeg", 95, cancellationToken);
+                new ArchiveEntryInfo()
+                {
+                    ArchivePath = collection.Path,
+                    EntryName = sourceImage.Filename,
+                    IsDirectory = isDirectory
+                }, 300, 300, "jpeg", 95, cancellationToken);
 
             if (thumbnailData == null || thumbnailData.Length == 0)
             {

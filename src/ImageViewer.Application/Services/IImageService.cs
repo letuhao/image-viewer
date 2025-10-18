@@ -1,4 +1,3 @@
-using ImageViewer.Domain.Entities;
 using ImageViewer.Domain.ValueObjects;
 using MongoDB.Bson;
 

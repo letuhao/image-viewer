@@ -29,7 +29,7 @@ public interface IMediaItemRepository : IRepository<MediaItem>
     
     #region Statistics Methods
     
-    Task<ImageViewer.Domain.ValueObjects.MediaItemStatistics> GetMediaItemStatisticsAsync();
+    Task<ValueObjects.MediaItemStatistics> GetMediaItemStatisticsAsync();
     Task<IEnumerable<MediaItem>> GetTopMediaItemsByActivityAsync(int limit = 10);
     Task<IEnumerable<MediaItem>> GetRecentMediaItemsAsync(int limit = 10);
     

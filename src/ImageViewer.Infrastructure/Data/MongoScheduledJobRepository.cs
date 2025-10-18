@@ -2,7 +2,6 @@ using MongoDB.Driver;
 using MongoDB.Bson;
 using ImageViewer.Domain.Entities;
 using ImageViewer.Domain.Interfaces;
-using ImageViewer.Domain.Enums;
 using Microsoft.Extensions.Logging;
 
 namespace ImageViewer.Infrastructure.Data;

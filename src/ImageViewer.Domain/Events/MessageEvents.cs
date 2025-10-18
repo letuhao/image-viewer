@@ -1,5 +1,5 @@
 using ImageViewer.Domain.Enums;
-using MongoDB.Bson;
+using ImageViewer.Domain.ValueObjects;
 
 namespace ImageViewer.Domain.Events;
 
@@ -24,8 +24,9 @@ public class ThumbnailGenerationMessage : MessageEvent
 {
     public string ImageId { get; set; } = string.Empty; // Changed from Guid to string for JSON serialization
     public string CollectionId { get; set; } = string.Empty; // Changed from Guid to string for JSON serialization
-    public string ImagePath { get; set; } = string.Empty;
-    public string ImageFilename { get; set; } = string.Empty;
+    //public string ImagePath { get; set; } = string.Empty;
+    //public string ImageFilename { get; set; } = string.Empty;
+    public ArchiveEntryInfo ArchiveEntry { get; set; }
     public int ThumbnailWidth { get; set; }
     public int ThumbnailHeight { get; set; }
     public string? UserId { get; set; }

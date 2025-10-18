@@ -1,6 +1,3 @@
-using FluentAssertions;
-using Moq;
-using Xunit;
 using ImageViewer.Application.Services;
 using ImageViewer.Application.DTOs.BackgroundJobs;
 using ImageViewer.Domain.Entities;

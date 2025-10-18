@@ -1,10 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Authorization;
 using MongoDB.Bson;
-using ImageViewer.Application.Services;
 using ImageViewer.Domain.Entities;
 using ImageViewer.Domain.Interfaces;
-using System.IO;
 
 namespace ImageViewer.Api.Controllers;
 

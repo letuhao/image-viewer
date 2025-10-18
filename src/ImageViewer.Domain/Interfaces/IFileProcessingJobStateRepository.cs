@@ -1,5 +1,4 @@
 using ImageViewer.Domain.Entities;
-using MongoDB.Bson;
 
 namespace ImageViewer.Domain.Interfaces;
 

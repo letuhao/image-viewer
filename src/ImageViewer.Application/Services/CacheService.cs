@@ -2,7 +2,6 @@ using MongoDB.Bson;
 using MongoDB.Driver;
 using ImageViewer.Domain.Entities;
 using ImageViewer.Domain.Interfaces;
-using ImageViewer.Domain.ValueObjects;
 using ImageViewer.Application.DTOs.Cache;
 using ImageViewer.Application.Mappings;
 using ImageViewer.Application.Options;

@@ -1,6 +1,5 @@
 using ImageViewer.Domain.Entities;
 using ImageViewer.Domain.Interfaces;
-using ImageViewer.Domain.ValueObjects;
 using Microsoft.Extensions.Logging;
 using MongoDB.Bson;
 using System.Diagnostics;
@@ -170,7 +169,7 @@ public class MetadataRecalculationService : IMetadataRecalculationService
                         .Max(c => c.Statistics.LastActivity);
 
                     // Create new statistics by using the existing methods
-                    var newStatistics = new ImageViewer.Domain.ValueObjects.LibraryStatistics();
+                    var newStatistics = new Domain.ValueObjects.LibraryStatistics();
                     
                     // Update collections count
                     if (totalCollections > 0)

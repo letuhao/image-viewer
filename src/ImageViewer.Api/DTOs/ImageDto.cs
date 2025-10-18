@@ -1,5 +1,3 @@
-using ImageViewer.Domain.ValueObjects;
-
 namespace ImageViewer.Api.DTOs;
 
 /// <summary>

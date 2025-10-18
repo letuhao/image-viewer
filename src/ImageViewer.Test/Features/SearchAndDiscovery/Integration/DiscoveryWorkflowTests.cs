@@ -1,5 +1,3 @@
-using Xunit;
-
 namespace ImageViewer.Test.Features.SearchAndDiscovery.Integration;
 
 /// <summary>

@@ -1,9 +1,6 @@
 using System.Text.Json;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using RabbitMQ.Client;
-using RabbitMQ.Client.Events;
 using ImageViewer.Domain.Events;
 using ImageViewer.Domain.Entities;
 using ImageViewer.Domain.Interfaces;
@@ -59,8 +56,8 @@ public class CacheGenerationConsumer : BaseMessageConsumer
                 return;
             }
 
-            _logger.LogDebug("Processing cache generation for image {ImageId} ({Path})", 
-                cacheMessage.ImageId, cacheMessage.ImagePath);
+            _logger.LogDebug("Processing cache generation for image {ImageId} ({Path}#{Entry})", 
+                cacheMessage.ImageId, cacheMessage.ArchiveEntry.ArchivePath, cacheMessage.ArchiveEntry.EntryName);
 
             // Try to create scope, handle disposal gracefully
             IServiceScope? scope = null;
@@ -123,10 +120,10 @@ public class CacheGenerationConsumer : BaseMessageConsumer
             long fileSize = 0;
             long maxSize = 0;
             
-            if (ArchiveFileHelper.IsArchiveEntryPath(cacheMessage.ImagePath))
+            if (!cacheMessage.ArchiveEntry.IsDirectory)
             {
                 // ZIP entry - get uncompressed size without extraction
-                fileSize = ArchiveFileHelper.GetArchiveEntrySize(cacheMessage.ImagePath, _logger);
+                fileSize = ArchiveFileHelper.GetArchiveEntrySize(cacheMessage.ArchiveEntry, _logger);
                 maxSize = _rabbitMQOptions.MaxZipEntrySizeBytes; // 20GB for ZIP entries
                 
                 if (fileSize > maxSize)
@@ -148,7 +145,7 @@ public class CacheGenerationConsumer : BaseMessageConsumer
             else
             {
                 // Regular file - check file size on disk
-                var imageFile = new FileInfo(cacheMessage.ImagePath);
+                var imageFile = new FileInfo(cacheMessage.ArchiveEntry.GetPhysicalFileFullPath());
                 fileSize = imageFile.Exists ? imageFile.Length : 0;
                 maxSize = _rabbitMQOptions.MaxImageSizeBytes; // 500MB for regular files
                 
@@ -256,12 +253,12 @@ public class CacheGenerationConsumer : BaseMessageConsumer
                 _logger.LogDebug("Preserving original quality for image {ImageId} (no resize)", cacheMessage.ImageId);
                 
                 // Handle ZIP entries - extract bytes
-                if (ArchiveFileHelper.IsZipEntryPath(cacheMessage.ImagePath))
+                if (!cacheMessage.ArchiveEntry.IsDirectory)
                 {
-                    var imageBytes = await ArchiveFileHelper.ExtractZipEntryBytes(cacheMessage.ImagePath, null, cancellationToken);
+                    var imageBytes = await ArchiveFileHelper.ExtractZipEntryBytes(cacheMessage.ArchiveEntry, null, cancellationToken);
                     if (imageBytes == null || imageBytes.Length == 0)
                     {
-                        _logger.LogWarning("❌ Failed to extract ZIP entry for cache: {Path}", cacheMessage.ImagePath);
+                        _logger.LogWarning("❌ Failed to extract ZIP entry for cache: {Path}#{Entry}", cacheMessage.ArchiveEntry.ArchivePath, cacheMessage.ArchiveEntry.EntryName);
                         return;
                     }
                     cacheImageData = imageBytes; // Use original bytes, no resize
@@ -269,7 +266,7 @@ public class CacheGenerationConsumer : BaseMessageConsumer
                 else
                 {
                     // Regular file - read original file
-                    cacheImageData = await File.ReadAllBytesAsync(cacheMessage.ImagePath, cancellationToken);
+                    cacheImageData = await File.ReadAllBytesAsync(cacheMessage.ArchiveEntry.GetPhysicalFileFullPath(), cancellationToken);
                 }
             }
             else
@@ -279,13 +276,13 @@ public class CacheGenerationConsumer : BaseMessageConsumer
                 
                 // Resize to cache dimensions with smart quality
                 // Handle ZIP entries
-                if (ArchiveFileHelper.IsZipEntryPath(cacheMessage.ImagePath))
+                if (!cacheMessage.ArchiveEntry.IsDirectory)
                 {
                     // Extract image bytes from ZIP
-                    var imageBytes = await ArchiveFileHelper.ExtractZipEntryBytes(cacheMessage.ImagePath, null, cancellationToken);
+                    var imageBytes = await ArchiveFileHelper.ExtractZipEntryBytes(cacheMessage.ArchiveEntry, null, cancellationToken);
                     if (imageBytes == null || imageBytes.Length == 0)
                     {
-                        _logger.LogWarning("❌ Failed to extract ZIP entry for cache: {Path}", cacheMessage.ImagePath);
+                        _logger.LogWarning("❌ Failed to extract ZIP entry for cache: {Path}#{Entry}", cacheMessage.ArchiveEntry.ArchivePath, cacheMessage.ArchiveEntry.EntryName);
                         return;
                     }
                     
@@ -301,7 +298,7 @@ public class CacheGenerationConsumer : BaseMessageConsumer
                 {
                     // Regular file
                     cacheImageData = await imageProcessingService.ResizeImageAsync(
-                cacheMessage.ImagePath,
+                cacheMessage.ArchiveEntry,
                 cacheMessage.CacheWidth,
                 cacheMessage.CacheHeight,
                         format, // Use format from settings!
@@ -389,7 +386,7 @@ public class CacheGenerationConsumer : BaseMessageConsumer
             
             if (isSkippableError)
             {
-                _logger.LogWarning(ex, "⚠️ Skipping corrupted/unsupported image file: {ImagePath}. This message will NOT be retried.", cacheMsg?.ImagePath);
+                _logger.LogWarning(ex, "⚠️ Skipping corrupted/unsupported image file: {Path}#{Entry}. This message will NOT be retried.", cacheMsg?.ArchiveEntry.ArchivePath, cacheMsg?.ArchiveEntry.EntryName);
                 
                 // Create dummy cache entry for failed processing
                 if (!string.IsNullOrEmpty(cacheMsg?.JobId) && !string.IsNullOrEmpty(cacheMsg?.ImageId))
@@ -482,7 +479,7 @@ public class CacheGenerationConsumer : BaseMessageConsumer
                 "jpg" => ".jpg",
                 "png" => ".png",
                 "webp" => ".webp",
-                "original" => Path.GetExtension(cacheMessage.ImagePath), // Preserve original extension
+                "original" => Path.GetExtension(cacheMessage.ArchiveEntry.EntryName), // Preserve original extension
                 _ => ".jpg" // Default fallback
             };
             
@@ -629,14 +626,14 @@ public class CacheGenerationConsumer : BaseMessageConsumer
             long fileSize = 0;
             int requestedQuality = cacheMessage.Quality;
             
-            if (ArchiveFileHelper.IsArchiveEntryPath(cacheMessage.ImagePath))
+            if (!cacheMessage.ArchiveEntry.IsDirectory)
             {
-                imageBytes = await ArchiveFileHelper.ExtractZipEntryBytes(cacheMessage.ImagePath, null, cancellationToken);
+                imageBytes = await ArchiveFileHelper.ExtractZipEntryBytes(cacheMessage.ArchiveEntry, null, cancellationToken);
                 fileSize = imageBytes?.Length ?? 0;
             }
-            else if (File.Exists(cacheMessage.ImagePath))
+            else if (File.Exists(cacheMessage.ArchiveEntry.GetPhysicalFileFullPath()))
             {
-                var fileInfo = new FileInfo(cacheMessage.ImagePath);
+                var fileInfo = new FileInfo(cacheMessage.ArchiveEntry.GetPhysicalFileFullPath());
                 fileSize = fileInfo.Length;
             }
             
@@ -704,8 +701,8 @@ public class CacheGenerationConsumer : BaseMessageConsumer
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to analyze image quality for {ImagePath}, using requested quality {Quality}", 
-                cacheMessage.ImagePath, cacheMessage.Quality);
+            _logger.LogWarning(ex, "Failed to analyze image quality for {Path}#{Entry}, using requested quality {Quality}", 
+                cacheMessage.ArchiveEntry.ArchivePath, cacheMessage.ArchiveEntry.EntryName, cacheMessage.Quality);
             return cacheMessage.Quality; // Fallback to requested quality
         }
     }

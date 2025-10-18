@@ -1,8 +1,3 @@
-using FluentAssertions;
-using Moq;
-using Xunit;
-using ImageViewer.Domain.Interfaces;
-using ImageViewer.Domain.ValueObjects;
 using ImageViewer.Infrastructure.Services;
 using Microsoft.Extensions.Logging;
 using SkiaSharp;

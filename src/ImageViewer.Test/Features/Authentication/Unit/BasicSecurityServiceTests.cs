@@ -1,13 +1,8 @@
-using FluentAssertions;
-using Moq;
-using Xunit;
 using MongoDB.Bson;
 using ImageViewer.Application.Services;
-using ImageViewer.Application.DTOs.Auth;
 using ImageViewer.Domain.Entities;
 using ImageViewer.Domain.Interfaces;
 using ImageViewer.Domain.Exceptions;
-using ImageViewer.Domain.ValueObjects;
 using Microsoft.Extensions.Logging;
 using System.Security.Authentication;
 
@@ -49,7 +44,7 @@ public class BasicSecurityServiceTests
     {
         // Arrange
         var userId = ObjectId.GenerateNewId();
-        var request = new ImageViewer.Application.Services.LoginRequest
+        var request = new Application.Services.LoginRequest
         {
             Username = "testuser",
             Password = "validpassword",
@@ -95,7 +90,7 @@ public class BasicSecurityServiceTests
     public async Task LoginAsync_WithInvalidUsername_ShouldThrowAuthenticationException()
     {
         // Arrange
-        var request = new ImageViewer.Application.Services.LoginRequest
+        var request = new Application.Services.LoginRequest
         {
             Username = "nonexistent",
             Password = "password"
@@ -116,7 +111,7 @@ public class BasicSecurityServiceTests
     {
         // Arrange
         var userId = ObjectId.GenerateNewId();
-        var request = new ImageViewer.Application.Services.LoginRequest
+        var request = new Application.Services.LoginRequest
         {
             Username = "testuser",
             Password = "wrongpassword"
@@ -155,7 +150,7 @@ public class BasicSecurityServiceTests
     public async Task LoginAsync_WithEmptyUsername_ShouldThrowValidationException()
     {
         // Arrange
-        var request = new ImageViewer.Application.Services.LoginRequest
+        var request = new Application.Services.LoginRequest
         {
             Username = "",
             Password = "password"
@@ -172,7 +167,7 @@ public class BasicSecurityServiceTests
     public async Task LoginAsync_WithEmptyPassword_ShouldThrowValidationException()
     {
         // Arrange
-        var request = new ImageViewer.Application.Services.LoginRequest
+        var request = new Application.Services.LoginRequest
         {
             Username = "testuser",
             Password = ""
@@ -190,7 +185,7 @@ public class BasicSecurityServiceTests
     {
         // Arrange
         var userId = ObjectId.GenerateNewId();
-        var request = new ImageViewer.Application.Services.LoginRequest
+        var request = new Application.Services.LoginRequest
         {
             Username = "testuser",
             Password = "validpassword"
@@ -225,7 +220,7 @@ public class BasicSecurityServiceTests
     {
         // Arrange
         var userId = ObjectId.GenerateNewId();
-        var request = new ImageViewer.Application.Services.LoginRequest
+        var request = new Application.Services.LoginRequest
         {
             Username = "testuser",
             Password = "password"

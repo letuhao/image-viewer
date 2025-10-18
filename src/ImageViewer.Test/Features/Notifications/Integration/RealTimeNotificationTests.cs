@@ -1,5 +1,3 @@
-using Xunit;
-
 namespace ImageViewer.Test.Features.Notifications.Integration;
 
 /// <summary>

@@ -68,8 +68,8 @@ public class MongoCollectionRepository : MongoRepository<Collection>, ICollectio
     public async Task<IEnumerable<Collection>> SearchCollectionsAsync(string query)
     {
         var filter = Builders<Collection>.Filter.Or(
-            Builders<Collection>.Filter.Regex(x => x.Name, new MongoDB.Bson.BsonRegularExpression(query, "i")),
-            Builders<Collection>.Filter.Regex(x => x.Path, new MongoDB.Bson.BsonRegularExpression(query, "i"))
+            Builders<Collection>.Filter.Regex(x => x.Name, new BsonRegularExpression(query, "i")),
+            Builders<Collection>.Filter.Regex(x => x.Path, new BsonRegularExpression(query, "i"))
         ) & Builders<Collection>.Filter.Eq(x => x.IsDeleted, false);
         
         return await _collection.Find(filter).ToListAsync();
@@ -86,17 +86,17 @@ public class MongoCollectionRepository : MongoRepository<Collection>, ICollectio
             mongoFilter &= Builders<Collection>.Filter.Eq(x => x.IsActive, filter.IsActive.Value);
         
         if (!string.IsNullOrEmpty(filter.Name))
-            mongoFilter &= Builders<Collection>.Filter.Regex(x => x.Name, new MongoDB.Bson.BsonRegularExpression(filter.Name, "i"));
+            mongoFilter &= Builders<Collection>.Filter.Regex(x => x.Name, new BsonRegularExpression(filter.Name, "i"));
         
         return await _collection.Find(mongoFilter).ToListAsync();
     }
 
-    public async Task<ImageViewer.Domain.ValueObjects.CollectionStatistics> GetCollectionStatisticsAsync()
+    public async Task<Domain.ValueObjects.CollectionStatistics> GetCollectionStatisticsAsync()
     {
         var filter = Builders<Collection>.Filter.Eq(x => x.IsDeleted, false);
         var collections = await _collection.Find(filter).ToListAsync();
         
-        return new ImageViewer.Domain.ValueObjects.CollectionStatistics
+        return new Domain.ValueObjects.CollectionStatistics
         {
             TotalCollections = collections.Count,
             ActiveCollections = collections.Count(c => c.IsActive),

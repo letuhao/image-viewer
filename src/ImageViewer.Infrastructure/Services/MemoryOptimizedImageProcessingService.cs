@@ -1,10 +1,9 @@
+using ImageViewer.Domain.Interfaces;
+using ImageViewer.Domain.ValueObjects;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using SkiaSharp;
-using ImageViewer.Domain.Interfaces;
-using ImageViewer.Domain.ValueObjects;
 using System.Collections.Concurrent;
-using System.Buffers;
 
 namespace ImageViewer.Infrastructure.Services;
 
@@ -39,17 +38,17 @@ public class MemoryOptimizedImageProcessingService : IImageProcessingService
             _options.MaxMemoryUsageMB, _options.MaxConcurrentProcessing);
     }
 
-    public async Task<ImageMetadata> ExtractMetadataAsync(string imagePath, CancellationToken cancellationToken = default)
+    public async Task<ImageMetadata> ExtractMetadataAsync(ArchiveEntryInfo archiveEntry, CancellationToken cancellationToken = default)
     {
         try
         {
-            _logger.LogDebug("Extracting metadata from {ImagePath}", imagePath);
+            _logger.LogDebug("Extracting metadata from {ImagePath}", archiveEntry.GetPhysicalFileFullPath());
 
             // Read file into memory buffer
-            var imageBytes = await ReadFileToMemoryAsync(imagePath, cancellationToken);
+            var imageBytes = await ReadFileToMemoryAsync(archiveEntry.GetPhysicalFileFullPath(), cancellationToken);
             if (imageBytes == null || imageBytes.Length == 0)
             {
-                throw new InvalidOperationException($"Failed to read image file: {imagePath}");
+                throw new InvalidOperationException($"Failed to read image file: {archiveEntry.GetPhysicalFileFullPath()}");
             }
 
             using var data = SKData.CreateCopy(imageBytes);
@@ -57,7 +56,7 @@ public class MemoryOptimizedImageProcessingService : IImageProcessingService
             
             if (codec == null)
             {
-                throw new InvalidOperationException($"Failed to decode image: {imagePath}");
+                throw new InvalidOperationException($"Failed to decode image: {archiveEntry.GetPhysicalFileFullPath()}");
             }
 
             var info = codec.Info;
@@ -65,19 +64,19 @@ public class MemoryOptimizedImageProcessingService : IImageProcessingService
                 quality: 95,
                 colorSpace: info.ColorSpace?.ToString(),
                 compression: "Unknown",
-                createdDate: File.GetCreationTime(imagePath),
-                modifiedDate: File.GetLastWriteTime(imagePath)
+                createdDate: File.GetCreationTime(archiveEntry.GetPhysicalFileFullPath()),
+                modifiedDate: File.GetLastWriteTime(archiveEntry.GetPhysicalFileFullPath())
             );
 
             // Return buffer to pool
             ReturnBufferToPool(imageBytes);
 
-            _logger.LogDebug("Successfully extracted metadata from {ImagePath}", imagePath);
+            _logger.LogDebug("Successfully extracted metadata from {ImagePath}", archiveEntry.GetPhysicalFileFullPath());
             return metadata;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error extracting metadata from {ImagePath}", imagePath);
+            _logger.LogError(ex, "Error extracting metadata from {ImagePath}", archiveEntry.GetPhysicalFileFullPath());
             throw;
         }
     }
@@ -164,17 +163,17 @@ public class MemoryOptimizedImageProcessingService : IImageProcessingService
         }
     }
 
-    public async Task<byte[]> GenerateThumbnailAsync(string imagePath, int width, int height, string format = "jpeg", int quality = 95, CancellationToken cancellationToken = default)
+    public async Task<byte[]> GenerateThumbnailAsync(ArchiveEntryInfo archiveEntry, int width, int height, string format = "jpeg", int quality = 95, CancellationToken cancellationToken = default)
     {
         try
         {
-            _logger.LogDebug("🎨 Generating thumbnail from file: {ImagePath}, {Width}x{Height}", imagePath, width, height);
+            _logger.LogDebug("🎨 Generating thumbnail from file: {ImagePath}, {Width}x{Height}", archiveEntry.GetPhysicalFileFullPath(), width, height);
 
             // Read entire file into memory for processing
-            var imageBytes = await ReadFileToMemoryAsync(imagePath, cancellationToken);
+            var imageBytes = await ReadFileToMemoryAsync(archiveEntry.GetPhysicalFileFullPath(), cancellationToken);
             if (imageBytes == null || imageBytes.Length == 0)
             {
-                throw new InvalidOperationException($"Failed to read image file: {imagePath}");
+                throw new InvalidOperationException($"Failed to read image file: {archiveEntry.GetPhysicalFileFullPath()}");
             }
 
             // Process in memory
@@ -187,18 +186,18 @@ public class MemoryOptimizedImageProcessingService : IImageProcessingService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "❌ Error generating thumbnail from file {ImagePath}", imagePath);
+            _logger.LogError(ex, "❌ Error generating thumbnail from file {ImagePath}", archiveEntry.GetPhysicalFileFullPath());
             throw;
         }
     }
 
-    public async Task<ImageDimensions?> GetImageDimensionsAsync(string imagePath, CancellationToken cancellationToken = default)
+    public async Task<ImageDimensions?> GetImageDimensionsAsync(ArchiveEntryInfo archiveEntry, CancellationToken cancellationToken = default)
     {
         try
         {
-            _logger.LogDebug("📏 Getting image dimensions from {ImagePath}", imagePath);
+            _logger.LogDebug("📏 Getting image dimensions from {ImagePath}", archiveEntry.GetPhysicalFileFullPath());
 
-            var imageBytes = await ReadFileToMemoryAsync(imagePath, cancellationToken);
+            var imageBytes = await ReadFileToMemoryAsync(archiveEntry.GetPhysicalFileFullPath(), cancellationToken);
             if (imageBytes == null || imageBytes.Length == 0)
             {
                 return null;
@@ -223,7 +222,7 @@ public class MemoryOptimizedImageProcessingService : IImageProcessingService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "❌ Error getting image dimensions from {ImagePath}", imagePath);
+            _logger.LogError(ex, "❌ Error getting image dimensions from {ImagePath}", archiveEntry.GetPhysicalFileFullPath());
             return null;
         }
     }
@@ -440,14 +439,14 @@ public class MemoryOptimizedImageProcessingService : IImageProcessingService
         };
     }
 
-    public async Task<byte[]> GenerateCacheAsync(string imagePath, int width, int height, string format = "jpeg", int quality = 95, CancellationToken cancellationToken = default)
+    public async Task<byte[]> GenerateCacheAsync(ArchiveEntryInfo archiveEntry, int width, int height, string format = "jpeg", int quality = 95, CancellationToken cancellationToken = default)
     {
         try
         {
-            _logger.LogDebug("🎨 Generating cache image from {ImagePath} ({Width}x{Height}, {Format}, Quality: {Quality})", 
-                imagePath, width, height, format, quality);
+            _logger.LogDebug("🎨 Generating cache image from {ImagePath} ({Width}x{Height}, {Format}, Quality: {Quality})",
+                archiveEntry.GetPhysicalFileFullPath(), width, height, format, quality);
 
-            var imageBytes = await ReadFileToMemoryAsync(imagePath, cancellationToken);
+            var imageBytes = await ReadFileToMemoryAsync(archiveEntry.GetPhysicalFileFullPath(), cancellationToken);
             if (imageBytes == null || imageBytes.Length == 0)
             {
                 return Array.Empty<byte>();
@@ -462,7 +461,7 @@ public class MemoryOptimizedImageProcessingService : IImageProcessingService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "❌ Error generating cache from {ImagePath}", imagePath);
+            _logger.LogError(ex, "❌ Error generating cache from {ImagePath}", archiveEntry.GetPhysicalFileFullPath());
             return Array.Empty<byte>();
         }
     }
@@ -537,14 +536,14 @@ public class MemoryOptimizedImageProcessingService : IImageProcessingService
         }
     }
 
-    public async Task<byte[]> ResizeImageAsync(string imagePath, int width, int height, string format = "jpeg", int quality = 95, CancellationToken cancellationToken = default)
+    public async Task<byte[]> ResizeImageAsync(ArchiveEntryInfo archiveEntry, int width, int height, string format = "jpeg", int quality = 95, CancellationToken cancellationToken = default)
     {
         try
         {
-            _logger.LogDebug("🔄 Resizing image from {ImagePath} ({Width}x{Height}, {Format}, Quality: {Quality})", 
-                imagePath, width, height, format, quality);
+            _logger.LogDebug("🔄 Resizing image from {ImagePath} ({Width}x{Height}, {Format}, Quality: {Quality})",
+                archiveEntry.GetPhysicalFileFullPath(), width, height, format, quality);
 
-            var imageBytes = await ReadFileToMemoryAsync(imagePath, cancellationToken);
+            var imageBytes = await ReadFileToMemoryAsync(archiveEntry.GetPhysicalFileFullPath(), cancellationToken);
             if (imageBytes == null || imageBytes.Length == 0)
             {
                 return Array.Empty<byte>();
@@ -559,7 +558,7 @@ public class MemoryOptimizedImageProcessingService : IImageProcessingService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "❌ Error resizing image from {ImagePath}", imagePath);
+            _logger.LogError(ex, "❌ Error resizing image from {ImagePath}", archiveEntry.GetPhysicalFileFullPath());
             return Array.Empty<byte>();
         }
     }
@@ -624,14 +623,14 @@ public class MemoryOptimizedImageProcessingService : IImageProcessingService
         }
     }
 
-    public async Task<byte[]> ConvertImageFormatAsync(string imagePath, string targetFormat, int quality = 95, CancellationToken cancellationToken = default)
+    public async Task<byte[]> ConvertImageFormatAsync(ArchiveEntryInfo archiveEntry, string targetFormat, int quality = 95, CancellationToken cancellationToken = default)
     {
         try
         {
-            _logger.LogDebug("🔄 Converting image format from {ImagePath} to {TargetFormat}", 
-                imagePath, targetFormat);
+            _logger.LogDebug("🔄 Converting image format from {ImagePath} to {TargetFormat}",
+                archiveEntry.GetPhysicalFileFullPath(), targetFormat);
 
-            var imageBytes = await ReadFileToMemoryAsync(imagePath, cancellationToken);
+            var imageBytes = await ReadFileToMemoryAsync(archiveEntry.GetPhysicalFileFullPath(), cancellationToken);
             if (imageBytes == null || imageBytes.Length == 0)
             {
                 return Array.Empty<byte>();
@@ -680,7 +679,7 @@ public class MemoryOptimizedImageProcessingService : IImageProcessingService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "❌ Error converting image format from {ImagePath}", imagePath);
+            _logger.LogError(ex, "❌ Error converting image format from {ImagePath}", archiveEntry.GetPhysicalFileFullPath());
             return Array.Empty<byte>();
         }
     }
@@ -736,21 +735,21 @@ public class MemoryOptimizedImageProcessingService : IImageProcessingService
         }
     }
 
-    public async Task<long> GetImageFileSizeAsync(string imagePath, CancellationToken cancellationToken = default)
+    public async Task<long> GetImageFileSizeAsync(ArchiveEntryInfo archiveEntry, CancellationToken cancellationToken = default)
     {
         try
         {
-            if (!File.Exists(imagePath))
+            if (!File.Exists(archiveEntry.GetPhysicalFileFullPath()))
             {
                 return 0;
             }
 
-            var fileInfo = new FileInfo(imagePath);
+            var fileInfo = new FileInfo(archiveEntry.GetPhysicalFileFullPath());
             return fileInfo.Length;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "❌ Error getting image file size from {ImagePath}", imagePath);
+            _logger.LogError(ex, "❌ Error getting image file size from {ImagePath}", archiveEntry.GetPhysicalFileFullPath());
             return 0;
         }
     }

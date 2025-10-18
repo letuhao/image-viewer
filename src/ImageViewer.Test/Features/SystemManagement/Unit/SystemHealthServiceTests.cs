@@ -1,9 +1,4 @@
-using FluentAssertions;
-using Moq;
-using Xunit;
 using ImageViewer.Application.Services;
-using ImageViewer.Application.DTOs.SystemHealth;
-using ImageViewer.Domain.Entities;
 using MongoDB.Bson;
 using Microsoft.Extensions.Logging;
 

@@ -282,7 +282,7 @@ public class MediaItemService : IMediaItemService
         {
             var mediaItem = await GetMediaItemByIdAsync(mediaItemId);
             
-            var newCacheInfo = new ImageViewer.Domain.ValueObjects.CacheInfo();
+            var newCacheInfo = new Domain.ValueObjects.CacheInfo();
             
             if (request.IsCached.HasValue && request.IsCached.Value)
             {
@@ -568,7 +568,7 @@ public class MediaItemService : IMediaItemService
         }
     }
 
-    public async Task<ImageViewer.Domain.ValueObjects.MediaItemStatistics> GetMediaItemStatisticsAsync()
+    public async Task<Domain.ValueObjects.MediaItemStatistics> GetMediaItemStatisticsAsync()
     {
         try
         {

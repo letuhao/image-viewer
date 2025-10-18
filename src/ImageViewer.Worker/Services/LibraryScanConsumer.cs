@@ -1,13 +1,7 @@
 using System.Text.Json;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using RabbitMQ.Client;
 using ImageViewer.Application.Services;
-using ImageViewer.Domain.Entities;
-using ImageViewer.Domain.Enums;
-using ImageViewer.Domain.Events;
-using ImageViewer.Domain.Exceptions;
 using ImageViewer.Domain.Interfaces;
 using ImageViewer.Infrastructure.Data;
 using ImageViewer.Infrastructure.Messaging;

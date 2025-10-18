@@ -1,5 +1,3 @@
-using System;
-
 namespace ImageViewer.Infrastructure.Configuration;
 
 /// <summary>

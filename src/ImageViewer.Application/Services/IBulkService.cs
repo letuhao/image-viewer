@@ -1,8 +1,6 @@
 using System.Text.Json.Serialization;
-using ImageViewer.Domain.Entities;
 using ImageViewer.Domain.Enums;
 using MongoDB.Bson;
-using ImageViewer.Domain.ValueObjects;
 
 namespace ImageViewer.Application.Services;
 

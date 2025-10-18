@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
 using ImageViewer.Application.Services;
 using ImageViewer.Domain.Entities;
-using MongoDB.Bson;
 
 namespace ImageViewer.Api.Controllers;
 

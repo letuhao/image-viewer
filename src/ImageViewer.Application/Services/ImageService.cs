@@ -1,8 +1,6 @@
 using Microsoft.Extensions.Logging;
-using ImageViewer.Domain.Entities;
 using ImageViewer.Domain.Interfaces;
 using ImageViewer.Domain.ValueObjects;
-using ImageViewer.Application.Constants;
 using ImageViewer.Application.Options;
 using Microsoft.Extensions.Options;
 using MongoDB.Bson;
@@ -476,16 +474,22 @@ public class ImageService : IImageService
                 return null;
             }
 
-            var fullPath = image.GetFullPath(collection.Path);
+            //var fullPath = image.GetFullPath(collection.Path);
+            var archiveEntry = new ArchiveEntryInfo()
+            {
+                ArchivePath = collection.Path,
+                EntryName = image.Filename,
+                IsDirectory = Directory.Exists(collection.Path),
+            };
             
             // For archive entries, skip File.Exists check
-            if (!image.IsArchiveEntry() && !File.Exists(fullPath))
+            if (archiveEntry.IsDirectory && !File.Exists(archiveEntry.GetPhysicalFileFullPath()))
             {
-                _logger.LogWarning("Image file does not exist: {FullPath}", fullPath);
+                _logger.LogWarning("Image file does not exist: {FullPath}", archiveEntry.GetPhysicalFileFullPath());
                 return null;
             }
 
-            return await File.ReadAllBytesAsync(fullPath, cancellationToken);
+            return await File.ReadAllBytesAsync(archiveEntry.GetPhysicalFileFullPath(), cancellationToken);
         }
         catch (Exception ex)
         {
@@ -604,7 +608,7 @@ public class ImageService : IImageService
 
             // Check if image already exists (prevent duplicates from double-scans)
             var existingImage = collection.Images?.FirstOrDefault(img => 
-                img.Filename == filename && img.GetDisplayPath() == relativePath);
+                img.Filename == filename && img.RelativePath == relativePath);
             
             if (existingImage != null)
             {
@@ -775,15 +779,17 @@ public class ImageService : IImageService
             }
 
             // Get the full image path using the new DTO method
-            var fullImagePath = image.GetFullPath(collection.Path);
+            var fullImagePath = $"{collection.Path}#{image.Filename}";
             
             // Check if this is an archive entry using the new DTO method
             bool isArchiveEntry = image.IsArchiveEntry();
             
             // For archive entries, we don't check File.Exists because the path format is "archive.zip::entry.png"
-            if (!isArchiveEntry && !File.Exists(fullImagePath))
+            if (!isArchiveEntry)
             {
-                throw new InvalidOperationException($"Image file does not exist: {fullImagePath}");
+                fullImagePath = Path.Combine(collection.Path, image.Filename);
+                if (!File.Exists(fullImagePath))
+                    throw new InvalidOperationException($"Image file does not exist: {fullImagePath}");
             }
 
             // Generate thumbnail using image processing service
@@ -794,7 +800,12 @@ public class ImageService : IImageService
                 throw new InvalidOperationException($"Archive entry thumbnail generation should be handled by ThumbnailGenerationConsumer, not ImageService: {fullImagePath}");
             }
             
-            var thumbnailData = await _imageProcessingService.GenerateThumbnailAsync(fullImagePath, width, height, "jpeg", 95, cancellationToken);
+            var thumbnailData = await _imageProcessingService.GenerateThumbnailAsync(new ArchiveEntryInfo() 
+            {
+                ArchivePath = collection.Path,
+                EntryName = image.Filename,
+                IsDirectory = !isArchiveEntry,
+            }, width, height, "jpeg", 95, cancellationToken);
             
             // Determine thumbnail path using cache service
             var cacheFolders = await _cacheService.GetCacheFoldersAsync();
@@ -858,15 +869,17 @@ public class ImageService : IImageService
             }
 
             // Get the full image path using the new DTO method
-            var fullImagePath = image.GetFullPath(collection.Path);
-            
+            var fullImagePath = $"{collection.Path}#{image.Filename}";
+
             // Check if this is an archive entry using the new DTO method
             bool isArchiveEntry = image.IsArchiveEntry();
             
             // For archive entries, we don't check File.Exists because the path format is "archive.zip::entry.png"
-            if (!isArchiveEntry && !File.Exists(fullImagePath))
+            if (!isArchiveEntry)
             {
-                throw new InvalidOperationException($"Image file does not exist: {fullImagePath}");
+                fullImagePath = Path.Combine(collection.Path, image.Filename);
+                if (!File.Exists(fullImagePath))
+                    throw new InvalidOperationException($"Image file does not exist: {fullImagePath}");
             }
 
             // Generate cache using image processing service
@@ -884,7 +897,12 @@ public class ImageService : IImageService
             }
             else
             {
-                cacheData = await _imageProcessingService.ResizeImageAsync(fullImagePath, width, height, "jpeg", 95, cancellationToken);
+                cacheData = await _imageProcessingService.ResizeImageAsync(new ArchiveEntryInfo()
+                {
+                    ArchivePath = collection.Path,
+                    EntryName = image.Filename,
+                    IsDirectory = !isArchiveEntry,
+                }, width, height, "jpeg", 95, cancellationToken);
             }
             
             // Determine cache path using cache service

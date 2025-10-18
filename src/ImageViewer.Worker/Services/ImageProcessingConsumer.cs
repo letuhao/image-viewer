@@ -1,10 +1,6 @@
 using System.Text.Json;
-using System.IO.Compression;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using RabbitMQ.Client;
-using RabbitMQ.Client.Events;
 using ImageViewer.Domain.Events;
 using ImageViewer.Domain.Interfaces;
 using ImageViewer.Domain.ValueObjects;
@@ -58,8 +54,8 @@ public class ImageProcessingConsumer : BaseMessageConsumer
                 return;
             }
 
-            _logger.LogDebug("🖼️ Processing image {ImageId} at path {Path}", 
-                imageMessage.ImageId, imageMessage.ImagePath);
+            _logger.LogDebug("🖼️ Processing image {ImageId} at path {Path}#{Entry}", 
+                imageMessage.ImageId, imageMessage.ArchiveEntry.ArchivePath, imageMessage.ArchiveEntry.EntryName);
 
             // Try to create scope, handle disposal gracefully
             IServiceScope? scope = null;
@@ -81,20 +77,19 @@ public class ImageProcessingConsumer : BaseMessageConsumer
 
                 // Check if image file exists (handle both regular files and ZIP entries)
                 // Use new DTO structure to avoid legacy string splitting bugs
-                var archiveEntryInfo = ArchiveEntryInfo.FromPath(imageMessage.ImagePath);
-                if (archiveEntryInfo != null)
+                if (!imageMessage.ArchiveEntry.IsDirectory)
                 {
                     // This is an archive entry - validate the archive file exists
-                    if (!File.Exists(archiveEntryInfo.ArchivePath))
+                    if (!File.Exists(imageMessage.ArchiveEntry.ArchivePath))
                     {
-                        _logger.LogWarning("❌ Archive file {Path} does not exist, skipping processing", archiveEntryInfo.ArchivePath);
+                        _logger.LogWarning("❌ Archive file {Path}#{Entry} does not exist, skipping processing", imageMessage.ArchiveEntry.ArchivePath, imageMessage.ArchiveEntry.EntryName);
                         return;
                     }
                 }
-                else if (!File.Exists(imageMessage.ImagePath))
+                else if (!File.Exists(imageMessage.ArchiveEntry.GetPhysicalFileFullPath()))
                 {
                     // This is a regular file - check if it exists
-                    _logger.LogWarning("❌ Image file {Path} does not exist, skipping processing", imageMessage.ImagePath);
+                    _logger.LogWarning("❌ Image file {Path} does not exist, skipping processing", imageMessage.ArchiveEntry.GetPhysicalFileFullPath());
                     return;
                 }
 
@@ -102,7 +97,7 @@ public class ImageProcessingConsumer : BaseMessageConsumer
                 var embeddedImage = await CreateOrUpdateEmbeddedImage(imageMessage, imageService, scope.ServiceProvider, cancellationToken);
             if (embeddedImage == null)
             {
-                _logger.LogWarning("❌ Failed to create/update embedded image for {Path}", imageMessage.ImagePath);
+                _logger.LogWarning("❌ Failed to create/update embedded image for {Path}#{Entry}", imageMessage.ArchiveEntry.ArchivePath, imageMessage.ArchiveEntry.EntryName);
                 return;
             }
 
@@ -133,8 +128,9 @@ public class ImageProcessingConsumer : BaseMessageConsumer
                     {
                         ImageId = embeddedImage.Id, // Already a string
                         CollectionId = imageMessage.CollectionId, // Already a string
-                        ImagePath = imageMessage.ImagePath,
-                        ImageFilename = Path.GetFileName(imageMessage.ImagePath),
+                        //ImagePath = imageMessage.ImagePath,
+                        //ImageFilename = Path.GetFileName(imageMessage.ImagePath),
+                        ArchiveEntry = imageMessage.ArchiveEntry,
                         ThumbnailWidth = thumbnailWidth, // Loaded from system settings
                         ThumbnailHeight = thumbnailHeight, // Loaded from system settings
                         ScanJobId = imageMessage.ScanJobId // Pass scan job ID for tracking
@@ -225,7 +221,8 @@ public class ImageProcessingConsumer : BaseMessageConsumer
                 {
                     ImageId = embeddedImage.Id, // Already a string
                     CollectionId = imageMessage.CollectionId, // Already a string
-                    ImagePath = imageMessage.ImagePath,
+                    //ImagePath = imageMessage.ImagePath,
+                    ArchiveEntry = imageMessage.ArchiveEntry,
                     CachePath = cachePath, // PRE-DETERMINED cache path for distribution
                     CacheWidth = cacheWidth,
                     CacheHeight = cacheHeight,
@@ -272,11 +269,11 @@ public class ImageProcessingConsumer : BaseMessageConsumer
         }
     }
 
-    private async Task<Domain.ValueObjects.ImageEmbedded?> CreateOrUpdateEmbeddedImage(ImageProcessingMessage imageMessage, IImageService imageService, IServiceProvider serviceProvider, CancellationToken cancellationToken = default)
+    private async Task<ImageEmbedded?> CreateOrUpdateEmbeddedImage(ImageProcessingMessage imageMessage, IImageService imageService, IServiceProvider serviceProvider, CancellationToken cancellationToken = default)
     {
         try
         {
-            _logger.LogDebug("➕ Creating/updating embedded image for path {Path}", imageMessage.ImagePath);
+            _logger.LogDebug("➕ Creating/updating embedded image for path {Path}#{Entry}", imageMessage.ArchiveEntry.ArchivePath, imageMessage.ArchiveEntry.EntryName);
             
             // Extract actual image metadata if not provided
             var width = imageMessage.Width;
@@ -286,12 +283,12 @@ public class ImageProcessingConsumer : BaseMessageConsumer
             if (width == 0 || height == 0 || fileSize == 0)
             {
                 // Check if this is a ZIP entry
-                bool isZipEntry = imageMessage.ImagePath.Contains("#");
+                //bool isZipEntry = imageMessage.ImagePath.Contains("#");
                 
-                if (isZipEntry)
+                if (!imageMessage.ArchiveEntry.IsDirectory)
                 {
                     // Extract dimensions from ZIP entry
-                    var (zipWidth, zipHeight, zipSize) = await ExtractZipEntryMetadata(imageMessage.ImagePath, cancellationToken);
+                    var (zipWidth, zipHeight, zipSize) = await ExtractZipEntryMetadata(imageMessage.ArchiveEntry, cancellationToken);
                     width = zipWidth;
                     height = zipHeight;
                     fileSize = zipSize > 0 ? zipSize : imageMessage.FileSize;
@@ -303,16 +300,16 @@ public class ImageProcessingConsumer : BaseMessageConsumer
                     
                     try
                     {
-                        var dimensions = await imageProcessingService.GetImageDimensionsAsync(imageMessage.ImagePath, cancellationToken);
+                        var dimensions = await imageProcessingService.GetImageDimensionsAsync(imageMessage.ArchiveEntry, cancellationToken);
                     if (dimensions != null)
                     {
                         width = dimensions.Width;
                         height = dimensions.Height;
                         
                         // Get file info for size if not provided
-                        if (fileSize == 0 && File.Exists(imageMessage.ImagePath))
+                        if (fileSize == 0 && File.Exists(imageMessage.ArchiveEntry.GetPhysicalFileFullPath()))
                         {
-                            var fileInfo = new FileInfo(imageMessage.ImagePath);
+                            var fileInfo = new FileInfo(imageMessage.ArchiveEntry.GetPhysicalFileFullPath());
                             fileSize = fileInfo.Length;
                         }
                         
@@ -322,7 +319,7 @@ public class ImageProcessingConsumer : BaseMessageConsumer
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogWarning(ex, "⚠️ Failed to extract metadata for {Path}, using provided values", imageMessage.ImagePath);
+                        _logger.LogWarning(ex, "⚠️ Failed to extract metadata for {Path}#{Entry}, using provided values", imageMessage.ArchiveEntry.ArchivePath, imageMessage.ArchiveEntry.EntryName);
                     }
                 }
             }
@@ -334,69 +331,69 @@ public class ImageProcessingConsumer : BaseMessageConsumer
             string filename;
             string relativePath;
             
-            // Use new DTO structure to avoid legacy string splitting bugs
-            var archiveEntryInfo = ArchiveEntryInfo.FromPath(imageMessage.ImagePath);
-            if (archiveEntryInfo != null)
-            {
-                // This is an archive entry - extract the entry name
-                filename = Path.GetFileName(archiveEntryInfo.EntryName); // Just the entry filename
-                relativePath = archiveEntryInfo.EntryName; // Use entry path as relative path
-            }
-            else
-            {
-                // Regular file
-                filename = Path.GetFileName(imageMessage.ImagePath);
-                relativePath = GetRelativePath(imageMessage.ImagePath, collectionId);
-            }
+            //// Use new DTO structure to avoid legacy string splitting bugs
+            //var archiveEntryInfo = ArchiveEntryInfo.FromPath(imageMessage.ImagePath);
+            //if (archiveEntryInfo != null)
+            //{
+            //    // This is an archive entry - extract the entry name
+            //    filename = Path.GetFileName(archiveEntryInfo.EntryName); // Just the entry filename
+            //    relativePath = archiveEntryInfo.EntryName; // Use entry path as relative path
+            //}
+            //else
+            //{
+            //    // Regular file
+            //    filename = Path.GetFileName(imageMessage.ImagePath);
+            //    relativePath = GetRelativePath(imageMessage.ImagePath, collectionId);
+            //}
             
             var embeddedImage = await imageService.CreateEmbeddedImageAsync(
                 collectionId,
-                filename,
-                relativePath,
+                imageMessage.ArchiveEntry.EntryName,
+                imageMessage.ArchiveEntry.EntryName,
                 fileSize,
                 width,
                 height,
                 imageMessage.ImageFormat,
-                archiveEntryInfo
+                imageMessage.ArchiveEntry
             );
             
-            _logger.LogDebug("✅ Created embedded image {ImageId} for {Path}", embeddedImage.Id, imageMessage.ImagePath);
+            _logger.LogDebug("✅ Created embedded image {ImageId} for {Path}#{Entry}", embeddedImage.Id, imageMessage.ArchiveEntry.ArchivePath, imageMessage.ArchiveEntry.EntryName);
             return embeddedImage;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "❌ Error creating/updating embedded image for path {Path}", imageMessage.ImagePath);
+            _logger.LogError(ex, "❌ Error creating/updating embedded image for path {Path}#{Entry}", imageMessage.ArchiveEntry.ArchivePath, imageMessage.ArchiveEntry.EntryName);
             return null;
         }
     }
     
-    private string GetRelativePath(string fullPath, ObjectId collectionId)
-    {
-        // Use new DTO structure to avoid legacy string splitting bugs
-        var archiveEntryInfo = ArchiveEntryInfo.FromPath(fullPath);
-        if (archiveEntryInfo != null)
-        {
-            // This is an archive entry - return the entry name
-            return archiveEntryInfo.EntryName;
-        }
+    //private string GetRelativePath(string fullPath, ObjectId collectionId)
+    //{
+    //    // Use new DTO structure to avoid legacy string splitting bugs
+    //    var archiveEntryInfo = ArchiveEntryInfo.FromPath(fullPath);
+    //    if (archiveEntryInfo != null)
+    //    {
+    //        // This is an archive entry - return the entry name
+    //        return archiveEntryInfo.EntryName;
+    //    }
         
-        // For regular files, return just the filename for now
-        // In a real implementation, you'd want to store the full relative path
-        return Path.GetFileName(fullPath);
-    }
+    //    // For regular files, return just the filename for now
+    //    // In a real implementation, you'd want to store the full relative path
+    //    return Path.GetFileName(fullPath);
+    //}
 
     /// <summary>
     /// Extract metadata from a ZIP entry (path format: zipfile.zip#entry.png)
     /// </summary>
-    private async Task<(int width, int height, long fileSize)> ExtractZipEntryMetadata(string zipEntryPath, CancellationToken cancellationToken = default)
+    private async Task<(int width, int height, long fileSize)> ExtractZipEntryMetadata(ArchiveEntryInfo archiveEntry, CancellationToken cancellationToken = default)
     {
         try
         {
             // Use shared ZIP helper to extract bytes
-            var imageBytes = await ArchiveFileHelper.ExtractZipEntryBytes(zipEntryPath, _logger, cancellationToken);
+            var imageBytes = await ArchiveFileHelper.ExtractZipEntryBytes(archiveEntry, _logger, cancellationToken);
             if (imageBytes == null || imageBytes.Length == 0)
             {
-                _logger.LogWarning("Failed to extract bytes from ZIP entry: {Path}", zipEntryPath);
+                _logger.LogWarning("Failed to extract bytes from ZIP entry: {Path}", archiveEntry.ArchivePath);
                 return (0, 0, 0);
             }
 
@@ -406,21 +403,21 @@ public class ImageProcessingConsumer : BaseMessageConsumer
             
             if (codec == null)
             {
-                _logger.LogWarning("Failed to decode image from ZIP entry: {Path}", zipEntryPath);
+                _logger.LogWarning("Failed to decode image from ZIP entry: {Path}", archiveEntry.ArchivePath);
                 return (0, 0, imageBytes.Length);
             }
 
             var info = codec.Info;
             // Use new DTO structure to avoid legacy string splitting bugs
-            var archiveEntryInfo = ArchiveEntryInfo.FromPath(zipEntryPath);
-            var entryName = archiveEntryInfo?.EntryName ?? "unknown";
+            //var archiveEntryInfo = ArchiveEntryInfo.FromPath(zipEntryPath);
+            var entryName = archiveEntry.EntryName ?? "unknown";
             _logger.LogDebug("ZIP entry {Entry}: {Width}x{Height}, {Size} bytes", entryName, info.Width, info.Height, imageBytes.Length);
             
             return (info.Width, info.Height, imageBytes.Length);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error extracting metadata from ZIP entry: {Path}", zipEntryPath);
+            _logger.LogError(ex, "Error extracting metadata from ZIP entry: {Path}", archiveEntry.ArchivePath);
             return (0, 0, 0);
         }
     }

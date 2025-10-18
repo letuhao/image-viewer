@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
 using ImageViewer.Application.Services;
 
 namespace ImageViewer.Api.Controllers;

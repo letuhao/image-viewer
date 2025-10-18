@@ -1,10 +1,6 @@
-using FluentAssertions;
-using Moq;
-using Xunit;
 using ImageViewer.Application.Services;
 using ImageViewer.Domain.Interfaces;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace ImageViewer.Test.Features.SystemManagement.Unit;
 
@@ -80,7 +76,7 @@ public class BulkServiceTests
         };
 
         // Act & Assert
-        await Assert.ThrowsAsync<System.IO.DirectoryNotFoundException>(async () =>
+        await Assert.ThrowsAsync<DirectoryNotFoundException>(async () =>
         {
             await _bulkService.BulkAddCollectionsAsync(request);
         });
@@ -142,7 +138,7 @@ public class BulkServiceTests
         };
 
         // Act & Assert
-        await Assert.ThrowsAsync<System.IO.DirectoryNotFoundException>(async () =>
+        await Assert.ThrowsAsync<DirectoryNotFoundException>(async () =>
         {
             await _bulkService.BulkAddCollectionsAsync(request);
         });

@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
 using ImageViewer.Application.Services;
 using ImageViewer.Application.DTOs.BackgroundJobs;
 using MongoDB.Bson;

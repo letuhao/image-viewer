@@ -264,7 +264,7 @@ public class CacheController : ControllerBase
                 if (!string.IsNullOrWhiteSpace(request.Preset))
                 {
                     // Resolve preset from options via a scoped service
-                    var presetsOptions = HttpContext.RequestServices.GetRequiredService<Microsoft.Extensions.Options.IOptions<ImageViewer.Application.Options.ImageCachePresetsOptions>>().Value;
+                    var presetsOptions = HttpContext.RequestServices.GetRequiredService<Microsoft.Extensions.Options.IOptions<Application.Options.ImageCachePresetsOptions>>().Value;
                     if (presetsOptions.Presets.TryGetValue(request.Preset, out var presetSizes))
                     {
                         sizes.AddRange(presetSizes.Select(s => (s.Width, s.Height)));

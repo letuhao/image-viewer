@@ -1,11 +1,5 @@
-using FluentAssertions;
-using Xunit;
 using ImageViewer.Application.Services;
-using ImageViewer.Application.DTOs.Notifications;
-using ImageViewer.Domain.Enums;
-using MongoDB.Bson;
 using ImageViewer.Test.Shared.Fixtures;
-using NotificationTemplateEntity = ImageViewer.Domain.Entities.NotificationTemplate;
 
 namespace ImageViewer.Test.Features.Notifications.Integration;
 
@@ -28,7 +22,7 @@ public class NotificationTemplateIntegrationTests : IClassFixture<IntegrationTes
     {
         // Arrange
         await _fixture.CleanupTestDataAsync();
-        var request = new ImageViewer.Application.DTOs.Notifications.CreateNotificationTemplateRequest
+        var request = new Application.DTOs.Notifications.CreateNotificationTemplateRequest
         {
             TemplateName = "Test Template",
             TemplateType = "email",
@@ -60,7 +54,7 @@ public class NotificationTemplateIntegrationTests : IClassFixture<IntegrationTes
     {
         // Arrange
         await _fixture.CleanupTestDataAsync();
-        var createRequest = new ImageViewer.Application.DTOs.Notifications.CreateNotificationTemplateRequest
+        var createRequest = new Application.DTOs.Notifications.CreateNotificationTemplateRequest
         {
             TemplateName = "Original Template",
             TemplateType = "email",
@@ -74,7 +68,7 @@ public class NotificationTemplateIntegrationTests : IClassFixture<IntegrationTes
 
         var createdTemplate = await _templateService.CreateTemplateAsync(createRequest);
 
-        var updateRequest = new ImageViewer.Application.DTOs.Notifications.UpdateNotificationTemplateRequest
+        var updateRequest = new Application.DTOs.Notifications.UpdateNotificationTemplateRequest
         {
             TemplateName = "Updated Template",
             Subject = "Updated Subject",
@@ -100,7 +94,7 @@ public class NotificationTemplateIntegrationTests : IClassFixture<IntegrationTes
     {
         // Arrange
         await _fixture.CleanupTestDataAsync();
-        var createRequest = new ImageViewer.Application.DTOs.Notifications.CreateNotificationTemplateRequest
+        var createRequest = new Application.DTOs.Notifications.CreateNotificationTemplateRequest
         {
             TemplateName = "Template to Delete",
             TemplateType = "email",
@@ -127,7 +121,7 @@ public class NotificationTemplateIntegrationTests : IClassFixture<IntegrationTes
     {
         // Arrange
         await _fixture.CleanupTestDataAsync();
-        var createRequest = new ImageViewer.Application.DTOs.Notifications.CreateNotificationTemplateRequest
+        var createRequest = new Application.DTOs.Notifications.CreateNotificationTemplateRequest
         {
             TemplateName = "Get Template",
             TemplateType = "email",
@@ -158,9 +152,9 @@ public class NotificationTemplateIntegrationTests : IClassFixture<IntegrationTes
     {
         // Arrange
         await _fixture.CleanupTestDataAsync();
-        var templates = new List<ImageViewer.Application.DTOs.Notifications.CreateNotificationTemplateRequest>
+        var templates = new List<Application.DTOs.Notifications.CreateNotificationTemplateRequest>
         {
-            new ImageViewer.Application.DTOs.Notifications.CreateNotificationTemplateRequest
+            new Application.DTOs.Notifications.CreateNotificationTemplateRequest
             {
                 TemplateName = "Template 1",
                 TemplateType = "email",
@@ -171,7 +165,7 @@ public class NotificationTemplateIntegrationTests : IClassFixture<IntegrationTes
                 Language = "en",
                 IsSystemTemplate = false
             },
-            new ImageViewer.Application.DTOs.Notifications.CreateNotificationTemplateRequest
+            new Application.DTOs.Notifications.CreateNotificationTemplateRequest
             {
                 TemplateName = "Template 2",
                 TemplateType = "email",
@@ -204,9 +198,9 @@ public class NotificationTemplateIntegrationTests : IClassFixture<IntegrationTes
     {
         // Arrange
         await _fixture.CleanupTestDataAsync();
-        var templates = new List<ImageViewer.Application.DTOs.Notifications.CreateNotificationTemplateRequest>
+        var templates = new List<Application.DTOs.Notifications.CreateNotificationTemplateRequest>
         {
-            new ImageViewer.Application.DTOs.Notifications.CreateNotificationTemplateRequest
+            new Application.DTOs.Notifications.CreateNotificationTemplateRequest
             {
                 TemplateName = "Info Template",
                 TemplateType = "email",
@@ -217,7 +211,7 @@ public class NotificationTemplateIntegrationTests : IClassFixture<IntegrationTes
                 Language = "en",
                 IsSystemTemplate = false
             },
-            new ImageViewer.Application.DTOs.Notifications.CreateNotificationTemplateRequest
+            new Application.DTOs.Notifications.CreateNotificationTemplateRequest
             {
                 TemplateName = "Warning Template",
                 TemplateType = "push",
@@ -250,7 +244,7 @@ public class NotificationTemplateIntegrationTests : IClassFixture<IntegrationTes
     {
         // Arrange
         await _fixture.CleanupTestDataAsync();
-        var request = new ImageViewer.Application.DTOs.Notifications.CreateNotificationTemplateRequest
+        var request = new Application.DTOs.Notifications.CreateNotificationTemplateRequest
         {
             TemplateName = "Valid Template",
             TemplateType = "email",
@@ -277,7 +271,7 @@ public class NotificationTemplateIntegrationTests : IClassFixture<IntegrationTes
     {
         // Arrange
         await _fixture.CleanupTestDataAsync();
-        var createRequest = new ImageViewer.Application.DTOs.Notifications.CreateNotificationTemplateRequest
+        var createRequest = new Application.DTOs.Notifications.CreateNotificationTemplateRequest
         {
             TemplateName = "Stats Template",
             TemplateType = "email",

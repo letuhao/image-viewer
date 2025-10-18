@@ -5,8 +5,6 @@ using Hangfire.Mongo.Migration.Strategies.Backup;
 using ImageViewer.Scheduler.Configuration;
 using ImageViewer.Scheduler.Services;
 using ImageViewer.Scheduler.Jobs;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Configuration;
 using MongoDB.Driver;
 
 namespace ImageViewer.Scheduler.Extensions;

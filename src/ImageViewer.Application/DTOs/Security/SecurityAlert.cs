@@ -18,7 +18,7 @@ public class SecurityAlert
     /// <summary>
     /// Alert type
     /// </summary>
-    public Application.Services.SecurityAlertType AlertType { get; set; }
+    public Services.SecurityAlertType AlertType { get; set; }
 
     /// <summary>
     /// Alert message

@@ -1,4 +1,3 @@
-using Hangfire;
 using ImageViewer.Domain.Interfaces;
 using ImageViewer.Scheduler.Configuration;
 using ImageViewer.Scheduler.Services;

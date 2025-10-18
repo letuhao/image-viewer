@@ -1,5 +1,3 @@
-using Xunit;
-using Moq;
 using Microsoft.Extensions.Logging;
 using ImageViewer.Application.Services;
 using ImageViewer.Domain.Entities;

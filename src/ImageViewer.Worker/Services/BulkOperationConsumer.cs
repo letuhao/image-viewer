@@ -1,15 +1,12 @@
 using System.Text.Json;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using RabbitMQ.Client;
-using RabbitMQ.Client.Events;
 using ImageViewer.Domain.Events;
 using ImageViewer.Domain.Interfaces;
 using ImageViewer.Infrastructure.Data;
 using ImageViewer.Application.Services;
-using ImageViewer.Application.Helpers;
 using MongoDB.Bson;
+using ImageViewer.Domain.ValueObjects;
 
 namespace ImageViewer.Worker.Services;
 
@@ -302,8 +299,14 @@ public class BulkOperationConsumer : BaseMessageConsumer
                     {
                         ImageId = image.Id, // Already a string
                         CollectionId = collection.Id.ToString(), // Use collection.Id from outer loop
-                        ImagePath = image.GetDisplayPath(), // Use the new DTO method for display path
-                        ImageFilename = image.Filename,
+                        //ImagePath = image.GetDisplayPath(), // Use the new DTO method for display path
+                        //ImageFilename = image.Filename,
+                        ArchiveEntry = new ArchiveEntryInfo
+                        {
+                            ArchivePath = collection.Path,
+                            EntryName = image.Filename,
+                            IsDirectory = Directory.Exists(collection.Path),
+                        },
                         ThumbnailWidth = thumbnailWidth, // Loaded from system settings
                         ThumbnailHeight = thumbnailHeight, // Loaded from system settings
                     };
@@ -369,8 +372,14 @@ public class BulkOperationConsumer : BaseMessageConsumer
                     {
                         ImageId = image.Id, // Already a string
                         CollectionId = collection.Id.ToString(), // Use collection.Id from outer loop
-                        ImagePath = image.GetDisplayPath(), // Use the new DTO method for display path
-                        CachePath = "", // Will be determined by cache service
+                        //ImagePath = image.GetDisplayPath(), // Use the new DTO method for display path
+                        ArchiveEntry = new ArchiveEntryInfo()
+                        {
+                            ArchivePath = collection.Path,
+                            EntryName = image.Filename,
+                            IsDirectory = Path.Exists(collection.Path),
+                        },
+                        //CachePath = "", // Will be determined by cache service
                         CacheWidth = 1920, // Default cache size
                         CacheHeight = 1080,
                         Quality = cacheQuality, // Use loaded quality setting
@@ -537,8 +546,14 @@ public class BulkOperationConsumer : BaseMessageConsumer
                             JobId = jobId, // Link to FileProcessingJobState
                             ImageId = image.Id,
                             CollectionId = collectionId.ToString(),
-                            ImagePath = collection.GetFullImagePath(image), // Use full path
-                            ImageFilename = image.Filename,
+                            //ImagePath = collection.GetFullImagePath(image), // Use full path
+                            //ImageFilename = image.Filename,
+                            ArchiveEntry = new ArchiveEntryInfo()
+                            {
+                                ArchivePath = collection.Path,
+                                EntryName = image.Filename,
+                                IsDirectory = Directory.Exists(collection.Path),
+                            },
                             ThumbnailWidth = thumbnailWidth,
                             ThumbnailHeight = thumbnailHeight,
                             ScanJobId = bulkMessage.JobId // Link to parent scan job
@@ -680,8 +695,14 @@ public class BulkOperationConsumer : BaseMessageConsumer
                             JobId = jobId, // Link to FileProcessingJobState
                             ImageId = image.Id,
                             CollectionId = collectionId.ToString(),
-                            ImagePath = collection.GetFullImagePath(image), // Use full path
-                            CachePath = "", // Will be determined by cache service
+                            //ImagePath = collection.GetFullImagePath(image), // Use full path
+                            //CachePath = "", // Will be determined by cache service
+                            ArchiveEntry = new ArchiveEntryInfo()
+                            {
+                                ArchivePath = collection.Path,
+                                EntryName = image.Filename,
+                                IsDirectory = Directory.Exists(collection.Path)
+                            },
                             CacheWidth = cacheWidth,
                             CacheHeight = cacheHeight,
                             Quality = cacheQuality,

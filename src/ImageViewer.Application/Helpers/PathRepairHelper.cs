@@ -1,5 +1,3 @@
-using System.IO;
-
 namespace ImageViewer.Application.Helpers;
 
 /// <summary>

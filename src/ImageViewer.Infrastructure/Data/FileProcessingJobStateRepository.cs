@@ -1,7 +1,6 @@
 using ImageViewer.Domain.Entities;
 using ImageViewer.Domain.Interfaces;
 using Microsoft.Extensions.Logging;
-using MongoDB.Bson;
 using MongoDB.Driver;
 
 namespace ImageViewer.Infrastructure.Data;

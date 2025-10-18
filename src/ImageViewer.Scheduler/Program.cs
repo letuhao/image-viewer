@@ -41,7 +41,7 @@ public class Program
             {
                 try
                 {
-                    var mongoInitService = scope.ServiceProvider.GetRequiredService<ImageViewer.Infrastructure.Services.MongoDbInitializationService>();
+                    var mongoInitService = scope.ServiceProvider.GetRequiredService<MongoDbInitializationService>();
                     mongoInitService.InitializeAsync().GetAwaiter().GetResult();
                     Log.Information("✅ MongoDB indexes initialized");
                 }
@@ -124,7 +124,7 @@ public class Program
                     return new MongoClient(options.ConnectionString);
                 });
                 
-                services.AddScoped<IMongoDatabase>(provider =>
+                services.AddScoped(provider =>
                 {
                     var client = provider.GetRequiredService<IMongoClient>();
                     var options = provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<MongoDbOptions>>().Value;
@@ -132,19 +132,19 @@ public class Program
                 });
                 
                 // Register MongoDB collections needed by Scheduler
-                services.AddScoped<IMongoCollection<Library>>(provider =>
+                services.AddScoped(provider =>
                 {
                     var database = provider.GetRequiredService<IMongoDatabase>();
                     return database.GetCollection<Library>("libraries");
                 });
                 
-                services.AddScoped<IMongoCollection<ScheduledJob>>(provider =>
+                services.AddScoped(provider =>
                 {
                     var database = provider.GetRequiredService<IMongoDatabase>();
                     return database.GetCollection<ScheduledJob>("scheduled_jobs");
                 });
                 
-                services.AddScoped<IMongoCollection<ScheduledJobRun>>(provider =>
+                services.AddScoped(provider =>
                 {
                     var database = provider.GetRequiredService<IMongoDatabase>();
                     return database.GetCollection<ScheduledJobRun>("scheduled_job_runs");

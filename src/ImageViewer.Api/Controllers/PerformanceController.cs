@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Mvc;
-using MongoDB.Bson;
 using ImageViewer.Application.Services;
 using ImageViewer.Domain.Exceptions;
 

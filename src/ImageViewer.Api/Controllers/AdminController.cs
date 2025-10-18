@@ -1,8 +1,6 @@
-using ImageViewer.Application.Services;
 using ImageViewer.Domain.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
 
 namespace ImageViewer.Api.Controllers;
 

@@ -1,4 +1,3 @@
-using ImageViewer.Domain.Entities;
 using ImageViewer.Domain.Enums;
 
 namespace ImageViewer.Api.DTOs;

@@ -1,10 +1,8 @@
 using Serilog;
-using Serilog.Events;
 using ImageViewer.Infrastructure.Data;
 using ImageViewer.Application.Services;
 using ImageViewer.Infrastructure.Services;
 using ImageViewer.Domain.Interfaces;
-using Microsoft.AspNetCore.Hosting;
 using ImageViewer.Application.Options;
 using Microsoft.Extensions.Options;
 using ImageViewer.Infrastructure.Extensions;
@@ -51,8 +49,8 @@ builder.Services.Configure<ImageCachePresetsOptions>(builder.Configuration.GetSe
 builder.Services.AddMongoDb(builder.Configuration);
 
 // Add RabbitMQ
-builder.Services.Configure<ImageViewer.Infrastructure.Data.RabbitMQOptions>(builder.Configuration.GetSection("RabbitMQ"));
-builder.Services.AddSingleton<ImageViewer.Domain.Interfaces.IMessageQueueService, ImageViewer.Infrastructure.Services.RabbitMQMessageQueueService>();
+builder.Services.Configure<RabbitMQOptions>(builder.Configuration.GetSection("RabbitMQ"));
+builder.Services.AddSingleton<IMessageQueueService, RabbitMQMessageQueueService>();
 
 // Add CORS
 builder.Services.AddCors(options =>
@@ -78,7 +76,7 @@ builder.Services.AddSession(options =>
 builder.Services.Configure<RabbitMQOptions>(builder.Configuration.GetSection("RabbitMQ"));
 
 // Register RabbitMQ connection
-builder.Services.AddSingleton<IConnection>(provider =>
+builder.Services.AddSingleton(provider =>
 {
     var options = provider.GetRequiredService<IOptions<RabbitMQOptions>>().Value;
     var factory = new ConnectionFactory
@@ -98,7 +96,7 @@ builder.Services.AddSingleton<IConnection>(provider =>
 builder.Services.AddSingleton<IMessageQueueService, RabbitMQMessageQueueService>();
 
 // Configure Redis
-builder.Services.Configure<ImageViewer.Application.Options.RedisOptions>(builder.Configuration.GetSection("Redis"));
+builder.Services.Configure<RedisOptions>(builder.Configuration.GetSection("Redis"));
 
 // Register Redis distributed cache
 builder.Services.AddStackExchangeRedisCache(options =>
@@ -142,17 +140,17 @@ builder.Services.AddSingleton<StackExchange.Redis.IConnectionMultiplexer>(provid
 });
 
 // Register Redis Image Cache Service
-builder.Services.AddScoped<ImageViewer.Domain.Interfaces.IImageCacheService, ImageViewer.Infrastructure.Services.RedisImageCacheService>();
+builder.Services.AddScoped<IImageCacheService, RedisImageCacheService>();
 
 // Register Thumbnail Cache Service (for Base64 encoding with Redis)
-builder.Services.AddScoped<ImageViewer.Application.Services.IThumbnailCacheService, ImageViewer.Application.Services.ThumbnailCacheService>();
+builder.Services.AddScoped<IThumbnailCacheService, ThumbnailCacheService>();
 
 // Register Redis Collection Index Service (for fast navigation and sorting)
-builder.Services.AddScoped<ImageViewer.Domain.Interfaces.ICollectionIndexService, ImageViewer.Infrastructure.Services.RedisCollectionIndexService>();
+builder.Services.AddScoped<ICollectionIndexService, RedisCollectionIndexService>();
 
 // Register Dashboard Statistics Service (Redis-cached for ultra-fast loading)
-builder.Services.AddScoped<ImageViewer.Domain.Interfaces.IDashboardStatisticsService, ImageViewer.Application.Services.DashboardStatisticsService>();
-builder.Services.AddScoped<ImageViewer.Domain.Interfaces.IMetadataRecalculationService, ImageViewer.Application.Services.MetadataRecalculationService>();
+builder.Services.AddScoped<IDashboardStatisticsService, DashboardStatisticsService>();
+builder.Services.AddScoped<IMetadataRecalculationService, MetadataRecalculationService>();
 
 // Add Hangfire Scheduler with Dashboard
 builder.Services.AddHangfireDashboard(builder.Configuration);
@@ -181,8 +179,8 @@ builder.Services.AddScoped<IScheduledJobManagementService, ScheduledJobManagemen
 builder.Services.AddScoped<IImageProcessingService, SkiaSharpImageProcessingService>();
 builder.Services.AddScoped<IAdvancedThumbnailService, AdvancedThumbnailService>(); // Refactored to use embedded design
 builder.Services.AddScoped<ICompressedFileService, CompressedFileService>();
-builder.Services.AddScoped<IUserContextService, ImageViewer.Infrastructure.Services.UserContextService>();
-builder.Services.AddScoped<IJwtService, ImageViewer.Infrastructure.Services.JwtService>();
+builder.Services.AddScoped<IUserContextService, UserContextService>();
+builder.Services.AddScoped<IJwtService, JwtService>();
 
 // Add JWT Authentication
 builder.Services.AddAuthentication("Bearer")
@@ -264,7 +262,7 @@ using (var scope = app.Services.CreateScope())
 {
     try
     {
-        var mongoInitService = scope.ServiceProvider.GetRequiredService<ImageViewer.Infrastructure.Services.MongoDbInitializationService>();
+        var mongoInitService = scope.ServiceProvider.GetRequiredService<MongoDbInitializationService>();
         await mongoInitService.InitializeAsync();
         Log.Information("✅ MongoDB indexes initialized");
     }
@@ -278,7 +276,7 @@ using (var scope = app.Services.CreateScope())
     try
     {
         Log.Information("🔍 Starting Redis collection index validation...");
-        var collectionIndexService = scope.ServiceProvider.GetRequiredService<ImageViewer.Domain.Interfaces.ICollectionIndexService>();
+        var collectionIndexService = scope.ServiceProvider.GetRequiredService<ICollectionIndexService>();
         Log.Information("✅ CollectionIndexService resolved successfully");
         
         Log.Information("🔍 Calling IsIndexValidAsync()...");

@@ -1,5 +1,4 @@
 using ImageViewer.Domain.Interfaces;
-using ImageViewer.Domain.Enums;
 using Microsoft.Extensions.Logging;
 using MongoDB.Bson;
 

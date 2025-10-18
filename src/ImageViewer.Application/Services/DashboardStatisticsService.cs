@@ -1,8 +1,6 @@
-using ImageViewer.Domain.Entities;
 using ImageViewer.Domain.Interfaces;
 using ImageViewer.Domain.ValueObjects;
 using Microsoft.Extensions.Logging;
-using System.IO;
 
 namespace ImageViewer.Application.Services;
 
@@ -127,7 +125,7 @@ public class DashboardStatisticsService : IDashboardStatisticsService
         };
 
         // Build system health
-        var systemHealth = new ImageViewer.Domain.ValueObjects.SystemHealth
+        var systemHealth = new Domain.ValueObjects.SystemHealth
         {
             RedisStatus = "Connected",
             MongoDbStatus = "Connected", 

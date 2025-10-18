@@ -1,9 +1,4 @@
-using FluentAssertions;
-using Moq;
-using Xunit;
 using ImageViewer.Application.Services;
-using ImageViewer.Application.DTOs.Notifications;
-using ImageViewer.Domain.Entities;
 using ImageViewer.Domain.Interfaces;
 using ImageViewer.Domain.Exceptions;
 using Microsoft.Extensions.Logging;
@@ -74,7 +69,7 @@ public class NotificationTemplateServiceTests
             .ReturnsAsync(It.IsAny<NotificationTemplateEntity>());
 
         // Act
-        var request = new global::ImageViewer.Application.DTOs.Notifications.CreateNotificationTemplateRequest
+        var request = new Application.DTOs.Notifications.CreateNotificationTemplateRequest
         {
             TemplateName = templateName,
             TemplateType = templateType,
@@ -116,7 +111,7 @@ public class NotificationTemplateServiceTests
             .ReturnsAsync(It.IsAny<NotificationTemplateEntity>());
 
         // Act
-        var request = new global::ImageViewer.Application.DTOs.Notifications.CreateNotificationTemplateRequest
+        var request = new Application.DTOs.Notifications.CreateNotificationTemplateRequest
         {
             TemplateName = templateName,
             TemplateType = templateType,
@@ -143,7 +138,7 @@ public class NotificationTemplateServiceTests
             .ReturnsAsync(existingTemplate);
 
         // Act & Assert
-        var request = new global::ImageViewer.Application.DTOs.Notifications.CreateNotificationTemplateRequest
+        var request = new Application.DTOs.Notifications.CreateNotificationTemplateRequest
         {
             TemplateName = templateName,
             TemplateType = "email",
@@ -160,7 +155,7 @@ public class NotificationTemplateServiceTests
     public async Task CreateTemplateAsync_WithEmptyTemplateName_ShouldThrowValidationException()
     {
         // Act & Assert
-        var request = new global::ImageViewer.Application.DTOs.Notifications.CreateNotificationTemplateRequest
+        var request = new Application.DTOs.Notifications.CreateNotificationTemplateRequest
         {
             TemplateName = "",
             TemplateType = "email",
@@ -177,7 +172,7 @@ public class NotificationTemplateServiceTests
     public async Task CreateTemplateAsync_WithEmptyTemplateType_ShouldThrowValidationException()
     {
         // Act & Assert
-        var request = new global::ImageViewer.Application.DTOs.Notifications.CreateNotificationTemplateRequest
+        var request = new Application.DTOs.Notifications.CreateNotificationTemplateRequest
         {
             TemplateName = "Template",
             TemplateType = "",
@@ -194,7 +189,7 @@ public class NotificationTemplateServiceTests
     public async Task CreateTemplateAsync_WithEmptyCategory_ShouldThrowValidationException()
     {
         // Act & Assert
-        var request = new global::ImageViewer.Application.DTOs.Notifications.CreateNotificationTemplateRequest
+        var request = new Application.DTOs.Notifications.CreateNotificationTemplateRequest
         {
             TemplateName = "Template",
             TemplateType = "email",
@@ -211,7 +206,7 @@ public class NotificationTemplateServiceTests
     public async Task CreateTemplateAsync_WithEmptySubject_ShouldThrowValidationException()
     {
         // Act & Assert
-        var request = new global::ImageViewer.Application.DTOs.Notifications.CreateNotificationTemplateRequest
+        var request = new Application.DTOs.Notifications.CreateNotificationTemplateRequest
         {
             TemplateName = "Template",
             TemplateType = "email",
@@ -228,7 +223,7 @@ public class NotificationTemplateServiceTests
     public async Task CreateTemplateAsync_WithEmptyContent_ShouldThrowValidationException()
     {
         // Act & Assert
-        var request = new global::ImageViewer.Application.DTOs.Notifications.CreateNotificationTemplateRequest
+        var request = new Application.DTOs.Notifications.CreateNotificationTemplateRequest
         {
             TemplateName = "Template",
             TemplateType = "email",
@@ -462,7 +457,7 @@ public class NotificationTemplateServiceTests
             .ReturnsAsync(It.IsAny<NotificationTemplateEntity>());
 
         // Act
-        var request = new global::ImageViewer.Application.DTOs.Notifications.UpdateNotificationTemplateRequest
+        var request = new Application.DTOs.Notifications.UpdateNotificationTemplateRequest
         {
             Subject = newSubject,
             Content = newContent
@@ -489,7 +484,7 @@ public class NotificationTemplateServiceTests
             .ReturnsAsync((NotificationTemplateEntity?)null);
 
         // Act & Assert
-        var request = new global::ImageViewer.Application.DTOs.Notifications.UpdateNotificationTemplateRequest
+        var request = new Application.DTOs.Notifications.UpdateNotificationTemplateRequest
         {
             Subject = "Subject",
             Content = "Content"
@@ -513,7 +508,7 @@ public class NotificationTemplateServiceTests
             .ReturnsAsync(It.IsAny<NotificationTemplateEntity>());
 
         // Act
-        var request = new global::ImageViewer.Application.DTOs.Notifications.UpdateNotificationTemplateRequest
+        var request = new Application.DTOs.Notifications.UpdateNotificationTemplateRequest
         {
             Subject = "", // Empty subject
             Content = "New Content"
@@ -540,7 +535,7 @@ public class NotificationTemplateServiceTests
             .ReturnsAsync(It.IsAny<NotificationTemplateEntity>());
 
         // Act
-        var request = new global::ImageViewer.Application.DTOs.Notifications.UpdateNotificationTemplateRequest
+        var request = new Application.DTOs.Notifications.UpdateNotificationTemplateRequest
         {
             Subject = "New Subject",
             Content = "" // Empty content
@@ -569,7 +564,7 @@ public class NotificationTemplateServiceTests
             .ReturnsAsync(It.IsAny<NotificationTemplateEntity>());
 
         // Act
-        var request = new global::ImageViewer.Application.DTOs.Notifications.UpdateNotificationTemplateRequest
+        var request = new Application.DTOs.Notifications.UpdateNotificationTemplateRequest
         {
             TemplateName = newTemplateName
         };
@@ -596,7 +591,7 @@ public class NotificationTemplateServiceTests
             .ReturnsAsync(existingTemplate);
 
         // Act & Assert
-        var request = new global::ImageViewer.Application.DTOs.Notifications.UpdateNotificationTemplateRequest
+        var request = new Application.DTOs.Notifications.UpdateNotificationTemplateRequest
         {
             TemplateName = newTemplateName
         };
@@ -623,7 +618,7 @@ public class NotificationTemplateServiceTests
             .ReturnsAsync(It.IsAny<NotificationTemplateEntity>());
 
         // Act
-        var request = new global::ImageViewer.Application.DTOs.Notifications.UpdateNotificationTemplateRequest
+        var request = new Application.DTOs.Notifications.UpdateNotificationTemplateRequest
         {
             TemplateName = sameTemplateName,
             Subject = "Updated Subject"
@@ -651,7 +646,7 @@ public class NotificationTemplateServiceTests
             .ReturnsAsync(It.IsAny<NotificationTemplateEntity>());
 
         // Act
-        var request = new global::ImageViewer.Application.DTOs.Notifications.UpdateNotificationTemplateRequest
+        var request = new Application.DTOs.Notifications.UpdateNotificationTemplateRequest
         {
             Priority = newPriority
         };
@@ -677,7 +672,7 @@ public class NotificationTemplateServiceTests
             .ReturnsAsync(It.IsAny<NotificationTemplateEntity>());
 
         // Act
-        var request = new global::ImageViewer.Application.DTOs.Notifications.UpdateNotificationTemplateRequest
+        var request = new Application.DTOs.Notifications.UpdateNotificationTemplateRequest
         {
             Language = newLanguage
         };
@@ -704,7 +699,7 @@ public class NotificationTemplateServiceTests
             .ReturnsAsync(It.IsAny<NotificationTemplateEntity>());
 
         // Act
-        var request = new global::ImageViewer.Application.DTOs.Notifications.UpdateNotificationTemplateRequest
+        var request = new Application.DTOs.Notifications.UpdateNotificationTemplateRequest
         {
             Channels = newChannels
         };
@@ -731,7 +726,7 @@ public class NotificationTemplateServiceTests
             .ReturnsAsync(It.IsAny<NotificationTemplateEntity>());
 
         // Act
-        var request = new global::ImageViewer.Application.DTOs.Notifications.UpdateNotificationTemplateRequest
+        var request = new Application.DTOs.Notifications.UpdateNotificationTemplateRequest
         {
             Tags = newTags
         };
@@ -757,7 +752,7 @@ public class NotificationTemplateServiceTests
             .ReturnsAsync(It.IsAny<NotificationTemplateEntity>());
 
         // Act
-        var request = new global::ImageViewer.Application.DTOs.Notifications.UpdateNotificationTemplateRequest
+        var request = new Application.DTOs.Notifications.UpdateNotificationTemplateRequest
         {
             ParentTemplateId = parentTemplateId
         };
@@ -783,7 +778,7 @@ public class NotificationTemplateServiceTests
             .ReturnsAsync(It.IsAny<NotificationTemplateEntity>());
 
         // Act
-        var request = new global::ImageViewer.Application.DTOs.Notifications.UpdateNotificationTemplateRequest
+        var request = new Application.DTOs.Notifications.UpdateNotificationTemplateRequest
         {
             ParentTemplateId = ObjectId.Empty // Represents null in this context
         };

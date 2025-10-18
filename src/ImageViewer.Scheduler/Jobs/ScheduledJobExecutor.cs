@@ -1,8 +1,6 @@
 using ImageViewer.Domain.Entities;
 using ImageViewer.Domain.Interfaces;
 using ImageViewer.Scheduler.Services;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.DependencyInjection;
 using MongoDB.Bson;
 
 namespace ImageViewer.Scheduler.Jobs;

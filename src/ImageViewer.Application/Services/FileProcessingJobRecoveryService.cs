@@ -4,6 +4,7 @@ using ImageViewer.Domain.Events;
 using Microsoft.Extensions.Logging;
 using MongoDB.Bson;
 using System.Text.Json;
+using ImageViewer.Domain.ValueObjects;
 
 namespace ImageViewer.Application.Services;
 
@@ -246,7 +247,13 @@ public class FileProcessingJobRecoveryService : IFileProcessingJobRecoveryServic
                     JobId = jobState.JobId,
                     ImageId = imageId,
                     CollectionId = jobState.CollectionId,
-                    ImagePath = image.GetFullPath(collection.Path),
+                    //ImagePath = image.GetFullPath(collection.Path),
+                    ArchiveEntry = new ArchiveEntryInfo()
+                    {
+                        ArchivePath = collection.Path,
+                        EntryName = image.Filename,
+                        IsDirectory = Directory.Exists(collection.Path),
+                    },
                     CachePath = cachePath,
                     CacheWidth = settings.Width,
                     CacheHeight = settings.Height,
@@ -293,8 +300,14 @@ public class FileProcessingJobRecoveryService : IFileProcessingJobRecoveryServic
                     JobId = jobState.JobId,
                     ImageId = imageId,
                     CollectionId = jobState.CollectionId,
-                    ImagePath = image.GetFullPath(collection.Path),
-                    ImageFilename = image.Filename,
+                    //ImagePath = image.GetFullPath(collection.Path),
+                    //ImageFilename = image.Filename,
+                    ArchiveEntry = new ArchiveEntryInfo
+                    {
+                        ArchivePath = collection.Path,
+                        EntryName = image.Filename,
+                        IsDirectory = Directory.Exists(collection.Path),
+                    },
                     ThumbnailWidth = settings.Width,
                     ThumbnailHeight = settings.Height
                 };

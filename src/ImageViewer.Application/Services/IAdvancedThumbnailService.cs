@@ -1,4 +1,3 @@
-using ImageViewer.Domain.Entities;
 using MongoDB.Bson;
 
 namespace ImageViewer.Application.Services;

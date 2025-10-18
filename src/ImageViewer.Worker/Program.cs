@@ -1,9 +1,6 @@
 using Serilog;
-using Serilog.Events;
 using RabbitMQ.Client;
 using Microsoft.Extensions.Options;
-using Microsoft.Extensions.DependencyInjection;
-using ImageViewer.Worker;
 using ImageViewer.Worker.Services;
 using ImageViewer.Infrastructure.Data;
 using ImageViewer.Infrastructure.Extensions;
@@ -53,14 +50,14 @@ builder.Services.AddSingleton<IConnectionFactory>(provider =>
 });
 
 // Register RabbitMQ connection (for backward compatibility with existing consumers)
-builder.Services.AddSingleton<IConnection>(provider =>
+builder.Services.AddSingleton(provider =>
 {
     var factory = provider.GetRequiredService<IConnectionFactory>();
     return factory.CreateConnectionAsync().GetAwaiter().GetResult();
 });
 
 // Register message queue service
-builder.Services.AddScoped<ImageViewer.Domain.Interfaces.IMessageQueueService, ImageViewer.Infrastructure.Services.RabbitMQMessageQueueService>();
+builder.Services.AddScoped<IMessageQueueService, RabbitMQMessageQueueService>();
 
 // Add Application Services
 builder.Services.AddScoped<CollectionService>();
@@ -131,7 +128,7 @@ using (var scope = host.Services.CreateScope())
 {
     try
     {
-        var mongoInitService = scope.ServiceProvider.GetRequiredService<ImageViewer.Infrastructure.Services.MongoDbInitializationService>();
+        var mongoInitService = scope.ServiceProvider.GetRequiredService<MongoDbInitializationService>();
         await mongoInitService.InitializeAsync();
         Log.Information("✅ MongoDB indexes initialized");
     }

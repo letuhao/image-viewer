@@ -1,5 +1,4 @@
 using MongoDB.Bson;
-using ImageViewer.Domain.Entities;
 using ImageViewer.Application.DTOs.Auth;
 using ImageViewer.Application.DTOs.Security;
 

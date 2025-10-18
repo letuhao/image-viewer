@@ -20,7 +20,7 @@ public class MongoDbContext
     public IMongoCollection<Library> Libraries => _database.GetCollection<Library>("libraries");
     public IMongoCollection<Collection> Collections => _database.GetCollection<Collection>("collections");
     public IMongoCollection<MediaItem> MediaItems => _database.GetCollection<MediaItem>("mediaItems");
-    public IMongoCollection<ImageViewer.Domain.Entities.Tag> Tags => _database.GetCollection<ImageViewer.Domain.Entities.Tag>("tags");
+    public IMongoCollection<Domain.Entities.Tag> Tags => _database.GetCollection<Domain.Entities.Tag>("tags");
 
     // System Collections
     public IMongoCollection<BackgroundJob> BackgroundJobs => _database.GetCollection<BackgroundJob>("background_jobs");

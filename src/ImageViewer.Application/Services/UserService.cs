@@ -420,7 +420,7 @@ public class UserService : IUserService
         }
     }
 
-    public async Task<ImageViewer.Domain.ValueObjects.UserStatistics> GetUserStatisticsAsync()
+    public async Task<Domain.ValueObjects.UserStatistics> GetUserStatisticsAsync()
     {
         try
         {

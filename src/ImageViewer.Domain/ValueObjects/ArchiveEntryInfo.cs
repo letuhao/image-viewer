@@ -31,11 +31,11 @@ public class ArchiveEntryInfo
     [BsonElement("fileType")]
     public ImageFileType FileType { get; set; } = ImageFileType.ArchiveEntry;
 
-    /// <summary>
-    /// Get the full path for this archive entry
-    /// Format: "archive.zip::entry.jpg" for display/logging purposes
-    /// </summary>
-    public string GetFullPath() => $"{ArchivePath}::{EntryName}";
+    ///// <summary>
+    ///// Get the full path for this archive entry
+    ///// Format: "archive.zip::entry.jpg" for display/logging purposes
+    ///// </summary>
+    //public string GetFullPath() => $"{ArchivePath}::{EntryName}";
 
     /// <summary>
     /// Get the display name for this entry (just the filename)
@@ -46,45 +46,51 @@ public class ArchiveEntryInfo
     /// Check if this is a valid archive entry
     /// </summary>
     public bool IsValid() => !string.IsNullOrEmpty(ArchivePath) && !string.IsNullOrEmpty(EntryName);
-
+    
     /// <summary>
-    /// Create an ArchiveEntryInfo from a full path string
-    /// Supports both old format (archive.zip#entry.jpg) and new format (archive.zip::entry.jpg)
+    /// Get full path of physical file on the directory
     /// </summary>
-    public static ArchiveEntryInfo? FromPath(string fullPath)
-    {
-        if (string.IsNullOrEmpty(fullPath))
-            return null;
+    /// <returns></returns>
+    public string GetPhysicalFileFullPath() => Path.Combine(ArchivePath, EntryName);
 
-        // Try new format first (::)
-        var parts = fullPath.Split(new[] { "::" }, 2, StringSplitOptions.None);
-        if (parts.Length == 2)
-        {
-            return new ArchiveEntryInfo
-            {
-                ArchivePath = parts[0],
-                EntryName = parts[1],
-                EntryPath = parts[1]
-            };
-        }
+    ///// <summary>
+    ///// Create an ArchiveEntryInfo from a full path string
+    ///// Supports both old format (archive.zip#entry.jpg) and new format (archive.zip::entry.jpg)
+    ///// </summary>
+    //public static ArchiveEntryInfo? FromPath(string fullPath)
+    //{
+    //    if (string.IsNullOrEmpty(fullPath))
+    //        return null;
 
-        // Fallback to old format (#) for backward compatibility
-        parts = fullPath.Split('#', 2);
-        if (parts.Length == 2)
-        {
-            return new ArchiveEntryInfo
-            {
-                ArchivePath = parts[0],
-                EntryName = parts[1],
-                EntryPath = parts[1]
-            };
-        }
+    //    // Try new format first (::)
+    //    var parts = fullPath.Split(new[] { "::" }, 2, StringSplitOptions.None);
+    //    if (parts.Length == 2)
+    //    {
+    //        return new ArchiveEntryInfo
+    //        {
+    //            ArchivePath = parts[0],
+    //            EntryName = parts[1],
+    //            EntryPath = parts[1]
+    //        };
+    //    }
 
-        return null;
-    }
+    //    // Fallback to old format (#) for backward compatibility
+    //    parts = fullPath.Split('#', 2);
+    //    if (parts.Length == 2)
+    //    {
+    //        return new ArchiveEntryInfo
+    //        {
+    //            ArchivePath = parts[0],
+    //            EntryName = parts[1],
+    //            EntryPath = parts[1]
+    //        };
+    //    }
 
-    /// <summary>
-    /// Convert to the old string format for backward compatibility
-    /// </summary>
-    public string ToLegacyString() => $"{ArchivePath}#{EntryName}";
+    //    return null;
+    //}
+
+    ///// <summary>
+    ///// Convert to the old string format for backward compatibility
+    ///// </summary>
+    //public string ToLegacyString() => $"{ArchivePath}#{EntryName}";
 }

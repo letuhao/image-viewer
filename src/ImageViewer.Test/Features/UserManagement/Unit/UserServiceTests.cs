@@ -1,6 +1,3 @@
-using FluentAssertions;
-using Moq;
-using Xunit;
 using MongoDB.Bson;
 using ImageViewer.Application.Services;
 using ImageViewer.Domain.Entities;
@@ -581,7 +578,7 @@ public class UserServiceTests
     public async Task GetUserStatisticsAsync_ShouldReturnStatistics()
     {
         // Arrange
-        var statistics = new ImageViewer.Domain.ValueObjects.UserStatistics();
+        var statistics = new Domain.ValueObjects.UserStatistics();
 
         _mockUserRepository.Setup(x => x.GetUserStatisticsAsync())
             .ReturnsAsync(statistics);

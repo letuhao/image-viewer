@@ -1077,7 +1077,7 @@ public class RedisCollectionIndexService : ICollectionIndexService
         };
 
         // Build system health
-        var systemHealth = new ImageViewer.Domain.ValueObjects.SystemHealth
+        var systemHealth = new Domain.ValueObjects.SystemHealth
         {
             RedisStatus = "Connected",
             MongoDbStatus = "Connected", 

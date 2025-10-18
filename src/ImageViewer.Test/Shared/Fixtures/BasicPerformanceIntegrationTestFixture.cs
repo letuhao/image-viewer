@@ -1,6 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Moq;
 using ImageViewer.Application.Services;
 using ImageViewer.Domain.Interfaces;
 using ImageViewer.Infrastructure.Services;
@@ -48,12 +47,12 @@ public class BasicPerformanceIntegrationTestFixture : IAsyncLifetime
         services.AddSingleton(mockRepositories.UnitOfWork);
         
         // Add IMessageQueueService mock for CollectionService
-        services.AddSingleton<IMessageQueueService>(Mock.Of<IMessageQueueService>());
+        services.AddSingleton(Mock.Of<IMessageQueueService>());
 
         // Add application services
         services.AddScoped<ISystemHealthService, SystemHealthService>();
         services.AddScoped<IBulkOperationService, BulkOperationService>();
-        services.AddScoped<IBackgroundJobService, ImageViewer.Application.Services.BackgroundJobService>();
+        services.AddScoped<IBackgroundJobService, Application.Services.BackgroundJobService>();
         services.AddScoped<IUserPreferencesService, UserPreferencesService>();
         services.AddScoped<IUserProfileService, UserProfileService>();
         services.AddScoped<IUserService, UserService>();

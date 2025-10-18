@@ -1,5 +1,4 @@
 using MongoDB.Bson;
-using ImageViewer.Domain.Interfaces;
 
 namespace ImageViewer.Domain.Events;
 

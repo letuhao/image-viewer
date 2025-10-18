@@ -1,6 +1,5 @@
 using MongoDB.Bson;
 using ImageViewer.Domain.Entities;
-using ImageViewer.Domain.ValueObjects;
 
 namespace ImageViewer.Domain.Interfaces;
 
@@ -29,7 +28,7 @@ public interface IUserRepository : IRepository<User>
     
     #region Statistics Methods
     
-    Task<ImageViewer.Domain.ValueObjects.UserStatistics> GetUserStatisticsAsync();
+    Task<ValueObjects.UserStatistics> GetUserStatisticsAsync();
     Task<IEnumerable<User>> GetTopUsersByActivityAsync(int limit = 10);
     Task<IEnumerable<User>> GetRecentUsersAsync(int limit = 10);
     

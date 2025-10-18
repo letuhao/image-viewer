@@ -1,11 +1,8 @@
-using Xunit;
-using Moq;
 using MongoDB.Bson;
 using ImageViewer.Application.Services;
 using ImageViewer.Domain.Entities;
 using ImageViewer.Domain.Interfaces;
 using ImageViewer.Domain.Enums;
-using ImageViewer.Application.DTOs.Collections;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
 using MongoDB.Driver;

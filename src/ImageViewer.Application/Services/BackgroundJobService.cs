@@ -5,7 +5,6 @@ using ImageViewer.Domain.Interfaces;
 using ImageViewer.Domain.Events;
 using Microsoft.Extensions.Logging;
 using MongoDB.Bson;
-using System.Text.Json;
 
 namespace ImageViewer.Application.Services;
 

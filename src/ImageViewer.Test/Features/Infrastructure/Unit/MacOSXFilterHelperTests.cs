@@ -1,4 +1,3 @@
-using FluentAssertions;
 using ImageViewer.Application.Helpers;
 
 namespace ImageViewer.Test.Features.Infrastructure.Unit;

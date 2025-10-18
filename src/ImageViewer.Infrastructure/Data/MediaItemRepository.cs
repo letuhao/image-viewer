@@ -219,7 +219,7 @@ public class MediaItemRepository : MongoRepository<MediaItem>, IMediaItemReposit
         }
     }
 
-    public async Task<ImageViewer.Domain.ValueObjects.MediaItemStatistics> GetMediaItemStatisticsAsync()
+    public async Task<Domain.ValueObjects.MediaItemStatistics> GetMediaItemStatisticsAsync()
     {
         try
         {
@@ -247,7 +247,7 @@ public class MediaItemRepository : MongoRepository<MediaItem>, IMediaItemReposit
             var count = result?["count"]?.AsInt32 ?? 0;
             var averageFileSize = count > 0 ? (double)totalFileSize / count : 0;
 
-            return new ImageViewer.Domain.ValueObjects.MediaItemStatistics
+            return new Domain.ValueObjects.MediaItemStatistics
             {
                 TotalMediaItems = totalMediaItems,
                 ActiveMediaItems = activeMediaItems,

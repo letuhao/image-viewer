@@ -1,10 +1,8 @@
 using MongoDB.Bson;
 using MongoDB.Driver;
-using ImageViewer.Domain.Entities;
 using ImageViewer.Domain.Interfaces;
 using ImageViewer.Domain.Exceptions;
 using Microsoft.Extensions.Logging;
-using System.Diagnostics;
 
 namespace ImageViewer.Application.Services;
 

@@ -1,12 +1,9 @@
-using System.IO;
-using System.Linq;
 using Microsoft.Extensions.Logging;
 using ImageViewer.Domain.Exceptions;
 using ImageViewer.Application.DTOs.Files;
 using ImageViewer.Domain.Interfaces;
 using ImageViewer.Domain.Entities;
 using MongoDB.Bson;
-using SixLabors.ImageSharp;
 using FFMpegCore;
 
 namespace ImageViewer.Application.Services;

@@ -1,5 +1,4 @@
 using MongoDB.Bson;
-using ImageViewer.Application.DTOs.Notifications;
 using ImageViewer.Domain.Exceptions;
 using ImageViewer.Domain.Interfaces;
 using Microsoft.Extensions.Logging;
@@ -23,7 +22,7 @@ public class NotificationTemplateService : INotificationTemplateService
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    public async Task<NotificationTemplateEntity> CreateTemplateAsync(global::ImageViewer.Application.DTOs.Notifications.CreateNotificationTemplateRequest request, CancellationToken cancellationToken = default)
+    public async Task<NotificationTemplateEntity> CreateTemplateAsync(DTOs.Notifications.CreateNotificationTemplateRequest request, CancellationToken cancellationToken = default)
     {
         if (request == null)
             throw new ArgumentNullException(nameof(request));
@@ -100,7 +99,7 @@ public class NotificationTemplateService : INotificationTemplateService
         return await _notificationTemplateRepository.GetAllAsync();
     }
 
-    public async Task<NotificationTemplateEntity> UpdateTemplateAsync(ObjectId templateId, global::ImageViewer.Application.DTOs.Notifications.UpdateNotificationTemplateRequest request, CancellationToken cancellationToken = default)
+    public async Task<NotificationTemplateEntity> UpdateTemplateAsync(ObjectId templateId, DTOs.Notifications.UpdateNotificationTemplateRequest request, CancellationToken cancellationToken = default)
     {
         if (request == null)
             throw new ArgumentNullException(nameof(request));

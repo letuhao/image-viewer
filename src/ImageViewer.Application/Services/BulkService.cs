@@ -8,9 +8,7 @@ using ImageViewer.Domain.Events;
 using ImageViewer.Domain.Interfaces;
 using ImageViewer.Application.DTOs.BackgroundJobs;
 using ImageViewer.Application.Helpers;
-using MongoDB.Bson;
 using SharpCompress.Archives;
-using SharpCompress.Common;
 
 namespace ImageViewer.Application.Services;
 
@@ -642,14 +640,20 @@ public class BulkService : IBulkService
                 // Fix path format: convert backslash format to # format for archive entries
                 // Old buggy format: "L:\path\file.zip\entry.jpg" (doesn't work)
                 // Correct format: "L:\path\file.zip#entry.jpg" (works)
-                var imagePath = FixArchiveEntryPath(image.GetFullPath(collection.Path));
+                //var imagePath = FixArchiveEntryPath(image.GetFullPath(collection.Path));
                 
                 var thumbnailMessage = new ThumbnailGenerationMessage
                 {
                     ImageId = image.Id,
                     CollectionId = collection.Id.ToString(),
-                    ImagePath = imagePath,
-                    ImageFilename = image.Filename,
+                    //ImagePath = imagePath,
+                    //ImageFilename = image.Filename,
+                    ArchiveEntry = new ArchiveEntryInfo()
+                    {
+                        ArchivePath = collection.Path,
+                        EntryName = image.Filename,
+                        IsDirectory = Directory.Exists(collection.Path),
+                    },
                     ThumbnailWidth = request.ThumbnailWidth ?? 300,
                     ThumbnailHeight = request.ThumbnailHeight ?? 300,
                     JobId = resumeJob.JobId.ToString(),
@@ -665,13 +669,19 @@ public class BulkService : IBulkService
             foreach (var image in imagesNeedingCache)
             {
                 // Fix path format: convert backslash format to # format for archive entries
-                var imagePath = FixArchiveEntryPath(image.GetFullPath(collection.Path));
+                //var imagePath = FixArchiveEntryPath(image.GetFullPath(collection.Path));
                 
                 var cacheMessage = new CacheGenerationMessage
                 {
                     ImageId = image.Id,
                     CollectionId = collection.Id.ToString(),
-                    ImagePath = imagePath,
+                    //ImagePath = imagePath,
+                    ArchiveEntry = new ArchiveEntryInfo()
+                    {
+                        ArchivePath= collection.Path,
+                        EntryName = image.Filename,
+                        IsDirectory=Directory.Exists(collection.Path),
+                    },
                     CacheWidth = request.CacheWidth ?? 1920,
                     CacheHeight = request.CacheHeight ?? 1080,
                     Quality = cacheQuality, // Use loaded quality setting

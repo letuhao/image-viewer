@@ -1,4 +1,3 @@
-using BCrypt.Net;
 using ImageViewer.Application.Services;
 using System.Text;
 

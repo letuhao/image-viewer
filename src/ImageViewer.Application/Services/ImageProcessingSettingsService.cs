@@ -1,5 +1,4 @@
 using Microsoft.Extensions.Logging;
-using ImageViewer.Application.Services;
 
 namespace ImageViewer.Application.Services;
 

@@ -1,15 +1,9 @@
-using FluentAssertions;
-using Moq;
-using Xunit;
 using MongoDB.Bson;
 using ImageViewer.Application.Services;
 using ImageViewer.Domain.Entities;
 using ImageViewer.Domain.Interfaces;
 using ImageViewer.Domain.Exceptions;
 using Microsoft.Extensions.Logging;
-using System.Collections.Generic;
-using System.Threading.Tasks;
-using NotificationTemplate = ImageViewer.Application.Services.NotificationTemplate; // Alias for clarity
 
 namespace ImageViewer.Test.Features.Notifications.Unit;
 
@@ -148,7 +142,7 @@ public class NotificationServiceTests
     {
         // Arrange
         var notificationId = ObjectId.GenerateNewId();
-        _mockNotificationQueueRepository.Setup(r => r.GetByIdAsync(notificationId)).ReturnsAsync((Domain.Entities.NotificationQueue)null!);
+        _mockNotificationQueueRepository.Setup(r => r.GetByIdAsync(notificationId)).ReturnsAsync((NotificationQueue)null!);
 
         // Act
         Func<Task> act = async () => await _notificationService.GetNotificationByIdAsync(notificationId);

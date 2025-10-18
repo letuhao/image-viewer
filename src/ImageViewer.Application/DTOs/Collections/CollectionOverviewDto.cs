@@ -1,5 +1,3 @@
-using MongoDB.Bson;
-
 namespace ImageViewer.Application.DTOs.Collections;
 
 /// <summary>

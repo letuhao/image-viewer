@@ -5,10 +5,8 @@ using ImageViewer.Domain.Exceptions;
 using ImageViewer.Domain.ValueObjects; // Added for UserProfile
 using ImageViewer.Application.DTOs.Auth;
 using ImageViewer.Application.DTOs.Security;
-using ImageViewer.Domain.Enums;
 using Microsoft.Extensions.Logging;
 using System.Security.Authentication; // Added for AuthenticationException
-using System.Security.Cryptography;
 // IPasswordService is now in Application layer
 
 namespace ImageViewer.Application.Services;
@@ -1114,7 +1112,7 @@ public class SecurityService : ISecurityService
                 throw new ArgumentException("IP address cannot be empty", nameof(ipAddress));
 
             // Simplified geolocation implementation using actual DTO properties
-            var geolocationInfo = new DTOs.Security.GeolocationInfo
+            var geolocationInfo = new GeolocationInfo
             {
                 IpAddress = ipAddress,
                 Country = GetCountryFromIP(ipAddress),
@@ -1158,7 +1156,7 @@ public class SecurityService : ISecurityService
             // Get geolocation information for the IP address
             var geolocationInfo = await GetGeolocationInfoAsync(ipAddress);
 
-            var securityResult = new DTOs.Security.GeolocationSecurityResult
+            var securityResult = new GeolocationSecurityResult
             {
                 IsTrusted = true, // Default to trusted
                 RiskLevel = "Low", // Default to low risk
@@ -1483,7 +1481,7 @@ public class SecurityService : ISecurityService
     /// <summary>
     /// Maps Domain SecurityAlertType to Application SecurityAlertType
     /// </summary>
-    private Application.Services.SecurityAlertType MapToApplicationAlertType(Domain.Enums.SecurityAlertType domainAlertType)
+    private SecurityAlertType MapToApplicationAlertType(Domain.Enums.SecurityAlertType domainAlertType)
     {
         return domainAlertType switch
         {

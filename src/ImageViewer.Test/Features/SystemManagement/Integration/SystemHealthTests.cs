@@ -1,9 +1,5 @@
-using FluentAssertions;
 using ImageViewer.Application.Services;
 using ImageViewer.Test.Shared.Fixtures;
-using Microsoft.Extensions.DependencyInjection;
-using MongoDB.Bson;
-using System.Diagnostics;
 
 namespace ImageViewer.Test.Features.SystemManagement.Integration;
 

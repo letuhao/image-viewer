@@ -478,7 +478,7 @@ public class SearchService : ISearchService
                 query + " libraries"
             };
 
-            return Task.FromResult<IEnumerable<string>>(suggestions.Take(limit));
+            return Task.FromResult(suggestions.Take(limit));
         }
         catch (Exception ex)
         {
@@ -503,7 +503,7 @@ public class SearchService : ISearchService
                 partialQuery + "c"
             };
 
-            return Task.FromResult<IEnumerable<string>>(completions.Take(limit));
+            return Task.FromResult(completions.Take(limit));
         }
         catch (Exception ex)
         {
@@ -580,7 +580,7 @@ public class SearchService : ISearchService
                 Reason = "Based on trending searches"
             });
 
-            return Task.FromResult<IEnumerable<SearchRecommendation>>(recommendations.Take(limit));
+            return Task.FromResult(recommendations.Take(limit));
         }
         catch (Exception ex)
         {

@@ -33,7 +33,7 @@ public static class ServiceCollectionExtensions
             return new MongoClient(options.ConnectionString);
         });
         
-        services.AddScoped<IMongoDatabase>(provider =>
+        services.AddScoped(provider =>
         {
             var client = provider.GetRequiredService<IMongoClient>();
             var options = provider.GetRequiredService<IOptions<MongoDbOptions>>().Value;
@@ -41,74 +41,74 @@ public static class ServiceCollectionExtensions
         });
 
         // Register MongoDB collections
-        services.AddScoped<IMongoCollection<Library>>(provider =>
+        services.AddScoped(provider =>
         {
             var database = provider.GetRequiredService<IMongoDatabase>();
             return database.GetCollection<Library>("libraries");
         });
         
-        services.AddScoped<IMongoCollection<Collection>>(provider =>
+        services.AddScoped(provider =>
         {
             var database = provider.GetRequiredService<IMongoDatabase>();
             return database.GetCollection<Collection>("collections");
         });
         
-        services.AddScoped<IMongoCollection<MediaItem>>(provider =>
+        services.AddScoped(provider =>
         {
             var database = provider.GetRequiredService<IMongoDatabase>();
             return database.GetCollection<MediaItem>("media_items");
         });
         
-        services.AddScoped<IMongoCollection<User>>(provider =>
+        services.AddScoped(provider =>
         {
             var database = provider.GetRequiredService<IMongoDatabase>();
             return database.GetCollection<User>("users");
         });
         
-        services.AddScoped<IMongoCollection<RefreshToken>>(provider =>
+        services.AddScoped(provider =>
         {
             var database = provider.GetRequiredService<IMongoDatabase>();
             return database.GetCollection<RefreshToken>("refresh_tokens");
         });
         
-        services.AddScoped<IMongoCollection<Session>>(provider =>
+        services.AddScoped(provider =>
         {
             var database = provider.GetRequiredService<IMongoDatabase>();
             return database.GetCollection<Session>("sessions");
         });
         
-        services.AddScoped<IMongoCollection<ImageViewer.Domain.Entities.Tag>>(provider =>
+        services.AddScoped(provider =>
         {
             var database = provider.GetRequiredService<IMongoDatabase>();
-            return database.GetCollection<ImageViewer.Domain.Entities.Tag>("tags");
+            return database.GetCollection<Domain.Entities.Tag>("tags");
         });
         
-        services.AddScoped<IMongoCollection<CacheFolder>>(provider =>
+        services.AddScoped(provider =>
         {
             var database = provider.GetRequiredService<IMongoDatabase>();
             return database.GetCollection<CacheFolder>("cache_folders");
         });
         
-        services.AddScoped<IMongoCollection<BackgroundJob>>(provider =>
+        services.AddScoped(provider =>
         {
             var database = provider.GetRequiredService<IMongoDatabase>();
             return database.GetCollection<BackgroundJob>("background_jobs");
         });
         
-        services.AddScoped<IMongoCollection<ViewSession>>(provider =>
+        services.AddScoped(provider =>
         {
             var database = provider.GetRequiredService<IMongoDatabase>();
             return database.GetCollection<ViewSession>("view_sessions");
         });
         
-        services.AddScoped<IMongoCollection<CollectionArchive>>(provider =>
+        services.AddScoped(provider =>
         {
             var database = provider.GetRequiredService<IMongoDatabase>();
             return database.GetCollection<CollectionArchive>("collection_archives");
         });
 
         // Register MongoDB context
-        services.AddScoped<MongoDbContext>(provider =>
+        services.AddScoped(provider =>
         {
             var database = provider.GetRequiredService<IMongoDatabase>();
             return new MongoDbContext(database);

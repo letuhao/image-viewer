@@ -1,13 +1,9 @@
-using Xunit;
-using Moq;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using ImageViewer.Application.Services;
 using ImageViewer.Domain.Entities;
 using ImageViewer.Domain.Interfaces;
-using ImageViewer.Domain.ValueObjects;
 using ImageViewer.Application.Options;
-using MongoDB.Bson;
 
 namespace ImageViewer.Test.Features.Cache.Unit;
 

@@ -26,7 +26,7 @@ public class MongoUnitOfWork : IUnitOfWork
 
     public ICollectionRepository Collections { get; set; } = null!;
     public IRepository<CacheFolder> CacheFolders { get; set; } = null!;
-    public IRepository<ImageViewer.Domain.Entities.Tag> Tags { get; set; } = null!;
+    public IRepository<Domain.Entities.Tag> Tags { get; set; } = null!;
     public IRepository<CollectionTag> CollectionTags { get; set; } = null!;
     public IRepository<CollectionCacheBinding> CollectionCacheBindings { get; set; } = null!;
     public IRepository<CollectionStatisticsEntity> CollectionStatistics { get; set; } = null!;
@@ -39,7 +39,7 @@ public class MongoUnitOfWork : IUnitOfWork
     {
         Collections = new MongoCollectionRepository(_database);
         CacheFolders = new MongoRepository<CacheFolder>(_database, "cache_folders");
-        Tags = new MongoRepository<ImageViewer.Domain.Entities.Tag>(_database, "tags");
+        Tags = new MongoRepository<Domain.Entities.Tag>(_database, "tags");
         CollectionTags = new MongoRepository<CollectionTag>(_database, "collection_tags");
         CollectionCacheBindings = new MongoRepository<CollectionCacheBinding>(_database, "collection_cache_bindings");
         CollectionStatistics = new MongoRepository<CollectionStatisticsEntity>(_database, "collection_statistics");

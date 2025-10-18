@@ -1,4 +1,3 @@
-using Xunit;
 using ImageViewer.Infrastructure.Data;
 
 namespace ImageViewer.Test.Features.Cache.Unit;

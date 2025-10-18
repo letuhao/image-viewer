@@ -435,7 +435,7 @@ public class LibraryService : ILibraryService
         {
             var library = await GetLibraryByIdAsync(libraryId);
             
-            var newStatistics = new ImageViewer.Domain.ValueObjects.LibraryStatistics();
+            var newStatistics = new Domain.ValueObjects.LibraryStatistics();
             
             if (request.TotalCollections.HasValue)
                 newStatistics.IncrementCollections(request.TotalCollections.Value);
@@ -661,7 +661,7 @@ public class LibraryService : ILibraryService
         }
     }
 
-    public async Task<ImageViewer.Domain.ValueObjects.LibraryStatistics> GetLibraryStatisticsAsync()
+    public async Task<Domain.ValueObjects.LibraryStatistics> GetLibraryStatisticsAsync()
     {
         try
         {

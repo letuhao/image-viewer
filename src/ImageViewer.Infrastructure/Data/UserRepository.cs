@@ -173,7 +173,7 @@ public class UserRepository : MongoRepository<User>, IUserRepository
         }
     }
 
-    public async Task<ImageViewer.Domain.ValueObjects.UserStatistics> GetUserStatisticsAsync()
+    public async Task<Domain.ValueObjects.UserStatistics> GetUserStatisticsAsync()
     {
         try
         {
@@ -186,7 +186,7 @@ public class UserRepository : MongoRepository<User>, IUserRepository
             var newUsersThisWeek = await _collection.CountDocumentsAsync(u => u.CreatedAt >= now.AddDays(-7));
             var newUsersToday = await _collection.CountDocumentsAsync(u => u.CreatedAt >= now.AddDays(-1));
 
-            return new ImageViewer.Domain.ValueObjects.UserStatistics
+            return new Domain.ValueObjects.UserStatistics
             {
                 TotalUsers = totalUsers,
                 ActiveUsers = activeUsers,

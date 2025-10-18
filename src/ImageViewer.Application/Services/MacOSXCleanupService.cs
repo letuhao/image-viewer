@@ -3,7 +3,6 @@ using ImageViewer.Domain.Entities;
 using ImageViewer.Domain.Interfaces;
 using ImageViewer.Domain.DTOs;
 using ImageViewer.Application.Helpers;
-using MongoDB.Bson;
 
 namespace ImageViewer.Application.Services;
 
@@ -103,7 +102,7 @@ public class MacOSXCleanupService : IMacOSXCleanupService
             {
                 var originalCount = collection.Images.Count;
                 var macosxImages = collection.Images
-                    .Where(img => MacOSXFilterHelper.IsMacOSXPath(img.GetDisplayPath()) || MacOSXFilterHelper.IsMacOSXPath(img.Filename))
+                    .Where(img => MacOSXFilterHelper.IsMacOSXPath(collection.Path) || MacOSXFilterHelper.IsMacOSXPath(img.Filename))
                     .ToList();
 
                 if (macosxImages.Any())
@@ -243,15 +242,15 @@ public class MacOSXCleanupService : IMacOSXCleanupService
         }
     }
 
-    private static Domain.DTOs.CollectionCleanupPreview PreviewCollectionMacOSXFiles(Collection collection)
+    private static CollectionCleanupPreview PreviewCollectionMacOSXFiles(Collection collection)
     {
-        var preview = new Domain.DTOs.CollectionCleanupPreview();
+        var preview = new CollectionCleanupPreview();
         
         // Preview images
         if (collection.Images?.Any() == true)
         {
             var macosxImages = collection.Images
-                .Where(img => MacOSXFilterHelper.IsMacOSXPath(img.GetDisplayPath()) || MacOSXFilterHelper.IsMacOSXPath(img.Filename))
+                .Where(img => MacOSXFilterHelper.IsMacOSXPath(collection.Path) || MacOSXFilterHelper.IsMacOSXPath(img.Filename))
                 .ToList();
 
             preview.ImagesToRemove = macosxImages.Count;

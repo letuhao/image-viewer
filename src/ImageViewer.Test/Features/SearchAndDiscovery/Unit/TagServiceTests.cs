@@ -1,15 +1,9 @@
-using FluentAssertions;
-using Moq;
-using Xunit;
 using MongoDB.Bson;
 using ImageViewer.Application.Services;
 using ImageViewer.Application.DTOs.Tags;
 using ImageViewer.Domain.Entities;
 using ImageViewer.Domain.Interfaces;
-using ImageViewer.Domain.Exceptions;
 using Microsoft.Extensions.Logging;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 
 namespace ImageViewer.Test.Features.SearchAndDiscovery.Unit;
 

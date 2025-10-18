@@ -1,5 +1,4 @@
 using SkiaSharp;
-using System.IO;
 
 namespace ImageViewer.Test.Shared.TestData;
 

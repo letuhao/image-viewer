@@ -1,4 +1,3 @@
-using MongoDB.Bson;
 using ImageViewer.Domain.ValueObjects;
 
 namespace ImageViewer.Application.DTOs.Collections;

@@ -16,16 +16,16 @@ public class CollectionsController : ControllerBase
 {
     private readonly ICollectionService _collectionService;
     private readonly ILogger<CollectionsController> _logger;
-    private readonly ImageViewer.Domain.Interfaces.IImageCacheService _imageCacheService;
-    private readonly ImageViewer.Application.Services.IThumbnailCacheService _thumbnailCacheService;
-    private readonly ImageViewer.Domain.Interfaces.ICollectionIndexService _collectionIndexService;
+    private readonly Domain.Interfaces.IImageCacheService _imageCacheService;
+    private readonly IThumbnailCacheService _thumbnailCacheService;
+    private readonly Domain.Interfaces.ICollectionIndexService _collectionIndexService;
 
     public CollectionsController(
         ICollectionService collectionService, 
         ILogger<CollectionsController> logger,
-        ImageViewer.Domain.Interfaces.IImageCacheService imageCacheService,
-        ImageViewer.Application.Services.IThumbnailCacheService thumbnailCacheService,
-        ImageViewer.Domain.Interfaces.ICollectionIndexService collectionIndexService)
+        Domain.Interfaces.IImageCacheService imageCacheService,
+        IThumbnailCacheService thumbnailCacheService,
+        Domain.Interfaces.ICollectionIndexService collectionIndexService)
     {
         _collectionService = collectionService ?? throw new ArgumentNullException(nameof(collectionService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));

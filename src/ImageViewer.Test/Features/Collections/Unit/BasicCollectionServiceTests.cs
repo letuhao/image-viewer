@@ -1,6 +1,3 @@
-using FluentAssertions;
-using Moq;
-using Xunit;
 using MongoDB.Bson;
 using ImageViewer.Application.Services;
 using ImageViewer.Application.DTOs.BackgroundJobs;
@@ -10,7 +7,6 @@ using ImageViewer.Domain.Exceptions;
 using ImageViewer.Domain.Enums;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
-using System;
 
 namespace ImageViewer.Test.Features.Collections.Unit;
 

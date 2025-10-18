@@ -1,5 +1,4 @@
 using MongoDB.Bson;
-using ImageViewer.Domain.Entities;
 using Microsoft.Extensions.Logging;
 
 namespace ImageViewer.Application.Services;

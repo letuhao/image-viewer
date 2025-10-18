@@ -1,7 +1,5 @@
 using Microsoft.Extensions.Logging;
 using ImageViewer.Domain.Interfaces;
-using MongoDB.Bson;
-using System.IO;
 
 namespace ImageViewer.Application.Services;
 
@@ -61,7 +59,7 @@ public class DataRepairService : IDataRepairService
                             imagesFixed++;
                             
                             _logger.LogInformation("✅ Fixed truncated path: {OldPath} -> {NewPath}", 
-                                image.LegacyRelativePath, fixedImage.GetDisplayPath());
+                                image.LegacyRelativePath, fixedImage.Filename);
                         }
                     }
                     else

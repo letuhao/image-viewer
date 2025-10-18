@@ -1,12 +1,8 @@
 using System.Text.Json;
 using System.Collections.Concurrent;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using RabbitMQ.Client;
-using RabbitMQ.Client.Events;
 using ImageViewer.Domain.Events;
-using ImageViewer.Domain.Entities;
 using ImageViewer.Domain.Interfaces;
 using ImageViewer.Domain.ValueObjects;
 using ImageViewer.Application.Services;
@@ -312,12 +308,12 @@ public class BatchThumbnailGenerationConsumer : BaseMessageConsumer
             byte[] thumbnailData;
             
             // Handle ZIP entries
-            if (ArchiveFileHelper.IsZipEntryPath(message.ImagePath))
+            if (!message.ArchiveEntry.IsDirectory)
             {
-                var imageBytes = await ArchiveFileHelper.ExtractZipEntryBytes(message.ImagePath, null);
+                var imageBytes = await ArchiveFileHelper.ExtractZipEntryBytes(message.ArchiveEntry, null);
                 if (imageBytes == null || imageBytes.Length == 0)
                 {
-                    _logger.LogWarning("❌ Failed to extract ZIP entry: {Path}", message.ImagePath);
+                    _logger.LogWarning("❌ Failed to extract ZIP entry: {Path}#{Entry}", message.ArchiveEntry.ArchivePath, message.ArchiveEntry.EntryName);
                     return null;
                 }
                 
@@ -327,7 +323,7 @@ public class BatchThumbnailGenerationConsumer : BaseMessageConsumer
             else
             {
                 thumbnailData = await imageProcessingService.GenerateThumbnailAsync(
-                    message.ImagePath, message.ThumbnailWidth, message.ThumbnailHeight, format, quality);
+                    message.ArchiveEntry, message.ThumbnailWidth, message.ThumbnailHeight, format, quality);
             }
             
             if (thumbnailData == null || thumbnailData.Length == 0)
@@ -372,7 +368,7 @@ public class BatchThumbnailGenerationConsumer : BaseMessageConsumer
         foreach (var processedImage in processedImages)
         {
             var thumbnailPath = GetThumbnailPath(
-                processedImage.Message.ImagePath,
+                processedImage.Message.ArchiveEntry,
                 processedImage.Message.ThumbnailWidth,
                 processedImage.Message.ThumbnailHeight,
                 collectionId,
@@ -476,7 +472,7 @@ public class BatchThumbnailGenerationConsumer : BaseMessageConsumer
             if (existingThumbnail == null)
             {
                 var thumbnailPath = await GetThumbnailPathForResumeCheck(
-                    message.ImagePath,
+                    message.ArchiveEntry,
                     message.ThumbnailWidth,
                     message.ThumbnailHeight,
                     collectionId);
@@ -563,7 +559,7 @@ public class BatchThumbnailGenerationConsumer : BaseMessageConsumer
     }
 
     private string GetThumbnailPath(
-        string imagePath,
+        ArchiveEntryInfo archiveEntry,
         int width,
         int height,
         ObjectId collectionId,
@@ -581,23 +577,15 @@ public class BatchThumbnailGenerationConsumer : BaseMessageConsumer
         
         string fileName;
         // Use new DTO structure to avoid legacy string splitting bugs
-        var archiveEntryInfo = ArchiveEntryInfo.FromPath(imagePath);
-        if (archiveEntryInfo != null)
-        {
-            // This is an archive entry - extract the entry name
-            fileName = Path.GetFileNameWithoutExtension(archiveEntryInfo.EntryName);
-        }
-        else
-        {
-            fileName = Path.GetFileNameWithoutExtension(imagePath);
-        }
-        
+        // This is an archive entry - extract the entry name
+        fileName = Path.GetFileNameWithoutExtension(archiveEntry.EntryName);
+
         var thumbnailFileName = $"{fileName}_{width}x{height}{extension}";
         return Path.Combine(collectionDir, thumbnailFileName);
     }
 
     private async Task<string> GetThumbnailPathForResumeCheck(
-        string imagePath,
+        ArchiveEntryInfo archiveEntry,
         int width,
         int height,
         ObjectId collectionId)
@@ -635,17 +623,9 @@ public class BatchThumbnailGenerationConsumer : BaseMessageConsumer
             
             string fileName;
             // Use new DTO structure to avoid legacy string splitting bugs
-            var archiveEntryInfo = ArchiveEntryInfo.FromPath(imagePath);
-            if (archiveEntryInfo != null)
-            {
-                // This is an archive entry - extract the entry name
-                fileName = Path.GetFileNameWithoutExtension(archiveEntryInfo.EntryName);
-            }
-            else
-            {
-                fileName = Path.GetFileNameWithoutExtension(imagePath);
-            }
-            
+            // This is an archive entry - extract the entry name
+            fileName = Path.GetFileNameWithoutExtension(archiveEntry.EntryName);
+
             var thumbnailFileName = $"{fileName}_{width}x{height}{extension}";
             return Path.Combine(collectionDir, thumbnailFileName);
         }
@@ -685,9 +665,9 @@ public class BatchThumbnailGenerationConsumer : BaseMessageConsumer
             long fileSize = 0;
             long maxSize = 0;
             
-            if (ArchiveFileHelper.IsArchiveEntryPath(message.ImagePath))
+            if (!message.ArchiveEntry.IsDirectory)
             {
-                fileSize = ArchiveFileHelper.GetArchiveEntrySize(message.ImagePath, _logger);
+                fileSize = ArchiveFileHelper.GetArchiveEntrySize(message.ArchiveEntry, _logger);
                 maxSize = _rabbitMQOptions.MaxZipEntrySizeBytes; // 20GB for ZIP entries
                 
                 if (fileSize > maxSize)
@@ -701,7 +681,7 @@ public class BatchThumbnailGenerationConsumer : BaseMessageConsumer
             }
             else
             {
-                var imageFile = new FileInfo(message.ImagePath);
+                var imageFile = new FileInfo(message.ArchiveEntry.GetPhysicalFileFullPath());
                 fileSize = imageFile.Exists ? imageFile.Length : 0;
                 maxSize = _rabbitMQOptions.MaxImageSizeBytes; // 500MB for regular files
                 

@@ -1,11 +1,10 @@
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
-using ImageViewer.Application.Services;
-using ImageViewer.Domain.Entities;
 using ImageViewer.Application.DTOs.Common;
 using ImageViewer.Application.Extensions;
-using ImageViewer.Domain.Interfaces;
+using ImageViewer.Application.Services;
 using ImageViewer.Domain.Events;
+using ImageViewer.Domain.Interfaces;
+using ImageViewer.Domain.ValueObjects;
+using Microsoft.AspNetCore.Mvc;
 using MongoDB.Bson;
 
 namespace ImageViewer.Api.Controllers;
@@ -38,7 +37,7 @@ public class ImagesController : ControllerBase
     /// Get random image
     /// </summary>
     [HttpGet("random")]
-    public async Task<ActionResult<Domain.ValueObjects.ImageEmbedded>> GetRandomImage()
+    public async Task<ActionResult<ImageEmbedded>> GetRandomImage()
     {
         try
         {
@@ -61,7 +60,7 @@ public class ImagesController : ControllerBase
     /// Get random image within a collection
     /// </summary>
     [HttpGet("collection/{collectionId}/random")]
-    public async Task<ActionResult<Domain.ValueObjects.ImageEmbedded>> GetRandomImageByCollection(ObjectId collectionId)
+    public async Task<ActionResult<ImageEmbedded>> GetRandomImageByCollection(ObjectId collectionId)
     {
         try
         {
@@ -84,7 +83,7 @@ public class ImagesController : ControllerBase
     /// Get images by collection ID with pagination
     /// </summary>
     [HttpGet("collection/{collectionId}")]
-    public async Task<ActionResult<PaginationResponseDto<Domain.ValueObjects.ImageEmbedded>>> GetImagesByCollection(
+    public async Task<ActionResult<PaginationResponseDto<ImageEmbedded>>> GetImagesByCollection(
         ObjectId collectionId,
         [FromQuery] PaginationRequestDto pagination,
         [FromQuery] int? limit = null,
@@ -133,7 +132,7 @@ public class ImagesController : ControllerBase
     /// Get image metadata by collection and image ID
     /// </summary>
     [HttpGet("{collectionId}/{imageId}")]
-    public async Task<ActionResult<Domain.ValueObjects.ImageEmbedded>> GetImageByCollectionAndId(ObjectId collectionId, string imageId)
+    public async Task<ActionResult<ImageEmbedded>> GetImageByCollectionAndId(ObjectId collectionId, string imageId)
     {
         try
         {
@@ -271,7 +270,7 @@ public class ImagesController : ControllerBase
     /// <summary>
     /// Queue cache generation for a single image
     /// </summary>
-    private async Task QueueCacheGenerationAsync(ObjectId collectionId, string imageId, Domain.ValueObjects.ImageEmbedded image)
+    private async Task QueueCacheGenerationAsync(ObjectId collectionId, string imageId, ImageEmbedded image)
     {
         try
         {
@@ -284,7 +283,7 @@ public class ImagesController : ControllerBase
             }
 
             // Build full image path using the new DTO method
-            var imagePath = image.GetFullPath(collection.Path);
+            var imagePath = Path.Combine(collection.Path, image.Filename);
 
             // Cache generation parameters
             const int cacheWidth = 1920;
@@ -310,7 +309,13 @@ public class ImagesController : ControllerBase
             {
                 ImageId = imageId,
                 CollectionId = collectionId.ToString(),
-                ImagePath = imagePath,
+                //ImagePath = imagePath,
+                ArchiveEntry = new ArchiveEntryInfo()
+                {
+                    ArchivePath = collection.Path,
+                    EntryName = image.Filename,
+                    IsDirectory = Directory.Exists(collection.Path),
+                },
                 CachePath = cachePath,
                 CacheWidth = cacheWidth,
                 CacheHeight = cacheHeight,

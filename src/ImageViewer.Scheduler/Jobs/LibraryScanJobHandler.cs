@@ -1,5 +1,4 @@
 using ImageViewer.Domain.Entities;
-using ImageViewer.Domain.Enums;
 using ImageViewer.Domain.Interfaces;
 using ImageViewer.Infrastructure.Messaging;
 using MongoDB.Bson;

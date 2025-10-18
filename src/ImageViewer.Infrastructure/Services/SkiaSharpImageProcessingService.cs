@@ -17,13 +17,13 @@ public class SkiaSharpImageProcessingService : IImageProcessingService
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    public Task<ImageMetadata> ExtractMetadataAsync(string imagePath, CancellationToken cancellationToken = default)
+    public Task<ImageMetadata> ExtractMetadataAsync(ArchiveEntryInfo archiveEntry, CancellationToken cancellationToken = default)
     {
         try
         {
-            _logger.LogDebug("Extracting metadata from {ImagePath}", imagePath);
+            _logger.LogDebug("Extracting metadata from {ImagePath}", archiveEntry.GetPhysicalFileFullPath());
 
-            using var stream = File.OpenRead(imagePath);
+            using var stream = File.OpenRead(archiveEntry.GetPhysicalFileFullPath());
             using var codec = SKCodec.Create(stream);
             using var image = SKImage.FromEncodedData(stream);
 
@@ -32,16 +32,16 @@ public class SkiaSharpImageProcessingService : IImageProcessingService
                 quality: 95,
                 colorSpace: info.ColorSpace?.ToString(),
                 compression: "Unknown", // SkiaSharp doesn't expose compression info directly
-                createdDate: File.GetCreationTime(imagePath),
-                modifiedDate: File.GetLastWriteTime(imagePath)
+                createdDate: File.GetCreationTime(archiveEntry.GetPhysicalFileFullPath()),
+                modifiedDate: File.GetLastWriteTime(archiveEntry.GetPhysicalFileFullPath())
             );
 
-            _logger.LogDebug("Successfully extracted metadata from {ImagePath}", imagePath);
+            _logger.LogDebug("Successfully extracted metadata from {ImagePath}", archiveEntry.GetPhysicalFileFullPath());
             return Task.FromResult(metadata);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error extracting metadata from {ImagePath}", imagePath);
+            _logger.LogError(ex, "Error extracting metadata from {ImagePath}", archiveEntry.GetPhysicalFileFullPath());
             throw;
         }
     }
@@ -94,13 +94,13 @@ public class SkiaSharpImageProcessingService : IImageProcessingService
         }
     }
 
-    public Task<byte[]> GenerateThumbnailAsync(string imagePath, int width, int height, string format = "jpeg", int quality = 95, CancellationToken cancellationToken = default)
+    public Task<byte[]> GenerateThumbnailAsync(ArchiveEntryInfo archiveEntry, int width, int height, string format = "jpeg", int quality = 95, CancellationToken cancellationToken = default)
     {
         try
         {
-            _logger.LogDebug("Generating thumbnail for {ImagePath} with size {Width}x{Height}, format {Format}, quality {Quality}", imagePath, width, height, format, quality);
+            _logger.LogDebug("Generating thumbnail for {ImagePath} with size {Width}x{Height}, format {Format}, quality {Quality}", archiveEntry.GetPhysicalFileFullPath(), width, height, format, quality);
 
-            using var stream = File.OpenRead(imagePath);
+            using var stream = File.OpenRead(archiveEntry.GetPhysicalFileFullPath());
             using var originalImage = SKImage.FromEncodedData(stream);
             
             var originalInfo = originalImage.Info;
@@ -134,12 +134,12 @@ public class SkiaSharpImageProcessingService : IImageProcessingService
             
             var result = thumbnailStream.ToArray();
             
-            _logger.LogDebug("Successfully generated thumbnail for {ImagePath}, format {Format}", imagePath, format);
+            _logger.LogDebug("Successfully generated thumbnail for {ImagePath}, format {Format}", archiveEntry.GetPhysicalFileFullPath(), format);
             return Task.FromResult(result);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error generating thumbnail for {ImagePath}", imagePath);
+            _logger.LogError(ex, "Error generating thumbnail for {ImagePath}", archiveEntry.GetPhysicalFileFullPath());
             throw;
         }
     }
@@ -198,19 +198,19 @@ public class SkiaSharpImageProcessingService : IImageProcessingService
         }
     }
 
-    public Task<byte[]> ResizeImageAsync(string imagePath, int width, int height, string format = "jpeg", int quality = 95, CancellationToken cancellationToken = default)
+    public Task<byte[]> ResizeImageAsync(ArchiveEntryInfo archiveEntry, int width, int height, string format = "jpeg", int quality = 95, CancellationToken cancellationToken = default)
     {
         try
         {
-            _logger.LogDebug("Resizing image {ImagePath} to {Width}x{Height} with format {Format}, quality {Quality}", imagePath, width, height, format, quality);
+            _logger.LogDebug("Resizing image {ImagePath} to {Width}x{Height} with format {Format}, quality {Quality}", archiveEntry.GetPhysicalFileFullPath(), width, height, format, quality);
 
-            using var stream = File.OpenRead(imagePath);
+            using var stream = File.OpenRead(archiveEntry.GetPhysicalFileFullPath());
             using var originalImage = SKImage.FromEncodedData(stream);
             
             if (originalImage == null)
             {
-                _logger.LogError("Failed to decode image: {ImagePath}. File may be corrupted or unsupported format.", imagePath);
-                throw new InvalidOperationException($"Failed to decode image: {imagePath}");
+                _logger.LogError("Failed to decode image: {ImagePath}. File may be corrupted or unsupported format.", archiveEntry.GetPhysicalFileFullPath());
+                throw new InvalidOperationException($"Failed to decode image: {archiveEntry.GetPhysicalFileFullPath()}");
             }
             
             var originalInfo = originalImage.Info;
@@ -242,23 +242,23 @@ public class SkiaSharpImageProcessingService : IImageProcessingService
             
             var result = resizedStream.ToArray();
             
-            _logger.LogDebug("Successfully resized image {ImagePath}, format {Format}", imagePath, format);
+            _logger.LogDebug("Successfully resized image {ImagePath}, format {Format}", archiveEntry.GetPhysicalFileFullPath(), format);
             return Task.FromResult(result);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error resizing image {ImagePath}", imagePath);
+            _logger.LogError(ex, "Error resizing image {ImagePath}", archiveEntry.GetPhysicalFileFullPath());
             throw;
         }
     }
 
-    public Task<byte[]> ConvertImageFormatAsync(string imagePath, string targetFormat, int quality = 95, CancellationToken cancellationToken = default)
+    public Task<byte[]> ConvertImageFormatAsync(ArchiveEntryInfo archiveEntry, string targetFormat, int quality = 95, CancellationToken cancellationToken = default)
     {
         try
         {
-            _logger.LogDebug("Converting image {ImagePath} to format {TargetFormat}", imagePath, targetFormat);
+            _logger.LogDebug("Converting image {ImagePath} to format {TargetFormat}", archiveEntry.GetPhysicalFileFullPath(), targetFormat);
 
-            using var stream = File.OpenRead(imagePath);
+            using var stream = File.OpenRead(archiveEntry.GetPhysicalFileFullPath());
             using var originalImage = SKImage.FromEncodedData(stream);
             
             var format = targetFormat.ToLowerInvariant() switch
@@ -273,12 +273,12 @@ public class SkiaSharpImageProcessingService : IImageProcessingService
             using var convertedStream = originalImage.Encode(format, quality);
             var result = convertedStream.ToArray();
             
-            _logger.LogDebug("Successfully converted image {ImagePath} to {TargetFormat}", imagePath, targetFormat);
+            _logger.LogDebug("Successfully converted image {ImagePath} to {TargetFormat}", archiveEntry.GetPhysicalFileFullPath(), targetFormat);
             return Task.FromResult(result);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error converting image {ImagePath} to {TargetFormat}", imagePath, targetFormat);
+            _logger.LogError(ex, "Error converting image {ImagePath} to {TargetFormat}", archiveEntry.GetPhysicalFileFullPath(), targetFormat);
             throw;
         }
     }
@@ -322,24 +322,24 @@ public class SkiaSharpImageProcessingService : IImageProcessingService
         return Task.FromResult(new[] { "jpg", "jpeg", "png", "gif", "bmp", "webp", "tiff" });
     }
 
-    public Task<ImageDimensions> GetImageDimensionsAsync(string imagePath, CancellationToken cancellationToken = default)
+    public Task<ImageDimensions> GetImageDimensionsAsync(ArchiveEntryInfo archiveEntry, CancellationToken cancellationToken = default)
     {
         try
         {
-            _logger.LogDebug("Getting dimensions for {ImagePath}", imagePath);
+            _logger.LogDebug("Getting dimensions for {ImagePath}", archiveEntry.GetPhysicalFileFullPath());
 
-            using var stream = File.OpenRead(imagePath);
+            using var stream = File.OpenRead(archiveEntry.GetPhysicalFileFullPath());
             using var codec = SKCodec.Create(stream);
             
             var info = codec.Info;
             var dimensions = new ImageDimensions(info.Width, info.Height);
             
-            _logger.LogDebug("Image {ImagePath} dimensions: {Width}x{Height}", imagePath, dimensions.Width, dimensions.Height);
+            _logger.LogDebug("Image {ImagePath} dimensions: {Width}x{Height}", archiveEntry.GetPhysicalFileFullPath(), dimensions.Width, dimensions.Height);
             return Task.FromResult(dimensions);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting dimensions for {ImagePath}", imagePath);
+            _logger.LogError(ex, "Error getting dimensions for {ImagePath}", archiveEntry.GetPhysicalFileFullPath());
             throw;
         }
     }
@@ -360,38 +360,38 @@ public class SkiaSharpImageProcessingService : IImageProcessingService
         }
     }
 
-    public Task<long> GetImageFileSizeAsync(string imagePath, CancellationToken cancellationToken = default)
+    public Task<long> GetImageFileSizeAsync(ArchiveEntryInfo archiveEntry, CancellationToken cancellationToken = default)
     {
         try
         {
-            _logger.LogDebug("Getting file size for {ImagePath}", imagePath);
+            _logger.LogDebug("Getting file size for {ImagePath}", archiveEntry.GetPhysicalFileFullPath());
 
-            var fileInfo = new FileInfo(imagePath);
+            var fileInfo = new FileInfo(archiveEntry.GetPhysicalFileFullPath());
             var size = fileInfo.Length;
             
-            _logger.LogDebug("Image {ImagePath} file size: {Size} bytes", imagePath, size);
+            _logger.LogDebug("Image {ImagePath} file size: {Size} bytes", archiveEntry.GetPhysicalFileFullPath(), size);
             return Task.FromResult(size);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting file size for {ImagePath}", imagePath);
+            _logger.LogError(ex, "Error getting file size for {ImagePath}", archiveEntry.GetPhysicalFileFullPath());
             throw;
         }
     }
 
-    public Task<byte[]> GenerateCacheAsync(string imagePath, int width, int height, string format = "jpeg", int quality = 95, CancellationToken cancellationToken = default)
+    public Task<byte[]> GenerateCacheAsync(ArchiveEntryInfo archiveEntry, int width, int height, string format = "jpeg", int quality = 95, CancellationToken cancellationToken = default)
     {
         try
         {
-            _logger.LogDebug("🎨 Generating cache image from {ImagePath} ({Width}x{Height}, {Format}, Quality: {Quality})", 
-                imagePath, width, height, format, quality);
+            _logger.LogDebug("🎨 Generating cache image from {ImagePath} ({Width}x{Height}, {Format}, Quality: {Quality})",
+                archiveEntry.GetPhysicalFileFullPath(), width, height, format, quality);
 
-            using var stream = File.OpenRead(imagePath);
+            using var stream = File.OpenRead(archiveEntry.GetPhysicalFileFullPath());
             using var originalBitmap = SKBitmap.Decode(stream);
             
             if (originalBitmap == null)
             {
-                _logger.LogWarning("⚠️ Failed to decode image from {ImagePath}", imagePath);
+                _logger.LogWarning("⚠️ Failed to decode image from {ImagePath}", archiveEntry.GetPhysicalFileFullPath());
                 return Task.FromResult(Array.Empty<byte>());
             }
 
@@ -428,7 +428,7 @@ public class SkiaSharpImageProcessingService : IImageProcessingService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "❌ Error generating cache from {ImagePath}", imagePath);
+            _logger.LogError(ex, "❌ Error generating cache from {ImagePath}", archiveEntry.GetPhysicalFileFullPath());
             return Task.FromResult(Array.Empty<byte>());
         }
     }

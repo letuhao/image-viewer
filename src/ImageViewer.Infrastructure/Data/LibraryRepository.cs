@@ -171,7 +171,7 @@ public class LibraryRepository : MongoRepository<Library>, ILibraryRepository
         }
     }
 
-    public async Task<ImageViewer.Domain.ValueObjects.LibraryStatistics> GetLibraryStatisticsAsync()
+    public async Task<Domain.ValueObjects.LibraryStatistics> GetLibraryStatisticsAsync()
     {
         try
         {
@@ -184,7 +184,7 @@ public class LibraryRepository : MongoRepository<Library>, ILibraryRepository
             var newLibrariesThisWeek = await _collection.CountDocumentsAsync(l => l.CreatedAt >= now.AddDays(-7));
             var newLibrariesToday = await _collection.CountDocumentsAsync(l => l.CreatedAt >= now.AddDays(-1));
 
-            return new ImageViewer.Domain.ValueObjects.LibraryStatistics
+            return new Domain.ValueObjects.LibraryStatistics
             {
                 TotalLibraries = totalLibraries,
                 ActiveLibraries = activeLibraries,

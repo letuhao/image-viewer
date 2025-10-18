@@ -1,9 +1,6 @@
 using System.Text.Json;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using RabbitMQ.Client;
-using RabbitMQ.Client.Events;
 using ImageViewer.Domain.Events;
 using ImageViewer.Domain.Entities;
 using ImageViewer.Domain.Interfaces;
@@ -53,8 +50,8 @@ public class ThumbnailGenerationConsumer : BaseMessageConsumer
                 return;
             }
 
-            _logger.LogDebug("🖼️ Generating thumbnail for image {ImageId} ({Filename})", 
-                thumbnailMessage.ImageId, thumbnailMessage.ImageFilename);
+            _logger.LogDebug("🖼️ Generating thumbnail for image {ImageId} ({Path}#{Entry})", 
+                thumbnailMessage.ImageId, thumbnailMessage.ArchiveEntry.ArchivePath, thumbnailMessage.ArchiveEntry.EntryName);
 
             // Try to create scope, handle disposal gracefully
             IServiceScope? scope = null;
@@ -89,9 +86,10 @@ public class ThumbnailGenerationConsumer : BaseMessageConsumer
             }
 
             // Check if image file exists
-            if (!File.Exists(thumbnailMessage.ImagePath) && !ArchiveFileHelper.IsArchiveEntryPath(thumbnailMessage.ImagePath))
+            if ((thumbnailMessage.ArchiveEntry.IsDirectory && !File.Exists(thumbnailMessage.ArchiveEntry.GetPhysicalFileFullPath())) 
+                    || !Directory.Exists(thumbnailMessage.ArchiveEntry.ArchivePath))
             {
-                _logger.LogWarning("❌ Image file {Path} does not exist, skipping thumbnail generation", thumbnailMessage.ImagePath);
+                _logger.LogWarning("❌ Image file {Path}#{Entry} does not exist, skipping thumbnail generation", thumbnailMessage.ArchiveEntry.ArchivePath, thumbnailMessage.ArchiveEntry.EntryName);
                 return;
             }
 
@@ -99,10 +97,10 @@ public class ThumbnailGenerationConsumer : BaseMessageConsumer
             long fileSize = 0;
             long maxSize = 0;
             
-            if (ArchiveFileHelper.IsArchiveEntryPath(thumbnailMessage.ImagePath))
+            if (!thumbnailMessage.ArchiveEntry.IsDirectory)
             {
                 // ZIP entry - get uncompressed size without extraction
-                fileSize = ArchiveFileHelper.GetArchiveEntrySize(thumbnailMessage.ImagePath, _logger);
+                fileSize = ArchiveFileHelper.GetArchiveEntrySize(thumbnailMessage.ArchiveEntry, _logger);
                 maxSize = _rabbitMQOptions.MaxZipEntrySizeBytes; // 20GB for ZIP entries
                 
                 if (fileSize > maxSize)
@@ -124,7 +122,7 @@ public class ThumbnailGenerationConsumer : BaseMessageConsumer
             else
             {
                 // Regular file - check file size on disk
-                var imageFile = new FileInfo(thumbnailMessage.ImagePath);
+                var imageFile = new FileInfo(thumbnailMessage.ArchiveEntry.GetPhysicalFileFullPath());
                 fileSize = imageFile.Exists ? imageFile.Length : 0;
                 maxSize = _rabbitMQOptions.MaxImageSizeBytes; // 500MB for regular files
                 
@@ -203,7 +201,7 @@ public class ThumbnailGenerationConsumer : BaseMessageConsumer
                 if (existingThumbnail == null)
                 {
                     var thumbnailPath = await GetThumbnailPath(
-                        thumbnailMessage.ImagePath,
+                        thumbnailMessage.ArchiveEntry,
                         thumbnailMessage.ThumbnailWidth,
                         thumbnailMessage.ThumbnailHeight,
                         collectionId,
@@ -269,7 +267,7 @@ public class ThumbnailGenerationConsumer : BaseMessageConsumer
             {
                 
                 var thumbnailPath = await GenerateThumbnail(
-                thumbnailMessage.ImagePath,
+                thumbnailMessage.ArchiveEntry,
                 thumbnailMessage.ThumbnailWidth,
                 thumbnailMessage.ThumbnailHeight,
                     imageProcessingService,
@@ -458,7 +456,7 @@ public class ThumbnailGenerationConsumer : BaseMessageConsumer
         }
     }
 
-    private async Task<string?> GenerateThumbnail(string imagePath, int width, int height, IImageProcessingService imageProcessingService, ObjectId collectionId, CancellationToken cancellationToken = default)
+    private async Task<string?> GenerateThumbnail(ArchiveEntryInfo archiveEntry, int width, int height, IImageProcessingService imageProcessingService, ObjectId collectionId, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -468,7 +466,7 @@ public class ThumbnailGenerationConsumer : BaseMessageConsumer
             var format = await settingsService.GetThumbnailFormatAsync();
             
             // Determine thumbnail path (with correct format extension)
-            var thumbnailPath = await GetThumbnailPath(imagePath, width, height, collectionId, format);
+            var thumbnailPath = await GetThumbnailPath(archiveEntry, width, height, collectionId, format);
             
             // Ensure thumbnail directory exists
             var thumbnailDir = Path.GetDirectoryName(thumbnailPath);
@@ -486,13 +484,13 @@ public class ThumbnailGenerationConsumer : BaseMessageConsumer
             _logger.LogDebug("🎨 Using thumbnail format: {Format}, quality: {Quality}", format, quality);
             
             // Handle ZIP entries
-            if (ArchiveFileHelper.IsZipEntryPath(imagePath))
+            if (!archiveEntry.IsDirectory)
             {
                 // Extract image bytes from ZIP
-                var imageBytes = await ArchiveFileHelper.ExtractZipEntryBytes(imagePath, null, cancellationToken);
+                var imageBytes = await ArchiveFileHelper.ExtractZipEntryBytes(archiveEntry, null, cancellationToken);
                 if (imageBytes == null || imageBytes.Length == 0)
                 {
-                    _logger.LogWarning("❌ Failed to extract ZIP entry: {Path}", imagePath);
+                    _logger.LogWarning("❌ Failed to extract ZIP entry: {Path}#{Entry}", archiveEntry.ArchivePath, archiveEntry.EntryName);
                     return null;
                 }
                 
@@ -508,7 +506,7 @@ public class ThumbnailGenerationConsumer : BaseMessageConsumer
             {
                 // Regular file
                 thumbnailData = await imageProcessingService.GenerateThumbnailAsync(
-                    imagePath, 
+                    archiveEntry, 
                     width, 
                     height,
                     format,
@@ -535,12 +533,12 @@ public class ThumbnailGenerationConsumer : BaseMessageConsumer
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "❌ Error generating thumbnail for {ImagePath}", imagePath);
+            _logger.LogError(ex, "❌ Error generating thumbnail for {Path}#{Entry}", archiveEntry.ArchivePath, archiveEntry.EntryName);
             return null;
         }
     }
 
-    private async Task<string> GetThumbnailPath(string imagePath, int width, int height, ObjectId collectionId, string format)
+    private async Task<string> GetThumbnailPath(ArchiveEntryInfo archiveEntry, int width, int height, ObjectId collectionId, string format)
     {
         // Determine file extension based on format
         var extension = format.ToLowerInvariant() switch
@@ -554,20 +552,11 @@ public class ThumbnailGenerationConsumer : BaseMessageConsumer
         
         // Extract filename only (handle archive entries like "archive.zip#entry.png")
         string fileName;
-        
+
         // Use new DTO structure to avoid legacy string splitting bugs
-        var archiveEntryInfo = ArchiveEntryInfo.FromPath(imagePath);
-        if (archiveEntryInfo != null)
-        {
-            // This is an archive entry - extract the entry name
-            fileName = Path.GetFileNameWithoutExtension(archiveEntryInfo.EntryName);
-        }
-        else
-        {
-            // For regular files, use filename only (not full path)
-            fileName = Path.GetFileNameWithoutExtension(imagePath);
-        }
-        
+        // This is an archive entry - extract the entry name
+        fileName = Path.GetFileNameWithoutExtension(archiveEntry.EntryName);
+
         // Use cache service to get the appropriate cache folder for thumbnails
         using var scope = _serviceScopeFactory.CreateScope();
         var cacheService = scope.ServiceProvider.GetRequiredService<ICacheService>();

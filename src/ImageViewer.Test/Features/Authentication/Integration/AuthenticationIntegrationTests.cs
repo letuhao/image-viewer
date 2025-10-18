@@ -1,8 +1,4 @@
-using FluentAssertions;
-using Xunit;
 using ImageViewer.Application.Services;
-using ImageViewer.Domain.Enums;
-using MongoDB.Bson;
 using ImageViewer.Test.Shared.Fixtures;
 
 namespace ImageViewer.Test.Features.Authentication.Integration;

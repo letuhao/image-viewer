@@ -1,5 +1,3 @@
-using ImageViewer.Domain.Entities;
-
 namespace ImageViewer.Application.Services;
 
 /// <summary>

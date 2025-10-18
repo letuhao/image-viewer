@@ -1,6 +1,5 @@
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
-using ImageViewer.Domain.Events;
 
 namespace ImageViewer.Domain.Entities;
 

@@ -55,7 +55,7 @@ public static class CollectionMappingExtensions
     /// Get the middle thumbnail from the collection (for collection card preview)
     /// Returns null if no thumbnails exist or if no valid thumbnails found
     /// </summary>
-    private static Domain.ValueObjects.ThumbnailEmbedded? GetMiddleThumbnail(List<Domain.ValueObjects.ThumbnailEmbedded>? thumbnails)
+    private static ThumbnailEmbedded? GetMiddleThumbnail(List<ThumbnailEmbedded>? thumbnails)
     {
         if (thumbnails == null || thumbnails.Count == 0)
             return null;

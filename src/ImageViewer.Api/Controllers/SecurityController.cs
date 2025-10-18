@@ -30,7 +30,7 @@ public class SecurityController : ControllerBase
     /// Authenticate user
     /// </summary>
     [HttpPost("login")]
-    public async Task<IActionResult> Login([FromBody] ImageViewer.Application.DTOs.Auth.LoginRequest request)
+    public async Task<IActionResult> Login([FromBody] Application.DTOs.Auth.LoginRequest request)
     {
         try
         {
@@ -38,7 +38,7 @@ public class SecurityController : ControllerBase
                 return BadRequest(ModelState);
 
             // Implement login functionality using SecurityService
-            var serviceRequest = new ImageViewer.Application.Services.LoginRequest
+            var serviceRequest = new Application.Services.LoginRequest
             {
                 Username = request.Username,
                 Password = request.Password,
@@ -125,7 +125,7 @@ public class SecurityController : ControllerBase
     /// Refresh access token
     /// </summary>
     [HttpPost("refresh")]
-    public async Task<IActionResult> RefreshToken([FromBody] ImageViewer.Application.DTOs.Auth.RefreshTokenRequest request)
+    public async Task<IActionResult> RefreshToken([FromBody] Application.DTOs.Auth.RefreshTokenRequest request)
     {
         try
         {

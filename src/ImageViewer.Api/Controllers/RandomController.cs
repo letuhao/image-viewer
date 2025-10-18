@@ -1,9 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
 using ImageViewer.Application.Services;
 using ImageViewer.Application.DTOs.Collections;
 using ImageViewer.Application.Mappings;
-using ImageViewer.Domain.Entities;
 
 namespace ImageViewer.Api.Controllers;
 

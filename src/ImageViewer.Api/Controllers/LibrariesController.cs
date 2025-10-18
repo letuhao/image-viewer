@@ -2,7 +2,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MongoDB.Bson;
 using ImageViewer.Application.Services;
-using ImageViewer.Application.DTOs;
 using ImageViewer.Application.Mappings;
 using ImageViewer.Domain.Exceptions;
 using ImageViewer.Domain.Interfaces;
@@ -113,7 +112,7 @@ public class LibrariesController : ControllerBase
 
             // Publish scan message directly to RabbitMQ
             var messageQueueService = HttpContext.RequestServices.GetRequiredService<IMessageQueueService>();
-            var scanMessage = new ImageViewer.Infrastructure.Messaging.LibraryScanMessage
+            var scanMessage = new Infrastructure.Messaging.LibraryScanMessage
             {
                 LibraryId = libraryId.ToString(),
                 LibraryPath = library.Path,

@@ -1,4 +1,3 @@
-using MongoDB.Bson;
 using ImageViewer.Domain.Enums;
 
 namespace ImageViewer.Domain.Events;

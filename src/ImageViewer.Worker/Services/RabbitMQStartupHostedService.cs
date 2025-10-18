@@ -1,6 +1,3 @@
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 using ImageViewer.Infrastructure.Services;
 
 namespace ImageViewer.Worker.Services;

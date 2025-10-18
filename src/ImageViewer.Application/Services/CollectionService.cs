@@ -10,7 +10,6 @@ using ImageViewer.Application.DTOs.BackgroundJobs;
 using ImageViewer.Application.Mappings;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
-using System.IO;
 
 namespace ImageViewer.Application.Services;
 
@@ -530,7 +529,7 @@ public class CollectionService : ICollectionService
             if (collection == null)
                 throw new EntityNotFoundException($"Collection with ID {collectionId} not found");
             
-            var newStatistics = new ImageViewer.Domain.ValueObjects.CollectionStatistics();
+            var newStatistics = new Domain.ValueObjects.CollectionStatistics();
             
             if (request.TotalItems.HasValue)
                 newStatistics.UpdateStats(request.TotalItems.Value, request.TotalSize ?? 0);
@@ -772,7 +771,7 @@ public class CollectionService : ICollectionService
         }
     }
 
-    public async Task<ImageViewer.Domain.ValueObjects.CollectionStatistics> GetCollectionStatisticsAsync()
+    public async Task<Domain.ValueObjects.CollectionStatistics> GetCollectionStatisticsAsync()
     {
         try
         {
