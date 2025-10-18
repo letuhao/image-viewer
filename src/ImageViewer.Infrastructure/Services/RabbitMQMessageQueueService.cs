@@ -14,42 +14,79 @@ namespace ImageViewer.Infrastructure.Services;
 /// </summary>
 public class RabbitMQMessageQueueService : IMessageQueueService, IDisposable
 {
-    private readonly IConnection _connection;
-    private readonly IChannel _channel;
+    private IConnection? _connection;
+    private IChannel? _channel;
     private readonly RabbitMQOptions _options;
     private readonly ILogger<RabbitMQMessageQueueService> _logger;
+    private readonly SemaphoreSlim _connectionSemaphore = new(1, 1);
     private bool _disposed = false;
 
     public RabbitMQMessageQueueService(IOptions<RabbitMQOptions> options, ILogger<RabbitMQMessageQueueService> logger)
     {
         _options = options.Value;
         _logger = logger;
+        
+        _logger.LogDebug("RabbitMQMessageQueueService initialized (lazy connection)");
+    }
 
-        var factory = new ConnectionFactory
+    /// <summary>
+    /// Ensures RabbitMQ connection and channel are established (lazy initialization)
+    /// </summary>
+    private async Task EnsureConnectionAsync()
+    {
+        if (_connection != null && _channel != null && _connection.IsOpen && _channel.IsOpen)
         {
-            HostName = _options.HostName,
-            Port = _options.Port,
-            UserName = _options.UserName,
-            Password = _options.Password,
-            VirtualHost = _options.VirtualHost,
-            RequestedConnectionTimeout = _options.ConnectionTimeout,
-            RequestedHeartbeat = TimeSpan.FromSeconds(60)
-        };
+            return; // Already connected
+        }
 
+        await _connectionSemaphore.WaitAsync();
         try
         {
-            // Use ConfigureAwait(false) to avoid deadlocks and run on thread pool
-            _connection = factory.CreateConnectionAsync().ConfigureAwait(false).GetAwaiter().GetResult();
-            _channel = _connection.CreateChannelAsync().ConfigureAwait(false).GetAwaiter().GetResult();
+            // Double-check after acquiring semaphore
+            if (_connection != null && _channel != null && _connection.IsOpen && _channel.IsOpen)
+            {
+                return;
+            }
 
-            // Note: Queue and exchange setup is now handled by RabbitMQSetupService
-            // This prevents configuration conflicts (e.g., x-max-length parameter mismatches)
-            _logger.LogDebug("RabbitMQ connection and channel established");
+            // Dispose existing connection if it exists but is not open
+            if (_connection != null && !_connection.IsOpen)
+            {
+                try
+                {
+                    _connection.Dispose();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Error disposing old RabbitMQ connection");
+                }
+            }
+
+            var factory = new ConnectionFactory
+            {
+                HostName = _options.HostName,
+                Port = _options.Port,
+                UserName = _options.UserName,
+                Password = _options.Password,
+                VirtualHost = _options.VirtualHost,
+                RequestedConnectionTimeout = _options.ConnectionTimeout,
+                RequestedHeartbeat = TimeSpan.FromSeconds(60)
+            };
+
+            _logger.LogDebug("Establishing RabbitMQ connection to {HostName}:{Port}", _options.HostName, _options.Port);
+            
+            _connection = await factory.CreateConnectionAsync();
+            _channel = await _connection.CreateChannelAsync();
+
+            _logger.LogDebug("RabbitMQ connection and channel established successfully");
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to establish RabbitMQ connection to {HostName}:{Port}", _options.HostName, _options.Port);
             throw;
+        }
+        finally
+        {
+            _connectionSemaphore.Release();
         }
     }
 
@@ -57,6 +94,8 @@ public class RabbitMQMessageQueueService : IMessageQueueService, IDisposable
     {
         try
         {
+            await EnsureConnectionAsync();
+            
             var queueName = GetQueueName<T>();
             var options = new JsonSerializerOptions
             {
@@ -213,30 +252,23 @@ public class RabbitMQMessageQueueService : IMessageQueueService, IDisposable
         {
             try
             {
-                _channel?.CloseAsync().ConfigureAwait(false).GetAwaiter().GetResult();
+                _channel?.Dispose();
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Error closing RabbitMQ channel");
-            }
-            finally
-            {
-                _channel?.Dispose();
+                _logger.LogWarning(ex, "Error disposing RabbitMQ channel");
             }
 
             try
             {
-                _connection?.CloseAsync().ConfigureAwait(false).GetAwaiter().GetResult();
+                _connection?.Dispose();
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Error closing RabbitMQ connection");
+                _logger.LogWarning(ex, "Error disposing RabbitMQ connection");
             }
-            finally
-            {
-                _connection?.Dispose();
-            }
-            
+
+            _connectionSemaphore?.Dispose();
             _disposed = true;
         }
     }
