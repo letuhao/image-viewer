@@ -397,7 +397,10 @@ public class MongoCollectionRepository : MongoRepository<Collection>, ICollectio
             {
                 TotalCollections = 0,
                 TotalImages = 0,
+                TotalThumbnails = 0,
+                TotalCacheImages = 0,
                 TotalSize = 0,
+                TotalThumbnailSize = 0,
                 TotalCacheSize = 0,
                 TotalViewSessions = 0,
                 TotalViewTime = 0,
@@ -410,7 +413,10 @@ public class MongoCollectionRepository : MongoRepository<Collection>, ICollectio
         {
             TotalCollections = result.GetValue("totalCollections", 0).ToInt32(),
             TotalImages = result.GetValue("totalImages", 0).ToInt64(),
+            TotalThumbnails = result.GetValue("totalThumbnails", 0).ToInt64(),
+            TotalCacheImages = result.GetValue("totalCacheFiles", 0).ToInt64(),
             TotalSize = result.GetValue("totalSize", 0).ToInt64(),
+            TotalThumbnailSize = result.GetValue("totalThumbnailSize", 0).ToInt64(),
             TotalCacheSize = result.GetValue("totalCacheSize", 0).ToInt64(),
             TotalViewSessions = 0, // Will be calculated separately for view sessions
             TotalViewTime = 0,     // Will be calculated separately for view sessions

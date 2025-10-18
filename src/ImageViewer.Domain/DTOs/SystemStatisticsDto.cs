@@ -7,7 +7,10 @@ public class SystemStatisticsDto
 {
     public int TotalCollections { get; set; }
     public long TotalImages { get; set; }
+    public long TotalThumbnails { get; set; }
+    public long TotalCacheImages { get; set; }
     public long TotalSize { get; set; }
+    public long TotalThumbnailSize { get; set; }
     public long TotalCacheSize { get; set; }
     public int TotalViewSessions { get; set; }
     public double TotalViewTime { get; set; }
