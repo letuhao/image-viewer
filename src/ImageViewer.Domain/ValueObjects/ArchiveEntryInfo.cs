@@ -10,6 +10,11 @@ namespace ImageViewer.Domain.ValueObjects;
 /// </summary>
 public class ArchiveEntryInfo
 {
+    /// <summary>
+    /// Safe separator for combining archive path and entry name in display format
+    /// Uses :: which is forbidden in both Windows and Linux filenames
+    /// </summary>
+    public const string DISPLAY_PATH_SEPARATOR = "::";
     [BsonElement("archivePath")]
     public string ArchivePath { get; set; } = string.Empty;
 
@@ -73,8 +78,45 @@ public class ArchiveEntryInfo
     /// <summary>
     /// Get the full path for this archive entry in display format
     /// Format: "archive.zip::entry.jpg" for display/logging purposes
+    /// Uses :: separator which is forbidden in both Windows and Linux filenames
     /// </summary>
-    public string GetDisplayPath() => $"{ArchivePath}::{EntryName}";
+    public string GetDisplayPath() => $"{ArchivePath}{DISPLAY_PATH_SEPARATOR}{EntryName}";
+
+    /// <summary>
+    /// Parse a display path back into ArchiveEntryInfo
+    /// Format: "archive.zip::entry.jpg"
+    /// </summary>
+    /// <param name="displayPath">Display path with :: separator</param>
+    /// <returns>ArchiveEntryInfo or null if format is invalid</returns>
+    public static ArchiveEntryInfo? FromDisplayPath(string displayPath)
+    {
+        if (string.IsNullOrEmpty(displayPath))
+            return null;
+
+        // Split on :: separator (safe because :: cannot appear in filenames)
+        var parts = displayPath.Split(new[] { DISPLAY_PATH_SEPARATOR }, 2, StringSplitOptions.None);
+        if (parts.Length == 2)
+        {
+            return ForArchiveEntry(parts[0], parts[1]);
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Validate that a path string is safe to use as a display path
+    /// Checks that the separator doesn't appear in the path components
+    /// </summary>
+    /// <param name="archivePath">Path to the archive</param>
+    /// <param name="entryName">Name of the entry</param>
+    /// <returns>True if safe to combine, false if separator would conflict</returns>
+    public static bool IsSafeToCombine(string archivePath, string entryName)
+    {
+        return !string.IsNullOrEmpty(archivePath) && 
+               !string.IsNullOrEmpty(entryName) &&
+               !archivePath.Contains(DISPLAY_PATH_SEPARATOR) &&
+               !entryName.Contains(DISPLAY_PATH_SEPARATOR);
+    }
 
 
     #region Static Factory Methods
@@ -178,6 +220,34 @@ public class ArchiveEntryInfo
             CompressedSize = compressedSize,
             UncompressedSize = uncompressedSize
         };
+    }
+
+    /// <summary>
+    /// Create an ArchiveEntryInfo from a display path with validation
+    /// Validates that the separator doesn't conflict with path components
+    /// </summary>
+    /// <param name="displayPath">Display path with :: separator</param>
+    /// <param name="isArchiveEntry">True if this is an archive entry, false if regular file</param>
+    /// <returns>ArchiveEntryInfo or null if format is invalid or unsafe</returns>
+    public static ArchiveEntryInfo? FromDisplayPathSafe(string displayPath, bool isArchiveEntry = true)
+    {
+        if (string.IsNullOrEmpty(displayPath))
+            return null;
+
+        var parts = displayPath.Split(new[] { DISPLAY_PATH_SEPARATOR }, 2, StringSplitOptions.None);
+        if (parts.Length != 2)
+            return null;
+
+        var archivePath = parts[0];
+        var entryName = parts[1];
+
+        // Validate that the separator doesn't appear in the components
+        if (!IsSafeToCombine(archivePath, entryName))
+            return null;
+
+        return isArchiveEntry 
+            ? ForArchiveEntry(archivePath, entryName)
+            : ForRegularFile(Path.Combine(archivePath, entryName), entryName);
     }
 
     #endregion
