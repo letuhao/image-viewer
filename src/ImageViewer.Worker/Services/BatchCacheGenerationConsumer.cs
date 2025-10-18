@@ -5,6 +5,7 @@ using RabbitMQ.Client;
 using ImageViewer.Domain.Events;
 using ImageViewer.Domain.Interfaces;
 using ImageViewer.Domain.ValueObjects;
+using ImageViewer.Domain.Helpers;
 using ImageViewer.Application.DTOs.Cache;
 using ImageViewer.Application.Services;
 using ImageViewer.Infrastructure.Data;
@@ -331,29 +332,73 @@ public class BatchCacheGenerationConsumer : BaseMessageConsumer
             _logger.LogDebug("🎨 ProcessCacheImageInMemoryAsync: Using format {Format}, quality {Quality} (adjusted from {OriginalQuality})", 
                 cacheFormat, adjustedQuality, cacheQuality);
             
-            // Handle ZIP entries
-            if (!message.ArchiveEntry.IsDirectory)
+            // Check if this is an animated format that should be copied as-is
+            var filename = message.ArchiveEntry.EntryName;
+            bool isAnimated = AnimatedFormatHelper.IsAnimatedFormat(filename);
+            
+            if (isAnimated)
             {
-                var imageBytes = await ArchiveFileHelper.ExtractZipEntryBytes(message.ArchiveEntry, null);
-                if (imageBytes == null || imageBytes.Length == 0)
+                _logger.LogInformation("🎬 Detected animated format for {Filename}, copying original file instead of converting", filename);
+                
+                // Copy original file bytes instead of converting
+                if (!message.ArchiveEntry.IsDirectory)
                 {
-                    _logger.LogWarning("❌ Failed to extract ZIP entry: {Path}", message.ArchiveEntry);
+                    // Extract from ZIP
+                    var bytes = await ArchiveFileHelper.ExtractZipEntryBytes(message.ArchiveEntry, null);
+                    if (bytes == null || bytes.Length == 0)
+                    {
+                        _logger.LogWarning("❌ Failed to read animated file from archive: {Path}", message.ArchiveEntry);
+                        return null;
+                    }
+                    cacheData = bytes;
+                }
+                else
+                {
+                    // Read regular file
+                    var filePath = message.ArchiveEntry.GetPhysicalFileFullPath();
+                    if (!File.Exists(filePath))
+                    {
+                        _logger.LogWarning("❌ Animated file does not exist: {Path}", filePath);
+                        return null;
+                    }
+                    cacheData = await File.ReadAllBytesAsync(filePath);
+                }
+                
+                if (cacheData == null || cacheData.Length == 0)
+                {
+                    _logger.LogWarning("❌ Failed to read animated file: {Path}", message.ArchiveEntry);
                     return null;
                 }
                 
-                cacheData = await imageProcessingService.GenerateCacheFromBytesAsync(
-                    imageBytes, message.CacheWidth, message.CacheHeight, cacheFormat, adjustedQuality);
+                _logger.LogDebug("✅ Copied animated file {Filename} ({Size} bytes)", filename, cacheData.Length);
             }
             else
             {
-                cacheData = await imageProcessingService.GenerateCacheAsync(
-                    message.ArchiveEntry, message.CacheWidth, message.CacheHeight, cacheFormat, adjustedQuality);
-            }
-            
-            if (cacheData == null || cacheData.Length == 0)
-            {
-                _logger.LogWarning("⚠️ No cache data generated for image {ImageId}", message.ImageId);
-                return null;
+                // Process static image normally
+                // Handle ZIP entries
+                if (!message.ArchiveEntry.IsDirectory)
+                {
+                    var imageBytes = await ArchiveFileHelper.ExtractZipEntryBytes(message.ArchiveEntry, null);
+                    if (imageBytes == null || imageBytes.Length == 0)
+                    {
+                        _logger.LogWarning("❌ Failed to extract ZIP entry: {Path}", message.ArchiveEntry);
+                        return null;
+                    }
+                    
+                    cacheData = await imageProcessingService.GenerateCacheFromBytesAsync(
+                        imageBytes, message.CacheWidth, message.CacheHeight, cacheFormat, adjustedQuality);
+                }
+                else
+                {
+                    cacheData = await imageProcessingService.GenerateCacheAsync(
+                        message.ArchiveEntry, message.CacheWidth, message.CacheHeight, cacheFormat, adjustedQuality);
+                }
+                
+                if (cacheData == null || cacheData.Length == 0)
+                {
+                    _logger.LogWarning("⚠️ No cache data generated for image {ImageId}", message.ImageId);
+                    return null;
+                }
             }
             
             return new ProcessedCacheData

@@ -151,6 +151,7 @@ builder.Services.AddScoped<ICollectionIndexService, RedisCollectionIndexService>
 // Register Dashboard Statistics Service (Redis-cached for ultra-fast loading)
 builder.Services.AddScoped<IDashboardStatisticsService, DashboardStatisticsService>();
 builder.Services.AddScoped<IMetadataRecalculationService, MetadataRecalculationService>();
+builder.Services.AddScoped<IAnimatedCacheRepairService, AnimatedCacheRepairService>();
 
 // Add Hangfire Scheduler with Dashboard
 builder.Services.AddHangfireDashboard(builder.Configuration);

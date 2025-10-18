@@ -816,6 +816,144 @@ const Settings: React.FC = () => {
                     </div>
                   </SettingsSection>
 
+                  <SettingsSection
+                    title="Animated File Cache Repair"
+                    description="Fix incorrectly cached animated files (GIF, WebP, etc.) and regenerate their caches"
+                  >
+                    <div className="space-y-4">
+                      <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-700">
+                        <h4 className="text-lg font-semibold text-white mb-2">🎬 Scan for Incorrect Animated Caches</h4>
+                        <p className="text-sm text-slate-400 mb-4">
+                          Scan all collections to find animated files (GIF, WebP) that have been incorrectly converted to static cache images.
+                          This will identify files that need to be regenerated.
+                        </p>
+                        <Button
+                          onClick={async () => {
+                            try {
+                              toast.info('Scanning for incorrectly cached animated files...');
+                              const response = await fetch(`${config.apiBaseUrl}/animatedcache/scan`, {
+                                method: 'GET',
+                                headers: {
+                                  'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+                                },
+                              });
+                              
+                              if (response.ok) {
+                                const result = await response.json();
+                                if (result.incorrectlyCachedFiles > 0) {
+                                  toast.warning(
+                                    `Found ${result.incorrectlyCachedFiles} incorrectly cached animated files out of ${result.animatedFilesFound} total animated files. ` +
+                                    `Scanned ${result.totalImages} images in ${result.totalCollections} collections.`,
+                                    { duration: 8000 }
+                                  );
+                                } else {
+                                  toast.success(
+                                    `All ${result.animatedFilesFound} animated files are correctly cached! ` +
+                                    `Scanned ${result.totalImages} images in ${result.totalCollections} collections.`
+                                  );
+                                }
+                              } else {
+                                throw new Error('Failed to scan animated caches');
+                              }
+                            } catch (error) {
+                              console.error('Error scanning animated caches:', error);
+                              toast.error('Failed to scan for incorrectly cached animated files');
+                            }
+                          }}
+                          className="w-full"
+                        >
+                          Scan Animated File Caches
+                        </Button>
+                      </div>
+
+                      <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-700">
+                        <h4 className="text-lg font-semibold text-white mb-2">🔧 Repair Incorrect Animated Caches</h4>
+                        <p className="text-sm text-slate-400 mb-4">
+                          Automatically find and repair all animated files that have been incorrectly converted to static images.
+                          This will queue the files for cache regeneration with their original format.
+                        </p>
+                        <Button
+                          onClick={async () => {
+                            try {
+                              toast.info('Repairing incorrectly cached animated files...');
+                              const response = await fetch(`${config.apiBaseUrl}/animatedcache/repair?forceRegenerate=true`, {
+                                method: 'POST',
+                                headers: {
+                                  'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+                                },
+                              });
+                              
+                              if (response.ok) {
+                                const result = await response.json();
+                                if (result.filesQueuedForRepair > 0) {
+                                  toast.success(
+                                    `Successfully queued ${result.filesQueuedForRepair} animated files for repair! ` +
+                                    `Found ${result.incorrectlyCachedFiles} incorrect files out of ${result.animatedFilesFound} total animated files.`,
+                                    { duration: 8000 }
+                                  );
+                                } else {
+                                  toast.info('No incorrect animated caches found to repair.');
+                                }
+                              } else {
+                                throw new Error('Failed to repair animated caches');
+                              }
+                            } catch (error) {
+                              console.error('Error repairing animated caches:', error);
+                              toast.error('Failed to repair incorrectly cached animated files');
+                            }
+                          }}
+                          className="w-full"
+                        >
+                          Repair Incorrectly Cached Animated Files
+                        </Button>
+                      </div>
+
+                      <div className="bg-slate-800/50 rounded-lg p-4 border border-slate-700">
+                        <h4 className="text-lg font-semibold text-white mb-2">🔄 Regenerate All Animated File Caches</h4>
+                        <p className="text-sm text-slate-400 mb-4">
+                          Force regenerate cache files for ALL animated files (GIF, WebP, videos) in all collections.
+                          Use this to ensure all animated files are cached correctly with their original format.
+                          <span className="block mt-2 text-yellow-400">
+                            ⚠️ Warning: This will queue all animated files for regeneration, which may take a long time.
+                          </span>
+                        </p>
+                        <Button
+                          onClick={async () => {
+                            if (!window.confirm('Are you sure you want to regenerate all animated file caches? This may take a long time.')) {
+                              return;
+                            }
+                            
+                            try {
+                              toast.info('Regenerating all animated file caches...');
+                              const response = await fetch(`${config.apiBaseUrl}/animatedcache/regenerate-all`, {
+                                method: 'POST',
+                                headers: {
+                                  'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+                                },
+                              });
+                              
+                              if (response.ok) {
+                                const result = await response.json();
+                                toast.success(
+                                  `Successfully queued ${result.queuedCount} animated files for cache regeneration!`,
+                                  { duration: 8000 }
+                                );
+                              } else {
+                                throw new Error('Failed to regenerate animated caches');
+                              }
+                            } catch (error) {
+                              console.error('Error regenerating animated caches:', error);
+                              toast.error('Failed to regenerate animated file caches');
+                            }
+                          }}
+                          className="w-full bg-yellow-600 hover:bg-yellow-700"
+                        >
+                          Regenerate All Animated File Caches
+                        </Button>
+                      </div>
+                    </div>
+                  </SettingsSection>
+
                   {/* Save Button */}
                   <div className="flex justify-end space-x-3">
                     <Button 
