@@ -1,4 +1,6 @@
 using ImageViewer.Domain.Interfaces;
+using ImageViewer.Domain.ValueObjects;
+using ImageViewer.Domain.Enums;
 using ImageViewer.Test.Shared.Fixtures;
 using ImageViewer.Test.Shared.TestData;
 using System.Diagnostics;
@@ -20,18 +22,34 @@ public class ImageProcessingPerformanceTests : IClassFixture<BasicPerformanceInt
         _imageProcessingService = _fixture.GetService<IImageProcessingService>();
     }
 
+    /// <summary>
+    /// Helper method to create ArchiveEntryInfo from a file path for testing
+    /// </summary>
+    private static ArchiveEntryInfo CreateArchiveEntryFromPath(string filePath)
+    {
+        return new ArchiveEntryInfo
+        {
+            ArchivePath = Path.GetDirectoryName(filePath) ?? "",
+            EntryName = Path.GetFileName(filePath),
+            EntryPath = Path.GetFileName(filePath),
+            IsDirectory = false,
+            FileType = ImageFileType.RegularFile
+        };
+    }
+
     [Fact]
     public async Task ImageProcessingPerformance_ResizePerformance_ShouldResizeEfficiently()
     {
         // Arrange
         await _fixture.CleanupTestDataAsync();
         var imagePath = TestImageGenerator.GetTestImagePath("test-image.jpg");
+        var archiveEntry = CreateArchiveEntryFromPath(imagePath);
         var targetWidth = 800;
         var targetHeight = 600;
         var stopwatch = Stopwatch.StartNew();
 
         // Act
-        var result = await _imageProcessingService.ResizeImageAsync(imagePath, targetWidth, targetHeight);
+        var result = await _imageProcessingService.ResizeImageAsync(archiveEntry, targetWidth, targetHeight);
 
         // Assert
         stopwatch.Stop();
@@ -50,7 +68,8 @@ public class ImageProcessingPerformanceTests : IClassFixture<BasicPerformanceInt
         var stopwatch = Stopwatch.StartNew();
 
         // Act
-        var result = await _imageProcessingService.ConvertImageFormatAsync(sourcePath, targetFormat);
+        var archiveEntry = CreateArchiveEntryFromPath(sourcePath);
+        var result = await _imageProcessingService.ConvertImageFormatAsync(archiveEntry, targetFormat);
 
         // Assert
         stopwatch.Stop();
@@ -70,7 +89,8 @@ public class ImageProcessingPerformanceTests : IClassFixture<BasicPerformanceInt
         var stopwatch = Stopwatch.StartNew();
 
         // Act
-        var result = await _imageProcessingService.GenerateThumbnailAsync(imagePath, thumbnailWidth, thumbnailHeight);
+        var archiveEntry = CreateArchiveEntryFromPath(imagePath);
+        var result = await _imageProcessingService.GenerateThumbnailAsync(archiveEntry, thumbnailWidth, thumbnailHeight);
 
         // Assert
         stopwatch.Stop();
@@ -88,7 +108,8 @@ public class ImageProcessingPerformanceTests : IClassFixture<BasicPerformanceInt
         var stopwatch = Stopwatch.StartNew();
 
         // Act
-        var result = await _imageProcessingService.ExtractMetadataAsync(imagePath);
+        var archiveEntry = CreateArchiveEntryFromPath(imagePath);
+        var result = await _imageProcessingService.ExtractMetadataAsync(archiveEntry);
 
         // Assert
         stopwatch.Stop();
@@ -131,7 +152,10 @@ public class ImageProcessingPerformanceTests : IClassFixture<BasicPerformanceInt
 
         // Act
         var tasks = imagePaths.Select(path => 
-            _imageProcessingService.ResizeImageAsync(path, targetWidth, targetHeight));
+        {
+            var archiveEntry = CreateArchiveEntryFromPath(path);
+            return _imageProcessingService.ResizeImageAsync(archiveEntry, targetWidth, targetHeight);
+        });
         var results = await Task.WhenAll(tasks);
 
         // Assert
@@ -168,7 +192,8 @@ public class ImageProcessingPerformanceTests : IClassFixture<BasicPerformanceInt
         var stopwatch = Stopwatch.StartNew();
 
         // Act
-        var result = await _imageProcessingService.GetImageDimensionsAsync(imagePath);
+        var archiveEntry = CreateArchiveEntryFromPath(imagePath);
+        var result = await _imageProcessingService.GetImageDimensionsAsync(archiveEntry);
 
         // Assert
         stopwatch.Stop();
@@ -187,7 +212,8 @@ public class ImageProcessingPerformanceTests : IClassFixture<BasicPerformanceInt
         var stopwatch = Stopwatch.StartNew();
 
         // Act
-        var result = await _imageProcessingService.GetImageFileSizeAsync(imagePath);
+        var archiveEntry = CreateArchiveEntryFromPath(imagePath);
+        var result = await _imageProcessingService.GetImageFileSizeAsync(archiveEntry);
 
         // Assert
         stopwatch.Stop();

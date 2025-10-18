@@ -1,4 +1,6 @@
 using ImageViewer.Infrastructure.Services;
+using ImageViewer.Domain.ValueObjects;
+using ImageViewer.Domain.Enums;
 using Microsoft.Extensions.Logging;
 using SkiaSharp;
 
@@ -16,6 +18,21 @@ public class ImageProcessingServiceTests
     {
         _mockLogger = new Mock<ILogger<SkiaSharpImageProcessingService>>();
         _imageProcessingService = new SkiaSharpImageProcessingService(_mockLogger.Object);
+    }
+
+    /// <summary>
+    /// Helper method to create ArchiveEntryInfo from a file path for testing
+    /// </summary>
+    private static ArchiveEntryInfo CreateArchiveEntryFromPath(string filePath)
+    {
+        return new ArchiveEntryInfo
+        {
+            ArchivePath = Path.GetDirectoryName(filePath) ?? "",
+            EntryName = Path.GetFileName(filePath),
+            EntryPath = Path.GetFileName(filePath),
+            IsDirectory = false,
+            FileType = ImageFileType.RegularFile
+        };
     }
 
     [Fact]
@@ -46,7 +63,8 @@ public class ImageProcessingServiceTests
         try
         {
             // Act
-            var result = await _imageProcessingService.ExtractMetadataAsync(imagePath);
+            var archiveEntry = CreateArchiveEntryFromPath(imagePath);
+            var result = await _imageProcessingService.ExtractMetadataAsync(archiveEntry);
 
             // Assert
             result.Should().NotBeNull();
@@ -69,7 +87,8 @@ public class ImageProcessingServiceTests
         var invalidPath = "nonexistent/image.jpg";
 
         // Act & Assert
-        var action = async () => await _imageProcessingService.ExtractMetadataAsync(invalidPath);
+        var archiveEntry = CreateArchiveEntryFromPath(invalidPath);
+        var action = async () => await _imageProcessingService.ExtractMetadataAsync(archiveEntry);
         await action.Should().ThrowAsync<Exception>();
     }
 
@@ -82,7 +101,8 @@ public class ImageProcessingServiceTests
         try
         {
             // Act
-            var result = await _imageProcessingService.GenerateThumbnailAsync(imagePath, 100, 100);
+            var archiveEntry = CreateArchiveEntryFromPath(imagePath);
+            var result = await _imageProcessingService.GenerateThumbnailAsync(archiveEntry, 100, 100);
 
             // Assert
             result.Should().NotBeNull();
@@ -106,7 +126,8 @@ public class ImageProcessingServiceTests
         try
         {
             // Act & Assert
-            var action = async () => await _imageProcessingService.GenerateThumbnailAsync(imagePath, -1, -1);
+            var archiveEntry = CreateArchiveEntryFromPath(imagePath);
+            var action = async () => await _imageProcessingService.GenerateThumbnailAsync(archiveEntry, -1, -1);
             await action.Should().ThrowAsync<Exception>();
         }
         finally
@@ -126,7 +147,8 @@ public class ImageProcessingServiceTests
         try
         {
             // Act
-            var result = await _imageProcessingService.ResizeImageAsync(imagePath, 200, 200, "jpeg", 90);
+            var archiveEntry = CreateArchiveEntryFromPath(imagePath);
+            var result = await _imageProcessingService.ResizeImageAsync(archiveEntry, 200, 200, "jpeg", 90);
 
             // Assert
             result.Should().NotBeNull();
@@ -150,7 +172,8 @@ public class ImageProcessingServiceTests
         try
         {
             // Act
-            var result = await _imageProcessingService.ResizeImageAsync(imagePath, 200, 200, "jpeg", 150); // Invalid quality > 100
+            var archiveEntry = CreateArchiveEntryFromPath(imagePath);
+            var result = await _imageProcessingService.ResizeImageAsync(archiveEntry, 200, 200, "jpeg", 150); // Invalid quality > 100
 
             // Assert
             result.Should().NotBeNull();
@@ -173,7 +196,8 @@ public class ImageProcessingServiceTests
         try
         {
             // Act
-            var result = await _imageProcessingService.ConvertImageFormatAsync(imagePath, "PNG", 90);
+            var archiveEntry = CreateArchiveEntryFromPath(imagePath);
+            var result = await _imageProcessingService.ConvertImageFormatAsync(archiveEntry, "PNG", 90);
 
             // Assert
             result.Should().NotBeNull();
@@ -197,7 +221,8 @@ public class ImageProcessingServiceTests
         try
         {
             // Act & Assert
-            var action = async () => await _imageProcessingService.ConvertImageFormatAsync(imagePath, "UNSUPPORTED", 90);
+            var archiveEntry = CreateArchiveEntryFromPath(imagePath);
+            var action = async () => await _imageProcessingService.ConvertImageFormatAsync(archiveEntry, "UNSUPPORTED", 90);
             await action.Should().ThrowAsync<Exception>();
         }
         finally
@@ -275,7 +300,8 @@ public class ImageProcessingServiceTests
         try
         {
             // Act
-            var result = await _imageProcessingService.GetImageDimensionsAsync(imagePath);
+            var archiveEntry = CreateArchiveEntryFromPath(imagePath);
+            var result = await _imageProcessingService.GetImageDimensionsAsync(archiveEntry);
 
             // Assert
             result.Should().NotBeNull();
@@ -314,7 +340,8 @@ public class ImageProcessingServiceTests
         try
         {
             // Act
-            var result = await _imageProcessingService.GetImageFileSizeAsync(imagePath);
+            var archiveEntry = CreateArchiveEntryFromPath(imagePath);
+            var result = await _imageProcessingService.GetImageFileSizeAsync(archiveEntry);
 
             // Assert
             result.Should().BeGreaterThan(0);
@@ -334,7 +361,8 @@ public class ImageProcessingServiceTests
         var invalidPath = "nonexistent/image.jpg";
 
         // Act & Assert
-        var action = async () => await _imageProcessingService.GetImageFileSizeAsync(invalidPath);
+        var archiveEntry = CreateArchiveEntryFromPath(invalidPath);
+        var action = async () => await _imageProcessingService.GetImageFileSizeAsync(archiveEntry);
         await action.Should().ThrowAsync<Exception>();
     }
 
@@ -348,7 +376,8 @@ public class ImageProcessingServiceTests
         try
         {
             // Act - Test that the service can accept a cancellation token without throwing
-            var result = await _imageProcessingService.GenerateThumbnailAsync(imagePath, 100, 100, "jpeg", 95, cancellationTokenSource.Token);
+            var archiveEntry = CreateArchiveEntryFromPath(imagePath);
+            var result = await _imageProcessingService.GenerateThumbnailAsync(archiveEntry, 100, 100, "jpeg", 95, cancellationTokenSource.Token);
 
             // Assert
             result.Should().NotBeNull();
@@ -375,7 +404,11 @@ public class ImageProcessingServiceTests
         try
         {
             // Act
-            var tasks = imagePaths.Select(path => _imageProcessingService.GenerateThumbnailAsync(path, 50, 50));
+            var tasks = imagePaths.Select(path => 
+            {
+                var archiveEntry = CreateArchiveEntryFromPath(path);
+                return _imageProcessingService.GenerateThumbnailAsync(archiveEntry, 50, 50);
+            });
             var results = await Task.WhenAll(tasks);
 
             // Assert
@@ -404,7 +437,8 @@ public class ImageProcessingServiceTests
             // Act - Process the same image multiple times to test memory management
             for (int i = 0; i < 10; i++)
             {
-                var result = await _imageProcessingService.GenerateThumbnailAsync(imagePath, 100, 100);
+                var archiveEntry = CreateArchiveEntryFromPath(imagePath);
+                var result = await _imageProcessingService.GenerateThumbnailAsync(archiveEntry, 100, 100);
                 result.Should().NotBeNull();
                 
                 // Force garbage collection to test memory management
@@ -435,7 +469,8 @@ public class ImageProcessingServiceTests
             // Act - Create multiple concurrent processing tasks
             for (int i = 0; i < 5; i++)
             {
-                tasks.Add(_imageProcessingService.GenerateThumbnailAsync(imagePath, 100, 100));
+                var archiveEntry = CreateArchiveEntryFromPath(imagePath);
+                tasks.Add(_imageProcessingService.GenerateThumbnailAsync(archiveEntry, 100, 100));
             }
 
             var results = await Task.WhenAll(tasks);
